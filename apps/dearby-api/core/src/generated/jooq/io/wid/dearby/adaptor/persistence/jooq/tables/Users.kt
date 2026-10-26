@@ -7,6 +7,8 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.EMAIL_CONTACT_CHALLENGES__EMAIL_CONTACT_CHALLENGES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.GITHUB_CONTACT_LINKS__GITHUB_CONTACT_LINKS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.NOTIFICATION_SETTINGS__NOTIFICATION_SETTINGS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
@@ -29,6 +31,8 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.USER_SESSION_FAVORITES__USER_
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_TASTE__USER_TASTE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
+import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges.EmailContactChallengesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.GithubContactLinks.GithubContactLinksPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.NotificationSettings.NotificationSettingsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.OrganizationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility.ProfileEligibilityPath
@@ -192,6 +196,38 @@ open class Users(
 
     val discoveryQueue: DiscoveryQueuePath
         get(): DiscoveryQueuePath = discoveryQueue()
+
+    private lateinit var _emailContactChallenges: EmailContactChallengesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.email_contact_challenges</code> table
+     */
+    fun emailContactChallenges(): EmailContactChallengesPath {
+        if (!this::_emailContactChallenges.isInitialized)
+            _emailContactChallenges = EmailContactChallengesPath(this, null, EMAIL_CONTACT_CHALLENGES__EMAIL_CONTACT_CHALLENGES_USER_ID_FKEY.inverseKey)
+
+        return _emailContactChallenges;
+    }
+
+    val emailContactChallenges: EmailContactChallengesPath
+        get(): EmailContactChallengesPath = emailContactChallenges()
+
+    private lateinit var _githubContactLinks: GithubContactLinksPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.github_contact_links</code> table
+     */
+    fun githubContactLinks(): GithubContactLinksPath {
+        if (!this::_githubContactLinks.isInitialized)
+            _githubContactLinks = GithubContactLinksPath(this, null, GITHUB_CONTACT_LINKS__GITHUB_CONTACT_LINKS_USER_ID_FKEY.inverseKey)
+
+        return _githubContactLinks;
+    }
+
+    val githubContactLinks: GithubContactLinksPath
+        get(): GithubContactLinksPath = githubContactLinks()
 
     private lateinit var _notificationSettings: NotificationSettingsPath
 

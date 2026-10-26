@@ -23,14 +23,25 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.activityAppLink
 import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
+import com.dearby.nativeapp.shared.config.githubLinkRedirect
 import com.dearby.nativeapp.shared.config.isFavoritesLink
 import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.features.reminder.SessionReminders
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import com.dearby.nativeapp.features.ads.QueueAd
 import com.dearby.nativeapp.features.analytics.Analytics
 import android.content.BroadcastReceiver
@@ -53,6 +64,7 @@ class MainActivity : ComponentActivity() {
                     DiscoveryKind.of(device.discoveryKind), { device.discoveryKind = it.code },
                     StatusGroup.of(device.discoveryStatus), { device.discoveryStatus = StatusGroup.codes(it) },
                     { device.discoveryCategories(it.code) }, { kind, codes -> device.setDiscoveryCategories(kind.code, codes) },
+                    device::autopassAsked, device::rememberAutopassAsked,
                 )
             }
         }
@@ -72,7 +84,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
+    private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account, createSavedStateHandle()) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", device) } } }
     // 추천 and 오늘의 맞춤 대기열 need a session (contract "비로그인에서 만들기·추천을 막음", 2026-10-25): nothing is kept on the device, and the
@@ -92,6 +104,25 @@ class MainActivity : ComponentActivity() {
     }
     // `오늘 일정 n개` opens 즐겨찾기 (dearby://favorites), consumed once by DearbyApp.
     private var favoritesLink by mutableStateOf(false)
+    // 찜한 세션 이동 알림 (2026-10-26, device-local): 설정 `세션 이동 알림`; off cancels every alarm.
+    private val sessionRemindersOn by lazy { MutableStateFlow(device.sessionRemindersEnabled) }
+    /**
+     * Plans the alarms from 내 시간표: while the app is in front, whenever the 찜 list, the account or the switch changes and each time it comes back
+     * (a reboot is [SessionReminderBootReceiver]). Signed out (sign-out and 계정 삭제) or off: none. A list not read yet (null) leaves the alarms as they are.
+     * Only the future ones are set; the ones that left the plan are cancelled; analytics-v1 `session_reminder_scheduled` whenever some are set.
+     */
+    private fun planSessionReminders() = lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val signedOut = account.state.map { it.phase == AccountPhase.SIGNED_OUT }.distinctUntilChanged()
+            combine(sessions.items, signedOut, sessionRemindersOn) { items, out, on -> if (out || !on) emptyList() else items }.collect { items ->
+                val planned = SessionReminders.plan(items ?: return@collect, System.currentTimeMillis())
+                val before = device.sessionReminders
+                SessionReminders.schedule(applicationContext, planned, cancel = before - planned.toSet())
+                device.sessionReminders = planned
+                if (planned.isNotEmpty()) Analytics.event("session_reminder_scheduled", "count" to planned.size.toString())
+            }
+        }
+    }
     // The server sends at 8 in the morning in the device's time zone, so a change is sent again while the app runs (and at every start).
     private val timeZoneChanged = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) = notifications.register() }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
@@ -119,6 +150,8 @@ class MainActivity : ComponentActivity() {
         // A recreated Activity gets its launch intent again; the provider's code is single-use and was handled the first time.
         receive(intent, recreated = savedInstanceState != null)
         Push.createChannel(this)
+        SessionReminders.createChannel(this)
+        planSessionReminders()
         Analytics.start(applicationContext, device.analyticsEnabled)
         account.beforeSignOut = notifications::unregister
         ContextCompat.registerReceiver(this, timeZoneChanged, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -127,7 +160,7 @@ class MainActivity : ComponentActivity() {
             DearbyTheme { CompositionLocalProvider(LocalPhotoLoader provides account.photos::load) {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
-                    sessions, favoritesLink, { favoritesLink = false }, screenshot)
+                    sessions, favoritesLink, { favoritesLink = false }, sessionRemindersOn.collectAsStateWithLifecycle().value, { device.sessionRemindersEnabled = it; sessionRemindersOn.value = it }, screenshot)
                 PendingAccountRoute(account)
             } }
         }
@@ -141,7 +174,8 @@ class MainActivity : ComponentActivity() {
         receive(intent)
     }
     /**
-     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), a received card
+     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), GitHub 연결's `dearby://contacts/github`
+     * (contract "연락처 인증"; the profile editor spends the code), a received card
      * `dearby://cards/<id>?activity=<n>` from the web card page's save button (contract "명함 교환"; saved at once), or an App Link (contract
      * "유니버설 링크·App Links·활동 공유·오픈그래프"): the same card page, which opens the 받은 명함 detail or 공유받은 명함 보기 without saving, or
      * `/activities/<id>`, which opens the detail on 발견. Other links only open the app.
@@ -149,8 +183,16 @@ class MainActivity : ComponentActivity() {
     private fun receive(intent: Intent?, recreated: Boolean = false) {
         // A push tapped while the app was in the background starts it with the message's `data` as extras (`url`, contract "즐겨찾기(하트)·새 모집 푸시 알림").
         intent ?: return
-        val link = intent.dataString ?: intent.getStringExtra("url") ?: return
         if (recreated) return
+        // A 세션 이동 알림 tap (features/reminder, payload `kind=session_reminder`): the activity opens on 발견 and, once its detail is up, the block's
+        // timetable on 찜한 세션. Before the push path below, which also carries `activityId`.
+        if (intent.getStringExtra(SessionReminders.KIND) == SessionReminders.SESSION_REMINDER) {
+            val id = intent.getStringExtra(SessionReminders.ACTIVITY) ?: return
+            intent.getStringExtra(SessionReminders.SCHEDULE)?.let { sessions.remind(id, it) }
+            activityModel.openLinked(id, "push")
+            return
+        }
+        val link = intent.dataString ?: intent.getStringExtra("url") ?: return
         // Opened from a push (analytics-v1 `push_open`); the server's `kind` when it sends one, the summary by its favorites link.
         val fromPush = intent.getBooleanExtra(Push.OPENED, false) || (intent.dataString == null && intent.hasExtra("url"))
         if (fromPush) {
@@ -160,6 +202,7 @@ class MainActivity : ComponentActivity() {
         }
         if (isFavoritesLink(link)) { favoritesLink = true; return }
         authRedirect(link)?.let { account.returned(it); return }
+        githubLinkRedirect(link)?.let { profile.githubReturned(it); return }
         cardLink(link, BuildConfig.WEB_ORIGIN)?.let { if (it.web) wallet.view(it) else wallet.receive(it); return }
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let { activityModel.openLinked(it, if (fromPush) "push" else "link") }
     }

@@ -2,7 +2,8 @@ import Foundation
 
 /// A link the app was opened with (contract "유니버설 링크·App Links·활동 공유·오픈그래프" 2026-10-22): `dearby://cards/…` from the web
 /// card page's "Dearby 앱에 저장", or a universal link on the build's web origin for `/cards/*` and `/activities/*`. Both card entrances
-/// go through this one parser and differ only in how they enter; any other shape is nil and only opens the app.
+/// go through this one parser and differ only in how they enter; any other shape is nil and only opens the app — including
+/// `dearby://contacts/github?code=…`, which `ASWebAuthenticationSession` consumes inside GitHub 연결 (contract "연락처 인증" 2026-10-26).
 enum IncomingLink: Equatable {
     /// `dearby://cards/…`: the user chose to save, so it is saved right away.
     case saveCard(WalletModel.Incoming)

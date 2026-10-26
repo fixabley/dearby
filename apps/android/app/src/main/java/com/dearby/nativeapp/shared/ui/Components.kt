@@ -242,6 +242,9 @@ fun contactKindName(kind: String) = when (kind) {
 @Composable fun ContactKindIcon(kind: String, contentDescription: String, modifier: Modifier = Modifier) =
     Icon(contactIcon(kind), contentDescription, modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
 
+/** 인증됨 (contract "연락처 인증"·"아이콘 통일" `인증`, 2026-10-26): the 16dp `Verified` seal in `primary` after a verified contact's value; its accessibility name is `인증됨`. */
+@Composable fun VerifiedMark(modifier: Modifier = Modifier) = Icon(Icons.Rounded.Verified, "인증됨", modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+
 /** `시간표` with the timeline icon, the same mark the activity card shows (contract "트랙·세션 시간표"). */
 @Composable fun TimetableMark(modifier: Modifier = Modifier) =
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {

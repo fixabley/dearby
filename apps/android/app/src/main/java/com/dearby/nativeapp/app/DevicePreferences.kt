@@ -2,10 +2,12 @@ package com.dearby.nativeapp.app
 
 import android.content.Context
 import androidx.core.content.edit
+import com.dearby.nativeapp.features.reminder.Reminder
 
 /**
  * What this device remembers for 즐겨찾기 and push (contract "즐겨찾기(하트)·새 모집 푸시 알림"), in a new preferences file of its own: the
  * `사용 통계 보내기` switch and whether push started (the first program heart: the notification permission is asked then, once, and FCM may make a token).
+ * Since 2026-10-26 also the 세션 이동 알림 switch and the reminders set as alarms.
  */
 class DevicePreferences(context: Context) {
     private val preferences = context.getSharedPreferences("dearby.favorites", Context.MODE_PRIVATE)
@@ -28,7 +30,22 @@ class DevicePreferences(context: Context) {
     /** 발견 종류 dropdown (2026-10-26) per kind (`program`·`event`): the chosen category codes; empty (전체) until changed. */
     fun discoveryCategories(kind: String): Set<String> = preferences.getString("discoveryCategories.$kind", null).orEmpty().split(',').filter { it.isNotEmpty() }.toSet()
     fun setDiscoveryCategories(kind: String, codes: Set<String>) = preferences.edit { putString("discoveryCategories.$kind", codes.joinToString(",")) }
+    /** 지난 선발 단계 자동 통과 제안 (2026-10-26): the activities already asked, once each whatever the answer. */
+    fun autopassAsked(id: String) = id in preferences.getStringSet("autopassAsked", emptySet()).orEmpty()
+    fun rememberAutopassAsked(id: String) = preferences.edit { putStringSet("autopassAsked", preferences.getStringSet("autopassAsked", emptySet()).orEmpty() + id) }
     var pushStarted: Boolean
         get() = preferences.getBoolean("pushStarted", false)
         set(value) = preferences.edit { putBoolean("pushStarted", value) }
+    /** The notification permission was asked (Android 13+), at the first program heart or the first session heart, whichever came first; never again. */
+    var notificationsAsked: Boolean
+        get() = preferences.getBoolean("notificationsAsked", false)
+        set(value) = preferences.edit { putBoolean("notificationsAsked", value) }
+    /** 설정 › 알림 `세션 이동 알림` (2026-10-26 "찜한 세션 이동 알림"), on until turned off; off cancels every reminder. */
+    var sessionRemindersEnabled: Boolean
+        get() = preferences.getBoolean("sessionRemindersEnabled", true)
+        set(value) = preferences.edit { putBoolean("sessionRemindersEnabled", value) }
+    /** The reminders currently set as alarms, so the next plan can cancel the ones that left and a reboot ([SessionReminderBootReceiver]) can set them again. */
+    var sessionReminders: List<Reminder>
+        get() = preferences.getStringSet("sessionReminders", emptySet()).orEmpty().mapNotNull(Reminder::parse).sortedBy { it.at }
+        set(value) = preferences.edit { putStringSet("sessionReminders", value.map { it.toJson() }.toSet()) }
 }

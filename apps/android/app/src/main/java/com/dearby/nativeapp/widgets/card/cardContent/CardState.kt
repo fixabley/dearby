@@ -2,7 +2,8 @@ package com.dearby.nativeapp.widgets.card.cardContent
 
 import com.dearby.nativeapp.entities.account.model.ContactRules
 
-data class ContactState(val id: String, val kind: String, val label: String, val value: String) {
+/** [verified] (contract "연락처 인증"): the row ends with the 인증됨 mark; false shows nothing. */
+data class ContactState(val id: String, val kind: String, val label: String, val value: String, val verified: Boolean = false) {
     /** 누르면 여는 주소(2026-10-26 "연락처 아이콘·바로가기", `ContactRules.link`); 있으면 행에 외부 링크 아이콘을 둔다. `openContact`가 같은 값을 쓴다. */
     val target: String? get() = ContactRules.link(kind, value)
     /** 주소가 아닌 카카오톡 ID: 누르면 복사한다(행에 복사 아이콘). */

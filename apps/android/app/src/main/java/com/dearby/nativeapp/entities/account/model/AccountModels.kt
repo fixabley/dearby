@@ -18,8 +18,11 @@ sealed interface WebSignIn {
     data class NeedsAccount(val linkToken: String, val email: String) : WebSignIn
 }
 
-/** Profile contact. IDs are client-generated UUIDs; the server keeps them as given. */
-data class AccountContact(val id: String, val kind: String, val label: String, val value: String)
+/**
+ * Profile contact. IDs are client-generated UUIDs; the server keeps them as given. [verified]·[verifiedAt] (contract "연락처 인증", 2026-10-26) are set by the
+ * server only (GitHub 연결·이메일 인증번호) and never sent back; snapshots from before V64 read as false·null.
+ */
+data class AccountContact(val id: String, val kind: String, val label: String, val value: String, val verified: Boolean = false, val verifiedAt: String? = null)
 /** A registered 활동 정보 item (organization, program, activity or role) a history points at; ids are the server's numbers. */
 data class ActivityInfoRef(val id: Long, val name: String)
 /** An uploaded evidence file's metadata (contract "인증자료"); the bytes stay on the server. */
@@ -98,8 +101,12 @@ data class PasskeyItem(val id: String, val label: String, val createdAt: String,
 
 /** `GET /v1/wallet`: the account's saved cards (receipts). */
 data class Wallet(val items: List<WalletReceipt>)
-/** Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. */
-data class ExchangeContext(val activityId: Long?, val activityName: String?, val programName: String?)
+/**
+ * Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. [scheduleTitle]·[sessionTitle]·
+ * [trackName]·[room] (2026-10-26, server `feat/receipt-session-context`) say which block, session and track the QR was shown in; null until the server sends them.
+ */
+data class ExchangeContext(val activityId: Long?, val activityName: String?, val programName: String?,
+    val scheduleTitle: String? = null, val sessionTitle: String? = null, val trackName: String? = null, val room: String? = null)
 /** One received card. [reciprocal]: the owner holds one of mine too, so it is never recalled; otherwise [expiresAt] is the recall time. */
 /** A QR code for one card (contract "명함 QR 코드"): many people may use it until it is revoked or [expiresAt] passes. */
 data class QrCode(val id: String, val code: String, val expiresAt: String)
@@ -153,7 +160,8 @@ fun JSONObject.toQrCode() = QrCode(getString("id"), getString("code"), getString
 fun JSONObject.toReceipt(): WalletReceipt {
     val context = optJSONObject("context")
     return WalletReceipt(getString("id"), getJSONObject("card").toPublishedCard(), getString("receivedAt"),
-        ExchangeContext(context?.takeUnless { it.isNull("activityId") }?.getLong("activityId"), context?.text("activityName"), context?.text("programName")),
+        ExchangeContext(context?.takeUnless { it.isNull("activityId") }?.getLong("activityId"), context?.text("activityName"), context?.text("programName"),
+            context?.text("scheduleTitle"), context?.text("sessionTitle"), context?.text("trackName"), context?.text("room")),
         optBoolean("reciprocal", false), text("expiresAt"))
 }
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
@@ -166,7 +174,10 @@ fun JSONObject.toPasskeys() = getJSONArray("items").objects().map { it.toPasskey
 fun JSONObject.toPasskey() = PasskeyItem(getString("id"), optString("label"), getString("createdAt"), text("lastUsedAt"), optBoolean("backedUp", false))
 
 private fun JSONObject.toRef() = ActivityInfoRef(getLong("id"), getString("name"))
-private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"))
+private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"), optBoolean("verified", false), text("verifiedAt"))
+/** `POST /v1/me/contacts/email/challenges`: the challenge to answer with the 6-digit code mailed to the address, until [expiresAt] (10 minutes). */
+data class EmailChallenge(val id: String, val expiresAt: String)
+fun JSONObject.toEmailChallenge() = EmailChallenge(getString("challengeId"), getString("expiresAt"))
 private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("kind"),
     optJSONObject("organization")?.toRef(), text("organizationName"), optJSONObject("program")?.toRef(), text("programName"),
     optJSONObject("activity")?.toRef(), text("activityName"), optJSONObject("role")?.toRef(), text("roleName"),

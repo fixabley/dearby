@@ -9,6 +9,10 @@ import Observation
     /// The consent gate (contract "개인정보 동의"): on when the loaded profile says `consentRequired` or a write came back
     /// 403 `CONSENT_REQUIRED`; off once `POST /v1/me/consents` succeeds. Signed out, it is never shown.
     private(set) var consentPending = false
+    /// 연락처 인증 (contract "연락처 인증" 2026-10-26): a kind drops out after its first 503 (no GitHub OAuth app / no mail server on the
+    /// server) and its button is hidden for the rest of the run.
+    private(set) var githubLinkAvailable = true
+    private(set) var emailVerifyAvailable = true
     let account: AccountViewModel
     /// Where the policy pages live (`/privacy`, `/terms`).
     let webOrigin: URL
@@ -98,7 +102,40 @@ import Observation
             return nil
         } catch { return message(error, fallback: "사진을 지우지 못했어요. 잠시 후 다시 시도해 주세요.") }
     }
-    private func message(_ error: Error, fallback: String) -> String {
+    /// GitHub 연결 step 1: the authorize page to open. Throws `AccountError`; a 503 also hides the button.
+    func githubAuthorizeURL() async throws -> URL {
+        do { return try await account.authorized { [client = account.client] in try await client.startGitHubLink($0) } } catch AccountError.disabled {
+            githubLinkAvailable = false
+            throw AccountError.disabled
+        }
+    }
+    /// GitHub 연결 step 2 with the callback's `code`: the profile on screen becomes the server's (new `version`, GitHub row `verified`).
+    /// Returns the message to show, or nil when verified.
+    func completeGitHub(code: String) async -> String? {
+        do {
+            phase = .loaded(try await account.authorized { [client = account.client] in try await client.completeGitHubLink(code: code, $0) })
+            return nil
+        } catch { return message(error, fallback: "GitHub 연결에 실패했어요. 다시 시도해 주세요.") }
+    }
+    /// 이메일 인증번호 받기. Throws `AccountError` (`rateLimited` carries the server's wording); a 503 also hides the button.
+    func requestEmailCode(_ email: String) async throws -> AccountClient.EmailChallenge {
+        do { return try await account.authorized { [client = account.client] in try await client.requestEmailCode(email: email, $0) } } catch AccountError.disabled {
+            emailVerifyAvailable = false
+            throw AccountError.disabled
+        }
+    }
+    /// 인증번호 확인: nil when the profile on screen now has the email `verified`, else the message to show (a wrong code names the tries left).
+    /// `challengeExpired` is rethrown so the row goes back to 인증번호 받기 with its wording.
+    func verifyEmail(challengeId: String, code: String) async throws -> String? {
+        do {
+            phase = .loaded(try await account.authorized { [client = account.client] in try await client.verifyEmailCode(challengeId: challengeId, code: code, $0) })
+            return nil
+        } catch AccountError.challengeExpired(let detail) {
+            throw AccountError.challengeExpired(detail)
+        } catch { return message(error, fallback: "인증하지 못했어요. 잠시 후 다시 시도해 주세요.") }
+    }
+    /// The sentence for a failed call (`rejected` detail as is; 401 signs out; 403 CONSENT_REQUIRED switches the consent gate on).
+    func message(_ error: Error, fallback: String) -> String {
         switch error as? AccountError {
         case .unauthorized:
             phase = .signedOut

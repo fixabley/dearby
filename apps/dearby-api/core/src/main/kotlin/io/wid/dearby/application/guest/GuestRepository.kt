@@ -1,6 +1,6 @@
 package io.wid.dearby.application.guest
 
-import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.card.ExchangeRef
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -22,10 +22,8 @@ interface GuestRepository {
 
     fun cardCount(digest: String): Int
 
-    // 회수됐던 같은 세션+명함 행이 있으면 되살린다(저장일·활동을 새로 적는다). 모르는 활동 id는 호출 전에 null로 바꾼다
-    fun addCard(digest: String, cardId: UUID, activityId: Id?)
-
-    fun activityExists(activityId: Id): Boolean
+    // 회수됐던 같은 세션+명함 행이 있으면 되살린다(저장일·맥락을 새로 적는다). 맥락은 호출 전에 판정한다(ExchangeContextRepository)
+    fun addCard(digest: String, cardId: UUID, context: ExchangeRef)
 
     // 게스트 차단: 그 세션에서 그 주인의 명함 저장을 모두 회수한다
     fun recallFromOwner(digest: String, ownerId: UUID, now: OffsetDateTime)
@@ -34,6 +32,9 @@ interface GuestRepository {
     fun recallExpired(savedBefore: OffsetDateTime, now: OffsetDateTime): Int
 
     fun removeCard(digest: String, cardId: UUID)
+
+    // 계정 합치기(native-v1.md "웹 로그인"): 세션의 회수 전 저장을 모두 회수한다(행은 남긴다). 회수한 행 수
+    fun recallAll(digest: String, now: OffsetDateTime): Int
 
     fun wallet(digest: String): GuestWallet
 

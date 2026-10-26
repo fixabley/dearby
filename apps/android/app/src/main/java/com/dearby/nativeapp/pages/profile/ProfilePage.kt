@@ -60,6 +60,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     pickPhoto: () -> Unit = {}, deletePhoto: () -> Unit = {},
     /** A contact row on the read-mode card opens or copies it (contract "연락처 아이콘·바로가기"). */
     contact: (ContactState) -> Unit = {},
+    /** 연락처 인증 (contract "연락처 인증"): GitHub 연결 (the route opens the Custom Tab) and the 이메일 인증번호 steps; state in [ProfileViewState.verify]. */
+    linkGithub: () -> Unit = {}, requestEmailCode: () -> Unit = {}, changeEmailCode: (String) -> Unit = {}, verifyEmail: () -> Unit = {},
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
@@ -109,7 +111,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },
                         { row -> change(form.copy(extras = form.extras.map { if (it.id == row.id) row else it })) },
                         { id -> change(form.copy(extras = form.extras.filter { it.id != id })) }, addContact,
-                        phoneError = state.errors?.phone, emailError = state.errors?.email)
+                        phoneError = state.errors?.phone, emailError = state.errors?.email,
+                        emailVerified = form.emailVerified, emailUnverifying = form.emailUnverifying, emailVerify = state.verify.emailAvailable && form.emailCanVerify,
+                        emailBusy = state.verify.emailBusy, emailCode = state.verify.entry.takeIf { state.verify.challengeId != null },
+                        onRequestEmailCode = requestEmailCode, onEmailCodeChange = changeEmailCode, onVerifyEmail = verifyEmail,
+                        githubLink = state.verify.githubAvailable, githubBusy = state.verify.githubBusy, onLinkGithub = linkGithub)
                     Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     if (form.histories.isEmpty()) Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                     rows.forEach { row -> HistoryRow(row, { openHistory(row.id) }) { removeHistory(row.id) } }

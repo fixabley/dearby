@@ -11,6 +11,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FK
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users.UsersPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ContactsRecord
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -107,6 +108,16 @@ open class Contacts(
      * The column <code>public.contacts.position</code>.
      */
     val POSITION: TableField<ContactsRecord, Int?> = createField(DSL.name("position"), SQLDataType.INTEGER.nullable(false), this, "")
+
+    /**
+     * The column <code>public.contacts.verified</code>.
+     */
+    val VERIFIED: TableField<ContactsRecord, Boolean?> = createField(DSL.name("verified"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
+
+    /**
+     * The column <code>public.contacts.verified_at</code>.
+     */
+    val VERIFIED_AT: TableField<ContactsRecord, OffsetDateTime?> = createField(DSL.name("verified_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
 
     private constructor(alias: Name, aliased: Table<ContactsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ContactsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

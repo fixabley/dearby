@@ -8,7 +8,7 @@ import { inAppBrowser } from "./in-app-browser";
  * Share → 홈 화면에 추가 on iOS Safari and Chrome, the ⋮ / ≡ menu on Android Chrome and Samsung Internet. Other browsers and
  * in-app browsers get nothing. iPadOS reports a Mac user agent, hence `maxTouchPoints`.
  */
-const isIos = (userAgent: string, maxTouchPoints: number) =>
+export const isIos = (userAgent: string, maxTouchPoints: number) =>
   /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
 export function shortcutKind(userAgent: string, maxTouchPoints = 0): ShortcutSteps | undefined {
   if (inAppBrowser(userAgent)) return;

@@ -33,12 +33,35 @@ struct PasskeySummary: Decodable, Equatable, Identifiable, Sendable {
     let lastUsedAt: String?
     let backedUp: Bool
 }
-/// Profile contact. IDs are client-generated UUIDs; the server keeps them as given.
+/// Profile contact. IDs are client-generated UUIDs; the server keeps them as given. `verified`·`verifiedAt` (contract "연락처 인증" 2026-10-26)
+/// are read-only server state: only GitHub 연결 or an 이메일 인증번호 turns them on, and a changed value turns them off on save. They are read
+/// with a default (older snapshots and cards lack them) and never sent.
 struct AccountContact: Codable, Equatable, Identifiable, Sendable {
     let id: String
     var kind: String
     var label: String
     var value: String
+    var verified = false
+    var verifiedAt: String? = nil
+}
+extension AccountContact {
+    private enum CodingKeys: String, CodingKey { case id, kind, label, value, verified, verifiedAt }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        kind = try c.decode(String.self, forKey: .kind)
+        label = try c.decode(String.self, forKey: .label)
+        value = try c.decode(String.self, forKey: .value)
+        verified = try c.decodeIfPresent(Bool.self, forKey: .verified) ?? false
+        verifiedAt = try c.decodeIfPresent(String.self, forKey: .verifiedAt)
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(label, forKey: .label)
+        try c.encode(value, forKey: .value)
+    }
 }
 /// An activity-info item (organization, program, activity or role) a history points at. Numeric ids are the activity's.
 struct ActivityInfoRef: Codable, Equatable, Hashable, Sendable {
@@ -268,6 +291,12 @@ struct ExchangeContext: Decodable, Equatable, Sendable {
     let activityId: Int64?
     let activityName: String?
     let programName: String?
+    /// 교환 세션 맥락 (contract "오늘 내 행사 카드" 2026-10-26 받은 명함): the schedule block, session, track and room the QR was shown
+    /// at; each nil when the server did not record it or on older responses. Decoded by name; the server PR carries the contract text.
+    var scheduleTitle: String?
+    var sessionTitle: String?
+    var trackName: String?
+    var room: String?
 }
 /// A published card snapshot from `POST /v1/cards`. `introLink` is the profile's 소개 링크 copied at publish (nil when left out or none).
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {

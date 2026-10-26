@@ -1,8 +1,12 @@
 export class RequestError extends Error {
-  /** `code`: the proxy's `{error: {code}}`, e.g. `BLOCKED` (contract "명함 신고·차단"). */
+  /**
+   * `code`: the proxy's `{error: {code}}`, e.g. `BLOCKED` (contract "명함 신고·차단"); `detail`: the API's user-facing sentence,
+   * forwarded only for account and sign-in routes (contract "웹 로그인").
+   */
   constructor(
     public status: number,
     public code?: string,
+    public detail?: string,
   ) {
     super("Request failed");
   }
@@ -15,8 +19,12 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => undefined);
-    const code = (body as { error?: { code?: unknown } } | undefined)?.error?.code;
-    throw new RequestError(response.status, typeof code === "string" ? code : undefined);
+    const error = (body as { error?: { code?: unknown; detail?: unknown } } | undefined)?.error;
+    throw new RequestError(
+      response.status,
+      typeof error?.code === "string" ? error.code : undefined,
+      typeof error?.detail === "string" ? error.detail : undefined,
+    );
   }
   return response.status === 204 ? (undefined as T) : response.json();
 }

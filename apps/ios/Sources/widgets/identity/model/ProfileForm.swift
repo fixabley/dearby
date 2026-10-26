@@ -12,9 +12,12 @@ struct ProfileForm: Equatable {
     var email: String
     var extras: [ProfileExtraContact]
     var histories: [AccountHistory]
-    let version: Int
+    /// Moves on when a 연락처 인증 saves a version on the server (`absorbVerification`), so the next `PUT` still matches.
+    private(set) var version: Int
     private var phoneID: String
     private var emailID: String
+    /// The email as it was verified on the server (contract "연락처 인증" 2026-10-26); nil when the saved email is not verified.
+    private(set) var emailVerifiedValue: String?
 
     init(profile: AccountProfile) {
         name = profile.name
@@ -24,12 +27,29 @@ struct ProfileForm: Equatable {
         let phoneRow = profile.contacts.first { $0.kind == "phone" }, emailRow = profile.contacts.first { $0.kind == "email" }
         phone = phoneRow?.value ?? ""
         email = emailRow?.value ?? ""
+        emailVerifiedValue = emailRow?.verified == true ? emailRow?.value : nil
         phoneID = phoneRow?.id ?? UUID().uuidString.lowercased()
         emailID = emailRow?.id ?? UUID().uuidString.lowercased()
-        extras = profile.contacts.filter { $0.id != phoneRow?.id && $0.id != emailRow?.id }
-            // A profile URL saved before 2026-10-26 reads as its username (contract "연락처 사용자명 입력").
-            .map { ProfileExtraContact(id: $0.id, kind: $0.kind, value: ContactModel.username(kind: $0.kind, $0.value) ?? $0.value) }
+        extras = profile.contacts.filter { $0.id != phoneRow?.id && $0.id != emailRow?.id }.map(ProfileExtraContact.init)
         histories = profile.histories
+    }
+    /// The email row still carries its check: typed as verified, apart from case and spaces (the server compares the same way).
+    var emailVerified: Bool { ProfileExtraContact.stillVerified(kind: "email", typed: email, verified: emailVerifiedValue) }
+    /// After `POST …/github/complete` or `…/email/verify` answered a Profile: the server saved a new version with that one contact
+    /// verified (contract "연락처 인증": the matching item, else the first of the kind, else a new last item), so this form takes the
+    /// new `version` and that kind's rows while every other edit in progress stays as typed. Without it the next `PUT` would 409.
+    mutating func absorbVerification(_ profile: AccountProfile, kind: String) {
+        version = profile.version
+        for contact in profile.contacts where contact.kind == kind && contact.verified {
+            if kind == "email" {
+                email = contact.value
+                emailVerifiedValue = contact.value
+            } else if let index = extras.firstIndex(where: { $0.id == contact.id }) ?? extras.firstIndex(where: { $0.kind == kind && $0.verifiedValue == nil }) {
+                extras[index] = ProfileExtraContact(contact)
+            } else {
+                extras.append(ProfileExtraContact(contact))
+            }
+        }
     }
     mutating func addContact(_ kind: String) { extras.append(ProfileExtraContact(id: UUID().uuidString.lowercased(), kind: kind, value: "")) }
     /// Puts a finished funnel draft in place (same id) or appends it.

@@ -98,6 +98,7 @@
     "DearbyAppleButton",
     "DearbyAvatar",
     "DearbyBadge",
+    "DearbyVerifiedMark",
     "DearbyDismissKeyboard",
     "DearbyFieldError",
     "DearbyGoogleButton",
@@ -127,6 +128,8 @@
   "widgets/activity": [
     "ActivityCard",
     "ApplyConfirmationSheet",
+    "AutopassSheet",
+    "AutopassSuggestion",
     "ActivityListPage",
     "ActivityViewModel",
     "MyActivitiesPage",

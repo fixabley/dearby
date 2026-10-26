@@ -16,12 +16,25 @@ import Observation
         var program: String? { receipt.context.programName }
         /// `맞교환`, `3일 뒤 사라져요` / `오늘 사라져요`, or empty when the server sent no recall time.
         let badge: String
-        /// `<프로그램> <활동>에서 받음 · 2026.10.19`; without an activity just `2026.10.19에 받음`.
+        /// `<프로그램> <활동>에서 받음 · 2026.10.19`; without an activity just `2026.10.19에 받음`. With a session context (`sessionContext`)
+        /// the detail shows that instead and this line is only the day.
         var receivedLine: String {
             let day = WalletModel.day(receipt.receivedAt)
+            guard sessionContext == nil else { return "\(day)에 받음" }
             let place = [receipt.context.programName, receipt.context.activityName].compactMap { $0 }.joined(separator: " ")
             return place.isEmpty ? "\(day)에 받음" : "\(place)에서 받음 · \(day)"
         }
+        /// 교환 세션 맥락 (contract "오늘 내 행사 카드" 받은 명함): `우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B` — the program and activity as
+        /// before, then the block, track and room that exist, joined by ` · `. nil when the receipt carries none of the three.
+        var sessionContext: String? {
+            let context = receipt.context
+            let spot = [context.scheduleTitle, context.trackName, context.room].compactMap { $0 }.filter { !$0.isEmpty }
+            guard !spot.isEmpty else { return nil }
+            let place = [context.programName, context.activityName].compactMap { $0 }.joined(separator: " ")
+            return ((place.isEmpty ? [] : [place]) + spot).joined(separator: " · ")
+        }
+        /// The session the card was exchanged at (second line under `sessionContext`); nil when unknown.
+        var sessionTitle: String? { receipt.context.sessionTitle.flatMap { $0.isEmpty ? nil : $0 } }
     }
     /// A card arriving through `/cards/<cardId>?activity=<activityId>&code=<code>`, as `dearby://` (the web page's "Dearby 앱에 저장") or
     /// as a universal link on the web origin (contract "유니버설 링크·App Links·활동 공유·오픈그래프"; both parsed by `IncomingLink`);
@@ -223,7 +236,7 @@ extension PublishedCard {
     /// The saved or own card shown with the identity components.
     var cardModel: CardModel {
         CardModel(id: id, name: name, profileName: profileName, job: job, introLink: introLink, description: description,
-                  contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
+                  contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value, verified: $0.verified) },
                   histories: histories.map(\.historyModel), organization: latestOrganization, photoUrl: photoUrl)
     }
     var latestOrganization: String? { histories.latestOrganization }

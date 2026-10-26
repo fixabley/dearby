@@ -30,10 +30,25 @@ dearby:
   # 구글 로그인(네이티브 SDK). ID 토큰 aud로 허용하는 client id(쉼표 구분: 웹, iOS). 비어 있으면 /v1/auth/google/*는 503(native-v1.md "구글 로그인")
   google:
     client-ids: ${GOOGLE_CLIENT_IDS:}
+    web-client-id: ${GOOGLE_WEB_CLIENT_ID:} # 사용자 웹(GIS) 클라이언트 id(native-v1.md "웹 로그인"). 비어 있으면 웹 구글 로그인만 쓸 수 없다
   # 개인정보 동의 문서 버전(native-v1.md "개인정보 동의"): 웹 /privacy·/terms 시행일. 바꾸면 사용자가 다시 동의한다
   consent:
     privacy-version: ${CONSENT_PRIVACY_VERSION:2026-10-26}
     terms-version: ${CONSENT_TERMS_VERSION:2026-10-22}
+  # GitHub 연락처 연결(native-v1.md "연락처 인증"). 셋 중 하나라도 비어 있으면 /v1/me/contacts/github/*는 503
+  github:
+    client-id: ${GITHUB_CLIENT_ID:}
+    client-secret: ${GITHUB_CLIENT_SECRET:}
+    callback-url: ${GITHUB_CALLBACK_URL:}
+    web-redirect-uri: ${GITHUB_WEB_REDIRECT_URI:https://dearby.wid.io.kr/profile}
+  # 이메일 인증번호(native-v1.md "연락처 인증", Spring Mail). MAIL_HOST나 MAIL_FROM이 비어 있으면 /v1/me/contacts/email/*는 503
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:}
+    starttls: ${MAIL_STARTTLS:true}
   # 웹 비로그인 저장. Next 서버의 GUEST_PROXY_SECRET과 같은 값(32자 이상). 비어 있으면 /v1/guest/*는 503
   guest:
     proxy-secret: ${GUEST_PROXY_SECRET:}

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { type Activity, type Card, type GuestItem } from "@/lib/models";
+import { type Activity, type Card, type GuestItem, sessionContextLines } from "@/lib/models";
 import {
   errorMessage,
   mutateGuest,
@@ -19,6 +19,7 @@ import { Button } from "@/shared/ui/button";
 import { CardCodeRequired, MissingCard } from "@/widgets/card/missing-card";
 import { PublicCardBody, PublicCardBodySkeleton } from "@/widgets/card/public-card-body";
 import { InstallOffer } from "./install-offer";
+import { TesterInvite } from "@/features/tester-invite/ui/tester-invite";
 import { BlockCard, ReportCard } from "@/widgets/card/report-dialog";
 /**
  * `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card.
@@ -33,6 +34,8 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  // The server's judgment of where the card was received (교환 세션 맥락), read back from the list the save is verified against.
+  const [savedSession, setSavedSession] = useState<string[]>([]);
   const [saveError, setSaveError] = useState("");
   // Saved in this browser already (opened from /saved, or just saved): 삭제하고 차단하기 is offered then.
   const [stored, setStored] = useState(false);
@@ -92,8 +95,9 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
       );
       // A successful write alone is not enough if the browser rejected the cookie.
       const result = await request<{ items: GuestItem[] }>("/guest/cards");
-      if (!result.items.some((item) => item.card.id.toLowerCase() === id))
-        throw new Error("COOKIE_UNAVAILABLE");
+      const item = result.items.find((item) => item.card.id.toLowerCase() === id);
+      if (!item) throw new Error("COOKIE_UNAVAILABLE");
+      setSavedSession(sessionContextLines(item.context));
       setSaved(true);
       setStored(true);
       track("card_save_browser");
@@ -130,7 +134,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
     );
   return (
     <>
-      <article className="mx-auto max-w-[480px] pt-3 pb-64">
+      <article className="mx-auto max-w-[480px] pt-3 pb-80">
         {place && <p className="mb-3 text-center text-footnote text-secondary-label">{place}에서 받은 명함</p>}
         <PublicCardBody card={card} />
         {/* 신고·차단 (contract "명함 신고·차단"): small text buttons under the card. */}
@@ -162,9 +166,14 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
         </Button>
         {saved ? (
           <>
-            <p role="status" className="flex items-center gap-1 text-footnote font-semibold text-teal">
-              <Icon name="check-circle" size="inline" />
-              명함을 저장했어요.
+            <p role="status" className="flex flex-col items-center text-footnote">
+              <span className="flex items-center gap-1 font-semibold text-teal">
+                <Icon name="check-circle" size="inline" />
+                명함을 저장했어요.
+              </span>
+              {savedSession.length > 0 && (
+                <span className="text-center break-keep text-secondary-label">{savedSession.join(" · ")}</span>
+              )}
             </p>
             {/* A full page load, not client navigation: iOS then reads the manifest with this session's one-time code
                 (홈 화면 세션 잇기) when the list is added to the home screen. */}
@@ -181,6 +190,8 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
             <p className="text-caption text-secondary-label">앱이 없으면 브라우저에 저장할 수 있어요.</p>
           </>
         )}
+        {/* 비공개 테스트 초대: shown in both states — after a browser save the app is still the way to keep the card. */}
+        <TesterInvite variant="card" />
       </BottomBar>
     </>
   );

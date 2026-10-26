@@ -22,7 +22,7 @@ extension AccountProfile {
     /// The profile as a card face: every contact and history, as 이 내용으로 명함 만들기 starts with them.
     var cardModel: CardModel {
         CardModel(id: "profile", name: "", profileName: name, job: job, introLink: introLink, description: "",
-                  contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
+                  contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value, verified: $0.verified) },
                   histories: histories.map(\.historyModel), organization: histories.latestOrganization, photoUrl: photoUrl)
     }
 }

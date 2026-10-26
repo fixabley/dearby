@@ -7,13 +7,25 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
 
 enum class WalletPhase { SIGNED_OUT, LOADING, LOADED, FAILED }
 /**
- * One received card (contract "명함 교환"): the card face plus where it was exchanged ([program]·[activity]), the day it was
- * received, and its status: [reciprocal] (never recalled) or the recall [badge] (`N일 뒤 사라져요`). [id] is the receipt id.
+ * One received card (contract "명함 교환"): the card face plus where it was exchanged ([program]·[activity], and since 2026-10-26 the block
+ * [scheduleTitle], [trackName], [room] and [sessionTitle] the QR was shown in, each null when unknown), the day it was received, and its
+ * status: [reciprocal] (never recalled) or the recall [badge] (`N일 뒤 사라져요`). [id] is the receipt id.
  */
 data class ReceivedCard(val id: String, val card: CardState, val program: String?, val activity: String?, val receivedDate: String,
-                        val reciprocal: Boolean, val badge: String?) {
+                        val reciprocal: Boolean, val badge: String?,
+                        val scheduleTitle: String? = null, val trackName: String? = null, val room: String? = null, val sessionTitle: String? = null) {
     /** `<프로그램> <활동>에서 받음 · <받은 날>`, or only the day when the exchange had no activity. */
     val origin: String get() = listOfNotNull(listOfNotNull(program, activity).joinToString(" ").ifBlank { null }?.let { "${it}에서 받음" }, receivedDate).joinToString(" · ")
+    private val hasSessionContext get() = scheduleTitle != null || trackName != null || room != null || sessionTitle != null
+    /**
+     * The detail's lines above the card (contract "교환 세션 맥락" 화면): with a session context `<프로그램> <활동> · <블록> · <트랙> · <방>` (known
+     * parts only), the session title, then `<받은 날>에 받음`; without one the single [origin] line.
+     */
+    val originLines: List<String> get() = if (!hasSessionContext) listOf(origin) else listOfNotNull(
+        listOfNotNull(listOfNotNull(program, activity).joinToString(" ").ifBlank { null }, scheduleTitle, trackName, room).joinToString(" · ").ifBlank { null },
+        sessionTitle, "${receivedDate}에 받음")
+    /** The list row's caption under the chips: `<프로그램> · <블록> · <트랙> · <방>` (known parts), null when the exchange carried no block·track·room. */
+    val sessionContext: String? get() = if (scheduleTitle == null && trackName == null && room == null) null else listOfNotNull(program, scheduleTitle, trackName, room).joinToString(" · ")
 }
 /**
  * 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): a card App Link not yet in the wallet. [card] is null while it

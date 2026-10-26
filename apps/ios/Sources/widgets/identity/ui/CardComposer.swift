@@ -58,6 +58,7 @@ struct CardComposer: View {
                         HStack(spacing: 12) {
                             DearbyGlyphView(glyph: ContactModel.glyph(kind: contact.kind))
                             Text(ContactModel.username(kind: contact.kind, contact.value) ?? contact.value)
+                            if contact.verified { DearbyVerifiedMark() }
                         }
                     }
                 }

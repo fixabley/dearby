@@ -80,7 +80,7 @@ private const val RAIL_MIN_SECTIONS = 7
                 }
                 items(section.cards, key = { it.id }) { received ->
                     ReceivedCardRow(received.card.person, received.card.job, { open(received) }, organization = received.card.organization,
-                        program = received.program, badge = received.badge, badgeAccent = received.reciprocal)
+                        program = received.program, badge = received.badge, badgeAccent = received.reciprocal, context = received.sessionContext)
                 }
             }
         }

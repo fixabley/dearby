@@ -383,4 +383,87 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
         put(receiver, "/v1/wallet/cards/$ownerCard", """{"code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isCreated() } }
     }
+
+    // 게시하지 않은 활동(발견 묶음에 안 나온다)에 활동 기간 블록(now-3h~+5h)을 둔다. 맥락 판정은 게시 여부를 보지 않는다
+    private fun activityWithPeriod(name: String, from: String, to: String): Long {
+        jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, created_at, updated_at)
+            select id, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'DRAFT', localtimestamp, localtimestamp from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
+            """
+        ).param(name).update()
+        val id = jdbc.sql("select id from activities where name = ?").param(name).query(Long::class.java).single()
+        block(id, "활동 기간", from, to, slot = "ACTIVITY")
+        return id
+    }
+
+    private fun block(activity: Long, title: String, from: String, to: String, slot: String? = null): Long = jdbc.sql(
+        """
+        insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+        values (?, ?, ?, 'EVENT', 'CONFIRMED', 'TIMED', now() + ?::interval, now() + ?::interval, 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+        """
+    ).params(listOf<Any?>(activity, slot, title, from, to)).query(Long::class.java).single()
+
+    // native-v1.md "명함 교환" → "교환 세션 맥락"(2026-10-26): 저장 시각으로 찜한 세션 → 진행 중 블록 → 활동만 순으로 판정해 남긴다
+    @Test
+    fun `지갑 저장은 지금 진행 중인 찜한 세션이나 블록을 맥락으로 남기고, 맞교환은 그 맥락을 복사하며, 지워진 블록·세션은 이름만 비운다`() {
+        val (owner, ownerProfile) = userWithProfile("주인")
+        val (fan, fanProfile) = userWithProfile("찜한 사람")
+        val (walker, _) = userWithProfile("지나가던 사람")
+        val (latecomer, _) = userWithProfile("끝난 뒤 온 사람")
+        val ownerCard = publish(owner, ownerProfile)["id"].asString()
+        val fanCard = publish(fan, fanProfile)["id"].asString()
+        val conference = activityWithPeriod("맥락 컨퍼런스", "-3 hours", "+5 hours")
+        block(conference, "오전 세션", "-3 hours", "-1 hours")
+        val afternoon = block(conference, "오후 세션", "-1 hours", "+2 hours")
+        val trackB = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 B', '그랜드볼룸 B', 1) returning id").param(afternoon).query(Long::class.java).single()
+        fun session(track: Long?, title: String) = jdbc.sql(
+            "insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', ?, now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb) returning id"
+        ).params(listOf<Any?>(afternoon, track, title)).query(Long::class.java).single()
+        val talk = session(trackB, "비 오는 날 배달")
+        val keynote = session(null, "키노트")
+        jdbc.sql("insert into user_session_favorites (user_id, session_id, created_at) values (?, ?, now())").params(fan, talk).update()
+        fun code() = qr(owner, ownerCard)["code"].asString()
+        fun context(user: UUID) = read(mvc.get("/v1/wallet") { asUser(user) })["items"].single { it["card"]["id"].asString() == ownerCard }["context"]
+        fun names(context: JsonNode) = listOf("activityName", "scheduleTitle", "sessionTitle", "trackName", "room").map { context[it].asString(null) }
+
+        // (1) 찜한 세션이 진행 중이면 세션과 그 블록
+        val fanReceipt = read(put(fan, "/v1/wallet/cards/$ownerCard", """{"activityId":$conference,"code":"${code()}"}""").andExpect { status { isCreated() } })["context"]
+        assertEquals(listOf(conference, afternoon, talk), listOf(fanReceipt["activityId"].asLong(), fanReceipt["scheduleId"].asLong(), fanReceipt["sessionId"].asLong()))
+        assertEquals(listOf("맥락 컨퍼런스", "오후 세션", "비 오는 날 배달", "트랙 B", "그랜드볼룸 B"), names(fanReceipt))
+        // (2) 찜이 없으면 진행 중인 블록 중 가장 짧은 것(활동 기간이 아니라 오후 세션). 세션은 없다
+        val walkerReceipt = read(put(walker, "/v1/wallet/cards/$ownerCard", """{"activityId":$conference,"code":"${code()}"}""").andExpect { status { isCreated() } })["context"]
+        assertEquals(afternoon, walkerReceipt["scheduleId"].asLong())
+        assertEquals(listOf("맥락 컨퍼런스", "오후 세션", null, null, null), names(walkerReceipt))
+        // 이미 저장한 Receipt는 다시 판정하지 않는다: 그 뒤 세션을 찜하고 다시 저장해도 블록만 남는다
+        jdbc.sql("insert into user_session_favorites (user_id, session_id, created_at) values (?, ?, now())").params(walker, keynote).update()
+        val walkerAgain = read(put(walker, "/v1/wallet/cards/$ownerCard", """{"activityId":$conference}""").andExpect { status { isOk() } })["context"]
+        assertEquals(listOf(afternoon, true), listOf(walkerAgain["scheduleId"].asLong(), walkerAgain["sessionId"].isNull))
+        // (3) 진행 중인 블록이 없으면 활동만. 활동 없이 저장했다가 나중에 활동이 오면 그때 판정한다
+        val finished = activityWithPeriod("끝난 세미나", "-2 hours", "-1 hours")
+        val lateReceipt = read(put(latecomer, "/v1/wallet/cards/$ownerCard", """{"code":"${code()}"}""").andExpect { status { isCreated() } })["context"]
+        assertTrue(lateReceipt["activityId"].isNull && lateReceipt["scheduleId"].isNull && lateReceipt["sessionId"].isNull)
+        val lateAgain = read(put(latecomer, "/v1/wallet/cards/$ownerCard", """{"activityId":$finished}""").andExpect { status { isOk() } })["context"]
+        assertEquals(listOf(finished, true, true), listOf(lateAgain["activityId"].asLong(), lateAgain["scheduleId"].isNull, lateAgain["sessionId"].isNull))
+        assertEquals(listOf("끝난 세미나", null, null, null, null), names(lateAgain))
+
+        // 맞교환은 원 Receipt의 맥락(세션까지)을 그대로 복사한다
+        post(fan, "/v1/wallet/cards/$ownerCard/reciprocate", """{"myCardId":"$fanCard"}""").andExpect { status { isCreated() } }
+        val ownerReceipt = read(mvc.get("/v1/wallet") { asUser(owner) })["items"].single { it["card"]["id"].asString() == fanCard }["context"]
+        assertEquals(listOf(afternoon, talk), listOf(ownerReceipt["scheduleId"].asLong(), ownerReceipt["sessionId"].asLong()))
+        assertEquals(names(fanReceipt), names(ownerReceipt))
+
+        // 세션을 지우면 세션·트랙 이름만 null, 블록을 지우면 블록 제목도 null. id는 남는다
+        jdbc.sql("delete from schedule_sessions where id = ?").param(talk).update()
+        assertEquals(listOf("맥락 컨퍼런스", "오후 세션", null, null, null), names(context(fan)))
+        jdbc.sql("update schedules set curated_deleted = true where id = ?").param(afternoon).update()
+        val gone = context(fan)
+        assertEquals(listOf(afternoon, talk), listOf(gone["scheduleId"].asLong(), gone["sessionId"].asLong()))
+        assertEquals(listOf("맥락 컨퍼런스", null, null, null, null), names(gone))
+        // 저장된 JSON은 세 id만 쓴다
+        assertEquals(
+            json.readTree("""{"activityId":$conference,"scheduleId":$afternoon,"sessionId":$talk}"""),
+            json.readTree(jdbc.sql("select context::text from receipts where recipient_id = ? and card_id = ?").params(fan, UUID.fromString(ownerCard)).query(String::class.java).single()),
+        )
+    }
 }
