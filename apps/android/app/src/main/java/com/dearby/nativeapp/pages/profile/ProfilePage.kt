@@ -26,7 +26,6 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
@@ -153,26 +152,24 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /**
  * Read mode (contract "프로필 탭은 읽기 모드가 기본"; 2026-10-26 사용자 결정 "프로필 보기 모드 = 명함 디자인"): the card face on top (photo, name, 직무, contacts),
- * then `수정`·`이 내용으로 명함 만들기`, then 소개 and the history rows. No inputs, no bar.
+ * then 소개 (markdown) and the history rows, then `이 내용으로 명함 만들기` (primary) and `수정` (same as the top bar). No inputs, no bar.
  */
 @Composable private fun ReadOnlyProfile(card: CardState, introduction: String, rows: List<HistoryRowState>, edit: () -> Unit, compose: () -> Unit, contact: (ContactState) -> Unit,
                                         modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CardContent(card, body = false, onContact = contact)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DearbyOutlineButton(edit, Modifier.weight(1f)) { Text("수정") }
-                DearbyButton(compose, Modifier.weight(1f)) { Text("이 내용으로 명함 만들기", maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            }
-        }
-        // The introduction as typed: plain text here, no markdown (the card body renders it as markdown).
+        CardContent(card, body = false, onContact = contact)
+        // 소개 as the card body renders it (markdown).
         if (introduction.isNotBlank()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("소개", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-            Text(introduction, style = MaterialTheme.typography.bodyLarge)
+            MarkdownBody(introduction)
         }
         Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
         if (rows.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         rows.forEach { HistoryRow(it, null, null) }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DearbyButton(compose, Modifier.fillMaxWidth()) { Text("이 내용으로 명함 만들기") }
+            DearbyOutlineButton(edit, Modifier.fillMaxWidth()) { Text("수정") }
+        }
         recommendation?.invoke()
     }
 }
