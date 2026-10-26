@@ -14,7 +14,6 @@ import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.shared.config.ContactLinkRedirect
-import com.dearby.nativeapp.pages.profile.ContactVerifyState
 import com.dearby.nativeapp.pages.profile.FunnelState
 import com.dearby.nativeapp.pages.profile.HistoryDraft
 import com.dearby.nativeapp.pages.profile.PickerSearchState
@@ -148,7 +147,7 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
                     mutable.update { it.copy(notice = "브라우저를 열 수 없어요. 브라우저 앱을 확인해 주세요.") }
                 }
             } catch (e: AccountException) {
-                verifyFailed("github", e, GITHUB_FAILED) { copy(githubAvailable = false) }
+                verifyFailed("github", e, GITHUB_FAILED)
             } finally { mutable.update { it.copy(verify = it.verify.copy(githubBusy = false)) } }
         }
     }
@@ -165,7 +164,7 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
                     try {
                         verified("github", account.authorized { account.client.githubComplete(redirect.code, it) })
                     } catch (e: AccountException) {
-                        verifyFailed("github", e, GITHUB_FAILED) { copy(githubAvailable = false) }
+                        verifyFailed("github", e, GITHUB_FAILED)
                     } finally { mutable.update { it.copy(verify = it.verify.copy(githubBusy = false)) } }
                 }
             }
@@ -184,7 +183,7 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
             } catch (e: AccountException) {
                 // 429 (1분당 1회·하루 10회): the server's sentence, and the open entry waits another minute.
                 if (e.error == AccountError.RATE_LIMITED) mutable.update { it.copy(notice = e.detail ?: "인증번호는 1분에 한 번 받을 수 있어요.", verify = it.verify.copy(entry = it.verify.entry.copy(resendAt = System.currentTimeMillis() + RESEND_AFTER))) }
-                else verifyFailed("email", e, "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요.") { copy(emailAvailable = false) }
+                else verifyFailed("email", e, "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요.")
             } finally { mutable.update { it.copy(verify = it.verify.copy(emailBusy = false)) } }
         }
     }
@@ -203,7 +202,7 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
                 when {
                     e.error == AccountError.BAD_REQUEST && e.code == "CODE_MISMATCH" -> { Tracking.contactVerify("email", "failed"); mutable.update { it.copy(verify = it.verify.copy(entry = it.verify.entry.copy(error = e.detail ?: "인증번호가 맞지 않아요."))) } }
                     e.error == AccountError.BAD_REQUEST && e.code == "CHALLENGE_EXPIRED" -> { Tracking.contactVerify("email", "failed"); mutable.update { it.copy(notice = e.detail ?: "인증번호가 만료됐어요. 다시 받아 주세요.", verify = it.verify.copy(challengeId = null, entry = EmailCodeEntry())) } }
-                    else -> verifyFailed("email", e, "이메일을 인증하지 못했어요. 잠시 후 다시 시도해 주세요.") { copy(emailAvailable = false) }
+                    else -> verifyFailed("email", e, "이메일을 인증하지 못했어요. 잠시 후 다시 시도해 주세요.")
                 }
             } finally { mutable.update { it.copy(verify = it.verify.copy(emailBusy = false)) } }
         }
@@ -231,11 +230,12 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
     /** The app brought the editor back after a GitHub return. */
     fun consumeReturned() = mutable.update { it.copy(returned = 0) }
     /** 403 CONSENT_REQUIRED brings the consent screen back; 503 switches that feature off for this session with a notice; the rest is a one-line notice. */
-    private fun verifyFailed(kind: String, e: AccountException, fallback: String, off: ContactVerifyState.() -> ContactVerifyState) {
+    private fun verifyFailed(kind: String, e: AccountException, fallback: String) {
         Tracking.contactVerify(kind, "failed")
         when {
             e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED" -> { mutable.update { it.copy(consentRequired = true) }; account.consentKnown(false) }
-            e.error == AccountError.TURNED_OFF -> mutable.update { it.copy(verify = it.verify.off(), notice = "지금은 쓸 수 없어요. 연락처를 직접 입력해 주세요.") }
+            e.error == AccountError.TURNED_OFF -> mutable.update { it.copy(notice = "지금은 쓸 수 없어요. 연락처를 직접 입력해 주세요.",
+                verify = if (kind == "github") it.verify.copy(githubAvailable = false) else it.verify.copy(emailAvailable = false)) }
             else -> mutable.update { it.copy(notice = message(e, fallback)) }
         }
     }
