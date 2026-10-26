@@ -12,12 +12,23 @@ struct CalendarOverlapState: Identifiable {
     var start: Date { max(activity.start, busy.start) }
     var end: Date { min(activity.end, busy.end) }
     var minutes: Int { Int(end.timeIntervalSince(start) / 60) }
-    var gridStart: Date {
-        let first = max(activity.start, start.addingTimeInterval(-3600))
-        return Date(timeIntervalSince1970: floor(first.timeIntervalSince1970 / 1800) * 1800)
+    /// The timeline's window and tick step (contract "반복 일정과 겹침 결과 묶음"): up to an hour of the activity before the overlap and 30
+    /// minutes after it, snapped to the first step that keeps it to at most six intervals (about six labels), counted from local midnight
+    /// in the activity's zone so a two-hour step lands on 08:00·10:00.
+    var grid: (start: Date, end: Date, step: TimeInterval) {
+        let from = max(activity.start, start.addingTimeInterval(-3600)), to = end.addingTimeInterval(1800)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: activity.timeZone) ?? .current
+        let midnight = calendar.startOfDay(for: from)
+        let grids = [15, 30, 60, 120, 180, 240, 360, 720].map { minutes -> (start: Date, end: Date, step: TimeInterval) in
+            let step = TimeInterval(minutes * 60)
+            let start = midnight.addingTimeInterval(floor(from.timeIntervalSince(midnight) / step) * step)
+            return (start, start.addingTimeInterval(ceil(to.timeIntervalSince(start) / step) * step), step)
+        }
+        return grids.first { $0.end.timeIntervalSince($0.start) / $0.step <= 6 } ?? grids[grids.count - 1]
     }
-    var gridEnd: Date { Date(timeIntervalSince1970: ceil(end.timeIntervalSince1970 / 1800) * 1800 + 1800) }
-    var gridSteps: Int { Int(gridEnd.timeIntervalSince(gridStart) / 1800) }
+    var gridStart: Date { grid.start }
+    var gridEnd: Date { grid.end }
     var dateFormat: Date.FormatStyle {
         Date.FormatStyle(locale: Locale(identifier: "ko_KR"), timeZone: TimeZone(identifier: activity.timeZone)!)
             .month(.wide).day().weekday(.abbreviated)
