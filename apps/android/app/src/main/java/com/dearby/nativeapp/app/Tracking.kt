@@ -36,4 +36,6 @@ object Tracking {
 
     fun signedIn(on: Boolean) = Analytics.property("signed_in", if (on) "yes" else "no")
     fun menu(name: String) = Analytics.event("menu_open", "menu" to name)
+    /** 연락처 인증 (contract "연락처 인증"): one per attempt outcome; [kind] `github`·`email`, [result] `ok`·`cancelled`·`failed` — never the address or login. */
+    fun contactVerify(kind: String, result: String) = Analytics.event("contact_verify", "kind" to kind, "result" to result)
 }

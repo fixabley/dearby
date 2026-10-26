@@ -20,6 +20,7 @@ import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
 import com.dearby.nativeapp.entities.account.model.toActivityInfoPage
 import com.dearby.nativeapp.entities.account.model.toEvidence
+import com.dearby.nativeapp.entities.account.model.toEmailChallenge
 import com.dearby.nativeapp.entities.account.model.toVersionDetail
 import com.dearby.nativeapp.entities.account.model.toVersionList
 import com.dearby.nativeapp.entities.account.model.toWebSignIn
@@ -49,7 +50,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** [BAD_REQUEST]: 400 with the server's user-facing ProblemDetail `detail` in [AccountException.detail] (contact rules,
- *  unapproved history, …); [CONFLICT]: 409 — the profile changed elsewhere (`If-Match`); [TURNED_OFF]: 503, e.g. Apple or Google sign-in not configured on the server.
+ *  unapproved history, …) and its `code` (`PROFILE_REQUIRED`·`CODE_MISMATCH`·`CHALLENGE_EXPIRED`·`GITHUB_LINK_EXPIRED`, contract "연락처 인증"); [CONFLICT]: 409 — the profile changed
+ *  elsewhere (`If-Match`); [RATE_LIMITED]: 429 with its `detail` (인증번호 1분당 1회·하루 10회); [TURNED_OFF]: 503, e.g. Apple or Google sign-in, GitHub 연결 or 이메일 인증 not configured on the server.
  *  Network failures and other statuses are [UNAVAILABLE]. */
 enum class AccountError { UNAUTHORIZED, FORBIDDEN, INVALID_INPUT, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
 /** [detail] is the ProblemDetail sentence; [code] its machine code (e.g. `CONSENT_REQUIRED` on 403, contract "개인정보 동의"; `LAST_SIGN_IN_METHOD` on 409, contract "설정"). */
@@ -184,6 +186,16 @@ class AccountClient(private val api: String, private val transport: Transport = 
      */
     suspend fun publicCard(cardId: String, code: String?, session: AccountSession?) =
         send("GET", "cards/$cardId" + (code?.let { "?code=$it" } ?: ""), null, session).toPublishedCard()
+    // 연락처 인증 (contract "연락처 인증", 2026-10-26): the owner's GitHub 연결 and 이메일 인증번호; 503 ([AccountError.TURNED_OFF]) when the server has no GitHub app or mail set up.
+    /** `POST /v1/me/contacts/github/start`: GitHub's authorize page to open in a Custom Tab; it comes back to `dearby://contacts/github`. */
+    suspend fun githubStart(session: AccountSession) = send("POST", "me/contacts/github/start", JSONObject().put("platform", "android"), session).getString("authorizeUrl")
+    /** The redirect's one-time [code] → the Profile with the GitHub contact `value=login`·`verified=true` (a version up); 400 `GITHUB_LINK_EXPIRED` when stale or someone else's. */
+    suspend fun githubComplete(code: String, session: AccountSession) = send("POST", "me/contacts/github/complete", JSONObject().put("code", code), session).toProfile()
+    /** Mails a 6-digit code to [email]; 400 for a bad address or `PROFILE_REQUIRED`, 429 with `detail` over 1/minute·10/day, 503 when the mail could not be sent. */
+    suspend fun emailChallenge(email: String, session: AccountSession) = send("POST", "me/contacts/email/challenges", JSONObject().put("email", email), session).toEmailChallenge()
+    /** The code for a challenge → the Profile with the email contact verified; 400 `CODE_MISMATCH` (detail has the tries left) or `CHALLENGE_EXPIRED`. */
+    suspend fun emailVerify(challengeId: String, code: String, session: AccountSession) =
+        send("POST", "me/contacts/email/verify", JSONObject().put("challengeId", challengeId).put("code", code), session).toProfile()
     /** The account's received cards (`GET /v1/wallet`). */
     suspend fun wallet(session: AccountSession) = send("GET", "wallet", null, session).toWallet()
     /**
@@ -307,15 +319,16 @@ class AccountClient(private val api: String, private val transport: Transport = 
         val response = try { transport.send(http) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
         return when (response.status) {
             in 200..299 -> response
-            // RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
-            400 -> throw AccountException(AccountError.BAD_REQUEST, runCatching { JSONObject(response.body).optString("detail").ifBlank { null } }.getOrNull())
+            // RFC 9457 ProblemDetail: `detail` is the user-facing sentence, `code` the machine code.
+            400 -> throw AccountException(AccountError.BAD_REQUEST, response.problem("detail"), response.problem("code"))
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
-            403 -> throw AccountException(AccountError.FORBIDDEN, code = runCatching { JSONObject(response.body).optString("code").ifBlank { null } }.getOrNull())
+            403 -> throw AccountException(AccountError.FORBIDDEN, code = response.problem("code"))
             404 -> throw AccountException(AccountError.NOT_FOUND)
-            409 -> throw AccountException(AccountError.CONFLICT, code = runCatching { JSONObject(response.body).optString("code").ifBlank { null } }.getOrNull())
-            429 -> throw AccountException(AccountError.RATE_LIMITED)
+            409 -> throw AccountException(AccountError.CONFLICT, code = response.problem("code"))
+            429 -> throw AccountException(AccountError.RATE_LIMITED, response.problem("detail"))
             503 -> throw AccountException(AccountError.TURNED_OFF)
             else -> throw AccountException(AccountError.UNAVAILABLE)
         }
     }
+    private fun HttpResponse.problem(key: String) = runCatching { JSONObject(body).optString(key).ifBlank { null } }.getOrNull()
 }
