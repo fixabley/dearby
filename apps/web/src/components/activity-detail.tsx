@@ -147,7 +147,7 @@ export function ActivityDetail({ id }: { id: number }) {
             )}
             {/* 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26") in the 모집 예정 colours beside the status. */}
             {startDday && (
-              <Badge variant="tinted" className="tabular-nums">
+              <Badge variant="tinted" className="text-caption2 tabular-nums">
                 {startDday}
               </Badge>
             )}
