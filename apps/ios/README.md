@@ -137,6 +137,17 @@
 - 사용 통계: `queue_ad_shown`(광고 장면이 처음 화면에 올 때), `queue_ad_skipped_unloaded`(`reason` `loading`·`failed`, 광고가 켜진 빌드에서 받지 못한 채 끝 화면에 닿을 때). 광고 장면에서 닫으면 `queue_exit`의 `position`은 마지막 활동 카드 번호다.
 - 개인정보 매니페스트: 앱 매니페스트는 그대로 둔다(SDK가 자체 `PrivacyInfo.xcprivacy`를 갖는다). 13.11.0 매니페스트는 광고 데이터·제품 상호작용·대략적 위치·진단·성능·충돌과 함께 `NSPrivacyCollectedDataTypeDeviceID`를 **추적 true**로 선언하므로 아카이브 Privacy Report와 App Store 라벨의 "추적에 사용되는 데이터"에 기기 ID가 잡힐 수 있다. 라벨은 Privacy Report로 맞춘다(docs/store/ads-2026-10-25.md).
 
+## 행사 당일 진행 중 표시 (2026-10-26, 라이브 액티비티)
+
+계약 native-v1.md "행사 당일 진행 중 표시". 오늘 내 행사 카드가 오늘로 가리키는 활동에 그 날 찜한 세션이 있으면 첫 찜 세션 30분 전부터 마지막 세션 끝까지 라이브 액티비티(잠금 화면·Dynamic Island)를 띄운다. 기기 안에서만 갱신하며 서버·푸시 토큰이 없다.
+
+- 코드: `features/liveSession/model/LiveSessionModel.swift`(시작·갱신·종료, 계획 저장 `dearby.liveSession.plan`, `BGAppRefreshTask` `io.wid.dearby.liveSession.refresh` 예약), `widgets/activity/model/LiveSessionPlan.swift`(`TodayEvent`+세션 찜 → 계획), `Widgets/`(확장 `DearbyWidgets`: `LiveSessionWidget` 화면, 자체 `Assets.xcassets`에 `DearbySymbol` 사본), 두 타깃이 함께 컴파일하는 `features/liveSession/model/LiveSessionAttributes.swift`. `AppDelegate`가 시작 전 백그라운드 작업을 등록한다. 탭 링크 `dearby://timetable/<activityId>/<scheduleId>`는 `IncomingLink.timetable` → `openLinkedTimetable`(찜한 세션 이동 알림과 같은 시트).
+- Info.plist(두 파일 같음): `NSSupportsLiveActivities`, `UIBackgroundModes` `fetch`, `BGTaskSchedulerPermittedIdentifiers`.
+- 설정 › 알림 `행사 진행 중 표시`(기본 켬, `dearby.liveSession.enabled`). 사용 통계 `live_session_shown`(서울 날짜당 1회).
+- 프로젝트: `generate_project.rb`가 확장 타깃(번들 `io.wid.dearby.widgets`, `Widgets/Info.plist`, entitlements의 App Group `group.io.wid.dearby`는 확장에만)을 만들고 앱에 `Embed Foundation Extensions`로 넣는다. SwiftLint 범위에 `Widgets`를 더했다.
+- 서명: Debug 자동 서명은 그대로(기기 설치 때 Xcode가 `io.wid.dearby.widgets` App ID와 App Group을 등록해야 한다). Release(`DEARBY_RELEASE_PROFILE` 있음)는 `DEARBY_RELEASE_PROFILE_WIDGETS`가 비어 있으면 **확장 타깃을 만들지 않아** 앱만 아카이브된다 — **확장 프로파일을 등록하기 전까지 TestFlight 빌드에는 라이브 액티비티가 없다**. `ios-testflight.yml`은 선택 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`가 있으면 그 프로파일을 설치해 이름을 넘기고 ExportOptions에 `io.wid.dearby.widgets` 항목을 더한다. 사용자가 만들 것: App ID `io.wid.dearby.widgets`(App Groups + `group.io.wid.dearby`), 그 App ID의 App Store 프로파일(기존 Apple Distribution 인증서), 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`(`base64 -i <profile>.mobileprovision | gh secret set IOS_APPSTORE_PROFILE_WIDGETS_BASE64`).
+- 확인: `ruby scripts/generate_project.rb` 뒤 generic Simulator 빌드(확장 포함). `DEARBY_RELEASE_PROFILE=x DEARBY_TEAM_ID=y ruby scripts/generate_project.rb`로 만든 프로젝트에는 `DearbyWidgets`가 없어야 한다. 실기기 표시·백그라운드 갱신은 실기기에서만 본다(시뮬레이터는 `BGTaskScheduler`를 지원하지 않는다).
+
 ## UI 흐름 테스트 (2026-10-26, XCUITest, CI 미포함)
 
 2026-10-26 사용자 결정. `UITests/`의 `DearbyUITests` 타깃은 별도 스킴 `DearbyUITests`에만 들어 있다. CI(native.yml·ios-testflight.yml)가 쓰는 `Dearby` 스킴에는 없어 CI는 빌드도 실행도 하지 않는다. SwiftLint 범위(`.swiftlint.yml`의 `Sources`)에도 들지 않는다. 실행은 무선 연결한 실기기 iPhone에서만 수동으로 하고 시뮬레이터는 쓰지 않는다.
