@@ -50,6 +50,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 function backFor(path: string): { href: string; label: string } | undefined {
   if (path.startsWith("/activities/")) return { href: "/", label: "둘러보기" };
   if (path.startsWith("/cards/")) return { href: "/saved", label: "저장한 명함" };
+  if (path.startsWith("/mine/")) return { href: "/mine", label: "내 활동" };
 }
 
 function NavBar() {
@@ -100,6 +101,17 @@ function NavBar() {
             {title}
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1">
+            {/* 내 활동 (web 2단계 B): signed in only — the web keeps no device copy. */}
+            {auth.signedIn && !back?.href.startsWith("/mine") && (
+              <Link
+                href="/mine"
+                aria-current={path === "/mine" ? "page" : undefined}
+                className="inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
+              >
+                <Icon name="check-circle" size="inline" />
+                <span className="truncate">내 활동</span>
+              </Link>
+            )}
             {!back?.href.startsWith("/saved") && (
               <Link
                 href="/saved"

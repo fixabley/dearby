@@ -7,12 +7,15 @@ import { Card } from "./card";
  */
 export function InsetGroup({
   title,
+  trailing,
   footer,
   plain = false,
   className,
   children,
 }: {
   title?: string;
+  /** Right end of the header line (a status badge, contract "진행 단계 화면 정리"). */
+  trailing?: React.ReactNode;
   footer?: React.ReactNode;
   plain?: boolean;
   className?: string;
@@ -20,7 +23,12 @@ export function InsetGroup({
 }) {
   return (
     <section className={cn("mt-7", className)}>
-      {title && <h2 className="mb-1.5 px-4 text-footnote font-semibold text-secondary-label">{title}</h2>}
+      {title && (
+        <div className="mb-1.5 flex items-center justify-between gap-3 px-4">
+          <h2 className="text-footnote font-semibold text-secondary-label">{title}</h2>
+          {trailing}
+        </div>
+      )}
       <Card>
         {plain ? (
           <div className="px-4 py-3">{children}</div>
