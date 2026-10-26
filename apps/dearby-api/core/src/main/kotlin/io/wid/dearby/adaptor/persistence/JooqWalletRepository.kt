@@ -24,15 +24,17 @@ class JooqWalletRepository(private val dsl: DSLContext, private val cards: CardR
     override fun receipts(recipientId: UserId): List<Receipt> {
         val rows = dsl.selectFrom(RECEIPTS).where(RECEIPTS.RECIPIENT_ID.eq(recipientId), RECEIPTS.RECALLED_AT.isNull).orderBy(RECEIPTS.SEQ).fetch()
         val cardById = cards.findAllById(rows.map { it.cardId!! }).associateBy { it.id }
-        val contexts = dsl.exchangeContexts(rows.map(::ref))
+        val refs = rows.associate { it.id!! to ref(it) }
+        val contexts = dsl.exchangeContexts(refs.values)
         val holders = holdersOfCardsOwnedBy(recipientId)
-        return rows.mapNotNull { row -> cardById[row.cardId]?.let { receipt(row, it, contexts.of(ref(row)), holders) } }
+        return rows.mapNotNull { row -> cardById[row.cardId]?.let { receipt(row, it, contexts.of(refs.getValue(row.id!!)), holders) } }
     }
 
     override fun findReceipt(recipientId: UserId, cardId: UUID): Receipt? {
         val row = dsl.selectFrom(RECEIPTS).where(RECEIPTS.RECIPIENT_ID.eq(recipientId), RECEIPTS.CARD_ID.eq(cardId), RECEIPTS.RECALLED_AT.isNull).fetchOne() ?: return null
         val card = cards.find(cardId) ?: return null
-        return receipt(row, card, dsl.exchangeContexts(listOf(ref(row))).of(ref(row)), holdersOfCardsOwnedBy(recipientId))
+        val ref = ref(row)
+        return receipt(row, card, dsl.exchangeContexts(listOf(ref)).of(ref), holdersOfCardsOwnedBy(recipientId))
     }
 
     override fun createReceipt(id: UUID, recipientId: UserId, cardId: UUID, context: ExchangeRef, receivedAt: OffsetDateTime) {

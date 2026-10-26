@@ -14,8 +14,4 @@ data class ExchangeRef(val activityId: Id?, val scheduleId: Id?, val sessionId: 
 data class ExchangeContext(
     val ref: ExchangeRef, val activityName: String?, val programName: String?,
     val scheduleTitle: String?, val sessionTitle: String?, val trackName: String?, val room: String?,
-) {
-    companion object {
-        val NONE = ExchangeContext(ExchangeRef.NONE, null, null, null, null, null, null)
-    }
-}
+)
