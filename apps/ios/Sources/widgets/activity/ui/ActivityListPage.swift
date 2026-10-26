@@ -4,6 +4,7 @@ import SwiftUI
 /// 메뉴(contract "활동 상태" 2026-10-26)에서 고른 묶음(`지원 가능` 기본·`진행 중`·`지난 활동`)의 활동이 있는 프로그램만 보이고, 카드를 펼치면 그 상태의 활동만 보인다.
 /// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 우상단 설정·알림, 검색은 `.searchable`의 내비게이션 바 서랍(맨 위에서는 펼침, 스크롤하면 접힘)
 /// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `활동 상태`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
+/// 맨 위, 맞춤 대기열 행 위에 `오늘 내 행사` 카드(contract "오늘 내 행사 카드" 2026-10-26, `TodayEvent`·`TodayEventCard`)가 로그인 상태에서 해당 활동이 있을 때만 보인다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
     /// `오늘의 맞춤 대기열` (user 2026-10-25 "추천은 없애고 맞춤대기열 진입만 남겨줘"): the one row above `활동 상태`, hidden only while
@@ -14,7 +15,13 @@ struct ActivityListPage: View {
     var queueNeedsConsent = false
     let openQueue: () -> Void
     let editRecommendations: () -> Void
+    /// `명함 QR` on the 오늘 내 행사 card (contract "오늘 내 행사 카드"): 내 명함's QR 보이기 with this activity as the chip.
+    var showQR: (String) -> Void = { _ in }
     @Binding var path: NavigationPath
+    /// 세션 찜 for the 오늘 내 행사 card's next session; the card shows only signed in (`queueSignedIn`), when the list is loaded and not searching.
+    @Environment(SessionFavoritesModel.self) private var sessionFavorites
+    /// The 오늘 내 행사 card's block timetable, the same sheet as the activity detail and 진행 단계.
+    @State private var timetable: TimetableRoute?
     /// More than one screen down: show `맨 위로`.
     @State private var farDown = false
     @State private var position = ScrollPosition()
@@ -33,7 +40,17 @@ struct ActivityListPage: View {
         @Bindable var state = state
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
-                if state.phase != .loading, (state.query ?? "").isEmpty { queueEntry }
+                if state.phase != .loading, (state.query ?? "").isEmpty {
+                    // One child of the lazy stack, so a missing card leaves no gap; the minute tick moves `지금 ·` and the next session along.
+                    TimelineView(.everyMinute) { context in
+                        VStack(alignment: .leading, spacing: 10) {
+                            if queueSignedIn, let event = TodayEvent.pick(state.appliedProgress(now: context.date), favorites: sessionFavorites.items, now: context.date) {
+                                TodayEventCard(event: event, now: context.date, open: { open(event, now: context.date) }, showQR: { showQR(event) })
+                            }
+                            queueEntry
+                        }
+                    }
+                }
                 // Always on screen: a change reloads the list (`.loading`), and removing a row would close its menu mid-choice.
                 statusFilterRow
                 categoryFilterRow
@@ -122,6 +139,7 @@ struct ActivityListPage: View {
             }
             state.search(state.searchText)
         }
+        .timetableSheet($timetable, state: state)
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         // An `/activities/<id>` link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): push its detail once this tab is on screen.
         .onChange(of: state.showInDiscovery, initial: true) { _, id in
@@ -144,6 +162,27 @@ struct ActivityListPage: View {
             }
             TabRootToolbar()
         }
+    }
+    /// The 오늘 내 행사 card pressed (사용 통계 `today_card_tap`): today with a timetable on its block, that block's sheet on `찜한 세션` when any
+    /// session of it is favorited (else `전체`); otherwise the activity's 진행 단계 on the 내 활동 tab (`showInMine`, as `내 활동으로`).
+    private func open(_ event: TodayEvent, now: Date) {
+        let block = event.block
+        if event.timing == .today, block.hasTimetable {
+            report(event, "timetable")
+            timetable = TimetableRoute(activityID: event.activity.id, activityTitle: event.activity.title, scheduleID: block.id,
+                                       scheduleTitle: event.blockTitle, date: block.text(now: now) ?? "",
+                                       favoritesFirst: sessionFavorites.items.contains { $0.activityID == event.activity.id && $0.scheduleID == block.id })
+        } else {
+            report(event, "progress")
+            state.showInMine = event.activity.id
+        }
+    }
+    private func showQR(_ event: TodayEvent) {
+        report(event, "qr")
+        showQR(event.activity.id)
+    }
+    private func report(_ event: TodayEvent, _ target: String) {
+        AppAnalytics.event("today_card_tap", AppAnalytics.activity(event.activity.id, event.activity).merging(["target": target]) { $1 })
     }
     private var queueEntry: some View {
         DiscoveryQueueEntry(signedIn: queueSignedIn, needsConsent: queueNeedsConsent, action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
