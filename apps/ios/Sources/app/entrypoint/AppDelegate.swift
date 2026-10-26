@@ -11,7 +11,7 @@ private let log = Logger(subsystem: "com.dearby.app", category: "push")
 @MainActor @Observable final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     private(set) var deviceToken: Data?
     /// The tapped notification's `url`, else its `activityId`; a local 세션 이동 알림 (contract "찜한 세션 이동 알림") opens its block's
-    /// timetable on 찜한 세션. The root opens it and clears it.
+    /// timetable on 내 시간표. The root opens it and clears it.
     enum Tap: Equatable { case link(URL), activity(String), timetable(activityID: String, scheduleID: String) }
     var tapped: Tap?
     /// The tapped notification's `notificationId` (알림 목록): it is marked read.

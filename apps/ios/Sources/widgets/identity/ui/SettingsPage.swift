@@ -207,7 +207,7 @@ struct SettingsPage: View {
                 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("세션 이동 알림")
-                        Text("찜한 세션 10분 전에 이 기기에서 알려요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                        Text("내 시간표의 세션 10분 전에 이 기기에서 알려요").font(.dearby(.footnote)).foregroundStyle(.secondary)
                     }
                 }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-session-reminders")
             }
