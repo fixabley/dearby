@@ -1,6 +1,7 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ScheduleSessionsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULE_SESSIONS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULE_SESSION_TAGS
@@ -18,8 +19,10 @@ import io.wid.dearby.domain.timetable.Speaker
 import io.wid.dearby.domain.timetable.Timetable
 import io.wid.dearby.domain.timetable.TimetableInput
 import io.wid.dearby.domain.timetable.Track
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.JSONB
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.readValue
@@ -42,6 +45,11 @@ class JooqTimetableRepository(private val dsl: DSLContext) : TimetableRepository
     override fun sessions(ids: Collection<Id>): List<Session> =
         if (ids.isEmpty()) emptyList()
         else TimetableRows.sessions(dsl, dsl.selectFrom(SCHEDULE_SESSIONS).where(SCHEDULE_SESSIONS.ID.`in`(ids)).fetch())
+
+    override fun tracks(ids: Collection<Id>): Map<Id, Track> =
+        if (ids.isEmpty()) emptyMap()
+        else dsl.selectFrom(SCHEDULE_TRACKS).where(SCHEDULE_TRACKS.ID.`in`(ids))
+            .fetch().associate { it.id!! to Track(it.id!!, it.name!!, it.room, it.position!!) }
 
     override fun saveFavorite(userId: UserId, sessionId: Id, at: OffsetDateTime) {
         dsl.insertInto(USER_SESSION_FAVORITES)
@@ -81,6 +89,13 @@ internal object TimetableRows {
         if (scheduleIds.isEmpty()) emptySet()
         else dsl.selectDistinct(SCHEDULE_SESSIONS.SCHEDULE_ID).from(SCHEDULE_SESSIONS)
             .where(SCHEDULE_SESSIONS.SCHEDULE_ID.`in`(scheduleIds)).fetchSet(SCHEDULE_SESSIONS.SCHEDULE_ID).filterNotNull().toSet()
+
+    // 바깥 쿼리의 ACTIVITIES 행이 시간표 있는 일정(지우지 않은 블록)을 가졌는지(발견 ProgramSummary.hasTimetable)
+    val activityHasTimetable: Condition
+        get() = DSL.exists(
+            DSL.selectOne().from(SCHEDULE_SESSIONS).join(SCHEDULES).on(SCHEDULES.ID.eq(SCHEDULE_SESSIONS.SCHEDULE_ID))
+                .where(SCHEDULES.ACTIVITY_ID.eq(ACTIVITIES.ID), SCHEDULES.CURATED_DELETED.isFalse),
+        )
 
     // 시작 순(같으면 id 순), 태그는 보낸 순서
     fun sessions(dsl: DSLContext, rows: List<ScheduleSessionsRecord>): List<Session> {

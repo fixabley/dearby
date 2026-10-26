@@ -5,6 +5,7 @@ import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.timetable.Session
 import io.wid.dearby.domain.timetable.Timetable
 import io.wid.dearby.domain.timetable.TimetableInput
+import io.wid.dearby.domain.timetable.Track
 import java.time.OffsetDateTime
 
 // 저장소 포트(native-v1.md "트랙·세션 시간표"). 구현은 adaptor/persistence. 세션 찜은 users cascade라 계정 삭제와 함께 지워진다
@@ -19,6 +20,7 @@ interface TimetableRepository {
     fun sessionOwner(sessionId: Id): SessionOwner? = owners(listOf(sessionId))[sessionId]
     fun owners(sessionIds: Collection<Id>): Map<Id, SessionOwner> // 지운 세부 일정(curated_deleted)의 세션은 빠진다
     fun sessions(ids: Collection<Id>): List<Session>
+    fun tracks(ids: Collection<Id>): Map<Id, Track>
 
     fun saveFavorite(userId: UserId, sessionId: Id, at: OffsetDateTime) // 이미 있으면 그대로(시각도)
     fun deleteFavorite(userId: UserId, sessionId: Id)

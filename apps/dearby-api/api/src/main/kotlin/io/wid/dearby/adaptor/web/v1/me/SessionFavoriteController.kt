@@ -1,6 +1,8 @@
 package io.wid.dearby.adaptor.web.v1.me
 
+import io.wid.dearby.adaptor.web.v1.activities.ScheduleResponse
 import io.wid.dearby.adaptor.web.v1.activities.SessionResponse
+import io.wid.dearby.adaptor.web.v1.activities.TrackResponse
 import io.wid.dearby.application.timetable.TimetableService
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -29,6 +31,8 @@ class SessionFavoriteController(private val timetables: TimetableService) {
                 activityName = it.activity.name,
                 scheduleId = it.schedule.id,
                 scheduleTitle = it.schedule.title,
+                schedule = ScheduleResponse.from(it.schedule),
+                track = it.track?.let { track -> TrackResponse(track.id, track.name, track.room, track.position) },
                 session = SessionResponse.from(it.session, SessionResponse.zoneOf(it.schedule.time), favorited = true),
                 favoritedAt = it.favoritedAt,
             )
@@ -48,6 +52,8 @@ data class SessionFavoriteResponse(
     val activityName: String,
     val scheduleId: Long,
     val scheduleTitle: String,
+    val schedule: ScheduleResponse, // 부모 블록 전체(시작·끝·시간대). 앱이 활동을 다시 조회하지 않아도 된다(2026-10-26)
+    val track: TrackResponse?, // 세션의 트랙. 전폭 세션(trackId null)이면 null
     val session: SessionResponse,
     val favoritedAt: OffsetDateTime,
 )

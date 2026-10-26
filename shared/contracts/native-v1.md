@@ -961,9 +961,10 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 | GET /v1/activities/:id/schedules/:scheduleId/timetable | 없음(Bearer가 오면 `favorited`를 채우고 `Vary: Authorization`) | 200 `{activityId, schedule: Schedule, tracks: Track[], sessions: Session[]}`(세션은 시작 순). 게시되지 않은 활동, 그 활동의 블록이 아니거나 지운 블록, 모집 기간, 세션이 없는 블록은 404 |
 | PUT /v1/me/session-favorites/:sessionId | Bearer | 204(멱등). 게시되지 않은 활동이나 지운 블록의 세션, 없는 세션은 404 |
 | DELETE /v1/me/session-favorites/:sessionId | Bearer | 204(없어도) |
-| GET /v1/me/session-favorites | Bearer | 200 `{items: [{activityId, activityName, scheduleId, scheduleTitle, session: Session, favoritedAt}]}` — 내 시간표, 세션 시작 순. 게시되지 않았거나 지운 블록의 세션은 목록에서 뺀다(행은 남긴다) |
+| GET /v1/me/session-favorites | Bearer | 200 `{items: [{activityId, activityName, scheduleId, scheduleTitle, schedule: Schedule, track: Track\|null, session: Session, favoritedAt}]}` — 내 시간표, 세션 시작 순. 게시되지 않았거나 지운 블록의 세션은 목록에서 뺀다(행은 남긴다). `schedule`(부모 블록 전체: 시작·끝·시간대)·`track`(전폭 세션이면 null)은 2026-10-26 추가: 앱이 활동·시간표를 다시 조회하지 않고 그린다 |
 
 - `Schedule.hasTimetable: boolean`(공개 Activity의 `activitySchedule`·`schedules[]`, 어드민 일정 응답에도): 그 블록에 세션이 하나라도 있으면 true. 활동 응답에는 시간표 본문을 싣지 않는다(세션이 수백 개일 수 있어 위 별도 조회).
+- 목록 배지용(2026-10-26 추가, 필드 추가만): `Activity.hasTimetable: boolean`(`activitySchedule`·`schedules[]` 중 하나라도 `hasTimetable`), `ProgramSummary.hasTimetable: boolean`(그 묶음의 **모집 중·모집 예정** 활동 — `kind`·`category`·유형·태그·대상자 필터를 반영한 같은 활동들 — 중 하나라도 시간표가 있으면 true; 마감된 활동만 있으면 false). 접힌 프로그램 카드와 활동 행에 "시간표" 배지를 단다.
 - 비로그인: 시간표 보기는 되고, 세션 하트를 누르면 기존 로그인 시트(위 "비로그인에서 만들기·추천을 막음"). 동의 전 계정은 앱이 동의 화면으로 막는다(기존 즐겨찾기와 같이 앱만 막고 서버는 프로필 하위만 강제).
 
 ### 세션 찜과 다른 기능의 관계

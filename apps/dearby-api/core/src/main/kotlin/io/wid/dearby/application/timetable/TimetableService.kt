@@ -15,6 +15,7 @@ import io.wid.dearby.domain.timetable.Session
 import io.wid.dearby.domain.timetable.Timetable
 import io.wid.dearby.domain.timetable.TimetableInput
 import io.wid.dearby.domain.timetable.TimetableRules
+import io.wid.dearby.domain.timetable.Track
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -81,11 +82,12 @@ class TimetableService(
         val sessions = timetables.sessions(favoritedAt.keys)
         val owners = timetables.owners(sessions.map { it.id })
         val listings = activities.publishedListings(ids = owners.values.map { it.activityId }.toSet()).associateBy { it.activity.id }
+        val tracks = timetables.tracks(sessions.mapNotNull { it.trackId }.toSet())
         return sessions.mapNotNull { session ->
             val owner = owners[session.id] ?: return@mapNotNull null
             val activity = listings[owner.activityId]?.activity ?: return@mapNotNull null
             val schedule = blocks(activity).firstOrNull { it.id == owner.scheduleId } ?: return@mapNotNull null
-            FavoriteSession(activity, schedule, session, favoritedAt.getValue(session.id))
+            FavoriteSession(activity, schedule, session, session.trackId?.let(tracks::get), favoritedAt.getValue(session.id))
         }.sortedWith(compareBy({ it.session.startAt }, { it.session.id }))
     }
 
@@ -97,4 +99,5 @@ class TimetableService(
 
 data class ScheduledTimetable(val activity: Activity, val schedule: Schedule, val timetable: Timetable)
 
-data class FavoriteSession(val activity: Activity, val schedule: Schedule, val session: Session, val favoritedAt: OffsetDateTime)
+// track: 세션의 트랙, 전폭 세션이면 null
+data class FavoriteSession(val activity: Activity, val schedule: Schedule, val session: Session, val track: Track?, val favoritedAt: OffsetDateTime)

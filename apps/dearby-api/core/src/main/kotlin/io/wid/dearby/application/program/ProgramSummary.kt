@@ -31,6 +31,7 @@ data class ProgramSummary(
     val traitTags: List<Tag> = emptyList(), // 성격 태그 전부, 사전 순
     val brandColor: String? = null, // 보일 로고(계승 포함)의 대표색 "#RRGGBB"(native-v1.md "맞춤 대기열"), 없으면 null
     val coverUrl: String? = null, // 대기열 커버 공개 경로 `/v1/programs/{id}/cover?v=…`(native-v1.md "맞춤 대기열"). 없거나 꺼졌으면 null
+    val hasTimetable: Boolean = false, // 묶음의 모집 중·모집 예정 활동(kind 등 필터 반영) 중 하나라도 시간표 있는 일정이 있다(native-v1.md "트랙·세션 시간표")
     val logoUrl: String? = null, // 보일 로고 공개 경로: 프로그램 로고, 없으면 가장 가까운 조직 로고(native-v1.md "조직 로고와 로고 계승"), 없으면 null
 )
 
@@ -57,6 +58,7 @@ data class OpenActivity(
     val recruitmentEndAt: OffsetDateTime?, // 정렬 키: 모집 마감, 없으면 활동 시작
     val eligibility: EligibilityGroup?,
     val hasRecruitmentEnd: Boolean = true, // recruitmentEndAt이 실제 모집 마감인지(아니면 활동 시작)
+    val hasTimetable: Boolean = false, // 시간표 있는 일정이 있다
 )
 
 // nextCursor가 null이면 마지막 페이지
