@@ -481,8 +481,8 @@ class CollectionJobTest(
     fun `운영자가 지운 세부 일정은 다시 수집해도 되살아나지 않고, 운영자가 고친 일정과 같은 수집 일정은 다시 넣지 않는다`() {
         officialSetting()
         Fakes.extractedSchedules = listOf(
-            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접", recurrence = "FREQ=DAILY;COUNT=2"),
-            ExtractedSchedule(title = "결과 발표", kind = "ANNOUNCEMENT", startAt = null, endAt = null, dateLabel = "11월 20일 발표", startDate = "2026-11-20", endDate = "2026-11-20"),
+            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접", recurrence = "FREQ=DAILY;COUNT=2", phase = "selection"),
+            ExtractedSchedule(title = "결과 발표", kind = "ANNOUNCEMENT", startAt = null, endAt = null, dateLabel = "11월 20일 발표", startDate = "2026-11-20", endDate = "2026-11-20", phase = "TEST"),
         )
         try {
             assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
@@ -490,18 +490,22 @@ class CollectionJobTest(
             assertEquals(listOf("1차 면접", "결과 발표"), detailTitles(activityId))
             // 시각 세부 일정의 반복 규칙은 그대로 저장한다(native-v1.md "반복 일정과 겹침 결과 묶음")
             assertEquals(listOf("FREQ=DAILY;COUNT=2"), jdbc.sql("select recurrence from schedules where activity_id = ? and title = '1차 면접'").param(activityId).query(String::class.java).list())
+            // 선발·활동(native-v1.md "선발 과정·활동 일정 분리"): 수집기가 준 값은 저장하고, 모르는 값은 비워 두어 읽을 때 판정한다
+            fun phases() = jdbc.sql("select title || '=' || coalesce(phase, '-') from schedules where activity_id = ? and slot is null and not curated_deleted").param(activityId).query(String::class.java).list().sortedBy { it.toString() }
+            assertEquals(listOf("1차 면접=SELECTION", "결과 발표=-"), phases())
             // 모집·활동 기간 행은 다시 수집해도 제자리에서 고쳐 id가 그대로다(일정 상태·사용자 선택·겹침 확인 시간이 id에 묶임, native-v1.md "내 활동 서버 저장")
             fun slotIds() = jdbc.sql("select id from schedules where activity_id = ? and slot is not null order by slot").param(activityId).query(Long::class.java).list()
             val slotsBefore = slotIds()
             jdbc.sql("update schedules set overlap_start_time = '10:00', overlap_end_time = '17:00' where activity_id = ? and slot = 'ACTIVITY'").param(activityId).update()
             // 어드민이 1차 면접을 지우고(curated_deleted) 결과 발표에 사유를 달아 고쳤다(curated)
             jdbc.sql("update schedules set curated_deleted = true where activity_id = ? and title = '1차 면접'").param(activityId).update()
-            jdbc.sql("update schedules set curated = true, curated_note = '공식 일정표 확인' where activity_id = ? and title = '결과 발표'").param(activityId).update()
+            jdbc.sql("update schedules set curated = true, curated_note = '공식 일정표 확인', phase = 'ACTIVITY' where activity_id = ? and title = '결과 발표'").param(activityId).update()
             assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
             assertEquals(slotsBefore, slotIds())
             assertEquals(1, jdbc.sql("select count(*) from schedules where activity_id = ? and slot = 'ACTIVITY' and overlap_start_time = '10:00'").param(activityId).query(Int::class.java).single())
             // 보이는 세부 일정은 운영자가 고친 결과 발표 하나뿐이고(수집된 같은 일정은 다시 넣지 않음), 지운 1차 면접은 표시된 행으로만 남는다
             assertEquals(listOf("결과 발표"), detailTitles(activityId))
+            assertEquals(listOf("결과 발표=ACTIVITY"), phases()) // 운영자가 정한 phase는 재수집이 덮어쓰지 않는다
             assertEquals(listOf("공식 일정표 확인"), jdbc.sql("select curated_note from schedules where activity_id = ? and title = '결과 발표'").param(activityId).query(String::class.java).list())
             assertEquals(1, jdbc.sql("select count(*) from schedules where activity_id = ? and title = '1차 면접' and curated_deleted").param(activityId).query(Int::class.java).single())
         } finally {

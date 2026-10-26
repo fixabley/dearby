@@ -169,7 +169,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isTrue.or(SCHEDULES.CURATED_DELETED.isTrue))
             .fetch { scheduleKey(it.value1()!!, it.value2(), it.value3()) }.toSet()
         activity.schedules.filter { scheduleKey(it.title, it.startAt, it.startDate) !in kept }.forEach {
-            val scheduleId = writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now, it.recurrence)
+            val scheduleId = writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now, it.recurrence, it.phase)
             // 하위 시간표(native-v1.md "트랙·세션 시간표"): 붙이면 그 블록이 운영자 지정(curated)으로 올라가 다음 재수집이 지우거나 다시 쓰지 않는다(세션·찜 유지).
             // 그래서 시간표는 블록이 처음 수집될 때만 붙고, 그 뒤 고치기는 어드민이 한다. 세션 태그는 사전 이름으로 찾고 모르는 이름은 버린다
             it.timetable?.let { timetable -> TimetableRows.replace(dsl, scheduleId, timetable.withTagIds(::tagIdsByName)) }
@@ -267,6 +267,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         dateLabel: String,
         now: LocalDateTime,
         recurrence: Recurrence? = null, // 세부 일정만. 슬롯 행의 반복은 운영자 값이 남게 따로 채운다
+        phase: SchedulePhase? = null, // 세부 일정만(수집기가 모르면 null, 읽을 때 판정). 슬롯 행은 슬롯이 정한다
     ): Id {
         val timed = startAt != null || endAt != null
         val allDay = !timed && (startDate != null || endDate != null)
@@ -295,6 +296,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         return dsl.insertInto(SCHEDULES)
             .set(values)
             .set(SCHEDULES.RECURRENCE, recurrence?.rule)
+            .set(SCHEDULES.PHASE, phase?.name)
             .set(SCHEDULES.ACTIVITY_ID, activityId)
             .set(SCHEDULES.SLOT, slot)
             .set(SCHEDULES.SEQUENCE, 0)
