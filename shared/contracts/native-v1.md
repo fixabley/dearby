@@ -9,7 +9,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 ## 모델
 
 - Profile: `id`, `name`, `job`, `introLink`(소개 링크; `introduction`은 2026-10-26 폐지 예정), `contacts: Contact[]`, `histories: History[]`, `updatedAt`.
-- Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`. github·instagram·behance·kakao의 value는 사용자명(ID)만이다("연락처 아이콘·바로가기" 절의 사용자명 입력, 2026-10-26; 그 전에 저장된 카카오톡 오픈채팅 URL은 표시·열기 유지). 외부 URL 열기는 허용 scheme 검증.
+- Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`, `verified`, `verifiedAt`(아래 "연락처 인증", 2026-10-26; 서버가 인증 결과로만 켠다). github·instagram·behance·kakao의 value는 사용자명(ID)만이다("연락처 아이콘·바로가기" 절의 사용자명 입력, 2026-10-26; 그 전에 저장된 카카오톡 오픈채팅 URL은 표시·열기 유지). 외부 URL 열기는 허용 scheme 검증.
 - 필수 연락처(2026-10-06 사용자 결정): 프로필은 `phone`과 `email`을 각각 하나 이상 가져야 한다. 나머지 종류는 사용자가 골라 추가한다. `PUT /profile`에서 빠지면 422 `INVALID_INPUT`(필드 `contacts`)이다. phone은 숫자·`+`·`-`·공백만 허용하고 숫자 8~15자리, email은 기본 형식을 검사한다. (2026-10-10 패스키 로그인 전환으로 로그인 이메일이 없어져, 앱이 email을 미리 채우던 규칙은 없앴다.) 명함 발행 때 공개할 연락처를 고르는 방식은 그대로이며, 필수는 프로필 기준이지 명함 공개 의무가 아니다.
 - History: `id`, `title`, `role`, `startDate`(YYYY-MM-DD), `endDate`(nullable), `description`.
 - 활동 이력 날짜 입력(2026-10-06 사용자 결정): 앱 프로필 편집에서 이력마다 시작일(필수)과 종료일(선택, `진행 중`이면 비움)을 날짜 선택기로 입력한다. 연·월만 고르는 경우 일은 1일로 저장한다. 종료일은 시작일보다 앞설 수 없다(API도 422). 표시는 `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`이다.
@@ -809,6 +809,53 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - GitHub `https://github.com/{id}`, Instagram `https://instagram.com/{id}`, Behance `https://www.behance.net/{id}`. `{id}`는 위 사용자명이며 규칙에 맞지 않으면 링크 없이 값만. 앱이 설치돼 있으면 시스템이 앱으로 연다(유니버설 링크·App Links).
   - 카카오톡: ID는 공개 링크로 열 수 없으므로 **복사**하고(앞 `@` 지움) "ID를 복사했어요"를 잠깐 보인다(iOS 행 끝 문구 + VoiceOver 알림, Android 스낵바 또는 시스템 복사 알림). 2026-10-26 전에 저장된 오픈채팅 URL(`http`/`https`, 또는 스킴 없는 `도메인/경로`에 `https://`)은 연다. 그 밖의 스킴(`javascript:` 등)은 열지 않는다.
   - 행 끝 표시: 열기 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 복사 `doc.on.doc`/`ContentCopy`, 동작이 없으면 표시 없음. 접근성 힌트: 전화 "전화를 걸어요", 메일 "메일을 보내요", 링크 "링크를 열어요", 복사 "ID를 복사해요".
+
+## 연락처 인증 — 2026-10-26 사용자 결정
+
+사용자: "깃헙·인스타처럼 앱 로그인을 지원하는 것들은 연락처에 등록할 때 로그인으로 등록하도록", "이메일도 Spring Mail 활용해서 인증 기능 추가". 프로필 연락처 중 **GitHub**은 GitHub 로그인(OAuth)으로, **이메일**은 인증번호로 그 연락처가 본인 것임을 확인하고 `Contact.verified`로 표시한다. 수동 입력은 계속 허용한다(인증은 선택). 조율 판단으로 이번 범위는 둘뿐이다 — Instagram은 2024-12 Basic Display API 종료로 비즈니스 계정만 가능, 카카오 로그인은 카카오톡 ID·오픈프로필 URL을 주지 않음, LinkedIn OIDC는 이름만, Behance API는 신규 발급 중단. 그 종류들은 수동 입력만 남는다.
+
+### 데이터
+
+- `Contact.verified: Boolean`, `verifiedAt: String?`(ISO 8601, 인증 시각). 프로필·명함·받은 명함·웹 `/cards/:id`·버전 스냅샷·신고 스냅샷의 `contacts[]`에 모두 실린다(V63 전 스냅샷·명함은 `false`·`null`로 읽힌다). 저장: `contacts.verified`·`verified_at`(V63).
+- **클라이언트는 `verified`를 보내지 못한다.** `PUT /v1/profile`의 연락처에 `verified`를 넣어도 무시된다. 서버는 같은 연락처 id의 종류·값이 그대로면(이메일은 대소문자 무시, 사용자명 종류는 정규화 뒤 비교) 인증 상태를 유지하고, 값을 고치면 `verified=false`·`verifiedAt=null`로 되돌린다. 라벨만 바꾸면 유지된다. 버전 되돌리기도 같은 규칙(그때 값이 지금 인증된 값과 같을 때만 유지).
+- 인증이 성공하면 서버가 그 연락처를 고쳐 **프로필 버전이 1 오른다**(`PUT /v1/profile`과 같은 저장·스냅샷). 응답은 새 Profile이다. 앱은 응답의 `contacts`·`version`으로 수정 중인 폼을 갱신해야 다음 `PUT`의 `If-Match`가 409가 되지 않는다. 바꾸는 항목: 같은 값의 그 종류 항목이 있으면 그것, 없으면 그 종류의 첫 항목 값을 인증된 값으로 덮어쓴다(수동 입력값 대체, id·라벨 유지), 그 종류가 없으면 끝에 `label=""`로 더한다. 이미 같은 값으로 인증돼 있으면 버전을 올리지 않는다.
+- 프로필이 아직 없으면(버전 0) 인증을 끝낼 수 없다: 400 `code: PROFILE_REQUIRED`("프로필을 먼저 저장해 주세요"). 동의 전(`consentRequired`)이면 403 `CONSENT_REQUIRED`(프로필 쓰기와 같다).
+
+### API — GitHub 연결 (Bearer, 본인)
+
+애플 웹 방식(`/auth/apple/web/*`)과 같은 start → 콜백 → 1회용 code → complete. **콜백만으로 끝내지 않는다**: 남이 시작한 인가 주소를 내가 승인하면 내 GitHub login이 남의 프로필에 인증됨으로 붙을 수 있어(OAuth 계정 연결 CSRF), 결과 code를 가져가는 `complete`의 Bearer가 `start`를 부른 계정과 같아야 한다. 누구나 앱 주소로 code를 보낼 수는 있지만 서버가 그 code가 그 사람 것인지 확인한다. 운영에 `GITHUB_CLIENT_ID`·`GITHUB_CLIENT_SECRET`·`GITHUB_CALLBACK_URL`이 없으면 아래 `/github/*`는 503.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/me/contacts/github/start | Bearer | `{platform: ios\|android\|web}` | 200 `{authorizeUrl}`. 인가 주소의 `state`는 10분, 한 번만. 다른 platform 값은 400 |
+| GET /v1/me/contacts/github/callback | 없음(GitHub이 사용자 브라우저를 돌려보냄) | `code`, `state` 또는 `error` | 303 → ios·android `dearby://contacts/github?code=<1회용>` 또는 `?error=cancelled\|failed`, web `https://dearby.wid.io.kr/profile?code=…` 또는 `?error=…`. 주소에 login·토큰을 싣지 않는다. state를 모르면 앱 주소로 `error=failed` |
+| POST /v1/me/contacts/github/complete | Bearer | `{code}` | 200 Profile(GitHub 항목 `value=login`·`verified=true`). code가 없거나 만료(10분)됐거나 다른 사람 것이면 모두 400 `code: GITHUB_LINK_EXPIRED`(구분하지 않는다) |
+
+- 서버는 GitHub `code`를 액세스 토큰으로 바꿔 `GET https://api.github.com/user`의 `login`만 읽는다. **scope 없음**(공개 프로필), **액세스 토큰은 저장하지 않는다**. 저장되는 것은 login(사용자명)뿐이고 프로필 URL `https://github.com/{login}`은 앱이 만든다("연락처 아이콘·바로가기"). 사용자가 GitHub에서 취소하면(`error=access_denied`) `cancelled`, 그 밖의 실패(state 만료·토큰 교환 실패·login 형식 오류)는 `failed`.
+- GitHub OAuth App(사용자가 만든다): github.com → Settings → Developer settings → OAuth Apps → New OAuth App. Authorization callback URL = `https://api.dearby.wid.io.kr/v1/me/contacts/github/callback`(OAuth App 하나에 콜백 URL 하나라 로컬 개발은 `http://localhost:8080/...`로 앱을 따로 만든다). env `GITHUB_CLIENT_ID`·`GITHUB_CLIENT_SECRET`·`GITHUB_CALLBACK_URL`(선택 `GITHUB_WEB_REDIRECT_URI`, 기본 `https://dearby.wid.io.kr/profile`).
+
+### API — 이메일 인증번호 (Bearer, 본인)
+
+Spring Mail(SMTP)로 한글 평문 한 통을 보낸다. 제목 `[Dearby] 이메일 인증번호 123456`, 본문에 인증번호·10분 안내·요청하지 않았으면 무시. 운영에 `MAIL_HOST`나 `MAIL_FROM`이 없으면 아래 `/email/*`는 503.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/me/contacts/email/challenges | Bearer | `{email}` | 200 `{challengeId, expiresAt}`. 6자리 숫자, 10분. 형식 오류 400, 프로필 없음 400 `PROFILE_REQUIRED`, 같은 이메일(대소문자 무시) 1분당 1회·하루 10회를 넘으면 429, 메일을 보내지 못하면 503(그 시도는 횟수에 세지 않는다) |
+| POST /v1/me/contacts/email/verify | Bearer | `{challengeId, code}` | 200 Profile(이메일 항목 `value=입력한 이메일`·`verified=true`). 틀리면 400 `code: CODE_MISMATCH`(detail에 남은 횟수), 5번 틀리면 폐기되어 400 `CHALLENGE_EXPIRED`; 없거나 만료·이미 사용·다른 사람 것도 400 `CHALLENGE_EXPIRED` |
+
+- 인증번호는 해시로만 저장하고(`email_contact_challenges`, V63), 발송 횟수를 세기 위해 하루 동안 남긴다. 성공한 challenge는 다시 쓸 수 없다.
+- 메일 발신: env `MAIL_HOST`·`MAIL_PORT`(기본 587 STARTTLS)·`MAIL_USERNAME`·`MAIL_PASSWORD`·`MAIL_FROM`(예 `Dearby <no-reply@wid.io.kr>`). 보내는 도메인에 SPF·DKIM(가능하면 DMARC)을 설정하지 않으면 받는 쪽이 스팸으로 분류한다. SMTP 공급자(Amazon SES·Resend·Mailgun·Postmark·Google Workspace 등)는 사용자가 고른다. 로컬은 mailpit(`docker run -p 1025:1025 -p 8025:8025 axllent/mailpit`, `MAIL_PORT=1025`·`MAIL_STARTTLS=false`).
+
+### 화면 (iOS·Android·웹, 다음 단계)
+
+- **연락처 편집(프로필 수정·퍼널)**: GitHub 행에는 입력 칸 옆(또는 아래 보조 행)에 `GitHub으로 연결` 버튼(iOS `ASWebAuthenticationSession`, Android Custom Tabs, 웹 새 창/탭). 앱은 `start`(platform)를 불러 `authorizeUrl`을 열고, `dearby://contacts/github?code=…`로 돌아오면 `complete`를 불러 응답 Profile로 폼·버전을 갱신한다. `error=cancelled`는 조용히 닫고, `failed`는 "GitHub 연결에 실패했어요. 다시 시도해 주세요" 안내. 이메일 행에는 `인증번호 받기` 버튼 → 보낸 뒤 같은 행 아래에 6자리 숫자 입력 칸(숫자 키패드, 자동 완성 `oneTimeCode`)과 `확인`·`다시 받기`(1분 뒤 활성, 남은 초 표시). 429·400의 detail 문구를 그대로 보인다. 둘 다 프로필을 아직 저장하지 않았으면(버전 0) 버튼을 비활성하고 "프로필을 먼저 저장하면 인증할 수 있어요"를 보인다(서버는 400 `PROFILE_REQUIRED`).
+- **수동 입력도 계속 허용**: 인증 없이 적은 값은 지금처럼 저장되고 표시만 다르다. 인증된 항목의 값을 고치면 체크가 사라진다는 것을 입력 칸 아래 한 줄로 알린다("값을 바꾸면 인증이 풀려요").
+- **표시(명함 면·받은 명함·내 프로필 보기·웹 `/cards/:id`·명함 만들기 연락처 선택 행)**: `verified`가 true인 행은 값 끝에 작은 체크(iOS `checkmark.seal.fill` 16 청록, Android `Verified` 16 `primary`, 웹 같은 모양 인라인 SVG)를 붙이고 접근성 라벨에 `인증됨`을 더한다("아이콘 통일" 표에 성공·확인 `checkmark.circle`과 구분해 인증 `checkmark.seal`/`Verified`를 더한다). 미인증은 표시 없음(배지 없음). 바로가기·복사 동작은 바뀌지 않는다.
+- 503(기능 비활성)이면 그 버튼을 숨긴다(앱은 `start`/`challenges`의 503을 받으면 "지금은 쓸 수 없어요"로 알리고 수동 입력으로 안내).
+
+### 개인정보처리방침 반영(사용자 확인 후, 웹 `/privacy`)
+
+- 수집 항목 "프로필" 행에 `연락처 인증 상태(인증 여부·시각)`, GitHub 연결 시 `GitHub 사용자명(login)`을 더한다. 제3자(외부 서비스) 절에 "GitHub 연결: 사용자가 연결하면 GitHub OAuth에서 공개 프로필의 사용자명을 받는다(액세스 토큰은 저장하지 않음). GitHub에 Dearby 사용자 정보를 보내지 않는다"를 더한다. 이메일 인증번호 발송은 처리 위탁(SMTP 공급자, 선택한 회사 이름)으로 적는다. `CONSENT_PRIVACY_VERSION`을 올릴지는 사용자 결정.
 
 ## 소개 링크·소개 글 폐지 — 2026-10-26 사용자 결정
 
