@@ -20,6 +20,11 @@ export function readGuestCookie(header: string | null) {
     ?.slice(name.length);
 }
 
+/** The browser's language preference picks ko or en activity text upstream. Anything that is not a plain language list is dropped. */
+export function acceptLanguage(value: string | null): string | undefined {
+  return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
+}
+
 export function guestProxyKey() {
   const secret = process.env.GUEST_PROXY_SECRET;
   return secret && secret.length >= 32 ? secret : undefined;

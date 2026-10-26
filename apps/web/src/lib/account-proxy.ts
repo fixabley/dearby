@@ -1,9 +1,9 @@
 // Signed-in account routes of the `/api/*` proxy (contract native-v1.md "웹 로그인"): a fixed allowlist, the access token from the
 // session cookie as Bearer, one refresh on 401, and validated bodies both ways. Nothing here is reachable without the cookies.
 import { z } from "zod";
-import { TOKEN, readGuestCookie } from "./guest-upstream";
+import { TOKEN, acceptLanguage, readGuestCookie } from "./guest-upstream";
 import { callAsAccount, clearedSessionCookies, withCookies } from "./session";
-import { activityId, favoriteSessionListSchema, myActivityListSchema, myActivitySchema, profileConsentSchema, statusPickSchema } from "./models";
+import { activityId, favoriteSessionListSchema, favoritesSchema, myActivityListSchema, myActivitySchema, profileConsentSchema, statusPickSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
@@ -44,11 +44,33 @@ const importSchema = z.object({ imported: z.number().int().nonnegative() });
 const IF_MATCH = /^(\*|(W\/)?"[^"]{1,128}"(, ?(W\/)?"[^"]{1,128}")*)$/;
 const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED", "GUEST_SESSION_INVALID"];
 
-type Route = { body?: keyof typeof bodies; parse: (json: unknown) => unknown; noContent?: boolean };
+type Route = {
+  body?: keyof typeof bodies;
+  parse: (json: unknown) => unknown;
+  noContent?: boolean;
+  /** The browser's `Accept-Language` goes upstream (즐겨찾기 activity text is ko or en) and the response varies on it. */
+  language?: boolean;
+};
+const NUMERIC_ID = /^[1-9]\d{0,17}$/;
+const noContent: Route = { parse: () => undefined, noContent: true };
 /** `METHOD path` → how the request and response are validated. `:id` is a passkey credential id, `:provider` apple|google. */
 function route(method: string, segments: string[]): Route | undefined {
   const path = segments.join("/");
   if (method === "GET" && path === "me") return { parse: (json) => meSchema.parse(json) };
+  // 즐겨찾기·세션 찜 (contract "즐겨찾기(하트)", "트랙·세션 시간표", web "웹 화면 — 2단계 A"): PUT without a body keeps the API's default
+  // notify level; DELETE is idempotent. Both answer 204.
+  if (method === "GET" && path === "me/favorites") return { parse: (json) => favoritesSchema.parse(json), language: true };
+  if (segments.length === 4 && segments[0] === "me" && segments[1] === "favorites" && ["programs", "activities"].includes(segments[2]) && NUMERIC_ID.test(segments[3])) {
+    if (method === "PUT") return { ...noContent, body: "empty" };
+    if (method === "DELETE") return noContent;
+  }
+  // Opening a favorited program turns its `새 모집` off.
+  if (method === "POST" && segments.length === 5 && path.startsWith("me/favorites/programs/") && segments[4] === "seen" && NUMERIC_ID.test(segments[3]))
+    return { ...noContent, body: "empty" };
+  if (segments.length === 3 && segments[0] === "me" && segments[1] === "session-favorites" && NUMERIC_ID.test(segments[2])) {
+    if (method === "PUT") return { ...noContent, body: "empty" };
+    if (method === "DELETE") return noContent;
+  }
   if (method === "DELETE" && path === "me") return { parse: () => undefined, noContent: true };
   if (method === "GET" && path === "profile") return { parse: (json) => profileConsentSchema.parse(json) };
   if (method === "POST" && path === "me/consents") return { body: "consents", parse: () => undefined, noContent: true };
@@ -72,7 +94,7 @@ function route(method: string, segments: string[]): Route | undefined {
     if (segments.length === 5 && segments[3] === "schedules" && activityId(segments[4]) !== undefined && method === "PUT")
       return { body: "statusPick", parse: (json) => myActivitySchema.parse(json) };
   }
-  // 찜한 세션, read only (the 오늘 내 행사 card shows the next favorited session; 찜 itself stays in the apps).
+  // 내 시간표 목록 (contract "트랙·세션 시간표"; 2단계 A hearts, 2단계 B 오늘 내 행사 card).
   if (method === "GET" && path === "me/session-favorites") return { parse: (json) => favoriteSessionListSchema.parse(json) };
 }
 export function isAccountRoute(method: string, segments: string[]) {
@@ -118,6 +140,7 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     body = { guestToken };
   }
   const path = segments.join("/");
+  const responseHeaders = spec.language ? { ...headers, Vary: `${headers.Vary}, Accept-Language` } : headers;
   // `If-Match` crosses as it is (contract "웹에서 쓰는 로그인 기능": the profile PUT's version check); a malformed value is dropped.
   const ifMatch = request.headers.get("if-match");
   try {
@@ -125,6 +148,7 @@ export async function accountProxy(request: Request, segments: string[]): Promis
       path,
       method,
       body: mutation ? body : undefined,
+      acceptLanguage: spec.language ? acceptLanguage(request.headers.get("accept-language")) : undefined,
       ifMatch: ifMatch && IF_MATCH.test(ifMatch) ? ifMatch : undefined,
     });
     if (result.kind === "signedOut") return failure(401, "SIGNED_OUT");
@@ -148,7 +172,7 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     }
     if (spec.noContent) return new Response(null, { status: 204, headers });
     const output = spec.parse(response.status === 204 ? undefined : await response.json());
-    return Response.json(output ?? {}, { status: response.status === 201 ? 201 : 200, headers });
+    return Response.json(output ?? {}, { status: response.status === 201 ? 201 : 200, headers: responseHeaders });
   } catch {
     return failure(502, "UPSTREAM_UNAVAILABLE");
   }

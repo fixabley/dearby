@@ -101,6 +101,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `myactivity_add` | 활동 카드·활동 상세의 `+`로 내 활동에 추가 성공(2026-10-26 웹 2단계 B, [native-v1.md](native-v1.md) "웹 로그인" › 2단계 B; 앱과 같은 이름) | `activity_id`, `category`, `source` = `discovery`(발견 카드)·`link`(활동 상세) |
 | `stage_mark` | 진행 단계(`/mine/:id`)에서 선발 단계의 상태를 고름(서버 저장 전에 보냄). 지난 선발 단계 통과 제안의 `통과로 표시`는 단계마다 보내며 `via=autopass_prompt` | `activity_id`, `category`, `kind` = `passed`·`waiting`·`failed`·`other`, `via`(제안에서만) |
 | `today_card_tap` | 발견 맨 위 `오늘 내 행사` 카드를 누름 | `target` = `timetable`(시간표 모달)·`progress`(진행 단계; 웹은 `qr` 없음), `activity_id`, `category` |
+| `favorite_add` · `favorite_remove` | 하트를 켜고 끔이 서버에 반영된 뒤(2026-10-26 웹 로그인 2단계 A, [native-v1.md](native-v1.md) "웹 화면 — 2단계 A"): 발견 프로그램 카드·활동 카드·활동 상세·`/favorites`의 하트, 시간표 모달·`내 시간표`의 세션 하트. 비로그인의 하트 탭(로그인 시트만 열림)과 실패해 되돌린 탭은 보내지 않음 | `type`(`program`·`activity`·`session`), `id`(그 대상의 id), `activity_id`(세션만: 세션이 속한 활동), `category`(활동·프로그램의 종류 code 소문자, 있을 때만; 웹은 `field`를 보내지 않음) |
 | `tester_cta_tap` | 비공개 테스트 초대의 링크를 누름 — 공개 명함 저장 버튼 아래·`/saved` 상단(비로그인)·로그인 시트의 `비공개 테스트로 앱 받기`(2026-10-26, [native-v1.md](native-v1.md) "명함 교환" › 받는 사람(웹)). iOS는 버튼이 곧 TestFlight 링크, Android·데스크톱은 시트 안의 단계 링크를 누를 때 보낸다(시트를 여는 것만으로는 보내지 않음) | `platform`(`ios`·`android`·`desktop`, UA 판정), `target`(`testflight`·`play_group`·`play_test`) |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.

@@ -7,7 +7,6 @@ import type { ProfileConsent } from "@/lib/models";
 function send<T>(path: string, method: "POST" | "PATCH" | "DELETE", body: unknown = {}) {
   return request<T>(path, { method, headers: JSON_HEADERS, body: JSON.stringify(body) });
 }
-
 export type Session = { signedIn: boolean; consent?: ProfileConsent | null };
 /** Signed out when the session route says so, or when its 401 survives a refresh. */
 export const session = () =>

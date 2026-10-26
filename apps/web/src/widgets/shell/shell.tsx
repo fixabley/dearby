@@ -126,14 +126,25 @@ function NavBar() {
               </Link>
             )}
             {auth.signedIn ? (
-              <Link
-                href="/settings"
-                aria-label="설정"
-                aria-current={path === "/settings" ? "page" : undefined}
-                className="-mr-2 inline-flex size-11 items-center justify-center text-teal aria-[current=page]:font-semibold"
-              >
-                <Icon name="person" />
-              </Link>
+              <>
+                {/* 즐겨찾기 (contract "웹 화면 — 2단계 A"): the account's hearts, next to the account glyph. */}
+                <Link
+                  href="/favorites"
+                  aria-label="즐겨찾기"
+                  aria-current={path === "/favorites" ? "page" : undefined}
+                  className="inline-flex size-11 items-center justify-center text-teal"
+                >
+                  <Icon name={path === "/favorites" ? "heart-fill" : "heart"} />
+                </Link>
+                <Link
+                  href="/settings"
+                  aria-label="설정"
+                  aria-current={path === "/settings" ? "page" : undefined}
+                  className="-mr-2 inline-flex size-11 items-center justify-center text-teal aria-[current=page]:font-semibold"
+                >
+                  <Icon name="person" />
+                </Link>
+              </>
             ) : (
               <button
                 type="button"

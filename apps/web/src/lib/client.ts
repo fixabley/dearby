@@ -65,6 +65,20 @@ export async function accountRequest<T>(path: string, init?: RequestInit): Promi
 export function accountSend<T>(path: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body: unknown = {}): Promise<T> {
   return accountRequest<T>(path, { method, headers: JSON_HEADERS, body: JSON.stringify(body) });
 }
+/**
+ * A public read that carries the session when there is one (발견·활동·시간표, contract "웹 화면 — 2단계 A"): the proxy answers 401
+ * `SIGNED_OUT` while the access token has lapsed, so refresh once and retry — even when the refresh was refused, since the cookies
+ * are then gone and the retry reads anonymously (a visitor whose session ended must still browse).
+ */
+export async function publicRead<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await request<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof RequestError && error.status === 401 && error.code === "SIGNED_OUT")) throw error;
+    await refreshOnce();
+    return request<T>(path, init);
+  }
+}
 
 // Same origin Web Locks serialize first saves across tabs before a cookie exists.
 export async function mutateGuest<T>(
