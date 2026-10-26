@@ -106,7 +106,7 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 ### 지표 1 — 추가한 활동이 참석까지
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
-| `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자) |
+| `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄). 지난 선발 단계 통과 제안(native-v1.md "지난 선발 단계 통과 제안" 2026-10-26)의 `통과로 표시`도 표시한 단계마다 보내며 `via=autopass_prompt`를 더한다(진행 단계 화면에서 고른 것은 `via` 없음) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자), `via`(제안에서만) = `autopass_prompt` |
 | `participation_reached` | 내 활동의 활동이 처음 **참여 중**이 됨 — `via=selection_passed`: 선발 단계가 모두 `통과`로 표시되고 뒤에 활동 단계가 남음(진행 트랙의 `참여 중` 배지와 같은 조건, 표시를 바꾼 직후 판정). `via=no_selection`: 선발 단계가 하나도 없는 활동(모집 슬롯도 `SELECTION` 세부 일정도 없음)을 내 활동에 추가함(`myactivity_add`와 함께; 모집 슬롯이 있는 활동은 컨퍼런스라도 해당하지 않는다 — 운영의 우아콘 2026(id 156)은 `신청 기간`·`입장권 추첨 결과 발송`이 `SELECTION`이다, 2026-10-26 확인). 활동마다 기기에 보냈음을 기록해 한 번만 보낸다(표시를 되돌렸다 다시 통과해도 다시 보내지 않음) | `activity_id`, `via` = `selection_passed`·`no_selection` |
 | `activity_day_action` | 내 활동에 있는 활동의 `ACTIVITY` 일정 블록(활동 기간·`ACTIVITY` 세부 일정)이 진행 중인 날(서울 날짜, 블록 시작일~끝일)에 그 활동에서 한 행동. 탈락 표시한 활동은 보내지 않음. 같은 날 반복해도 매번 보내고, 지표는 사용자 수로 센다 | `activity_id`, `action` = `progress`(진행 단계 화면 열기)·`detail`(활동 상세 열기)·`timetable`(시간표 시트 열기)·`session_favorite`(세션 찜) |
 | `favorite_add` · `favorite_remove`(확장) | `type` = `session`을 더한다: 시간표·찜한 세션에서 세션 하트 | `type` = `session`, `id` = 세션 id, `activity_id`(세션이 속한 활동), `field`·`category`는 그 활동 것 |
