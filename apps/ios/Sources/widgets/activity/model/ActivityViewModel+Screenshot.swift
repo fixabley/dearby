@@ -8,7 +8,7 @@ extension ActivityViewModel {
         for _ in 0..<150 {
             if phase == .loaded, let program = programs.first {
                 if !isExpanded(program.id) { toggle(program.id) }
-                if let open = openActivities[program.id], let upcoming = upcomingActivities[program.id] { return (open + upcoming).first?.id }
+                if let loaded = activities(program.id, for: statusGroups) { return (loaded.recruiting + loaded.upcoming).first?.id }
             }
             try? await Task.sleep(for: .milliseconds(200))
         }

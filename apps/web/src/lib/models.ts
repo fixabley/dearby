@@ -66,6 +66,46 @@ export function expiryLabel(expiresAt: string, now = Date.now()): string {
   const days = Math.ceil((time - now) / 86_400_000);
   return days <= 0 ? "오늘 사라져요" : `${days}일 뒤 사라져요`;
 }
+/** 활동 상태 (contract "활동 상태" 2026-10-26): the server judges it in Seoul time; the web only shows it. */
+export const ACTIVITY_STATUSES = [
+  "RECRUITING_UPCOMING",
+  "RECRUITING",
+  "RECRUITMENT_CLOSED",
+  "NO_RECRUITMENT",
+  "IN_PROGRESS",
+  "ENDED",
+] as const;
+export type ActivityStatus = (typeof ACTIVITY_STATUSES)[number];
+/** Badge text; 모집 정보 없음 has none (its date reads `모집 일정 미정`). */
+export const STATUS_BADGE: Record<ActivityStatus, string | undefined> = {
+  RECRUITING_UPCOMING: "모집 예정",
+  RECRUITING: "모집 중",
+  RECRUITMENT_CLOSED: "모집 마감",
+  NO_RECRUITMENT: undefined,
+  IN_PROGRESS: "진행 중",
+  ENDED: "종료",
+};
+/** 모집 중·모집 예정: the recruitment row stands out and the CTA applies. */
+export function applicable(status: ActivityStatus | undefined): boolean {
+  return status === "RECRUITING" || status === "RECRUITING_UPCOMING";
+}
+/** 발견 상태 필터의 세 묶음 (contract "활동 상태"): ids are the `?status=` URL values and the GA `groups` values. */
+export const STATUS_GROUPS = {
+  available: { label: "지원 가능", statuses: ["RECRUITING_UPCOMING", "RECRUITING"] },
+  in_progress: { label: "진행 중", statuses: ["IN_PROGRESS"] },
+  past: { label: "지난 활동", statuses: ["RECRUITMENT_CLOSED", "NO_RECRUITMENT", "ENDED"] },
+} as const satisfies Record<string, { label: string; statuses: readonly ActivityStatus[] }>;
+export type StatusGroup = keyof typeof STATUS_GROUPS;
+export const STATUS_GROUP_IDS = Object.keys(STATUS_GROUPS) as StatusGroup[];
+/** `?status=` as groups in display order; nothing valid → `지원 가능`. */
+export function parseStatusGroups(value: string | undefined): StatusGroup[] {
+  const ids = new Set(value?.split(","));
+  const groups = STATUS_GROUP_IDS.filter((id) => ids.has(id));
+  return groups.length ? groups : ["available"];
+}
+export function groupStatuses(groups: StatusGroup[]): ActivityStatus[] {
+  return groups.flatMap((group) => STATUS_GROUPS[group].statuses);
+}
 // Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
 const scheduleSchema = z.object({
   id: z.number().int(),
@@ -191,6 +231,8 @@ export const activitySchema = z.object({
   // 활동 장소 (contract "활동 장소 — 2026-10-19"): the collected phrase and the curated place; older responses omit both.
   location: text.nullable().optional().catch(null),
   place: placeSchema.nullable().optional().catch(null),
+  // 활동 상태 (contract "활동 상태" 2026-10-26); older responses omit it, an unknown value reads as none.
+  status: z.enum(ACTIVITY_STATUSES).optional().catch(undefined),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -220,6 +262,8 @@ export const programSummarySchema = z.object({
   traitTags: splitTags,
   /** `/v1/programs/{id}/logo?v=…` on the API origin, null without a logo; absent on older responses (contract "프로그램 로고", 2026-10-19 밤). */
   logoUrl: text.nullable().optional().catch(null),
+  /** Activities per 활동 상태 in the query's scope, zeros left out (contract "활동 상태"); absent on older responses. */
+  statusCounts: z.record(z.string(), z.number().int().nonnegative()).optional().catch(undefined),
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -247,6 +291,12 @@ function monthDay(value: string | null): string | undefined {
 export function activityId(value: string): number | undefined {
   const id = Number(value);
   return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(id) ? id : undefined;
+}
+/** The status to show: the server's, else (an older server) one read from the recruitment window alone. */
+export function activityStatus(activity: Activity, now = Date.now()): ActivityStatus {
+  if (activity.status) return activity.status;
+  const { open, label } = recruitment(activity.application, now);
+  return open ? "RECRUITING" : label === "모집 예정" ? "RECRUITING_UPCOMING" : "RECRUITMENT_CLOSED";
 }
 /** Recruitment state comes only from the application period; a missing bound is open on that side. */
 export function recruitment(

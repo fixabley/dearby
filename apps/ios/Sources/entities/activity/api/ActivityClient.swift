@@ -5,16 +5,16 @@ private enum ActivityFetchError: Error { case notFound }
 /// `GET /v1/activities` and `GET /v1/discovery/programs`. Transport or decoding failure is an error, never an empty page.
 enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
-    /// `open` asks the server for currently open activities only (contract "열린 활동 판정 일원화"): the client never re-judges them.
     /// Tags are a search condition only: `q` matching a tag name is the server's rule, and `tagIds` is never sent (2026-10-19 밤).
     /// `kind` (발견 `프로그램 | 이벤트`) keeps an expanded program to that side's activities.
-    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false,
-                      kind: DiscoveryKind? = nil) async throws -> ActivityPage {
+    /// `status` (contract "활동 상태") keeps the activities in those states; nil sends none.
+    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil,
+                      kind: DiscoveryKind? = nil, status: [ActivityStatus]? = nil) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
         if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
+        if let status { items.append(URLQueryItem(name: "status", value: status.map(\.rawValue).joined(separator: ","))) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
-        if open { items.append(URLQueryItem(name: "open", value: "true")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         if let size { items.append(URLQueryItem(name: "size", value: String(size))) }
         return try decode(try await send(api, path: "v1/activities", items))
@@ -27,14 +27,14 @@ enum ActivityClient {
         } catch ActivityFetchError.notFound { return nil }
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
-    /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
-    /// `kind` (발견 `프로그램 | 이벤트`) limits the programs and their summary dates to that side.
+    /// `status` (contract "활동 상태") groups and counts the programs by those activities' states (the non-recruiting ones within the last
+    /// three years). `kind` (발견 `프로그램 | 이벤트`) limits the programs and their summary dates to that side.
     /// `logoUrl` is an API-origin path (`/v1/programs/{id}/logo?v=…`, contract "프로그램 로고"), resolved here against `api`.
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true, kind: DiscoveryKind? = nil) async throws -> ProgramPage {
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, status: [ActivityStatus], kind: DiscoveryKind? = nil) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
         if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
-        if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
+        items.append(URLQueryItem(name: "status", value: status.map(\.rawValue).joined(separator: ",")))
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await send(api, path: "v1/discovery/programs", items))
         return ProgramPage(items: payload.items.map { summary($0, api: api) }, nextCursor: payload.nextCursor)
@@ -48,7 +48,10 @@ enum ActivityClient {
                        upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
                        fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
                        traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
-                       logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL }, hasTimetable: program.hasTimetable ?? false)
+                       logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL }, hasTimetable: program.hasTimetable ?? false,
+                       statusCounts: Dictionary((program.statusCounts ?? [:]).compactMap { key, count in
+                           ActivityStatus(rawValue: key).map { ($0, count) }
+                       }, uniquingKeysWith: +))
     }
     /// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `GET /v1/me/favorites`, programs then activities in the server's
     /// order. Nil on 404 (a server without favorites yet). A malformed item is dropped. A 401 throws `RecommendationFailure.unauthorized`.
@@ -315,7 +318,8 @@ enum ActivityClient {
             location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
             place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) },
             hook: activity.hook?.value.flatMap { $0.isEmpty ? nil : $0 },
-            highlights: (activity.highlights?.value ?? []).filter { !$0.text.isEmpty }.map(\.highlight))
+            highlights: (activity.highlights?.value ?? []).filter { !$0.text.isEmpty }.map(\.highlight),
+            serverStatus: activity.status.flatMap(ActivityStatus.init(rawValue:)))
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day (either day may be missing), or date-less.
     /// An unknown kind reads as an event.
@@ -364,6 +368,8 @@ enum ActivityClient {
         let logoUrl: String?
         /// An open or upcoming activity has a timetable (2026-10-26); absent on older responses.
         let hasTimetable: Bool?
+        /// Activities per status in scope (2026-10-26); absent on older responses.
+        let statusCounts: [String: Int]?
     }
     private struct TagDTO: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let kind: String?
@@ -403,6 +409,8 @@ enum ActivityClient {
         /// 한 줄 소개·핵심 세 줄 (contract "맞춤 대기열" 2026-10-24); absent on older responses, and a malformed value reads as none.
         let hook: Lenient<String>?
         let highlights: Lenient<[HighlightDTO]>?
+        /// 활동 상태 (2026-10-26); absent on older responses.
+        let status: String?
     }
     private struct HighlightDTO: Decodable {
         let icon: String?; let text: String

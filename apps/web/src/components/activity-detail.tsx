@@ -7,7 +7,9 @@ import {
   fieldTagsOf,
   httpsUrl,
   traitTagsOf,
-  recruitment,
+  STATUS_BADGE,
+  activityStatus,
+  applicable,
   recruitmentDate,
   scheduleLabel,
 } from "@/lib/models";
@@ -29,6 +31,7 @@ import { LargeTitle } from "@/shared/ui/nav-title";
 import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { TimetableView } from "@/widgets/activity/timetable";
+import { statusVariant } from "@/widgets/activity/activity-card";
 
 /** 사용 통계 매개변수 (contract analytics-v1.md "웹"): `source` is `link`, the web page being the shared link itself. */
 function eventParams(activity: Activity) {
@@ -89,10 +92,11 @@ export function ActivityDetail({ id }: { id: number }) {
         primary={{ label: "활동 둘러보기", href: "/" }}
       />
     );
-  const status = recruitment(activity.application, now);
+  // 활동 상태 (contract "활동 상태" 2026-10-26): the server's, else read from the recruitment window (older servers).
+  const status = activityStatus(activity, now);
   const official = httpsUrl(activity.officialUrl);
   // CTA: 마감이 아니면 신청 링크(없으면 공식 안내)로, 마감이면 공식 안내로(contract "신청 확인 조건 완화·공개 applicationUrl").
-  const closed = status.label === "모집 마감";
+  const closed = !applicable(status);
   const apply = closed ? undefined : httpsUrl(activity.applicationUrl ?? null);
   const cta = apply ?? official;
   const eligibility = eligibilityLines(activity.eligibility);
@@ -120,7 +124,7 @@ export function ActivityDetail({ id }: { id: number }) {
   const facts: [string, string, string?][] = [
     ["주최", activity.organization.name],
     ["프로그램", activity.program.name],
-    ["모집 기간", recruitmentDay.text, recruitmentDay.dday],
+    ["모집 기간", (status !== "NO_RECRUITMENT" && recruitmentDay.text) || "모집 일정 미정", recruitmentDay.dday],
     ["활동 기간", scheduleLabel(activity.activitySchedule, "activity")],
   ];
   return (
@@ -128,7 +132,9 @@ export function ActivityDetail({ id }: { id: number }) {
       <article className="pt-2 pb-48">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant={status.open ? "filled" : status.label === "모집 예정" ? "tinted" : "neutral"}>{status.label}</Badge>
+            {STATUS_BADGE[status] && (
+              <Badge variant={statusVariant[status]}>{STATUS_BADGE[status]}</Badge>
+            )}
             {activity.category && <Badge>{categoryLabel(activity.category)}</Badge>}
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>

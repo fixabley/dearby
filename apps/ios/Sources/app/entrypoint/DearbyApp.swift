@@ -45,7 +45,7 @@ import SwiftUI
         AppAnalytics.start()
         let links = ConnectionProvider()
         self.links = links
-        let activityModel = ActivityViewModel(programs: links.programs(query:cursor:openOnly:kind:), activities: links.programActivities(programID:open:kind:), activity: links.activity(id:),
+        let activityModel = ActivityViewModel(programs: links.programs(query:cursor:status:kind:), activities: links.programActivities(programID:status:kind:), activity: links.activity(id:),
                                               timetable: links.timetable(activityID:scheduleID:),
                                               webOrigin: links.origins.web)
         _activityModel = State(initialValue: activityModel)
@@ -309,8 +309,8 @@ import SwiftUI
     /// Store screenshots: tab-level scenes; the discovery stack pushes its own (`ActivityListPage`). 내 활동 gets the first activity added.
     private func showScreenshotScene() async {
         switch ScreenshotScene.current {
-        // 발견 장면은 마감 숨기기를 꺼 최근 활동 프로그램까지 보인다(빈 화면 방지).
-        case .discover: activityModel.openOnly = false
+        // 발견 장면은 상태 묶음을 모두 골라 최근 활동 프로그램까지 보인다(빈 화면 방지).
+        case .discover: activityModel.setStatusGroups(Set(StatusGroup.allCases))
         case .cards: tab = 2
         // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
         case .queue: showsQueue = true

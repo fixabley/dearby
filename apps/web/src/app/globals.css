@@ -21,6 +21,9 @@
   --mint: color-mix(in srgb, var(--teal) 12%, transparent);
   --danger: #a12a2a;
   --bar: rgb(242 242 247 / 0.8);
+  /* systemBlue: the 진행 중 status capsule (contract "활동 상태"), text on a 15% tint. */
+  --blue: #007aff;
+  --blue-tint: color-mix(in srgb, var(--blue) 15%, transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -34,6 +37,7 @@
     --teal: #3fb3b4;
     --danger: #f0625c;
     --bar: rgb(18 18 18 / 0.8);
+    --blue: #0a84ff;
   }
 }
 
@@ -50,6 +54,8 @@
   --color-mint: var(--mint);
   --color-danger: var(--danger);
   --color-bar: var(--bar);
+  --color-blue: var(--blue);
+  --color-blue-tint: var(--blue-tint);
   --font-sans: -apple-system, BlinkMacSystemFont, "Pretendard Variable", "Pretendard", system-ui, sans-serif;
   /* iOS text styles (size / line height) */
   --text-large-title: 34px;

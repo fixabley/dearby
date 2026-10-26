@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ACTIVITY_STATUSES,
   activityId,
   activitySchema,
   cardSchema,
@@ -49,7 +50,7 @@ function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
 /**
- * Only `q`, `cursor`, `size`, `kind` (프로그램·이벤트 전환), `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
+ * Only `q`, `cursor`, `size`, `kind` (프로그램·이벤트 전환), `status` (활동 상태, both), `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
  * to the searches, rebuilt from validated values. Tags are searched through `q` only; the web never sends `tagIds`
  * (contract "태그 칩 줄 제거", 2026-10-19 밤).
  */
@@ -68,6 +69,9 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   // `openOnly=false` lists programs with activity in the last two years as well (contract "모집 중인 프로그램만 보기").
   const programsOpenOnly = url.searchParams.get("openOnly");
   if (programsOpenOnly !== null && (!programs || !["true", "false"].includes(programsOpenOnly))) return;
+  // 활동 상태 (contract "활동 상태"): a comma list of the server's values; anything else is rejected rather than dropped.
+  const status = url.searchParams.get("status");
+  if (status !== null && !status.split(",").every((value) => (ACTIVITY_STATUSES as readonly string[]).includes(value))) return;
   if (q && q.length > 100) return;
   if (cursor !== null && !/^\d{1,18}$/.test(cursor)) return;
   if (size !== null && !(/^\d{1,3}$/.test(size) && +size >= 1 && +size <= 100))
@@ -83,6 +87,7 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
   if (kind !== null) query.set("kind", kind);
+  if (status !== null) query.set("status", status);
   if (programId !== null) query.set("programId", programId);
   if (openOnly !== null) query.set("open", openOnly);
   if (programsOpenOnly !== null) query.set("openOnly", programsOpenOnly);

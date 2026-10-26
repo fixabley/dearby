@@ -3,7 +3,7 @@ import Synchronization
 
 /// One activity from `GET /v1/activities` (contract "활동 조회 — 2026-10-14"). Missing values stay nil and read as unconfirmed.
 struct ActivityModel: Equatable, Identifiable, Sendable {
-    enum Recruitment: Equatable, Sendable { case upcoming, open, closed, unknown }
+    private enum Recruitment { case upcoming, open, closed, unknown }
     /// The API's numeric id as a string: navigation uses string ids.
     let id: String
     let title: String
@@ -47,11 +47,23 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// 한 줄 소개 and 핵심 세 줄 (contract "맞춤 대기열" 2026-10-24); nil/empty when none or on older responses.
     var hook: String? = nil
     var highlights: [ActivityHighlight] = []
+    /// 활동 상태 from the server (contract "활동 상태" 2026-10-26); nil on older responses or an unknown value. Read it through `status(at:)`.
+    var serverStatus: ActivityStatus? = nil
 
-    /// Recruitment only from the application window against now (contract "열린 활동 판정 일원화", 2026-10-19). A timed window
+    /// The status to show: the server's, else (an older server) one read from the recruitment window alone — 모집 중·예정, otherwise 마감.
+    func status(at now: Date) -> ActivityStatus? {
+        if let serverStatus { return serverStatus }
+        switch recruitment(at: now) {
+        case .upcoming: return .recruitingUpcoming
+        case .open: return .recruiting
+        case .closed: return .recruitmentClosed
+        case .unknown: return nil
+        }
+    }
+    /// The older servers' stand-in for `status`: recruitment only from the application window against now (contract "열린 활동 판정 일원화"). A timed window
     /// compares instants and a missing bound is open on that side; a date-only window compares Seoul days
     /// (`startDate ≤ today < endDateExclusive`). No window at all, or an unreadable bound, needs checking.
-    func recruitment(at now: Date) -> Recruitment {
+    private func recruitment(at now: Date) -> Recruitment {
         if recruitmentStartAt != nil || recruitmentEndAt != nil {
             let start = Self.instant(recruitmentStartAt), end = Self.instant(recruitmentEndAt)
             guard (start == nil) == (recruitmentStartAt == nil), (end == nil) == (recruitmentEndAt == nil) else { return .unknown }
@@ -86,7 +98,7 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// and, while 모집 중, `D-n`/`D-DAY` in Seoul days to the last day; otherwise `recruitmentText` (an end alone `~ … 마감`) and no badge.
     func recruitmentDate(at now: Date) -> (text: String?, dday: String?) {
         guard let stage = applicationStage, let period = stage.periodText(now: now) else { return (recruitmentText(at: now), nil) }
-        guard recruitment(at: now) == .open, let last = stage.lastDay else { return (period, nil) }
+        guard status(at: now) == .recruiting, let last = stage.lastDay else { return (period, nil) }
         var seoul = Calendar(identifier: .gregorian)
         seoul.timeZone = ActivityText.seoul
         let days = seoul.dateComponents([.day], from: seoul.startOfDay(for: now), to: seoul.startOfDay(for: last)).day ?? 0
@@ -106,14 +118,6 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
-    func statusLabel(at now: Date) -> String {
-        switch recruitment(at: now) {
-        case .upcoming: "모집 예정"
-        case .open: "모집 중"
-        case .closed: "모집 마감"
-        case .unknown: "모집 여부 확인 필요"
-        }
-    }
     /// The official link (https only).
     var officialURL: URL? { Self.safeURL(officialUrl) }
     /// The activity's page on the build's web origin, written into events added from the app and used to leave them out of the
@@ -121,14 +125,11 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     static func calendarLink(_ id: String, web: URL) -> URL { web.appending(path: "activities/\(id)") }
     /// The curated application link (https only); the detail CTA opens it before the official notice.
     var applicationSiteURL: URL? { Self.safeURL(applicationUrl) }
-    /// Applying is over (contract "신청 확인 조건 완화"): the recruitment deadline passed, or, with no window to judge by, the activity
-    /// itself ended. Open, upcoming and unknown-but-not-ended all still lead to the "신청하셨나요?" prompt.
+    /// Applying is over (contract "신청 확인 조건 완화"): the status is neither 모집 중 nor 모집 예정. Without a status (an unreadable window on
+    /// an older server) only an ended activity is closed, so the "신청하셨나요?" prompt still comes.
     func applicationClosed(at now: Date) -> Bool {
-        switch recruitment(at: now) {
-        case .closed: true
-        case .open, .upcoming: false
-        case .unknown: activityStage.flatMap { $0.end ?? $0.start }.map { $0 < now } ?? false
-        }
+        if let status = status(at: now) { return !status.applicable }
+        return activityStage.flatMap { $0.end ?? $0.start }.map { $0 < now } ?? false
     }
     var imageURL: URL? { Self.safeURL(imageUrl) }
 
@@ -356,6 +357,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var logoURL: URL? = nil
     /// An open or upcoming activity of the bundle has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): the collapsed card's `시간표` badge.
     var hasTimetable = false
+    /// Activities per 활동 상태 in the query's scope (contract "활동 상태": `statusCounts`, zeros left out); empty on older responses.
+    var statusCounts: [ActivityStatus: Int] = [:]
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
     var nearestRecruitmentStart: Date? { ActivityModel.instant(nearestRecruitmentStartAt) }
