@@ -36,7 +36,6 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
  * `이전` and system back reopen the section before the open one with every answer kept (contract "뒤로 가기"). On the first section that slot is `나중에`, and
  * back does the same: after "프로필은 나중에 프로필 탭에서 만들 수 있어요" [later] shows 발견, still signed in, the answers kept in the view model.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfileSetupPage(
     form: ProfileFormState, saving: Boolean, error: String?, jobSearch: PickerSearchState, searchJobs: (String) -> Unit,
     change: (ProfileFormState) -> Unit, save: () -> Unit, later: () -> Unit, modifier: Modifier = Modifier,
@@ -68,7 +67,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
         Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             sections.filter { it in reached }.forEach { step ->
                 if (step == open) OpenSection(step, form, tried, errorOf(step), jobSearch, searchJobs, change, focus, ::next)
                 else DoneRow(step, valueOf(step, form)) { reopen(step) }

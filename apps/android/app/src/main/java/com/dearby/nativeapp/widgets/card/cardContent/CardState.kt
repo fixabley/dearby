@@ -13,7 +13,7 @@ data class CardHistoryState(val id: String, val title: String, val role: String,
 data class CardState(
     /** [title]·[description] are the card's own name and note: the card face does not draw them (contract "명함 표현"), but the wallet search (`filterWallet`) matches on them. */
     val id: String, val person: String, val job: String, val title: String,
-    /** [introduction] is the card body: the filled-in markdown template. */
+    /** [introduction] is the card body (markdown): the profile introduction at publish. */
     val description: String, val introduction: String,
     val contacts: List<ContactState>, val histories: List<CardHistoryState>,
     /** 명함 머리의 소속·받은 명함 목록 칩: 가장 최근 승인 이력의 조직 이름(없으면 null). */

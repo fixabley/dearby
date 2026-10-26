@@ -58,17 +58,17 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         return user to profile
     }
 
-    private fun publish(user: UUID, profile: Profile, template: String = "# {{profile.name}}\n{{contact:${profile.contacts[0].id}}} / {{contact:${profile.contacts[1].id}}}", contactIds: List<UUID> = listOf(profile.contacts[0].id), historyIds: List<UUID> = listOf(profile.histories[0].id)): JsonNode =
-        read(post(user, "/v1/cards", """{"name":"내 명함","description":"설명","template":${json.writeValueAsString(template)},"contactIds":${json.writeValueAsString(contactIds)},"historyIds":${json.writeValueAsString(historyIds)}}""").andExpect { status { isCreated() } })
+    // 배포된 옛 앱처럼 template을 함께 보낸다(2026-10-26부터 서버는 받기만 하고 무시)
+    private fun publish(user: UUID, profile: Profile, contactIds: List<UUID> = listOf(profile.contacts[0].id), historyIds: List<UUID> = listOf(profile.histories[0].id)): JsonNode =
+        read(post(user, "/v1/cards", """{"name":"내 명함","description":"설명","template":"# {{profile.name}}","contactIds":${json.writeValueAsString(contactIds)},"historyIds":${json.writeValueAsString(historyIds)}}""").andExpect { status { isCreated() } })
 
     @Test
-    fun `발행은 고른 연락처·승인된 이력만 복사하고 템플릿을 채우며, 공개 조회에는 template이 없다`() {
+    fun `발행은 고른 연락처·승인된 이력과 자기소개를 복사하고 보낸 template은 무시하며, 공개 조회에는 template이 없다`() {
         val (user, profile) = userWithProfile("발행자")
         val card = publish(user, profile)
-        // 고른 연락처는 채워지고 고르지 않은 연락처 토큰은 비워진다. 이력의 evidence는 빈 목록
-        assertEquals("# 발행자\n010-1111-2222 / ", card["introduction"].asString())
+        // 본문은 프로필 자기소개 그대로이고 옛 앱이 보내는 template은 쓰지 않는다(2026-10-26 템플릿 폐지). 이력의 evidence는 빈 목록
+        assertEquals(listOf("안녕하세요", ""), listOf(card["introduction"].asString(), card["template"].asString()))
         assertEquals(listOf(1, 1, "발행자", "개발자"), listOf(card["contacts"].size(), card["histories"].size(), card["profileName"].asString(), card["job"].asString()))
-        assertTrue(card.has("template"))
         assertEquals(0, card["histories"][0]["evidence"].size())
 
         // 내 프로필에 없는 id, 승인 전 이력, 빈 이름은 400. 프로필이 없는 사용자도 400
@@ -78,7 +78,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val noProfile = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
         post(noProfile, "/v1/cards", """{"name":"x"}""").andExpect { status { isBadRequest() } }
 
-        val second = publish(user, profile, template = "둘째")
+        val second = publish(user, profile)
         assertEquals(listOf(card["id"].asString(), second["id"].asString()), read(mvc.get("/v1/cards") { asUser(user) }.andExpect { status { isOk() } })["items"].values().map { it["id"].asString() })
         mvc.get("/v1/cards").andExpect { status { isUnauthorized() } }
 
@@ -88,7 +88,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         mvc.get("/v1/cards/${card["id"].asString()}") { asUser(user) }.andExpect { status { isOk() } }
         val public = read(mvc.get("/v1/cards/${card["id"].asString()}?code=$code").andExpect { status { isOk() } })
         assertFalse(public.has("template"))
-        assertEquals("# 발행자\n010-1111-2222 / ", public["introduction"].asString())
+        assertEquals("안녕하세요", public["introduction"].asString())
         mvc.get("/v1/cards/${UUID.randomUUID()}").andExpect { status { isNotFound() } }
 
         // 프로필을 고쳐도 발행본은 그대로
@@ -121,20 +121,19 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val (other, _) = userWithProfile("남")
         val (receiver, _) = userWithProfile("받는이")
         val first = publish(user, profile)
-        val second = publish(user, profile, template = "둘째")
+        val second = publish(user, profile)
         val cardId = first["id"].asString()
         jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{\"activityId\":null,\"label\":null}', now())").params(UUID.randomUUID(), receiver, UUID.fromString(cardId)).update()
         // 받은 계정(회수 전 Receipt)은 코드 없이 본다
         val before = read(mvc.get("/v1/cards/$cardId") { asUser(receiver) }.andExpect { status { isOk() } })
         assertEquals(before["createdAt"].asString(), before["updatedAt"].asString())
 
-        // 프로필을 고친 뒤 PUT하면 현재 프로필이 반영된다. template을 보내지 않으면 그 명함의 template 그대로
-        profiles.save(profile.copy(name = "바뀐 주인"))
+        // 프로필을 고친 뒤 PUT하면 현재 프로필(자기소개 포함)이 반영된다. template은 보내지 않아도 된다
+        profiles.save(profile.copy(name = "바뀐 주인", introduction = "바뀐 소개"))
         val body = """{"name":"고친 명함","description":"새 설명","contactIds":${json.writeValueAsString(listOf(profile.contacts[0].id, profile.contacts[1].id))},"historyIds":[]}"""
         val updated = read(put(user, "/v1/cards/$cardId", body).andExpect { status { isOk() } })
         assertEquals(listOf(cardId, "고친 명함", "새 설명", "바뀐 주인", 2, 0), listOf(updated["id"].asString(), updated["name"].asString(), updated["description"].asString(), updated["profileName"].asString(), updated["contacts"].size(), updated["histories"].size()))
-        assertEquals(first["template"].asString(), updated["template"].asString())
-        assertEquals("# 바뀐 주인\n010-1111-2222 / 주인@example.com", updated["introduction"].asString())
+        assertEquals(listOf("바뀐 소개", ""), listOf(updated["introduction"].asString(), updated["template"].asString()))
 
         // 같은 id·createdAt, updatedAt만 바뀐다. 공개 조회·내 목록(순서 유지)·받은 지갑이 고친 내용을 보인다
         val public = read(mvc.get("/v1/cards/$cardId") { asUser(receiver) }.andExpect { status { isOk() } })

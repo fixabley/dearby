@@ -1,11 +1,9 @@
 import Foundation
 
-/// Composer state: the saved profile's data and which contacts and histories the card shows. The body comes from the
-/// built-in starter template (contract "템플릿 — 2026-10-18 앱 안 꾸미기 삭제"); there is no in-app editing.
+/// Composer state: the saved profile's data and which contacts and histories the card shows. The body is the profile's
+/// introduction as it is (contract "템플릿" 폐지, 2026-10-26); there is no in-app editing.
 struct CardDraft: Equatable {
     var cardTitle = ""
-    /// The built-in template the server fills at publish; fixed for the profile, never edited in the app.
-    let template: String
     var publicContactIDs: Set<String>
     var publicHistoryIDs: Set<String>
     let profile: AccountProfile
@@ -18,7 +16,6 @@ struct CardDraft: Equatable {
     init(profile: AccountProfile, prefill: PublishedCard? = nil) {
         self.profile = profile
         cardTitle = prefill?.name ?? ""
-        template = TemplateDocument.starter(for: profile)
         let approved = Set(profile.histories.filter(\.isApproved).map(\.id))
         publicContactIDs = prefill.map { Set($0.contacts.map(\.id)) } ?? Set(profile.contacts.map(\.id))
         publicHistoryIDs = prefill.map { Set($0.histories.map(\.id)).intersection(approved) } ?? approved
@@ -28,15 +25,12 @@ struct CardDraft: Equatable {
     mutating func revert() {
         cardTitle = initial.cardTitle; publicContactIDs = initial.contacts; publicHistoryIDs = initial.histories
     }
-    /// Contacts the template names are always public (the server leaves unselected tokens empty).
-    var tokenContactIDs: Set<String> { TemplateDocument.contactIDs(in: template) }
-    var effectiveContactIDs: Set<String> { publicContactIDs.union(tokenContactIDs.intersection(profile.contacts.map(\.id))) }
     /// The body as the card will show it.
-    var preview: String { TemplateDocument.fill(template, profile: profile, contactIDs: effectiveContactIDs) }
+    var preview: String { profile.introduction }
     var card: AccountClient.CardInput {
         let title = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return AccountClient.CardInput(name: title.isEmpty ? "내 명함" : title, description: "", template: template,
-                                       contactIds: profile.contacts.map(\.id).filter(effectiveContactIDs.contains),
+        return AccountClient.CardInput(name: title.isEmpty ? "내 명함" : title, description: "",
+                                       contactIds: profile.contacts.map(\.id).filter(publicContactIDs.contains),
                                        historyIds: profile.histories.map(\.id).filter(publicHistoryIDs.contains))
     }
     /// Why the profile cannot be published yet (name, phone and email are required data), or nil.

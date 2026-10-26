@@ -265,8 +265,7 @@ struct ExchangeContext: Decodable, Equatable, Sendable {
     let activityName: String?
     let programName: String?
 }
-/// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
-/// `template` comes only on owner reads (the built-in template the card was published with).
+/// A published card snapshot from `POST /v1/cards`. `introduction` is the markdown body (the profile introduction at publish).
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
@@ -274,7 +273,6 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let profileName: String
     let job: String
     var introduction: String? = nil
-    var template: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String

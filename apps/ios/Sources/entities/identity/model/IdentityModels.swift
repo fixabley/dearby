@@ -55,7 +55,7 @@ struct CardModel: Identifiable, Equatable {
     var name: String
     var profileName: String
     var job: String
-    /// Markdown body (the filled-in card template).
+    /// Markdown body (the profile introduction at publish).
     var introduction: String
     var description: String
     var contacts: [ContactModel]

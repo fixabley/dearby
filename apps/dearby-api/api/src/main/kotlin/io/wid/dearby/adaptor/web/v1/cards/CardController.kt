@@ -26,12 +26,12 @@ class CardController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun publish(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: CardPublishRequest) =
-        CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
+        CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.contactIds, request.historyIds), includeTemplate = true)
 
     // 명함 고치기(native-v1.md "명함 고치기는 같은 명함을 수정"): 같은 id의 스냅샷을 현재 프로필로 다시 만든다. 남의·철회된 명함은 404
     @PutMapping("/{id}")
     fun update(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID, @RequestBody request: CardPublishRequest) =
-        CardResponse.from(cards.update(userId(jwt), id, request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
+        CardResponse.from(cards.update(userId(jwt), id, request.name, request.description, request.contactIds, request.historyIds), includeTemplate = true)
 
     // 근거: 주인·받은 계정(Bearer), 웹 프록시가 보낸 게스트 세션(게스트 경로와 같은 헤더), 또는 ?code=. 없으면 403 CARD_CODE_REQUIRED·CARD_CODE_EXPIRED
     @GetMapping("/{id}")

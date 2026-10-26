@@ -31,7 +31,6 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
  * system back go to the previous question with the answers kept (contract "뒤로 가기"); from the first question (a saved history: from its
  * summary) they close, asking first when something was changed. A saved history's first question goes back to its summary.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable fun HistoryFunnelPage(
     state: FunnelState, change: (HistoryDraft) -> Unit, go: (HistoryDraft.Step) -> Unit, next: () -> Unit, searchQuery: (String) -> Unit,
     pickImage: () -> Unit, pickPdf: () -> Unit, deleteEvidence: (String) -> Unit, close: () -> Unit,
@@ -56,7 +55,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
         DearbyTopBar(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", back)
         LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (state.step) {
                 HistoryDraft.Step.KIND -> {
                     Text("어떤 이력인가요?", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
