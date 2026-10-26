@@ -124,6 +124,10 @@ struct TimetableSessionSheet: View {
     @Environment(SessionFavoritesModel.self) private var favorites
     @Environment(\.dismiss) private var dismiss
     var body: some View {
+        // A heart pressed signed out opens sign-in over this sheet.
+        content.promptLayer()
+    }
+    @ViewBuilder private var content: some View {
         let favorited = favorites.ids.contains(session.id)
         NavigationStack {
             List {

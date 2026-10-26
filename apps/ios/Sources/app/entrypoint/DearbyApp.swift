@@ -27,6 +27,7 @@ import SwiftUI
     /// 개인정보 동의 (contract "개인정보 동의" 2026-10-25): the consent sheet over the whole app, asked at launch, on return to the foreground and
     /// whenever an account feature is opened while the current versions are not agreed. Closing it keeps the session.
     @State private var showsConsent = false
+    @State private var promptLayers = PromptLayers()
     @State private var tab = 0
     /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
     @State private var cardsSegment = CardsSegment.myCards
@@ -95,18 +96,11 @@ import SwiftUI
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel, adConsent: adConsent)
                     }
-                    .sheet(isPresented: $signingIn, onDismiss: continueAfterSignIn) {
-                        NavigationStack { SignInSheet(account: account) {} }
-                    }
-                    // Closes itself once agreed (the getter reads the pending state); pulled down or 닫기 it asks again next time.
-                    .sheet(isPresented: Binding(get: { showsConsent && consentNeeded }, set: { if !$0 { showsConsent = false } })) {
-                        NavigationStack { ConsentPage(state: profile) }
-                    }
-                    .alert(favorites.notice ?? "", isPresented: Binding(get: { favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
-                        Button("확인", role: .cancel) {}
-                    }
+                    .promptLayer()
                 }
             }
+            // Sign-in, consent and the favorites notices show on the top layer (`promptLayer`): the app root, or a sheet over it.
+            .environment(\.promptHost, promptHost)
             // Every heart reads the one favorites model, also inside sheets and the queue.
             .environment(favorites)
             // Every tab's bell: the inbox signed in, sign-in otherwise (contract "알림 목록(발견 우상단 종)").
@@ -214,13 +208,30 @@ import SwiftUI
                 sessionFavorites.signInRequested = false
                 needAccount()
             }
-            .background {
-                // A separate host so it does not compete with the app's other alerts.
-                Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { sessionFavorites.notice != nil },
-                                                                                       set: { if !$0 { sessionFavorites.notice = nil } })) {
+    }
+    /// The prompts every `promptLayer` carries, shown only on the top one (contract "트랙·세션 시간표" 2026-10-26 모달 시트): signed in from a
+    /// timetable sheet, the sheet stays and its hearts follow the account.
+    private var promptHost: PromptHost {
+        PromptHost(layers: promptLayers) { content, isTop in
+            AnyView(content
+                .sheet(isPresented: Binding(get: { isTop && signingIn }, set: { if !$0 { signingIn = false } }), onDismiss: continueAfterSignIn) {
+                    NavigationStack { SignInSheet(account: account) {} }
+                }
+                // Closes itself once agreed (the getter reads the pending state); pulled down or 닫기 it asks again next time.
+                .sheet(isPresented: Binding(get: { isTop && showsConsent && consentNeeded }, set: { if !$0 { showsConsent = false } })) {
+                    NavigationStack { ConsentPage(state: profile) }
+                }
+                .alert(favorites.notice ?? "", isPresented: Binding(get: { isTop && favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
                     Button("확인", role: .cancel) {}
                 }
-            }
+                .background {
+                    // A separate host so it does not compete with the other alert.
+                    Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { isTop && sessionFavorites.notice != nil },
+                                                                                           set: { if !$0 { sessionFavorites.notice = nil } })) {
+                        Button("확인", role: .cancel) {}
+                    }
+                })
+        }
     }
     /// Account sync and the consent prompts, kept apart from `body` so the compiler can type-check it.
     private func accountSync(_ content: some View) -> some View {

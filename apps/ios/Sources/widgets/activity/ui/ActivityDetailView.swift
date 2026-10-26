@@ -61,6 +61,8 @@ struct ActivityDetailView: View {
         // compete with the detail's vertical scrolling.
         .sheet(item: $timetable) { route in
             NavigationStack { TimetablePage(state: state, route: route) }
+                // Sign-in and consent from a heart open over the sheet, which stays.
+                .promptLayer()
                 .presentationDetents([.large]).presentationDragIndicator(.visible)
         }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
