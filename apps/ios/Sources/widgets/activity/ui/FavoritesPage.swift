@@ -34,14 +34,16 @@ struct FavoritesPage: View {
                 }
             }
         }
-        // 찜한 세션 (contract "트랙·세션 시간표" 2026-10-26): with at least one, a row above the calendar opens 나만의 시간표.
+        // 내 시간표 (contract "트랙·세션 시간표" 2026-10-26): with at least one favorited session, a row above the calendar opens it.
         .safeAreaInset(edge: .top, spacing: 0) {
             if !sessions.items.isEmpty {
                 Button { path.append(MySessionsRoute()) } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "heart.text.square").foregroundStyle(.pink)
-                        Text("찜한 세션").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
-                        Text("\(sessions.items.count)개").font(.dearby(.subheadline)).foregroundStyle(.secondary).monospacedDigit()
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("내 시간표 · 세션 \(sessions.items.count)개").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary).monospacedDigit()
+                            Text("시간순으로 모아 보기").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                        }
                         Spacer(minLength: 8)
                         Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
                     }
@@ -50,7 +52,7 @@ struct FavoritesPage: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).padding(.horizontal, 20).padding(.vertical, 8)
-                .accessibilityLabel("찜한 세션 \(sessions.items.count)개").accessibilityHint("누르면 나만의 시간표를 보여요")
+                .accessibilityLabel("내 시간표 · 세션 \(sessions.items.count)개, 시간순으로 모아 보기").accessibilityHint("누르면 내 시간표를 보여요")
                 .accessibilityIdentifier("favorite-sessions")
             }
         }
