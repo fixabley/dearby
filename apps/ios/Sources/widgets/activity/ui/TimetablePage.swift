@@ -101,6 +101,18 @@ struct TimetablePage: View {
     }
 }
 
+extension View {
+    /// The block's timetable as a modal sheet (contract "트랙·세션 시간표" 2026-10-26 모달 시트), from the activity detail and 진행 단계.
+    func timetableSheet(_ route: Binding<TimetableRoute?>, state: ActivityViewModel) -> some View {
+        sheet(item: route) { route in
+            NavigationStack { TimetablePage(state: state, route: route) }
+                // Sign-in and consent from a heart open over the sheet, which stays.
+                .promptLayer()
+                .presentationDetents([.large]).presentationDragIndicator(.visible)
+        }
+    }
+}
+
 /// The table (contract "표"): the time column stays while the whole grid scrolls sideways at once, so columns stay aligned. Without
 /// tracks, one card per time slot and no sideways scrolling. Columns widen to fill a wide screen (no scrolling when they all fit).
 struct TimetableTable: View {
