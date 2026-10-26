@@ -15,7 +15,6 @@ import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import java.time.Duration
-import java.time.OffsetDateTime
 import java.util.*
 
 // native-v1.md "프로필과 버전 이력". 로그인 사용자 자신의 프로필만
@@ -57,7 +56,7 @@ class ProfileController(private val profiles: ProfileService) {
     @PutMapping("/photo", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun putPhoto(@AuthenticationPrincipal jwt: Jwt, @RequestPart("file") file: MultipartFile): PhotoResponse {
         val contentType = file.contentType ?: throw InvalidInputException("파일 종류를 알 수 없습니다")
-        return PhotoResponse(photoUrl(profiles.putPhoto(userId(jwt), contentType, file.bytes)))
+        return PhotoResponse(ProfileResponse.photoUrl(profiles.putPhoto(userId(jwt), contentType, file.bytes)))
     }
 
     @GetMapping("/photo")
@@ -72,8 +71,6 @@ class ProfileController(private val profiles: ProfileService) {
 
     data class PhotoResponse(val photoUrl: String)
 
-    private fun photoUrl(updatedAt: OffsetDateTime) = "/v1/profile/photo?v=${updatedAt.toInstant().toEpochMilli()}"
-
     private fun toInput(r: ProfileRequest) = ProfileInput(
         name = r.name,
         jobs = r.jobs.map { JobInput(it.id, it.jobId, it.jobName) },
@@ -87,7 +84,7 @@ class ProfileController(private val profiles: ProfileService) {
         },
     )
 
-    private fun response(userId: UUID, profile: io.wid.dearby.domain.profile.Profile) = ProfileResponse.from(profile, profiles.consent(userId), profiles.photoUpdatedAt(userId)?.let(::photoUrl))
+    private fun response(userId: UUID, profile: io.wid.dearby.domain.profile.Profile) = ProfileResponse.from(profile, profiles.consent(userId), profiles.photoUpdatedAt(userId)?.let(ProfileResponse::photoUrl))
 
     private fun userId(jwt: Jwt): UUID = UUID.fromString(jwt.subject)
 }

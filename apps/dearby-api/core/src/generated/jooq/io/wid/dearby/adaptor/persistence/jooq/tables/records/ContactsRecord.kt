@@ -6,6 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.records
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import org.jooq.Record1
@@ -42,6 +43,14 @@ open class ContactsRecord() : UpdatableRecordImpl<ContactsRecord>(Contacts.CONTA
         set(value): Unit = set(5, value)
         get(): Int? = get(5) as Int?
 
+    open var verified: Boolean?
+        set(value): Unit = set(6, value)
+        get(): Boolean? = get(6) as Boolean?
+
+    open var verifiedAt: OffsetDateTime?
+        set(value): Unit = set(7, value)
+        get(): OffsetDateTime? = get(7) as OffsetDateTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -51,13 +60,15 @@ open class ContactsRecord() : UpdatableRecordImpl<ContactsRecord>(Contacts.CONTA
     /**
      * Create a detached, initialised ContactsRecord
      */
-    constructor(id: UUID? = null, userId: UUID? = null, kind: String? = null, label: String? = null, value: String? = null, position: Int? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, kind: String? = null, label: String? = null, value: String? = null, position: Int? = null, verified: Boolean? = null, verifiedAt: OffsetDateTime? = null): this() {
         this.id = id
         this.userId = userId
         this.kind = kind
         this.label = label
         this.value = value
         this.position = position
+        this.verified = verified
+        this.verifiedAt = verifiedAt
         resetTouchedOnNotNull()
     }
 }

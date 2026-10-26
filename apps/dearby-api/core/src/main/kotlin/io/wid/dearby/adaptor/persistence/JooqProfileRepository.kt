@@ -27,7 +27,7 @@ class JooqProfileRepository(private val dsl: DSLContext) : ProfileRepository {
     override fun find(userId: UserId): Profile? {
         val row = dsl.selectFrom(PROFILES).where(PROFILES.USER_ID.eq(userId)).fetchOne() ?: return null
         val contacts = dsl.selectFrom(CONTACTS).where(CONTACTS.USER_ID.eq(userId)).orderBy(CONTACTS.POSITION).fetch()
-            .map { Contact(it.id!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!) }
+            .map { Contact(it.id!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!, it.verified!!, it.verifiedAt) }
         val historyRows = dsl.selectFrom(PROFILE_HISTORIES).where(PROFILE_HISTORIES.USER_ID.eq(userId)).orderBy(PROFILE_HISTORIES.POSITION).fetch()
         val jobRows = dsl.selectFrom(PROFILE_JOBS).where(PROFILE_JOBS.USER_ID.eq(userId)).orderBy(PROFILE_JOBS.POSITION).fetch()
         return Profile(userId, row.name!!, jobs.load(jobRows), row.introLink, contacts, histories.load(historyRows), row.version!!, row.updatedAt!!)
@@ -60,6 +60,8 @@ class JooqProfileRepository(private val dsl: DSLContext) : ProfileRepository {
                 .set(CONTACTS.KIND, contact.kind.name)
                 .set(CONTACTS.LABEL, contact.label)
                 .set(CONTACTS.VALUE, contact.value)
+                .set(CONTACTS.VERIFIED, contact.verified)
+                .set(CONTACTS.VERIFIED_AT, contact.verifiedAt)
                 .set(CONTACTS.POSITION, index)
                 .execute()
         }

@@ -25,7 +25,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmbeddingSettings
+import io.wid.dearby.adaptor.persistence.jooq.tables.GithubContactLinks
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
@@ -184,9 +186,19 @@ val DISCOVERY_QUEUE: DiscoveryQueue = DiscoveryQueue.DISCOVERY_QUEUE
 val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
 
 /**
+ * The table <code>public.email_contact_challenges</code>.
+ */
+val EMAIL_CONTACT_CHALLENGES: EmailContactChallenges = EmailContactChallenges.EMAIL_CONTACT_CHALLENGES
+
+/**
  * The table <code>public.embedding_settings</code>.
  */
 val EMBEDDING_SETTINGS: EmbeddingSettings = EmbeddingSettings.EMBEDDING_SETTINGS
+
+/**
+ * The table <code>public.github_contact_links</code>.
+ */
+val GITHUB_CONTACT_LINKS: GithubContactLinks = GithubContactLinks.GITHUB_CONTACT_LINKS
 
 /**
  * The table <code>public.guest_cards</code>.

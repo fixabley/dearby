@@ -176,7 +176,8 @@ class ProfileService(
     @Transactional
     fun withdrawAdConsent(userId: UserId) = consents.deleteAd(userId)
 
-    private fun requireConsent(userId: UserId) {
+    // 프로필 쓰기 전 동의 확인(연락처 인증 서비스도 쓴다)
+    fun requireConsent(userId: UserId) {
         if (!consentVersions.satisfiedBy(consents.find(userId))) {
             throw PermissionDeniedException("개인정보 수집·이용과 이용약관에 먼저 동의해 주세요", "Consent required: $userId", code = CONSENT_REQUIRED)
         }
@@ -229,20 +230,44 @@ class ProfileService(
             ?: throw InvalidInputException("연락처 종류가 올바르지 않습니다: ${input.kind}")
         val label = text(input.label, "연락처 이름", MAX_NAME, allowEmpty = true)
         val value = text(input.value, "연락처 값", MAX_VALUE)
-        when (kind) {
-            ContactKind.PHONE -> if (!PHONE.matches(value) || value.count { it.isDigit() } !in 8..15) throw InvalidInputException("전화번호 형식이 올바르지 않습니다")
-            ContactKind.EMAIL -> if (!EMAIL.matches(value)) throw InvalidInputException("이메일 형식이 올바르지 않습니다")
+        val stored = when (kind) {
+            ContactKind.PHONE -> value.also { if (!PHONE.matches(it) || it.count { c -> c.isDigit() } !in 8..15) throw InvalidInputException("전화번호 형식이 올바르지 않습니다") }
+            ContactKind.EMAIL -> value.also { if (!EMAIL.matches(it)) throw InvalidInputException("이메일 형식이 올바르지 않습니다") }
             else -> {
                 val rule = USERNAME_RULES.getValue(kind)
-                val username = username(value, rule)
-                if (username != null) return Contact(input.id, kind, label, username)
-                if (existing?.kind != kind || existing.value != value) {
-                    throw InvalidInputException("사용자명은 영문·숫자·.·_·-로 ${rule.max}자까지입니다", "Invalid ${kind.name.lowercase()} username")
+                username(value, rule) ?: value.also {
+                    if (existing?.kind != kind || existing.value != it) {
+                        throw InvalidInputException("사용자명은 영문·숫자·.·_·-로 ${rule.max}자까지입니다", "Invalid ${kind.name.lowercase()} username")
+                    }
                 }
             }
         }
-        return Contact(input.id, kind, label, value)
+        // 인증 상태(native-v1.md "연락처 인증")는 클라이언트가 보내지 못한다. 종류·값이 그대로면 유지하고, 값을 고치면 다시 미인증
+        val keep = existing != null && existing.verified && existing.kind == kind && sameValue(kind, existing.value, stored)
+        return Contact(input.id, kind, label, stored, verified = keep, verifiedAt = existing?.verifiedAt.takeIf { keep })
     }
+
+    // 인증 결과로 연락처를 켠다(native-v1.md "연락처 인증"): 같은 값의 항목이 있으면 그것을, 없으면 그 종류의 첫 항목 값을 바꾸고(수동 입력을 덮어쓴다), 그 종류가 없으면 끝에 더한다.
+    // 프로필 저장과 같이 버전이 오른다(이미 같은 값으로 인증돼 있으면 그대로). 프로필이 아직 없으면 400 PROFILE_REQUIRED
+    @Transactional
+    fun markContactVerified(userId: UserId, kind: ContactKind, value: String): Profile {
+        requireConsent(userId)
+        val current = profiles.find(userId) ?: throw InvalidInputException("프로필을 먼저 저장해 주세요", "Profile missing for contact verification: $userId", code = PROFILE_REQUIRED)
+        val index = current.contacts.indexOfFirst { it.kind == kind && sameValue(kind, it.value, value) }.takeIf { it >= 0 }
+            ?: current.contacts.indexOfFirst { it.kind == kind }.takeIf { it >= 0 }
+        if (index != null && current.contacts[index].verified && sameValue(kind, current.contacts[index].value, value)) return current
+        // DB(timestamptz)는 마이크로초까지라 응답도 저장값과 같게 자른다
+        val now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)
+        val verified = Contact(UUID.randomUUID(), kind, "", value, verified = true, verifiedAt = now)
+        val contacts = if (index == null) current.contacts + verified else current.contacts.mapIndexed { i, c -> if (i == index) verified.copy(id = c.id, label = c.label) else c }
+        val saved = current.copy(contacts = contacts, version = current.version + 1, updatedAt = now)
+        profiles.save(saved)
+        versions.append(saved)
+        return profiles.find(userId) ?: saved
+    }
+
+    // 이메일은 대소문자를 가리지 않는다
+    private fun sameValue(kind: ContactKind, a: String, b: String) = if (kind == ContactKind.EMAIL) a.equals(b, ignoreCase = true) else a == b
 
     // `[https://][www.|m.]host/name[/…]`는 name, `@`·공백은 지운다. 남은 값이 허용 문자·길이를 넘으면 null
     private fun username(value: String, rule: UsernameRule): String? {
@@ -348,6 +373,7 @@ class ProfileService(
         const val CONSENT_REQUIRED = "CONSENT_REQUIRED"
         const val CONSENT_VERSION = "CONSENT_VERSION"
         const val HISTORY_ACTIVITY_TOO_SHORT = "HISTORY_ACTIVITY_TOO_SHORT"
+        const val PROFILE_REQUIRED = "PROFILE_REQUIRED"
         const val MAX_PAGE_SIZE = 100
         const val MAX_EVIDENCE_PER_HISTORY = 3
         const val MAX_JOBS = 10
@@ -361,7 +387,7 @@ class ProfileService(
         private const val MAX_INTRO_LINK = 500
         private const val MAX_DESCRIPTION = 10_000
         private val PHONE = Regex("^[0-9+\\- ]+$")
-        private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+        val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
         // 앱(iOS ContactModel.usernameRules, Android ContactRules)과 같은 표. 길이는 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20은 확인 못 해 넉넉히
         private val USERNAME_RULES = mapOf(
             ContactKind.GITHUB to UsernameRule("github.com", 39), ContactKind.INSTAGRAM to UsernameRule("instagram.com", 30),
