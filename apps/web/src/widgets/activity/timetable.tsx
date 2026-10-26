@@ -1,29 +1,23 @@
 "use client";
 import { useEffect, useState } from "react";
-import { type Schedule, type Session, type Timetable, type Track, clockTime, scheduleLabel } from "@/lib/models";
+import { type Schedule, type Session, type Timetable, clockTime, scheduleLabel } from "@/lib/models";
 import { errorMessage, RequestError } from "@/lib/client";
 import { publicRead } from "@/features/auth/api/auth-client";
+import { useAuth } from "@/features/auth/model/auth-context";
+import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
 import { track } from "@/shared/lib/analytics";
-import { cn } from "@/shared/lib/utils";
-import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { Icon } from "@/shared/ui/icon";
+import { Segmented } from "@/shared/ui/segmented";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/shared/ui/sheet";
 import { Failure } from "@/shared/ui/states";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
-import { TagIcon } from "@/shared/ui/tag-icon";
-
-/** Track colours by `position` (contract "트랙·세션 시간표": the server sends only the order); light and dark pairs keep the badge text readable. */
-const TRACK_COLORS = [
-  "bg-teal-100 text-teal-900 dark:bg-teal-400/20 dark:text-teal-100",
-  "bg-indigo-100 text-indigo-900 dark:bg-indigo-400/20 dark:text-indigo-100",
-  "bg-orange-100 text-orange-900 dark:bg-orange-400/20 dark:text-orange-100",
-  "bg-pink-100 text-pink-900 dark:bg-pink-400/20 dark:text-pink-100",
-  "bg-lime-100 text-lime-900 dark:bg-lime-400/20 dark:text-lime-100",
-  "bg-purple-100 text-purple-900 dark:bg-purple-400/20 dark:text-purple-100",
-];
-const trackColor = (position: number) => TRACK_COLORS[position % TRACK_COLORS.length];
+import { MyTimetableList } from "./my-timetable";
+import { isBreak, SessionCard, TrackBadge } from "./session-card";
 
 type Row = { start: number; end: number };
+/** `전체` is the table; `mine` the favorited sessions as 나만의 시간표 (contract "트랙·세션 시간표" › `찜한 세션`, labelled `내 시간표`). */
+type View = "all" | "mine";
 
 /**
  * Rows of the table (contract "트랙·세션 시간표" › 행 나누기): every session boundary splits the block, so tracks with different
@@ -38,10 +32,10 @@ function rowsOf(sessions: Session[]): Row[] {
 }
 
 /**
- * The timetable of one schedule block as a modal (contract "트랙·세션 시간표" › 앱·웹 화면, 2026-10-26 "웹도 마찬가지로"): a
- * near-full-height bottom sheet on phones, a large centred dialog from `md`. Radix gives ESC, the focus trap, focus return and
- * `aria-labelledby`/`aria-describedby` from the title and time range. Content mounts on open, so each open loads afresh. The web
- * has no sign-in, so no 찜 and no `전체 | 찜한 세션` switch — a footer line points to the app.
+ * The timetable of one schedule block as a modal (contract "트랙·세션 시간표" › 앱·웹 화면, 2026-10-26 "웹도 마찬가지로"; hearts and the
+ * `전체 | 내 시간표` switch since "웹 화면 — 2단계 A"): a near-full-height bottom sheet on phones, a large centred dialog from `md`.
+ * Radix gives ESC, the focus trap, focus return and `aria-labelledby`/`aria-describedby` from the title and time range. Content
+ * mounts on open, so each open loads afresh and starts on `전체`. Signed out, a footer line still points to the app.
  */
 export function TimetableSheet({
   activityId,
@@ -56,8 +50,16 @@ export function TimetableSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [view, setView] = useState<View>("all");
+  const { signedIn } = useAuth();
   return (
-    <Sheet open={open && !!schedule} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open && !!schedule}
+      onOpenChange={(next) => {
+        if (!next) setView("all");
+        onOpenChange(next);
+      }}
+    >
       <SheetContent className="flex h-[92dvh] flex-col bg-background px-0 md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(85dvh,960px)] md:w-[min(1200px,calc(100vw-4rem))] md:max-w-none md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-card md:pt-5 md:[&>:first-child]:hidden">
         {schedule && (
           <>
@@ -75,10 +77,20 @@ export function TimetableSheet({
                 <Icon name="close" size="inline" />
               </SheetClose>
             </header>
+            <Segmented
+              label="시간표 보기"
+              className="mx-5 mb-3 md:max-w-xs"
+              options={[
+                { value: "all", label: "전체" },
+                { value: "mine", label: "내 시간표" },
+              ]}
+              value={view}
+              onChange={setView}
+            />
             <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3">
-              <TimetableView activityId={activityId} schedule={schedule} />
+              <TimetableView activityId={activityId} schedule={schedule} view={view} />
             </div>
-            <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">세션 찜은 Dearby 앱에서 할 수 있어요.</p>
+            {!signedIn && <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">내 시간표는 Dearby 앱에서 만들 수 있어요.</p>}
           </>
         )}
       </SheetContent>
@@ -89,17 +101,21 @@ export function TimetableSheet({
 /**
  * The timetable of one schedule block, loaded on mount: rows are time slots, columns the tracks in `position` order, an empty slot
  * stays empty and a full-width session (`trackId` null) spans the row. The sheet body scrolls the whole table both ways at once,
- * with the time column and the track row pinned; a wide dialog fits every column without sideways scrolling.
+ * with the time column and the track row pinned; a wide dialog fits every column without sideways scrolling. Hearts start from the
+ * response's `favorited` and the set of favorited ids follows each toggle, so `내 시간표` reflects the taps made here.
  */
-function TimetableView({ activityId, schedule }: { activityId: number; schedule: Schedule }) {
+function TimetableView({ activityId, schedule, view }: { activityId: number; schedule: Schedule; view: View }) {
   const [timetable, setTimetable] = useState<Timetable | null>();
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const { epoch } = useAuth();
   useEffect(() => {
     const controller = new AbortController();
     publicRead<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
       .then((found) => {
         setTimetable(found);
+        setFavorites(new Set(found.sessions.filter((s) => s.favorited).map((s) => s.id)));
         track("timetable_view", { activity_id: activityId });
       })
       .catch((error) => {
@@ -108,7 +124,7 @@ function TimetableView({ activityId, schedule }: { activityId: number; schedule:
         else setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [activityId, schedule.id, attempt]);
+  }, [activityId, schedule.id, attempt, epoch]);
   if (error)
     return (
       <Failure
@@ -130,10 +146,53 @@ function TimetableView({ activityId, schedule }: { activityId: number; schedule:
     );
   if (!timetable || !timetable.sessions.length)
     return <p className="px-4 text-subheadline text-secondary-label">시간표가 아직 없어요.</p>;
-  return <TimetableTable timetable={timetable} />;
+  const heart = (session: Session) =>
+    isBreak(session) ? undefined : (
+      <FavoriteHeart
+        kind="session"
+        id={session.id}
+        favorited={favorites.has(session.id)}
+        activityId={activityId}
+        size="sm"
+        onChange={(on) =>
+          setFavorites((current) => {
+            const next = new Set(current);
+            if (on) next.add(session.id);
+            else next.delete(session.id);
+            return next;
+          })
+        }
+      />
+    );
+  if (view === "mine") return <MyTimetableView timetable={timetable} favorites={favorites} heart={heart} />;
+  return <TimetableTable timetable={timetable} heart={heart} />;
 }
 
-function TimetableTable({ timetable }: { timetable: Timetable }) {
+/** `내 시간표` inside the sheet: a sign-in notice, the empty notice, or the favorited sessions of this block as 나만의 시간표. */
+function MyTimetableView({ timetable, favorites, heart }: { timetable: Timetable; favorites: Set<number>; heart: (session: Session) => React.ReactNode }) {
+  const { signedIn, openSignIn } = useAuth();
+  if (!signedIn)
+    return (
+      <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+        <p className="text-subheadline text-secondary-label break-keep">로그인하면 세션에 하트를 눌러 내 시간표를 만들 수 있어요.</p>
+        <Button variant="tinted" onClick={openSignIn}>
+          로그인
+        </Button>
+      </div>
+    );
+  const tracks = new Map(timetable.tracks.map((track) => [track.id, track]));
+  const items = timetable.sessions
+    .filter((session) => favorites.has(session.id))
+    .map((session) => ({ session, track: session.trackId === null ? null : (tracks.get(session.trackId) ?? null) }));
+  if (!items.length) return <p className="px-4 py-10 text-center text-subheadline text-secondary-label break-keep">세션에 하트를 누르면 내 시간표에 모여요</p>;
+  return (
+    <div className="px-1 pb-3">
+      <MyTimetableList items={items} timeZone={timetable.schedule.timeZone ?? "Asia/Seoul"} favorite={(item) => heart(item.session)} />
+    </div>
+  );
+}
+
+function TimetableTable({ timetable, heart }: { timetable: Timetable; heart: (session: Session) => React.ReactNode }) {
   const tracks = [...timetable.tracks].sort((a, b) => a.position - b.position);
   const { sessions, schedule } = timetable;
   const timeZone = schedule.timeZone ?? "Asia/Seoul";
@@ -189,7 +248,7 @@ function TimetableTable({ timetable }: { timetable: Timetable }) {
               {wide
                 ? Date.parse(wide.startAt) === row.start && (
                     <td colSpan={columns} rowSpan={span(wide)} className="h-px align-top">
-                      <SessionCard session={wide} time={time} spansRows={span(wide) > 1} />
+                      <SessionCard session={wide} time={time} spansRows={span(wide) > 1} favorite={heart(wide)} />
                     </td>
                   )
                 : tracks.map((track) => {
@@ -198,7 +257,7 @@ function TimetableTable({ timetable }: { timetable: Timetable }) {
                     if (Date.parse(session.startAt) !== row.start) return null;
                     return (
                       <td key={track.id} rowSpan={span(session)} className="h-px align-top">
-                        <SessionCard session={session} track={track} time={time} spansRows={span(session) > 1} />
+                        <SessionCard session={session} track={track} time={time} spansRows={span(session) > 1} favorite={heart(session)} />
                       </td>
                     );
                   })}
@@ -207,65 +266,5 @@ function TimetableTable({ timetable }: { timetable: Timetable }) {
         })}
       </tbody>
     </table>
-  );
-}
-
-function TrackBadge({ track }: { track: Track }) {
-  return (
-    <span className={cn("inline-flex max-w-full flex-col rounded-[10px] px-2 py-1 text-caption font-semibold", trackColor(track.position))}>
-      <span className="truncate">{track.name}</span>
-      {track.room && <span className="truncate font-normal opacity-80">{track.room}</span>}
-    </span>
-  );
-}
-
-/**
- * 쉬는시간·점심 are a muted band; other sessions a card with the track badge, up to two 분야 tags, the title and the speakers. A card
- * over several rows shows its own range, since each time cell shows only its row.
- */
-function SessionCard({
-  session,
-  track,
-  time,
-  spansRows,
-}: {
-  session: Session;
-  track?: Track;
-  time: (value: number) => string;
-  spansRows: boolean;
-}) {
-  const range = `${time(Date.parse(session.startAt))} – ${time(Date.parse(session.endAt))}`;
-  if (session.kind === "BREAK" || session.kind === "MEAL")
-    return (
-      <div className="flex h-full min-h-11 items-center justify-center gap-2 rounded-[14px] bg-fill px-3 py-2 text-subheadline text-secondary-label">
-        <span className="font-semibold">{session.title || (session.kind === "MEAL" ? "점심" : "쉬는시간")}</span>
-        <span className="text-caption tabular-nums">{range}</span>
-      </div>
-    );
-  return (
-    <article className="flex h-full flex-col gap-1.5 rounded-[14px] bg-card p-3">
-      <div className="flex flex-wrap gap-1">
-        {track && (
-          <span className={cn("rounded-full px-2 py-0.5 text-caption2 font-semibold", trackColor(track.position))}>
-            {track.name}
-            {track.room && ` · ${track.room}`}
-          </span>
-        )}
-        {session.kind === "KEYNOTE" && <Badge variant="filled">키노트</Badge>}
-        {session.tags.slice(0, 2).map((tag) => (
-          <Badge key={tag.id} className="gap-1 text-caption2">
-            <TagIcon nameEn={tag.nameEn} />
-            {tag.name}
-          </Badge>
-        ))}
-      </div>
-      <h4 className="text-subheadline font-semibold break-keep">{session.title}</h4>
-      {session.speakers.length > 0 && (
-        <p className="text-footnote text-secondary-label break-keep">
-          {session.speakers.map((s) => (s.affiliation ? `${s.name} · ${s.affiliation}` : s.name)).join(", ")}
-        </p>
-      )}
-      {spansRows && <p className="text-caption text-secondary-label tabular-nums">{range}</p>}
-    </article>
   );
 }
