@@ -20,12 +20,13 @@ struct CardQRSheet: View {
     /// Bumped by the refresh button and the auto-refresh; each value runs one `rotate`.
     @State private var generation = 0
     @Environment(\.dismiss) private var dismiss
-    init(cardName: String, cardID: String, cards: MyCardsModel, activities: [ActivityModel]) {
+    /// `preselected`: the activity to start on when it is one of `activities` (the 오늘 내 행사 card's `명함 QR`); otherwise the first one.
+    init(cardName: String, cardID: String, cards: MyCardsModel, activities: [ActivityModel], preselected: String? = nil) {
         self.cardName = cardName
         self.cardID = cardID
         self.cards = cards
         self.activities = activities
-        _activityID = State(initialValue: activities.first?.id)
+        _activityID = State(initialValue: activities.contains { $0.id == preselected } ? preselected : activities.first?.id)
     }
     private var activity: ActivityModel? { activities.first { $0.id == activityID } }
     /// `https://<web>/cards/<id>?activity=<n>&code=<code>`; no `activity` without an activity.

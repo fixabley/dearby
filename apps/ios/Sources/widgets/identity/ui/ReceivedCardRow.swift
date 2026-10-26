@@ -7,6 +7,8 @@ struct ReceivedCardRow: View {
     let job: String
     var organization: String?
     var program: String?
+    /// 교환 세션 맥락 (contract "오늘 내 행사 카드" 받은 명함): `우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B` as a third line; nil for none.
+    var context: String?
     /// `맞교환`, `3일 뒤 사라져요`, or empty for none.
     var badge = ""
     let open: () -> Void
@@ -20,6 +22,9 @@ struct ReceivedCardRow: View {
                         if !job.isEmpty { Text(job).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).lineLimit(1) }
                         if let organization, !organization.isEmpty { chip(organization) }
                         if let program, !program.isEmpty { chip(program) }
+                    }
+                    if let context, !context.isEmpty {
+                        Text(context).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).lineLimit(1)
                     }
                 }
                 Spacer(minLength: 0)
@@ -38,7 +43,8 @@ struct ReceivedCardRow: View {
 struct ReceivedCardListSample: View {
     var body: some View {
         VStack(spacing: 0) {
-            ReceivedCardRow(name: "이서연", job: "프로덕트 디자이너", organization: "Dearby", program: "부스트캠프", badge: "맞교환") {}
+            ReceivedCardRow(name: "이서연", job: "프로덕트 디자이너", organization: "Dearby", program: "우아콘",
+                            context: "우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B", badge: "맞교환") {}
             Divider()
             ReceivedCardRow(name: "박준호", job: "백엔드 개발", badge: "12일 뒤 사라져요") {}
             Divider()

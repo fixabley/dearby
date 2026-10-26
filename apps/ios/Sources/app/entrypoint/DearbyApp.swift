@@ -87,7 +87,7 @@ import SwiftUI
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0 && !profile.consentPending,
                         discovery: { ActivityListPage(state: activityModel, queueSignedIn: accountReady, queueNeedsConsent: consentNeeded, openQueue: queueRowTapped,
-                                                      editRecommendations: { editRecommendations("queue_row") }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
+                                                      editRecommendations: { editRecommendations("queue_row") }, showQR: showCardQR, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet, consentNeeded: consentNeeded) { showsConsent = true },
                         profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { editRecommendations("profile") },
@@ -355,6 +355,12 @@ import SwiftUI
         }
     }
     #endif
+    /// `명함 QR` on the 오늘 내 행사 card (contract "오늘 내 행사 카드"): the 명함 tab's 내 명함 opens QR 보이기 for the selected card with this activity.
+    private func showCardQR(_ activityID: String) {
+        cards.qrActivityID = activityID
+        cardsSegment = .myCards
+        tab = 2
+    }
     /// The 발견 row `오늘의 맞춤 대기열` (사용 통계 `menu_open(queue)` once per tap; a continuation after sign-in is not another tap).
     private func queueRowTapped() {
         AppAnalytics.event("menu_open", ["menu": "queue"])
