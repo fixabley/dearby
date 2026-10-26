@@ -66,6 +66,7 @@ services:
   # Claude Code CLI(구독)로 수집하며 CLAUDE_CODE_OAUTH_TOKEN(claude setup-token)을 쓴다. 없으면 실행하지 않고 경고만 남긴다.
   # 바로 한 번 돌리려면: docker compose ... run --rm batch --collect-now
   # 수집 뒤 맞춤 대기열(native-v1.md "맞춤 대기열"): 로고 대표색 → 활동·태그 임베딩(바뀐 것만) → 사용자 대기열. 대기열만: run --rm batch --build-queues-now, 게시 활동 빈 대기열 글 채우기: run --rm batch --backfill-hooks-now, 즐겨찾기 알림 지금: run --rm batch --send-push-now
+  # 위 일회성 옵션(--import-curation 포함)으로 띄운 run --rm 컨테이너는 @Scheduled 정기 작업을 켜지 않는다(2026-10-26). 옵션 없이 뜨는 상시 batch만 스케줄을 돈다
   # 임베딩 모델은 이미지 빌드 때 고정 판을 ONNX로 바꿔 넣는다(이미지 약 740MB 추가, 임베딩 중 메모리 약 2.2GB, 활동 300개 약 2.5분). 외부 API를 부르지 않는다
   batch:
     build:

@@ -1,6 +1,6 @@
 package io.wid.dearby.admin.adaptor.web
 
-import io.wid.dearby.admin.application.ScheduleItemPatch
+import io.wid.dearby.application.activity.ScheduleItemPatch
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.Recurrence
