@@ -3,7 +3,7 @@ import Foundation
 /// One Seoul day of 활동 일정 with two or more timed blocks (contract "하루 시간표" 2026-10-26): the detail and 진행 단계 fold the blocks under one
 /// date row, and `시간표 보기` shows the day's blocks as one table (`DayTimetable`). Blocks whose start and end fall on different Seoul days, all-day
 /// and date-less blocks and the activity period are never grouped.
-struct ActivityDay: Identifiable, Equatable {
+struct ActivityDay: Identifiable {
     /// `day-yyyyMMdd` (Seoul).
     let id: String
     /// The blocks in start order.
@@ -28,7 +28,7 @@ struct ActivityDay: Identifiable, Equatable {
 }
 
 /// A 활동 일정 row: a block of its own, or a day folding several.
-enum ActivityDayEntry: Identifiable, Equatable {
+enum ActivityDayEntry: Identifiable {
     case stage(ActivityStage)
     case day(ActivityDay)
     var id: String {
@@ -43,7 +43,7 @@ extension ActivityStages {
     /// The 활동 일정 rows with the same-day blocks folded (contract "하루 시간표"): `stages` in track order, `periodID` the activity period's
     /// schedule id (never grouped). A day with one block stays a plain row. A day sits where its first block was.
     static func fold(_ stages: [ActivityStage], periodID: String?, now: Date) -> [ActivityDayEntry] {
-        let calendar = seoulCalendar
+        let calendar = seoul
         /// `day-yyyyMMdd` for a timed block within one Seoul day (not the activity period); nil for a block that stays its own row.
         func key(_ stage: ActivityStage) -> String? {
             let source = stage.source
@@ -72,11 +72,6 @@ extension ActivityStages {
             return day
         }
         return nil
-    }
-    private static var seoulCalendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = ActivityText.seoul
-        return calendar
     }
 }
 
