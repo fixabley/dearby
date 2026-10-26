@@ -2,6 +2,7 @@ package com.dearby.nativeapp.shared.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -106,14 +107,19 @@ private val DarkScheme = darkColorScheme(
 @Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 48.dp),
     enabled = enabled, colors = if (isSystemInDarkTheme()) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black) else ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
 /**
- * Sign in with Google (contract "구글 로그인"): theme surface with an outline border, same size as the other sign-in buttons. The official "G" logo asset is
- * not in the repo yet (to be placed under shared/assets/prototype), so a bold "G" stands in for it.
+ * Sign in with Google (contract "구글 로그인"): Google's light/dark button colors (fill #FFFFFF / #131314, 1dp stroke #747775 / #8E918F, text #1F1F1F / #E3E3E3,
+ * branding guidelines 2026-07-07), same size as the other sign-in buttons. The 20dp "G" is the official asset (shared/assets/prototype/google-sign-in); its
+ * corners carry the button fill, so the fill must stay exactly these values.
  */
-@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = OutlinedButton(onClick, modifier.heightIn(min = 48.dp),
-    enabled = enabled, colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
-    Text("G", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-    Spacer(Modifier.width(8.dp))
-    Text("Google로 계속하기")
+@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val dark = isSystemInDarkTheme()
+    val fill = Color(if (dark) 0xFF131314 else 0xFFFFFFFF)
+    OutlinedButton(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, border = BorderStroke(1.dp, Color(if (dark) 0xFF8E918F else 0xFF747775)),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = fill, disabledContainerColor = fill, contentColor = Color(if (dark) 0xFFE3E3E3 else 0xFF1F1F1F))) {
+        Image(painterResource(R.drawable.ic_google_g), null, Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Google로 계속하기")
+    }
 }
 
 /**

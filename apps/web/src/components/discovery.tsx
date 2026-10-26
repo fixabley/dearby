@@ -391,7 +391,7 @@ function ProgramRow({
   const count = program.openActivityCount + (program.upcomingActivityCount ?? 0);
   // Meta line precedence: a deadline while something is open, else the next start, else the latest activity month.
   const meta =
-    (program.openActivityCount > 0 && deadlineLabel(program.nearestRecruitmentEndAt)) ||
+    (program.openActivityCount > 0 && deadlineLabel(program.nearestRecruitmentEndAt, program.nearestIsActivityStart)) ||
     ((program.upcomingActivityCount ?? 0) > 0 && startLabel(program.nearestRecruitmentStartAt ?? null)) ||
     `최근 ${monthLabel(program.latestActivityAt ?? null)}`;
   // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.

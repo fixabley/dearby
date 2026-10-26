@@ -21,8 +21,29 @@ struct ContactModel: Identifiable, Equatable {
             return URL(string: "https://" + (kind == "behance" ? "www." : "") + host + "/" + id).map(Action.open)
         }
     }
-    /// The value as rows show it: the username for username kinds (also for a profile URL saved before 2026-10-26), otherwise as saved.
-    var displayValue: String { Self.username(kind: kind, value) ?? value }
+    /// The value as rows show it: a Korean phone number with hyphens, the username for username kinds (also for a profile URL saved
+    /// before 2026-10-26), otherwise as saved.
+    var displayValue: String { kind == "phone" ? Self.phone(value) : Self.username(kind: kind, value) ?? value }
+    /// `01012345678` → `010-1234-5678`, `0212345678` → `02-1234-5678`, `15881234` → `1588-1234` for display only; anything else
+    /// (`+82…`, other lengths, letters) as saved.
+    static func phone(_ value: String) -> String {
+        let text = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == "-" || $0 == " ") }) else { return text }
+        let d = Array(text.filter(\.isNumber))
+        func split(_ sizes: Int...) -> String {
+            var at = 0
+            return sizes.map { n in defer { at += n }; return String(d[at..<at + n]) }.joined(separator: "-")
+        }
+        let seoul = d.starts(with: ["0", "2"])
+        switch (d.first ?? " ", d.count) {
+        case ("0", 9) where seoul: return split(2, 3, 4)
+        case ("0", 10) where seoul: return split(2, 4, 4)
+        case ("0", 10): return split(3, 3, 4)
+        case ("0", 11): return split(3, 4, 4)
+        case ("1", 8): return split(4, 4)
+        default: return text
+        }
+    }
     /// An http(s) URL, also typed without the scheme (`open.kakao.com/o/…`).
     private static func web(_ text: String) -> URL? {
         let candidate = text.contains("://") ? text : text.contains("/") && text.split(separator: "/")[0].contains(".") ? "https://" + text : nil

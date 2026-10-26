@@ -17,12 +17,12 @@ import androidx.compose.ui.unit.dp
 
 /**
  * 발견 맨 위의 `오늘의 맞춤 대기열` 한 줄 (2026-10-25 사용자 결정 "추천은 없애고 맞춤대기열 진입만 남겨줘": the 추천 rows are gone). [open] starts
- * the funnel first when it was never completed, else the queue; the caller decides. Signed out ([signedIn] false) it says sign-in comes first and
- * [open] asks for it (contract "비로그인에서 만들기·추천을 막음", 2026-10-25).
+ * the funnel first when it was never completed, else the queue; the caller decides. Not [ready] it says what comes first and [open] asks for it:
+ * sign-in when signed out (contract "비로그인에서 만들기·추천을 막음", 2026-10-25), the consent when [signedIn] without it (contract "개인정보 동의").
  */
-@Composable fun QueueEntryRow(signedIn: Boolean, open: () -> Unit) {
+@Composable fun QueueEntryRow(ready: Boolean, signedIn: Boolean, open: () -> Unit) {
     ListItem(headlineContent = { Text("오늘의 맞춤 대기열", fontWeight = FontWeight.SemiBold) }, Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = open),
-        supportingContent = { Text(if (signedIn) "위로 넘기며 나에게 맞는 활동을 둘러봐요" else "로그인하면 나에게 맞는 활동을 골라 드려요") },
+        supportingContent = { Text(when { ready -> "위로 넘기며 나에게 맞는 활동을 둘러봐요"; signedIn -> "동의하면 나에게 맞는 활동을 골라 드려요"; else -> "로그인하면 나에게 맞는 활동을 골라 드려요" }) },
         leadingContent = { Icon(Icons.Rounded.AutoAwesomeMotion, null, tint = MaterialTheme.colorScheme.primary) },
         trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null) }, colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface))
 }

@@ -193,6 +193,8 @@ data class ProgramSummary(
     val id: String, val name: String, val nameEn: String?, val organization: String, val openActivityCount: Int,
     val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>, val latestActivityAt: String? = null,
     val upcomingActivityCount: Int = 0, val nearestRecruitmentStartAt: String? = null,
+    /** [nearestRecruitmentEndAt] is an activity start (an open activity without a recruitment deadline), not a deadline. */
+    val nearestIsActivityStart: Boolean = false,
     /** 분야, at most 2 in the server's relevance order (contract "분야·성격 태그와 아이콘"); empty for an older API. */
     val fieldTags: List<Tag> = emptyList(),
     /** 얻을 수 있는 것 (성격), dictionary order; an older API's `tags` when `traitTags` is missing. */

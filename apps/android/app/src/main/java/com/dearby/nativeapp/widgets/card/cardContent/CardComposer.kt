@@ -28,7 +28,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
     cardTitle: String, onCardTitleChange: (String) -> Unit,
     contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
     changed: Boolean, onRevert: () -> Unit, onPublish: () -> Unit, modifier: Modifier = Modifier, publishing: Boolean = false, errorMessage: String? = null,
-    publishLabel: String = "명함 발행",
+    publishLabel: String = "명함 발행", editing: Boolean = false,
     /** 사진 넣기 switch; null hides it (no profile photo). */
     photo: Boolean? = null, onPhoto: (Boolean) -> Unit = {},
     /** 소개 링크 넣기 switch; null hides it (no 소개 링크 on the profile). */
@@ -66,7 +66,8 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
                     if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text(publishLabel)
                 }
             }
-            Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            // Contract "명함 고치기는 같은 명함을 수정" (2026-10-20): 고치기 saves onto the same card, so only that mode says so.
+            if (editing) Text("고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

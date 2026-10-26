@@ -250,10 +250,11 @@ struct SettingsPage: View {
         renaming = passkey
     }
     private func deleteAccount() {
+        let hadPasskeys = !model.passkeys.isEmpty
         Task {
             let result = await account.deleteAccount()
             if result != .failed { await model.load() }
-            model.notice = result.notice
+            model.notice = result.notice(hadPasskeys: hadPasskeys)
         }
     }
     private func methods(_ methods: AccountSummary.SignInMethods) -> String {

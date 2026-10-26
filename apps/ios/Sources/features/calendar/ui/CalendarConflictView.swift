@@ -112,7 +112,7 @@ struct CalendarConflictView: View {
     }
     /// `10월 24일 금요일 14:00–15:00 · 30분`.
     private func when(_ item: CalendarOverlapState) -> String {
-        "\(item.start.formatted(item.dateFormat)) \(item.time(item.start))–\(item.time(item.end)) · \(item.minutes)분"
+        "\(item.start.formatted(item.dateFormat)) \(item.span(item.start, item.end)) · \(item.minutes)분"
     }
     /// One overlap with its timeline.
     private func detail(_ item: CalendarOverlapState) -> some View {
@@ -120,7 +120,7 @@ struct CalendarConflictView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Label(item.start.formatted(item.dateFormat), systemImage: "calendar").font(.dearby(.subheadline)).foregroundStyle(.secondary)
                 Text("\(item.minutes)분이 겹쳐요").font(.dearby(.title2).bold()).accessibilityIdentifier("overlap-duration")
-                Text("\(item.time(item.start)) – \(item.time(item.end))에 ‘\(item.busyTitle)’과 겹쳐요.")
+                Text("\(item.span(item.start, item.end))에 ‘\(item.busyTitle)’과 겹쳐요.")
                     .font(.dearby(.body)).foregroundStyle(.secondary)
                 CalendarTimelineView(item: item).padding(.top, 4)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(20)

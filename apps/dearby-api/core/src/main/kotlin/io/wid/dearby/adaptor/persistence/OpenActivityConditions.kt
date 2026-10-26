@@ -39,6 +39,8 @@ object OpenActivityConditions {
     private fun notEnded(now: OffsetDateTime): Condition = activityEnd.isNull.or(activityEnd.gt(now))
     // 정렬 키(admin-v1.md "정렬 기준 보완"): 모집 마감(시각 또는 날짜) → 없으면 활동 시작 → 둘 다 없으면 null(맨 뒤)
     val deadline: Field<OffsetDateTime?> = DSL.coalesce(app.END_AT, seoulMidnight(app.END_DATE_EXCLUSIVE), activityStart)
+    // 정렬 키 중 실제 모집 마감만(활동 시작으로 대체하지 않음). 발견 묶음의 `M월 d일 마감` 표기 판단용
+    val recruitmentEnd: Field<OffsetDateTime?> = DSL.coalesce(app.END_AT, seoulMidnight(app.END_DATE_EXCLUSIVE))
     // 모집 시작(시각 또는 날짜) → 없으면 활동 시작. 모집 예정 활동의 "가장 이른 시작"(native-v1.md "마감 숨기기")
     val recruitmentStart: Field<OffsetDateTime?> = DSL.coalesce(app.START_AT, seoulMidnight(app.START_DATE), activityStart)
 

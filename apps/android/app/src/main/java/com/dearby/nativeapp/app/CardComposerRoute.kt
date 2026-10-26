@@ -38,7 +38,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 draft.histories, { id, on -> model.edit(draft.copy(publicHistoryIds = if (on) draft.publicHistoryIds + id else draft.publicHistoryIds - id)) },
                 draft.changed, { model.edit(draft.revert()) }, model::publish, Modifier.weight(1f),
                 publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message,
-                publishLabel = if (state.prefill == null) "명함 발행" else "고친 내용 저장",
+                publishLabel = if (state.prefill == null) "명함 발행" else "고친 내용 저장", editing = state.prefill != null,
                 photo = draft.includePhoto.takeIf { draft.hasPhoto }, onPhoto = { model.edit(draft.copy(includePhoto = it)) },
                 introLink = draft.includeIntroLink.takeIf { draft.hasIntroLink }, onIntroLink = { model.edit(draft.copy(includeIntroLink = it)) })
             phase is PublishPhase.Failed -> DearbyErrorState("명함을 준비하지 못했어요", phase.message, { model.load() }, Modifier.fillMaxSize())

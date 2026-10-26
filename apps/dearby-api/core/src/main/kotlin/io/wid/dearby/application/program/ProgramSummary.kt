@@ -18,6 +18,8 @@ data class ProgramSummary(
     val organizationNameEn: String?,
     val openActivityCount: Int, // 모집 중 활동 수(모집 예정은 세지 않는다)
     val nearestRecruitmentEndAt: OffsetDateTime?, // 열린 활동 중 가장 이른 모집 마감. 모두 마감이 없으면 null
+    // nearestRecruitmentEndAt이 모집 마감이 아니라 활동 시작(정렬 키의 대체값)인지. 앱은 이때 `마감` 대신 활동 날짜로 쓴다(native-v1.md "발견 카드 리뉴얼")
+    val nearestIsActivityStart: Boolean = false,
     val matchedActivityIds: List<Id>, // q가 모집 중·모집 예정 활동 이름에 맞은 활동 id. q가 없으면 빈 목록
     val upcomingActivityCount: Int = 0, // 모집 예정 활동 수(native-v1.md "마감 숨기기", 2026-10-19 밤)
     val nearestRecruitmentStartAt: OffsetDateTime? = null, // 모집 예정 활동의 가장 이른 모집 시작(없으면 활동 시작). 모집 예정이 없으면 null
@@ -50,8 +52,9 @@ data class OpenActivity(
     val programId: Id,
     val name: String,
     val nameEn: String?,
-    val recruitmentEndAt: OffsetDateTime?,
+    val recruitmentEndAt: OffsetDateTime?, // 정렬 키: 모집 마감, 없으면 활동 시작
     val eligibility: EligibilityGroup?,
+    val hasRecruitmentEnd: Boolean = true, // recruitmentEndAt이 실제 모집 마감인지(아니면 활동 시작)
 )
 
 // nextCursor가 null이면 마지막 페이지

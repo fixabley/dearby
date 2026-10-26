@@ -48,15 +48,16 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val errors = form.errors()
     fun errorOf(step: SetupStep) = when (step) { SetupStep.NAME -> errors.name; SetupStep.PHONE -> errors.phone; SetupStep.EMAIL -> errors.email; else -> null }
     val allReached = reached.size == sections.size
+    val following = sections.getOrNull(open.ordinal + 1)
+    // 다음 opens the section right after the open one, even after 이전 (never skipping one left empty); on the last section it saves,
+    // and an empty required section opens again with its red message instead of a silent failure.
     fun next() {
         tried = true
         if (errorOf(open) != null) return
         tried = false
-        val unreached = sections.firstOrNull { it !in reached }
-        when {
-            unreached != null -> { reached = reached + unreached; open = unreached }
-            else -> save()
-        }
+        if (following != null) { reached = reached + following; open = following; return }
+        val missing = sections.firstOrNull { errorOf(it) != null }
+        if (missing != null) { open = missing; tried = true } else save()
     }
     fun reopen(step: SetupStep) { tried = false; open = step }
     val previous = sections.getOrNull(open.ordinal - 1)
@@ -81,7 +82,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             else DearbyOutlineButton({ leaving = true }, Modifier.weight(1f), enabled = !saving) { Text("나중에") }
             DearbyButton(::next, Modifier.weight(1f), enabled = !saving) {
                 if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
-                else Text(if (allReached) "프로필 저장" else "다음")
+                else Text(if (following == null) "프로필 저장" else "다음")
             }
         }
     }

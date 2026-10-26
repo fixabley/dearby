@@ -80,6 +80,8 @@ class ProgramSummaryService(
                 organizationNameEn = organization.nameEn,
                 openActivityCount = activities.size,
                 nearestRecruitmentEndAt = activities.mapNotNull { it.recruitmentEndAt }.minOrNull(),
+                nearestIsActivityStart = activities.filter { it.recruitmentEndAt != null }.minByOrNull { it.recruitmentEndAt!! }
+                    ?.let { nearest -> activities.none { it.hasRecruitmentEnd && it.recruitmentEndAt == nearest.recruitmentEndAt } } ?: false,
                 matchedActivityIds = matchedIds,
                 category = program.category,
             )

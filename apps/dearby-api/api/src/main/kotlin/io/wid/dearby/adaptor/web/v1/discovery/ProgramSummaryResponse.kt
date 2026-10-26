@@ -15,6 +15,7 @@ data class ProgramSummaryResponse(
     val organization: ReferenceResponse,
     val openActivityCount: Int,
     val nearestRecruitmentEndAt: OffsetDateTime?,
+    val nearestIsActivityStart: Boolean, // nearestRecruitmentEndAt이 모집 마감이 아니라 활동 시작(모집 마감이 없는 활동)인지
     val matchedActivityIds: List<Long>,
     val upcomingActivityCount: Int, // 모집 예정 활동 수(native-v1.md "마감 숨기기")
     val nearestRecruitmentStartAt: OffsetDateTime?, // 모집 예정 활동의 가장 이른 모집 시작, 없으면 null
@@ -36,6 +37,7 @@ data class ProgramSummaryResponse(
             organization = ReferenceResponse(summary.organizationId, language.pick(summary.organizationName, summary.organizationNameEn)),
             openActivityCount = summary.openActivityCount,
             nearestRecruitmentEndAt = summary.nearestRecruitmentEndAt,
+            nearestIsActivityStart = summary.nearestIsActivityStart,
             matchedActivityIds = summary.matchedActivityIds,
             upcomingActivityCount = summary.upcomingActivityCount,
             nearestRecruitmentStartAt = summary.nearestRecruitmentStartAt,

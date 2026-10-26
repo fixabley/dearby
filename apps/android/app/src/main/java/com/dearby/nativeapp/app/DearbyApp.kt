@@ -106,11 +106,12 @@ private sealed interface Route {
     LaunchedEffect(ready) { Tracking.signedIn(ready) }
     val consentNeeded = signedIn && profileState.phase == ProfilePhase.LOADED && profileState.consentRequired
     var resumed by remember { mutableIntStateOf(0) }
-    LaunchedEffect(consentNeeded, resumed) { if (consentNeeded && route == null && !signingIn) route = Route.Consent }
+    // Right after sign-up (profile version 0) the consent comes at once, over whatever screen the sign-in started from (설정 too).
+    LaunchedEffect(consentNeeded, resumed) { if (consentNeeded && !signingIn && (route == null || profileState.settingUp)) route = Route.Consent }
     // Agreed (or signed out): the screen goes; right after sign-up on to 프로필 만들기.
     LaunchedEffect(consentNeeded) { if (!consentNeeded && route == Route.Consent) { route = null; if (profileState.settingUp) tab = Tab.Profile } }
     val consentScope = rememberCoroutineScope()
-    val compose = { if (ready) { Tracking.menu("card_create"); publish.start(); route = Route.Composer } else needAccount() }
+    val compose = { if (ready) { Tracking.menu("card_create"); publish.start(taken = myCards.state.value.cards.map { it.title }.toSet()); route = Route.Composer } else needAccount() }
     // 즐겨찾기 하트 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): signed out a heart opens sign-in. The first program heart on Android 13+ asks for the
     // notification permission once and starts push (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -165,7 +166,7 @@ private sealed interface Route {
     val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true, entry = "queue_row") }
     LaunchedEffect(ready, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && ready && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
-        QueueEntryRow(ready) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
+        QueueEntryRow(ready, signedIn) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
     }
     // A card link to save: after sign-in and consent it carries on; signed in without consent it asks for the consent first.
     LaunchedEffect(ready, walletState.needSignIn) { if (ready && walletState.needSignIn) wallet.retryPending() }
@@ -211,7 +212,10 @@ private sealed interface Route {
                         ?: LaunchedEffect(screen) { route = null }
                     Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
-                    Route.Composer -> CardComposerRoute(publish, account) { route = null }
+                    Route.Composer -> CardComposerRoute(publish, account) {
+                        (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
+                        route = null
+                    }
                     Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }

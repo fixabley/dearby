@@ -33,6 +33,7 @@ struct ProfileFunnelPage: View {
     }
     private var allReached: Bool { reached.count == Step.allCases.count }
     private var reachedSteps: [Step] { Step.allCases.filter { reached.contains($0) } }
+    private var following: Step? { Step.allCases.firstIndex(of: open).flatMap { $0 + 1 < Step.allCases.count ? Step.allCases[$0 + 1] : nil } }
     private var previous: Step? { Step.allCases.firstIndex(of: open).flatMap { $0 > 0 ? Step.allCases[$0 - 1] : nil } }
     var body: some View {
         VStack(spacing: 0) {
@@ -105,7 +106,7 @@ struct ProfileFunnelPage: View {
                         .accessibilityIdentifier("profile-setup-later")
                 }
                 Button(action: next) {
-                    Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(allReached ? "프로필 저장" : "다음") } }
+                    Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(following == nil ? "프로필 저장" : "다음") } }
                         .frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("profile-setup-next")
             }.controlSize(.large).font(.dearby(.body).weight(.semibold)).disabled(saving)
@@ -115,9 +116,14 @@ struct ProfileFunnelPage: View {
         tried = true
         guard error(at: open) == nil else { return }
         tried = false
-        if let unreached = Step.allCases.first(where: { !reached.contains($0) }) {
-            reached.insert(unreached)
-            open = unreached
+        // 다음 opens the step right after the open one, even after 이전 (never skipping one left empty); on the last step it saves,
+        // and an empty required step opens again with its red message instead of a silent failure.
+        if let following {
+            reached.insert(following)
+            open = following
+        } else if let missing = Step.allCases.first(where: { error(at: $0) != nil }) {
+            open = missing
+            tried = true
         } else {
             save()
         }

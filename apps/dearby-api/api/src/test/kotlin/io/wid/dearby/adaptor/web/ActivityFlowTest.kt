@@ -122,6 +122,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(organizationId, summary["organization"]["id"].asLong())
         assertEquals(1, summary["openActivityCount"].asInt())
         assertEquals(0, summary["matchedActivityIds"].size())
+        assertEquals(false, summary["nearestIsActivityStart"].asBoolean())
         // 활동 이름으로만 맞아도 프로그램이 나오고, 그 활동 id가 함께 온다. 프로그램 이름으로 맞으면 활동 id는 비어 있다
         val matched = programs("q=묶음 확인")["items"].single()["matchedActivityIds"]
         assertEquals(listOf(openId), (0 until matched.size()).map { matched[it].asLong() })
@@ -143,6 +144,8 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val nearest = java.time.OffsetDateTime.parse(withUpcoming["nearestRecruitmentEndAt"].asString())
         val nearestSeoulDate = nearest.atZoneSameInstant(java.time.ZoneId.of("Asia/Seoul")).toLocalDate()
         assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(3), nearestSeoulDate)
+        // 가장 가까운 값이 모집 마감이 아니라 활동 시작이면 앱이 `마감`이라 쓰지 않도록 알린다
+        assertEquals(true, withUpcoming["nearestIsActivityStart"].asBoolean())
         jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(upcomingId).update()
         // 열린 활동 판정 일원화(native-v1.md): 날짜 일정(ALL_DAY) 모집 기간도 서울 오늘을 포함하면 열린 활동이고, GET /v1/activities?open=true가 같은 규칙을 쓴다
         fun applicationAllDay(activityId: Long, startOffset: Int, endOffset: Int) = jdbc.sql(

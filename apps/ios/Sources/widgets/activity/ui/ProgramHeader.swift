@@ -13,6 +13,8 @@ struct ProgramHeader<Accessory: View>: View {
     var logoURL: URL?
     let openCount: Int
     var nearestDeadline: Date?
+    /// `nearestDeadline` is an activity date (no recruitment deadline): the meta line says `M월 d일 행사`, not `마감`.
+    var deadlineIsEvent = false
     /// Activities whose recruitment has not started yet; counted in the badge, and the meta line says `M월 d일 시작` when nothing is recruiting.
     var upcomingCount: Int = 0
     var nearestStart: Date?
@@ -130,7 +132,7 @@ struct ProgramHeader<Accessory: View>: View {
     /// The meta line under the badge (contract): nearest deadline while recruiting, nearest start when only upcoming, else the latest activity month.
     private var meta: String? {
         if unreadCount != nil { return nil }
-        if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + " 마감" }
+        if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + (deadlineIsEvent ? " 행사" : " 마감") }
         if openCount == 0, upcomingCount > 0, let nearestStart { return Self.format(nearestStart, "M월 d일") + " 시작" }
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }
         return nil

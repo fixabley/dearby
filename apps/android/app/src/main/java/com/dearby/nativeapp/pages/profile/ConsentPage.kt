@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -43,8 +44,11 @@ import com.dearby.nativeapp.shared.ui.MessageAction
     // Closable (contract "동의 시트 닫기", 2026-10-20): the back arrow leaves without consenting; saving stays blocked until agreed.
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("동의", close)
-        CenteredMessage(Icons.Rounded.Lock, if (renewal) "개인정보 처리방침이 바뀌었어요" else "시작하기 전에 동의가 필요해요", "프로필(이름·연락처·활동 이력, 고른 경우 사진·소개 링크)과 내 활동·즐겨찾기 같은 계정 기록을 저장하려면 아래 두 가지에 동의해 주세요. 광고 목적 정보 제공은 여기 포함되지 않고 따로 묻는 선택 항목이에요.", Modifier.weight(1f).fillMaxWidth(),
+        CenteredMessage(Icons.Rounded.Lock, if (renewal) "개인정보 처리방침이 바뀌었어요" else "시작하기 전에 동의가 필요해요", "프로필과 내 활동·즐겨찾기 같은 계정 기록을 저장하려면 아래 두 가지에 동의해 주세요.", Modifier.weight(1f).fillMaxWidth(),
         content = {
+            // The message keeps to the component's three lines; the rest follows here at the same size, never cut off (2026-10-26 실기기 점검).
+            Text("프로필은 이름·연락처·활동 이력과 고른 경우 사진·소개 링크예요. 광고 목적 정보 제공은 여기 포함되지 않고 따로 묻는 선택 항목이에요.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
             ConsentRow("개인정보 수집·이용에 동의합니다 (필수)", privacy, { privacy = it }, openPrivacy)
             ConsentRow("이용약관에 동의합니다 (필수)", terms, { terms = it }, openTerms)
             error?.let { DearbyFieldError(it) }

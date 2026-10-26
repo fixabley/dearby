@@ -117,7 +117,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
                             ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount,
+                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent,
                                 actions = { FavoriteActions(hearts, true, program.id, program.title) }) { ProgramBody(program.id, state, open, retryProgram, hearts, plus) }
                         }
                         if (state.nextCursor != null) item(key = "more") {
