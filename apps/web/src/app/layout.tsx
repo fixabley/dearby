@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/widgets/shell/shell";
+import { GoogleAnalytics } from "@/shared/ui/google-analytics";
 import { siteOpenGraph, WEB_ORIGIN } from "@/lib/preview";
 import "./globals.css";
 export const metadata: Metadata = {
@@ -21,6 +22,8 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
+// GA4 only on the production deployment with a measurement id: local, preview and an empty value load no script.
+const gaId = process.env.VERCEL_ENV === "production" ? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() : undefined;
 export default function RootLayout({
   children,
 }: {
@@ -30,6 +33,7 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <Shell>{children}</Shell>
+        {gaId && <GoogleAnalytics id={gaId} />}
       </body>
     </html>
   );

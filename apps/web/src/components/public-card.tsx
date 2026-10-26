@@ -10,6 +10,7 @@ import {
   RequestError,
   saveFailure,
 } from "@/lib/client";
+import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
 import { SkeletonGroup } from "@/shared/ui/skeleton";
 import { Icon } from "@/shared/ui/icon";
@@ -51,6 +52,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
     })
       .then((found) => {
         setCard(found);
+        track("card_view", activity === undefined ? {} : { activity_id: activity });
         request<{ items: GuestItem[] }>("/guest/cards", { signal: controller.signal })
           .then((list) => setStored(list.items.some((item) => item.card.id.toLowerCase() === id)))
           .catch(() => {});
@@ -64,7 +66,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
         else setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [id, code, attempt]);
+  }, [id, code, activity, attempt]);
   // The exchange place is decoration: a missing or deleted activity leaves the line out.
   useEffect(() => {
     if (activity === undefined) return;
@@ -93,6 +95,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
         throw new Error("COOKIE_UNAVAILABLE");
       setSaved(true);
       setStored(true);
+      track("card_save_browser");
     } catch (error) {
       const failure = saveFailure(error);
       if (error instanceof RequestError && error.status === 403) {
@@ -150,7 +153,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
           </p>
         )}
         <Button asChild size="lg">
-          <a href={appLink}>
+          <a href={appLink} onClick={() => track("card_open_app")}>
             <Icon name="card" size="inline" />
             Dearby 앱에 저장
           </a>

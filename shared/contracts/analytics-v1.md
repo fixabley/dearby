@@ -1,6 +1,6 @@
 # 앱 사용 통계(Firebase Analytics) 이벤트 사전 — 2026-10-25
 
-사용자 결정: "Analytics SDK 넣어줘"(광고 ID 없이), "분야 등을 지정해서 넣을 수도"(사용자 속성), "퍼널 통과율 같은 것도 GA로 적용해주세요. 이탈률, 도달율도". iOS·Android가 같은 이름을 쓴다(웹은 Analytics를 넣지 않는다). 개인정보: 광고 ID·SSAID·사용자 ID를 보내지 않고(2026-10-25부터 앱에 AdMob 광고가 있어 광고 SDK는 광고 ID를 쓰지만 Firebase 사용 통계는 여전히 쓰지 않는다), 지원 자격 값(나이·재학 등)·이름·연락처·명함 내용은 어떤 이벤트·속성에도 넣지 않는다. 설정 `개인정보` 섹션의 `사용 통계 보내기`(설명 "어떤 화면과 기능을 쓰는지 모아 앱을 고치는 데 써요. 이름·연락처는 보내지 않아요." — Analytics 앱 인스턴스 ID가 있어 "개인정보 없이"라고 쓰지 않는다, 2026-10-25)를 끄면 수집을 멈춘다.
+사용자 결정: "Analytics SDK 넣어줘"(광고 ID 없이), "분야 등을 지정해서 넣을 수도"(사용자 속성), "퍼널 통과율 같은 것도 GA로 적용해주세요. 이탈률, 도달율도". iOS·Android가 같은 이름을 쓴다. 웹은 2026-10-26 사용자 요청으로 같은 GA4 속성의 웹 데이터 스트림에 아래 "웹" 절의 이벤트만 보낸다. 개인정보: 광고 ID·SSAID·사용자 ID를 보내지 않고(2026-10-25부터 앱에 AdMob 광고가 있어 광고 SDK는 광고 ID를 쓰지만 Firebase 사용 통계는 여전히 쓰지 않는다), 지원 자격 값(나이·재학 등)·이름·연락처·명함 내용은 어떤 이벤트·속성에도 넣지 않는다. 설정 `개인정보` 섹션의 `사용 통계 보내기`(설명 "어떤 화면과 기능을 쓰는지 모아 앱을 고치는 데 써요. 이름·연락처는 보내지 않아요." — Analytics 앱 인스턴스 ID가 있어 "개인정보 없이"라고 쓰지 않는다, 2026-10-25)를 끄면 수집을 멈춘다.
 
 ## 사용자 속성 (GA 맞춤 정의 — 사용자 범위로 등록)
 
@@ -71,6 +71,24 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 - 화면 이름: `discovery`, `activity_detail`, `program_detail`, `queue`, `funnel`, `my_activity`, `activity_progress`, `favorites`, `favorites_calendar`, `my_cards`, `received_cards`, `profile`, `settings`, `notifications_inbox`.
 - `menu_open(history)`는 프로필 이력 입력, `menu_open(notifications)`는 프로필의 `기기 알림이 꺼져 있어요` 행(iOS는 알림 묶음이 프로필 안에 펼쳐져 있다).
 - `push_open`의 `kind`: 지금 푸시 페이로드에 종류가 없어 묶음 알림(`activityId` 없음)만 `summary`로 보내고 나머지는 `kind` 없이 보낸다. 서버가 페이로드에 종류를 넣으면 채운다.
+
+## 웹 (2026-10-26)
+
+사용자 요청 "웹에도 Google Analytics". 같은 GA4 속성에 웹 데이터 스트림을 더한다(`apps/web` `shared/ui/google-analytics.tsx`, 의존성 없이 `next/script` + gtag).
+- 켜는 조건: Vercel 프로덕션 배포(`VERCEL_ENV=production`)이고 `NEXT_PUBLIC_GA_MEASUREMENT_ID`(`G-…`)가 있을 때만 스크립트를 넣는다. 로컬·프리뷰·빈 값은 아무것도 넣지 않는다. 웹에는 끄는 설정이 없다(처리방침에 브라우저 쿠키 차단으로 거부하는 방법을 적는다).
+- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID·사용자 속성 없음. 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 명함 경로는 `/cards/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다). 활동 경로 `/activities/<id>`는 공개라 그대로 둔다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
+
+| 이벤트 | 시점 | 매개변수 |
+|---|---|---|
+| `page_view` | 경로 변경마다(첫 로드 포함) | `page_location`(위 정리) |
+| `card_view` | 공개 명함(`/cards/:id`)을 불러옴 | `activity_id`(QR에 교환 활동이 있을 때만) |
+| `card_open_app` | `Dearby 앱에 저장`(앱 링크 `dearby://cards/…`)을 누름 | — |
+| `card_save_browser` | `브라우저에 저장`이 저장 목록 확인까지 성공 | — |
+| `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
+| `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
+
+`activity_view`·`apply_click`은 앱과 같은 이름이라 GA에서 플랫폼(스트림) 측정기준으로 나눠 본다. 웹은 공개 태그 사전을 불러오지 않으므로 `field`를 보내지 않는다.
+GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두면 GA가 정리 전 URL로 페이지뷰·검색어·아웃바운드 클릭을 보낸다. 신청 링크 클릭은 위 `apply_click`으로만 센다. 데이터 보관 기간은 2개월을 권한다.
 
 ## GA 콘솔에서 할 일(사용자)
 맞춤 정의 › 맞춤 측정기준에 위 사용자 속성 4개(사용자 범위)와 매개변수 `step`, `entry`, `tab`, `menu`, `position`, `field`, `category`, `source`, `type`, `level`, `kind`, `reason`, `status`(이벤트 범위; `status`는 iOS `att_prompt_result`를 넣을 때)을 등록한다. 등록 전 데이터는 보고서 측정기준으로 쓸 수 없다.
