@@ -8,7 +8,7 @@ struct TimetableRoute: Identifiable {
     let scheduleTitle: String
     /// The block's date and time, as on the schedule row.
     let date: String
-    /// Open on `찜한 세션` instead of `전체` (the 오늘 내 행사 card, contract "오늘 내 행사 카드": favorites first when the block has any).
+    /// `찜한 세션` first: a tapped 세션 이동 알림 (contract "찜한 세션 이동 알림").
     var favoritesFirst = false
     var id: String { activityID + "/" + scheduleID }
 }

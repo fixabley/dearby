@@ -45,17 +45,17 @@ struct TodayEvent: Equatable {
     /// The block's title, `활동` for the untitled activity period (as the progress track names it).
     var blockTitle: String { block.title.isEmpty ? "활동" : block.title }
 
-    /// Picks the card's activity from the applied ones (dropped: no track, ended, 탈락). A 활동 일정 block is a stage that is not a 선발 단계
-    /// (`ActivityStage.selection`; the activity period included) with a start and spanning at most 7 Seoul days — a months-long all-day
-    /// period is not an event day and would pin the card for the whole period. Today's activities come first (earliest block), then the
-    /// nearest upcoming; `others` counts the rest.
+    /// Picks the card's activity from the applied ones (dropped: no track, ended, 탈락). A 활동 일정 block is a stage of the 활동 일정 section
+    /// (`ActivityStage.inActivitySection`: `phase: ACTIVITY`, the activity period, any timetable block) with a start and spanning at most 7
+    /// Seoul days — a months-long all-day period is not an event day and would pin the card for the whole period. Today's activities come
+    /// first (earliest block), then the nearest upcoming; `others` counts the rest.
     static func pick(_ applied: [AppliedActivity], favorites: [FavoriteSession], now: Date) -> TodayEvent? {
         let seoul = seoul
         let today = seoul.startOfDay(for: now)
         var found: [(event: TodayEvent, rank: Int, start: Date)] = []
         for item in applied {
             guard let progress = item.progress, !progress.ended else { continue }
-            let blocks = progress.stages.filter { !$0.selection }.map(\.source).compactMap { block in days(block).map { (block: block, days: $0) } }
+            let blocks = progress.stages.filter(\.inActivitySection).map(\.source).compactMap { block in days(block).map { (block: block, days: $0) } }
                 .sorted { ($0.block.start ?? .distantFuture) < ($1.block.start ?? .distantFuture) }
             let todays = blocks.filter { $0.days.contains(today) }.map(\.block)
             if !todays.isEmpty {

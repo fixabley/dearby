@@ -35,7 +35,8 @@ import kotlin.concurrent.thread
  * 맞춤 대기열 끝 광고 (contract "맞춤 대기열 끝 광고(AdMob, 비개인화)", 2026-10-25): one AdMob native ad, requested once the queue has loaded
  * and shown after its last activity. Non-personalised (`npa=1`), PG content ceiling, publisher first-party id off; no UMP form (Korea only).
  * [load] is called only after 광고 목적 개인정보 제3자 제공 동의 (QueueViewModel), and the SDK is initialised on that first [load], never at launch.
- * Without a native unit id (a release built without the AdMob ids) nothing is initialised or requested and [ad] stays null. [load] replaces the
+ * Without a native unit id (a release built without the AdMob ids), or with ads off (`BuildConfig.ADS_ENABLED`, 2026-10-26 user decision: off
+ * unless the build sets `DEARBY_ADS_ENABLED=true`), nothing is initialised or requested and [ad] stays null. [load] replaces the
  * held ad and calls [loaded] when the new one arrives; [requested] says a request went out for this view and [failed] tells a failed request
  * from one still loading. [clear] destroys the held ad.
  */
@@ -86,7 +87,8 @@ class QueueAd(private val context: Context) {
     }
 
     companion object {
-        val enabled get() = BuildConfig.ADMOB_NATIVE_UNIT_ID.isNotEmpty()
+        /** Ads on for this build: the switch and a unit id. Off, the queue neither asks for consent nor requests an ad, and 설정 hides its switch. */
+        val enabled get() = BuildConfig.ADS_ENABLED && BuildConfig.ADMOB_NATIVE_UNIT_ID.isNotEmpty()
         private var started = false
         private var ready = false
         private var waiting: (() -> Unit)? = null

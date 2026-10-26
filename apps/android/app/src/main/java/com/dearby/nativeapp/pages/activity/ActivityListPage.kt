@@ -10,12 +10,15 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -29,6 +32,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -37,12 +41,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.toggleableState
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
@@ -60,6 +60,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
 /**
  * Discovery (contract "발견 프로그램 묶음" · "발견 카드 리뉴얼"): one program card per program; its head toggles the activity cards that
  * expand inside the same card. The next program page loads near the end.
+ * Filters (2026-10-26 user decision): the top keeps `프로그램 | 이벤트` and the search field; 상태·종류 live behind one 필터 button (`Tune` with the
+ * applied count) in a [FilterSheet], and the applied ones sit as a row of removable chips above the list — none in the default state (지원 가능).
  * Scrolling (contract "발견 탭 스크롤 동작"): the title line stays fixed, the search area collapses on the way down and re-enters at once on
  * the way up, the list pulls to refresh below it, and a 맨 위로 button appears after about a screen.
  * Keyboard (contract "폼은 플랫폼 기본 컴포넌트" · "키보드 내리기"): the search field is the Material 3 search-bar input; a tap outside any
@@ -68,7 +70,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityListPage(
     state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, refresh: () -> Unit, loadMore: () -> Unit,
-    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setStatusGroups: (Set<StatusGroup>) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
+    toggle: (String) -> Unit, retryProgram: (String) -> Unit, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
     /** The 추천 묶음 above the programs (contract "발견 탭 노출"), or null when there is none; hidden while searching. */
     header: (@Composable () -> Unit)? = null,
     /** Hearts on program cards and activity rows; [plus] is an activity row's `+` (add to 내 활동, or open it there once added). */
@@ -77,14 +79,15 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     unread: Int = 0,
     /** 발견 `프로그램 | 이벤트` (2026-10-26). */
     setKind: (DiscoveryKind) -> Unit = {},
-    /** 종류 dropdown (2026-10-26): the chosen category codes for the current kind; empty = 전체. */
-    setCategories: (Set<String>) -> Unit = {},
+    /** The 필터 sheet's `적용` and a chip's ×: the status groups (empty falls back to 지원 가능) and the category codes for the current kind (empty = 전체). */
+    applyFilters: (Set<StatusGroup>, Set<String>) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val snackbar = remember { SnackbarHostState() }
+    var filtering by remember { mutableStateOf(false) }
     // Pull to refresh failed with a list showing: the list stays, a snackbar passes once (iOS parity); the flag is cleared even if the page leaves mid-show.
     LaunchedEffect(state.refreshFailed) { if (state.refreshFailed) try { snackbar.showSnackbar("새로 고치지 못했어요") } finally { clearRefreshFailure() } }
     val collapse = remember(reduceMotion, focusManager) { SearchAreaCollapse(reduceMotion, scope, focusManager::clearFocus) }
@@ -98,7 +101,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     Box(Modifier.fillMaxSize().imePadding().nestedScroll(topBar.nestedScrollConnection).pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
             DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
-            // Search field and 상태 dropdown: outside the list so the field keeps focus and the keyboard while results change.
+            // Search field, 필터 button and applied chips: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
                 // 프로그램 | 이벤트 (2026-10-26 사용자 결정): Material 3 segmented buttons at the top; the choice is remembered on the device.
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 8.dp)) {
@@ -106,11 +109,23 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                         SegmentedButton(state.kind == kind, { setKind(kind) }, SegmentedButtonDefaults.itemShape(index, DiscoveryKind.entries.size)) { Text(kind.label) }
                     }
                 }
-                DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
-                    Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
-                // 상태 above 종류 (contract "종류 필터": two rows, since both summaries clip side by side at narrow widths).
-                StatusFilter(state.statusGroups, setStatusGroups, Modifier.padding(start = 20.dp, end = 20.dp))
-                CategoryFilter(state.kind.categories, state.categories, setCategories, Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
+                // The applied filters as chips (none by default); their count is the 필터 button's badge.
+                val applied = appliedFilters(state, applyFilters)
+                Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = if (applied.isEmpty()) 12.dp else 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
+                        Modifier.weight(1f).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
+                    IconButton({ focusManager.clearFocus(); filtering = true }, Modifier.padding(start = 4.dp)) {
+                        BadgedBox({ if (applied.isNotEmpty()) Badge { Text(applied.size.toString()) } }) {
+                            Icon(Icons.Rounded.Tune, if (applied.isEmpty()) "필터" else "필터, ${applied.size}개 적용")
+                        }
+                    }
+                }
+                if (applied.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    applied.forEach { chip ->
+                        InputChip(true, chip.remove, { Text(chip.label) }, leadingIcon = chip.icon?.let { { Icon(it, null, Modifier.size(InputChipDefaults.IconSize)) } },
+                            trailingIcon = { Icon(Icons.Rounded.Cancel, "해제", Modifier.size(InputChipDefaults.IconSize)) })
+                    }
+                }
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
             PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
@@ -120,10 +135,10 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
-                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "상태에서 ‘진행 중’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
+                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "필터에서 ‘진행·예정’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
                     // A chosen 종류 offers `종류 필터 지우기` (back to 전체, contract "종류 필터" 빈 결과).
                     programs.isEmpty() -> DearbyEmptyState("고른 조건의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize(),
-                        action = if (state.kind.categoryQuery(state.categories) != null) MessageAction("종류 필터 지우기", { setCategories(emptySet()) }) else null)
+                        action = if (state.kind.categoryQuery(state.categories) != null) MessageAction("종류 필터 지우기", { applyFilters(state.statusGroups, emptySet()) }) else null)
                     else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
@@ -151,7 +166,61 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
+    if (filtering) FilterSheet(state.kind, state.statusGroups, state.categories, { filtering = false }, applyFilters)
 }
+
+/** One applied filter as shown in the chip row: its label, an optional 종류 icon, and what its × applies. */
+private class AppliedFilter(val label: String, val icon: ImageVector?, val remove: () -> Unit)
+
+/** The applied filters in sheet order: every chosen status group unless the groups are the default, then the chosen 종류 of the current kind. */
+private fun appliedFilters(state: ActivityListState, apply: (Set<StatusGroup>, Set<String>) -> Unit): List<AppliedFilter> {
+    val groups = if (state.statusGroups == StatusGroup.DEFAULT) emptyList() else StatusGroup.entries.filter { it in state.statusGroups }.map { group ->
+        AppliedFilter(group.label, null) { apply(state.statusGroups - group, state.categories) }
+    }
+    val categories = state.kind.chosen(state.categories).map { option -> AppliedFilter(option.label, categoryIcon(option.code)) { apply(state.statusGroups, state.categories - option.code) } }
+    return groups + categories
+}
+
+/**
+ * 필터 sheet (2026-10-26 user decision; contract "활동 상태" · "종류 필터"): a Material 3 `ModalBottomSheet` with a draft of both sections as multi-select
+ * `FilterChip`s — 상태 (unchecking the last group falls back to 지원 가능 at once) and, for 프로그램 only, 종류 with the category icons. `적용` sends the
+ * draft and closes; `초기화` resets the draft to 지원 가능 · 전체 without applying; dismissing discards the draft.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun FilterSheet(kind: DiscoveryKind, groups: Set<StatusGroup>, categories: Set<String>, dismiss: () -> Unit, apply: (Set<StatusGroup>, Set<String>) -> Unit) {
+    var draftGroups by remember { mutableStateOf(groups) }
+    var draftCategories by remember { mutableStateOf(categories) }
+    ModalBottomSheet(dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("필터", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            FilterSection("상태") {
+                StatusGroup.entries.forEach { group ->
+                    val selected = group in draftGroups
+                    FilterChip(selected, { draftGroups = (if (selected) draftGroups - group else draftGroups + group).ifEmpty { StatusGroup.DEFAULT } }, { Text(group.label) },
+                        leadingIcon = if (selected) ({ Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }) else null)
+                }
+            }
+            if (kind.categories.isNotEmpty()) FilterSection("종류") {
+                kind.categories.forEach { option ->
+                    val selected = option.code in draftCategories
+                    FilterChip(selected, { draftCategories = if (selected) draftCategories - option.code else draftCategories + option.code }, { Text(option.label) },
+                        leadingIcon = { Icon(categoryIcon(option.code), null, Modifier.size(FilterChipDefaults.IconSize)) })
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DearbyOutlineButton({ draftGroups = StatusGroup.DEFAULT; draftCategories = emptySet() }, Modifier.weight(1f)) { Text("초기화") }
+                DearbyButton({ apply(draftGroups, draftCategories); dismiss() }, Modifier.weight(1f)) { Text("적용") }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun FilterSection(title: String, chips: @Composable FlowRowScope.() -> Unit) =
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, Modifier.semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), content = chips)
+    }
 
 /** Roughly a screen down: the items before the first visible one, taken at the visible items' average height, exceed the viewport. */
 private fun LazyListState.pastOneScreen(): Boolean {
@@ -203,57 +272,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     layout(placeable.width, shown) { placeable.place(0, shown - placeable.height) }
 }.graphicsLayer { alpha = if (state.height == 0) 1f else 1f + state.offset / state.height }
 
-/**
- * 상태 필터 (2026-10-26, contract "활동 상태"; replaces 마감 숨기기): a Material 3 `FilterChip` whose label sums up the chosen groups, opening a
- * `DropdownMenu` of checkbox items. Each tap applies at once and the menu stays open for more; unchecking the last group falls back to 지원 가능.
- */
-@Composable private fun StatusFilter(groups: Set<StatusGroup>, change: (Set<StatusGroup>) -> Unit, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier) {
-        FilterChip(true, { open = true }, { Text("상태: " + StatusGroup.entries.filter { it in groups }.joinToString("·") { it.label }) },
-            Modifier.heightIn(min = 48.dp), trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, null) })
-        DropdownMenu(open, { open = false }) {
-            StatusGroup.entries.forEach { group ->
-                val checked = group in groups
-                DropdownMenuItem({ Text(group.label) }, { change(if (checked) groups - group else groups + group) },
-                    Modifier.semantics { role = Role.Checkbox; toggleableState = ToggleableState(checked) },
-                    leadingIcon = { Checkbox(checked, null) })
-            }
-        }
-    }
-}
-
-/**
- * 종류 필터 (2026-10-26 사용자 요청), the same idiom as [StatusFilter]: the current kind's [options] as checkbox items with the category icon.
- * The label has the same `종류: ` prefix as the 상태 chip: nothing chosen is `종류: 전체`, one or two `종류: 부트캠프·동아리`, three or more `종류: 부트캠프 외 2`.
- */
-@Composable private fun CategoryFilter(options: List<CategoryOption>, chosen: Set<String>, change: (Set<String>) -> Unit, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
-    val labels = options.filter { it.code in chosen }.map { it.label }
-    val summary = "종류: " + when {
-        labels.isEmpty() -> "전체"
-        labels.size <= 2 -> labels.joinToString("·")
-        else -> "${labels.first()} 외 ${labels.size - 1}"
-    }
-    Box(modifier) {
-        FilterChip(labels.isNotEmpty(), { open = true }, { Text(summary, maxLines = 1) }, Modifier.heightIn(min = 48.dp), trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, null) })
-        DropdownMenu(open, { open = false }) {
-            options.forEach { option ->
-                val checked = option.code in chosen
-                DropdownMenuItem({
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(categoryIcon(option.code), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(option.label)
-                    }
-                }, { change(if (checked) chosen - option.code else chosen + option.code) },
-                    Modifier.semantics { role = Role.Checkbox; toggleableState = ToggleableState(checked) },
-                    leadingIcon = { Checkbox(checked, null) })
-            }
-        }
-    }
-}
-
-/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/진행 중/지난 활동 groups). */
+/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/진행·예정/지난 활동 groups). */
 @Composable internal fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) {
     val loaded = state.programActivities[programId]
     when (loaded?.phase) {
@@ -271,8 +290,8 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
                 if (groups.size > 1) GroupHeading(category ?: "미분류")
                 unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title }).forEach { Card(it, open, hearts, plus) }
             }
-            // 모집 예정 · 진행 중 · 지난 활동, each only when its group is chosen: no category headings; an empty group is omitted.
-            listOf("모집 예정" to loaded.upcomingIds, "진행 중" to loaded.inProgressIds, "지난 활동" to loaded.pastIds).forEach { (heading, ids) ->
+            // 모집 예정 · 진행·예정 · 지난 활동, each only when its group is chosen: no category headings; an empty group is omitted.
+            listOf("모집 예정" to loaded.upcomingIds, StatusGroup.IN_PROGRESS.label to loaded.inProgressIds, StatusGroup.PAST.label to loaded.pastIds).forEach { (heading, ids) ->
                 val rows = ids.mapNotNull(state.known::get)
                 if (rows.isNotEmpty()) { GroupHeading(heading); rows.forEach { Card(it, open, hearts, plus) } }
             }
@@ -300,7 +319,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
 @Composable private fun Card(activity: ActivityState, open: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable, deadlineCount = activity.deadlineCount, undated = activity.noRecruitment,
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable, deadlineCount = activity.deadlineCount, undated = activity.noRecruitment, startCount = activity.startCount,
         actions = { FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { plus(activity.id) } })
 
 /** Activity row used by My Activities. */
