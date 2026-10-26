@@ -1,5 +1,7 @@
 package io.wid.dearby.application.card
 
+import io.wid.dearby.application.guest.GuestRepository
+import io.wid.dearby.application.guest.GuestService
 import io.wid.dearby.domain.ConflictException
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
@@ -21,7 +23,7 @@ import java.util.*
 @Service
 class WalletService(
     private val wallet: WalletRepository, private val cards: CardRepository, private val codes: CardQrCodes, private val safety: CardSafetyRepository,
-    private val contexts: ExchangeContextRepository,
+    private val contexts: ExchangeContextRepository, private val guests: GuestRepository,
 ) {
 
     data class Saved(val receipt: Receipt, val created: Boolean)
@@ -59,6 +61,30 @@ class WalletService(
         if (wallet.findReceipt(owner, mine.id) == null) wallet.createReceipt(UUID.randomUUID(), owner, mine.id, received.context.ref, OffsetDateTime.now(ZoneOffset.UTC))
     }
 
+    // 비로그인 저장 → 계정 합치기(native-v1.md "웹 로그인"): 게스트 세션의 회수 전 저장을 내 지갑 Receipt로 옮긴다. 게스트는 저장할 때 QR 코드를 이미 확인했으므로 코드는 다시 보지 않는다.
+    // 이미 있는 Receipt는 그대로 두고(활동이 비어 있었으면 게스트 저장의 맥락으로 채운다), 새 Receipt의 받은 날과 맥락(활동·블록, "교환 세션 맥락")은 게스트 저장 때 것을 그대로 옮기고 다시 판정하지 않는다. 내 명함·차단한 주인의 명함은 건너뛴다.
+    // 옮긴 뒤 세션의 저장은 모두 회수해 브라우저 목록을 비운다(세션 자체는 두며, 다시 부르면 0). 토큰 형식·모르는 세션은 400 GUEST_SESSION_INVALID(401이 아니어야 웹 프록시가 로그인 만료로 오해하지 않는다). 새로 만든 Receipt 수
+    @Transactional
+    fun importGuest(userId: UserId, guestToken: String): Int {
+        val digest = guestToken.takeIf(GuestService.TOKEN::matches)?.let(GuestService::digest)?.takeIf(guests::sessionExists)
+            ?: throw InvalidInputException("게스트 세션이 없습니다", "import-guest with missing or unknown guest token", code = GUEST_SESSION_INVALID)
+        var imported = 0
+        for (item in guests.wallet(digest).items) {
+            val card = item.card
+            if (card.ownerId == userId || safety.isBlocked(userId, null, card.ownerId)) continue
+            val context = item.context.ref
+            val existing = wallet.findReceipt(userId, card.id)
+            if (existing != null) {
+                if (existing.context.ref.activityId == null && context.activityId != null) wallet.setContext(existing.id, context)
+                continue
+            }
+            wallet.createReceipt(UUID.randomUUID(), userId, card.id, context, item.savedAt)
+            imported++
+        }
+        guests.recallAll(digest, OffsetDateTime.now(ZoneOffset.UTC))
+        return imported
+    }
+
     // 차단(native-v1.md "명함 신고·차단"): 그 명함 주인의 명함을 내 지갑에서 모두 회수하고 기록한다. 없는·철회된 명함 404, 내 명함 400. 이미 차단했으면 그 기록
     @Transactional
     fun block(userId: UserId, cardId: UUID): CardBlock {
@@ -82,5 +108,6 @@ class WalletService(
         const val OWN_CARD = "OWN_CARD"
         const val BLOCKED = "BLOCKED"
         const val BLOCKED_DETAIL = "차단한 사람의 명함이에요"
+        const val GUEST_SESSION_INVALID = "GUEST_SESSION_INVALID"
     }
 }

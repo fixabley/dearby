@@ -13,26 +13,28 @@ enum class ActivityListPhase { LOADING, FAILED, LOADED }
 data class CategoryOption(val code: String, val label: String)
 /**
  * 발견 `프로그램 | 이벤트` (2026-10-26, contract "프로그램·이벤트 전환"): the API `kind` code. 이벤트 is 컨퍼런스·워크샵·밋업·강연; 프로그램 is every
- * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (contract "종류 필터", 2026-10-26), in the contract's category order.
+ * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (contract "종류 필터", 2026-10-26), in the contract's
+ * category order. 이벤트 has none (2026-10-26 user decision): its 종류 section is hidden and a 종류 choice kept on the device is not sent.
  */
 enum class DiscoveryKind(val code: String, val label: String, val categories: List<CategoryOption>) {
     PROGRAM("program", "프로그램", options(ActivityCategory.BOOTCAMP, ActivityCategory.STUDY, ActivityCategory.CLUB, ActivityCategory.HACKATHON, ActivityCategory.CONTEST, ActivityCategory.OTHER)),
-    EVENT("event", "이벤트", options(ActivityCategory.CONFERENCE, ActivityCategory.WORKSHOP, ActivityCategory.LECTURE, ActivityCategory.MEETUP));
-    /** The chosen [categories] in menu order; codes of the other kind (or unknown) are dropped. */
+    EVENT("event", "이벤트", emptyList());
+    /** The chosen [categories] in menu order; codes of the other kind (or unknown, or any code while 이벤트) are dropped. */
     fun chosen(codes: Set<String>) = categories.filter { it.code in codes }
-    /** The `category=` value, or null for 전체 (nothing chosen). */
+    /** The `category=` value, or null for 전체 (nothing chosen, or 이벤트). */
     fun categoryQuery(codes: Set<String>) = chosen(codes).joinToString(",") { it.code }.ifEmpty { null }
     companion object { fun of(code: String?) = entries.firstOrNull { it.code == code } ?: PROGRAM }
 }
 private fun options(vararg categories: ActivityCategory) = categories.map { CategoryOption(it.name, it.label) }
 /**
- * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the dropdown's three groups and the server states each sends as `status=`. [code] is what the
- * device keeps and what analytics `discovery_status_filter` reports.
+ * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the filter's three groups and the server states each sends as `status=`. [code] is what the
+ * device keeps and what analytics `discovery_status_filter` reports. Regrouped the same day (user decision): 진행·예정 is every activity that is
+ * neither open for applications nor over (`IN_PROGRESS`·`RECRUITMENT_CLOSED`·`NO_RECRUITMENT`), 지난 활동 only `ENDED`; the ids stay.
  */
 enum class StatusGroup(val code: String, val label: String, val statuses: List<String>) {
     AVAILABLE("available", "지원 가능", listOf("RECRUITING_UPCOMING", "RECRUITING")),
-    IN_PROGRESS("in_progress", "진행 중", listOf("IN_PROGRESS")),
-    PAST("past", "지난 활동", listOf("RECRUITMENT_CLOSED", "NO_RECRUITMENT", "ENDED"));
+    IN_PROGRESS("in_progress", "진행·예정", listOf("IN_PROGRESS", "RECRUITMENT_CLOSED", "NO_RECRUITMENT")),
+    PAST("past", "지난 활동", listOf("ENDED"));
     companion object {
         val DEFAULT = setOf(AVAILABLE)
         /** The kept codes (comma-joined); nothing readable is the default. */
@@ -85,6 +87,8 @@ data class ActivityState(
     val periodDetail: String? = null, val deadlineCount: String? = null, val deadlineDraft: CalendarDraft? = null,
     /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no badge; [status] stands where the recruitment dates go. */
     val noRecruitment: Boolean = false,
+    /** `시작 D-5`/`오늘 시작` beside the `모집 예정` badge (user 2026-10-26); null unless 모집 예정 with a known recruitment start. */
+    val startCount: String? = null,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"
@@ -120,8 +124,8 @@ data class ProgramState(
 )
 /**
  * An expanded program's activities in the chosen [StatusGroup]s, loaded on first expand and split by the server's state (contract "활동 상태");
- * all index into [ActivityListState.known]. [ids] are 모집 중, [upcomingIds] 모집 예정 (nearest first), [inProgressIds] 진행 중 and [pastIds]
- * 모집 마감·모집 일정 미정·종료 of the last three years (most recent start first).
+ * all index into [ActivityListState.known]. [ids] are 모집 중, [upcomingIds] 모집 예정 (nearest first), [inProgressIds] 진행·예정 (진행 중·모집 마감·
+ * 모집 일정 미정, earliest start first) and [pastIds] 종료 of the last three years (most recent start first).
  */
 data class ProgramActivities(
     val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(),
@@ -151,7 +155,7 @@ data class ActivityListState(
     val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
     /** 발견 `프로그램 | 이벤트`, kept on the device. */
     val kind: DiscoveryKind = DiscoveryKind.PROGRAM,
-    /** The 종류 dropdown's chosen codes for [kind] (kept on the device per kind); empty = 전체. */
+    /** The 종류 filter's chosen codes for [kind] (kept on the device per kind); empty = 전체. Read through [DiscoveryKind.chosen]: 이벤트 ignores them. */
     val categories: Set<String> = emptySet(),
 ) {
     val asking get() = askingId?.let(known::get)

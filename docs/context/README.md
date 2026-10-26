@@ -18,6 +18,7 @@
 | [에이전트 운영](agent-roster.md) | UI·유저플로우·어드민·API 담당 경로와 금지 작업 |
 | [Git·워크트리 상태](orca-sessions-and-worktrees.md) | 통합·폴더 정리 기록 |
 | [현재 작업과 결정](coordinator-current-task-and-decisions.md) | 현재 상태(운영 배포·마이그레이션·기기), 남은 일·사용자 결정 대기, 2026-10-18·19 결정 로그 |
+| [비공개 테스트 계획 2026-10](test-plan-2026-10.md) | 성공 지표 둘(활동 추가 → 참석, 명함 교환 3회)의 정의·GA4 계산식·목표값(추정)·기간(10/28 우아콘)·테스터 부탁·측정 전제; 이벤트는 [analytics-v1.md](../../shared/contracts/analytics-v1.md) "비공개 테스트 성공 지표" |
 
 ## 보존한 서비스와 운영
 
@@ -26,7 +27,7 @@
 | [API Swagger](api-swagger.md) · [API 도메인](api-domain-main.md) | 삭제한 TS API 시절의 계약 확인·외부 연결 인계(당시 기록) |
 | [API 구현 인계](api-implementation-and-handoff.md) | 구현 범위·한계·검증 기록 |
 | [API 홈 화면 세션 잇기](api-guest-handoff.md) | 게스트 1회용 코드 발급·교환 |
-| [플랫폼 계약 native-v1.md](../../shared/contracts/native-v1.md) | 발견 프로그램 묶음(열린 활동 판정·정렬 키·마감 숨기기), 활동 종류, 태그(설계), 대상자 조건, 명함·템플릿·명함 표현, 명함 교환(QR·30일 회수), 받은 명함 색인 목록, 내 활동 진행 트랙, 패스키·Apple·Google 네이티브 로그인, 계정 삭제, 웹 비로그인 저장·홈 화면 세션 잇기 |
+| [플랫폼 계약 native-v1.md](../../shared/contracts/native-v1.md) | 발견 프로그램 묶음(열린 활동 판정·정렬 키·마감 숨기기), 활동 종류, 태그(설계), 대상자 조건, 명함·템플릿·명함 표현, 명함 교환(QR·30일 회수), 받은 명함 색인 목록, 내 활동 진행 트랙, 트랙·세션 시간표·세션 찜·찜한 세션 이동 알림(기기 로컬), 패스키·Apple·Google 네이티브 로그인, 계정 삭제, 웹 비로그인 저장·홈 화면 세션 잇기 |
 | [관리자 계약 admin-v1.md](../../shared/contracts/admin-v1.md) | 조직·프로그램(수집 설정·주소 토큰·기본 종류)·활동(추가·편집·묶음 보기), 일정 직접 지정·기간 확인·날짜 문구 피드백·조심 목록, 운영자 지정 필드, 이전 기수 자동완성, 이력 검토·역할·직무 |
 | [사용자 웹](web-implementation-and-handoff.md) | 공개 이력·게스트 명함 보관 |
 | [관리자 웹](admin-web-deployment.md) | 탐색 관리·배포 인계 |

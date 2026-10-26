@@ -33,6 +33,9 @@ interface GuestRepository {
 
     fun removeCard(digest: String, cardId: UUID)
 
+    // 계정 합치기(native-v1.md "웹 로그인"): 세션의 회수 전 저장을 모두 회수한다(행은 남긴다). 회수한 행 수
+    fun recallAll(digest: String, now: OffsetDateTime): Int
+
     fun wallet(digest: String): GuestWallet
 
     // 세션당 하나. 있으면 바꾼다
