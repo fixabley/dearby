@@ -68,7 +68,7 @@ data class TrackBadge(val name: String, val room: String?, val color: TrackColor
     }
 
 /** 찜 겹침 warning (contract "찜 겹침"). */
-@Composable fun OverlapNote(text: String, modifier: Modifier = Modifier) =
+@Composable private fun OverlapNote(text: String, modifier: Modifier = Modifier) =
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Icon(Icons.Rounded.WarningAmber, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
         Text(text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)

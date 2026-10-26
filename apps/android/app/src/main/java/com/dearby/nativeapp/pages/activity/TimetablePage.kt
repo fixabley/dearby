@@ -120,7 +120,7 @@ private data class Cell(val firstRow: Int, val lastRow: Int, val firstCol: Int, 
                     Box(Modifier.layoutId(Cell(r, r, c, c)).padding(4.dp).background(empty, RoundedCornerShape(10.dp)))
                 }
                 Box(Modifier.layoutId(Cell(r, r, -1, -1)).background(pinned).padding(start = 12.dp, top = 12.dp, end = 4.dp)) {
-                    Text(slot(rows.rows[r].first, rows.rows[r].second), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                    Text(slot(rows.rows[r].first, rows.rows[r].second).replace(" – ", "\n– "), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }, modifier = Modifier.horizontalScroll(scroll)) { measurables, _ ->
