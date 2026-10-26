@@ -58,7 +58,8 @@
     "Timetable",
     "TimetableTrack",
     "TimetableSession",
-    "FavoriteSession"
+    "FavoriteSession",
+    "DiscoveryKind"
   ],
   "entities/identity": [
     "CardHistoryRows",

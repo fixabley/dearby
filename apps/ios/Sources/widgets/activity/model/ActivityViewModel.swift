@@ -25,6 +25,16 @@ import Observation
     private(set) var upcomingActivities: [Int64: [ActivityModel]] = [:]
     /// `마감 숨기기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
     var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
+    /// 발견 `프로그램 | 이벤트` (user 2026-10-26): 프로그램 by default; the choice stays on the device (`dearby.discovery.kind`, a new key).
+    /// Switching reloads the list for the current search. The queue row and 추천 do not change.
+    var kind = DiscoveryKind(rawValue: UserDefaults.standard.string(forKey: ActivityViewModel.kindKey) ?? "") ?? .program {
+        didSet {
+            guard kind != oldValue else { return }
+            UserDefaults.standard.set(kind.rawValue, forKey: Self.kindKey)
+            start(query ?? "")
+        }
+    }
+    private static let kindKey = "dearby.discovery.kind"
     private(set) var loadingPrograms: Set<Int64> = []
     private(set) var failedPrograms: Set<Int64> = []
     /// The search field. Kept here so it survives leaving the tab.
@@ -70,14 +80,14 @@ import Observation
     private var firstPage: Task<Void, Never>?
     private var nextPage: Task<Void, Never>?
     private var programLoads: [Int64: Task<Void, Never>] = [:]
-    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage
+    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool, _ kind: DiscoveryKind) async throws -> ProgramPage
     /// `open` true asks for open activities only; false for every activity of the program (past list).
     private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
     /// `GET /v1/activities/:id` for 내 활동 records and linked activities not seen in discovery; nil when the activity is gone (404).
     private let fetchActivity: @Sendable (_ id: String) async throws -> ActivityModel?
     /// One block's 트랙·세션 시간표; nil on 404.
     private let fetchTimetable: @Sendable (_ activityID: String, _ scheduleID: String) async throws -> Timetable?
-    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
+    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool, _ kind: DiscoveryKind) async throws -> ProgramPage,
          activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
          activity: @escaping @Sendable (_ id: String) async throws -> ActivityModel?,
          timetable: @escaping @Sendable (_ activityID: String, _ scheduleID: String) async throws -> Timetable?,
@@ -154,7 +164,7 @@ import Observation
         refreshFailed = false
         let task = Task {
             do {
-                let page = try await fetchPrograms(query, nil, openOnly)
+                let page = try await fetchPrograms(query, nil, openOnly, kind)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 programs = []
@@ -190,7 +200,7 @@ import Observation
         nextPage = Task {
             defer { if !Task.isCancelled { loadingMore = false; nextPage = nil } }
             do {
-                let page = try await fetchPrograms(query, cursor, openOnly)
+                let page = try await fetchPrograms(query, cursor, openOnly, kind)
                 guard !Task.isCancelled else { return }
                 append(page)
             } catch {
@@ -236,7 +246,7 @@ import Observation
         moreFailed = false
         firstPage = Task {
             do {
-                let page = try await fetchPrograms(query, nil, openOnly)
+                let page = try await fetchPrograms(query, nil, openOnly, kind)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 append(page)

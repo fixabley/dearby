@@ -52,7 +52,8 @@ struct ProgramActivityGroups: View {
     private func card(_ activity: ActivityModel) -> some View {
         ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
                      recruitmentText: activity.recruitmentText(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
-                     place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags) {
+                     place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
+                     hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id, source: source) }))
         } open: {
             path.append(activity.id)

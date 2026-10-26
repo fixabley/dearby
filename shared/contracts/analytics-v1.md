@@ -58,6 +58,7 @@
 |---|---|---|
 | `tab_select` | 하단 탭을 누름(앱 시작 때 첫 탭은 보내지 않음) | `tab` = `discovery`·`my_activity`·`cards`·`profile` |
 | `menu_open` | 탭 안의 주요 메뉴·행을 엶 | `menu` = `my_activity_list`·`favorites`·`queue`·`funnel`·`eligibility`·`interests`·`notifications`·`my_cards`·`received_cards`·`card_create`·`profile_edit`·`history`·`settings`·`notifications_inbox`(알림 목록, 종 버튼)(새 메뉴는 이 목록에 먼저 더한다) |
+| `discovery_mode` | 발견 맨 위 `프로그램 \| 이벤트` 전환을 사용자가 바꿈(앱 시작 때 기억된 값은 보내지 않음, 2026-10-26) | `mode` = `program`·`event` |
 
 접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
 

@@ -25,9 +25,11 @@ enum ActivityClient {
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
     /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
+    /// `kind` (발견 `프로그램 | 이벤트`) limits the programs and their summary dates to that side.
     /// `logoUrl` is an API-origin path (`/v1/programs/{id}/logo?v=…`, contract "프로그램 로고"), resolved here against `api`.
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true) async throws -> ProgramPage {
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true, kind: DiscoveryKind? = nil) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
+        if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }

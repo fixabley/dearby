@@ -27,6 +27,9 @@ struct ProgramHeader<Accessory: View>: View {
     var matchedCount = 0
     /// `새 모집` (contract "즐겨찾기(하트)·새 모집 푸시 알림"): a badge after the name in the favorites screen.
     var newRecruitment = false
+    /// 발견 `이벤트` (user 2026-10-26): the meta line is the event date (`M월 d일 행사`, the program's latest activity start when it is still
+    /// ahead) instead of the recruitment deadline; a past one reads `최근 yyyy.M`.
+    var eventDates = false
     /// 알림 목록 (contract "알림 목록(발견 우상단 종)" 2026-10-25): the program's unread count takes the badge's place (no meta line); 0 shows a
     /// quiet badge.
     var unreadCount: Int?
@@ -132,6 +135,9 @@ struct ProgramHeader<Accessory: View>: View {
     /// The meta line under the badge (contract): nearest deadline while recruiting, nearest start when only upcoming, else the latest activity month.
     private var meta: String? {
         if unreadCount != nil { return nil }
+        if eventDates, let latestActivity {
+            return latestActivity >= SeoulDay(Date()).date ? Self.format(latestActivity, "M월 d일") + " 행사" : "최근 " + Self.format(latestActivity, "yyyy.M")
+        }
         if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + (deadlineIsEvent ? " 행사" : " 마감") }
         if openCount == 0, upcomingCount > 0, let nearestStart { return Self.format(nearestStart, "M월 d일") + " 시작" }
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }

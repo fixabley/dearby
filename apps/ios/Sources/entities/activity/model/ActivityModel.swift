@@ -76,6 +76,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         }
         return activityStage?.anchor
     }
+    /// Some block (`schedules[]` or the activity period) has a 트랙·세션 시간표.
+    var hasTimetable: Bool { (stages + [activityStage].compactMap { $0 }).contains(where: \.hasTimetable) }
     /// Everything the overlap check can compare (contract "겹침 확인 시간" 2026-10-22): `schedules[]` and the activity period, each timed
     /// or date-only with an admin time window. The recruitment window is not an event and is left out. Empty: the detail says it cannot check.
     var overlapSchedules: [ActivityScheduleModel] { (stages + [activityStage].compactMap { $0 }).flatMap(\.overlapSchedules) }

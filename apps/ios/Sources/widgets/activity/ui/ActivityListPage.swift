@@ -50,12 +50,12 @@ struct ActivityListPage: View {
                         CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
                             .frame(minHeight: viewport)
                     } else if state.openOnly {
-                        CenteredMessage(symbol: "calendar", title: "지금 모집 중인 프로그램이 없어요",
+                        CenteredMessage(symbol: "calendar", title: state.kind == .event ? "지금 열리는 이벤트가 없어요" : "지금 모집 중인 프로그램이 없어요",
                                         message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요.", embedded: true,
                                         primary: MessageAction("마감 숨기기 끄기", identifier: "activity-show-closed") { state.openOnly = false })
                             .frame(minHeight: viewport)
                     } else {
-                        CenteredMessage(symbol: "calendar", title: "최근 활동한 프로그램이 없어요", message: "활동이 수집되면 여기에서 볼 수 있어요.", embedded: true)
+                        CenteredMessage(symbol: "calendar", title: state.kind == .event ? "최근 열린 이벤트가 없어요" : "최근 활동한 프로그램이 없어요", message: "활동이 수집되면 여기에서 볼 수 있어요.", embedded: true)
                             .frame(minHeight: viewport)
                     }
                 case .loaded:
@@ -127,7 +127,15 @@ struct ActivityListPage: View {
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .tint(DearbyStyle.teal)
         .navigationTitle("활동 둘러보기").navigationBarTitleDisplayMode(.inline).analyticsScreen("discovery")
-        .toolbar { TabRootToolbar() }
+        .toolbar {
+            // 발견 `프로그램 | 이벤트` (user 2026-10-26) in the bar's title place, as 내 활동's segment.
+            ToolbarItem(placement: .principal) {
+                Picker("발견 구역", selection: $state.kind.reporting { AppAnalytics.event("discovery_mode", ["mode": $0.rawValue]) }) {
+                    ForEach(DiscoveryKind.allCases, id: \.self) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).accessibilityIdentifier("discovery-kind")
+            }
+            TabRootToolbar()
+        }
     }
     private var queueEntry: some View {
         DiscoveryQueueEntry(signedIn: queueSignedIn, needsConsent: queueNeedsConsent, action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
@@ -175,7 +183,7 @@ struct ActivityListPage: View {
                           nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                           fieldTags: program.fieldTags, traitTags: program.traitTags,
-                          matchedCount: program.matchedActivityIDs.count, expanded: open) {
+                          matchedCount: program.matchedActivityIDs.count, eventDates: state.kind == .event, expanded: open) {
                 FavoriteControls(target: .program(program.id))
             } toggle: {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) { state.toggle(program.id) }

@@ -18,6 +18,8 @@ struct ActivityCard<Accessory: View>: View {
     var traitTags: [Tag] = []
     /// The card's fill: the grouped background inside a discovery card, the secondary one on its own (즐겨찾기).
     var surface = Color(.systemGroupedBackground)
+    /// A block has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): a `시간표` badge beside the status.
+    var hasTimetable = false
     /// The heart, bell and `+` (`FavoriteControls`) at the bottom trailing corner, outside the card's button; `EmptyView` for none.
     @ViewBuilder var accessory: Accessory
     let open: () -> Void
@@ -30,6 +32,10 @@ struct ActivityCard<Accessory: View>: View {
                 HStack(alignment: .top, spacing: 10) {
                     Text(title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary)
                         .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
+                    if hasTimetable {
+                        Label("시간표", systemImage: "tablecells").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                            .padding(.horizontal, 8).padding(.vertical, 3).background(DearbyStyle.mint, in: Capsule())
+                    }
                     statusChip
                 }
                 VStack(alignment: .leading, spacing: 3) {
@@ -44,7 +50,7 @@ struct ActivityCard<Accessory: View>: View {
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([title, statusText, "모집 " + (recruitmentText ?? "미정"), "활동 " + (scheduleText ?? "미정"),
+            .accessibilityLabel([title, statusText, hasTimetable ? "시간표 있음" : nil, "모집 " + (recruitmentText ?? "미정"), "활동 " + (scheduleText ?? "미정"),
                                  place.map { "장소 " + $0 }, TagChipLine.label(field: fieldTag, traits: traitTags)].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")
