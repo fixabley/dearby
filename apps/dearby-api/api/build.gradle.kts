@@ -5,6 +5,7 @@ plugins {
 dependencies {
     implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-restclient")
+    implementation("org.springframework.boot:spring-boot-starter-mail") // 이메일 인증번호(native-v1.md "연락처 인증")
     implementation("org.springframework.modulith:spring-modulith-starter-core")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.springframework.modulith:spring-modulith-runtime")

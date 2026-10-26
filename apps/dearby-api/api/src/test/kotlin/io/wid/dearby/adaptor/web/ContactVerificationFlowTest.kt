@@ -2,6 +2,9 @@ package io.wid.dearby.adaptor.web
 
 import io.wid.dearby.adaptor.github.GitHubProperties
 import io.wid.dearby.adaptor.github.RestGitHubAccounts
+import org.mockito.ArgumentCaptor
+import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
@@ -11,8 +14,12 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.mail.MailSendException
+import org.springframework.mail.SimpleMailMessage
+import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.*
 import org.springframework.web.client.RestClient
 import org.springframework.web.util.UriComponentsBuilder
@@ -22,13 +29,17 @@ import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-// native-v1.md "연락처 인증": GitHub 로그인 연결(start → 콜백 → code → complete). GitHub 서버는 가짜 login 조회로 바꾼다
+// native-v1.md "연락처 인증": GitHub 로그인 연결(start → 콜백 → code → complete)과 이메일 인증번호. GitHub 서버는 가짜 login 조회로, 메일 발송기는 목으로 바꾼다
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(ContactVerificationFlowTest.FakeGitHub::class)
 class ContactVerificationFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient) {
+
+    @MockitoBean
+    lateinit var mailSender: JavaMailSender
 
     @TestConfiguration
     class FakeGitHub {
@@ -142,6 +153,69 @@ class ContactVerificationFlowTest(@Autowired val mvc: MockMvc, @Autowired val jd
         assertEquals("PROFILE_REQUIRED", read(post(fresh, "/v1/me/contacts/github/complete", """{"code":"$code"}""").andExpect { status { isBadRequest() } })["code"].asString())
     }
 
+    @Test
+    fun `이메일은 인증번호 메일을 보내고, 맞는 번호로 연락처를 인증하며, 틀린 번호 5번이면 폐기하고 같은 이메일은 1분에 한 번만 보낸다`() {
+        val user = user()
+        val emailId = UUID.randomUUID()
+        saveProfile(user, email = "old@example.com", emailId = emailId, label = "메일")
+        post(user, "/v1/me/contacts/email/challenges", """{"email":"not-an-email"}""").andExpect { status { isBadRequest() } }
+        mvc.post("/v1/me/contacts/email/challenges") { contentType = MediaType.APPLICATION_JSON; content = """{"email":"a@b.co"}""" }.andExpect { status { isUnauthorized() } }
+
+        val challenge = read(post(user, "/v1/me/contacts/email/challenges", """{"email":" New@Example.com "}""").andExpect { status { isOk() } })
+        val challengeId = challenge["challengeId"].asString()
+        assertFalse(challenge["expiresAt"].isNull)
+        val captor = ArgumentCaptor.forClass(SimpleMailMessage::class.java)
+        verify(mailSender).send(captor.capture())
+        val mail = captor.value
+        assertEquals(listOf("New@Example.com"), mail.to?.toList())
+        assertEquals("Dearby <no-reply@example.test>", mail.from)
+        val code = Regex("^\\[Dearby] 이메일 인증번호 (\\d{6})$").matchEntire(mail.subject!!)!!.groupValues[1]
+        assertTrue(mail.text!!.contains("인증번호: $code"))
+        // 코드는 DB에 그대로 남지 않는다
+        assertFalse(jdbc.sql("select code_hash from email_contact_challenges where id = ?").param(UUID.fromString(challengeId)).query(String::class.java).single().contains(code))
+
+        // 같은 이메일은 1분에 한 번(대소문자 무시)
+        post(user, "/v1/me/contacts/email/challenges", """{"email":"new@example.com"}""").andExpect { status { isTooManyRequests() } }
+
+        // 틀린 번호: 남은 횟수가 줄고 다른 사람의 challenge는 쓸 수 없다
+        val wrong = if (code == "000000") "000001" else "000000"
+        val mismatch = read(post(user, "/v1/me/contacts/email/verify", """{"challengeId":"$challengeId","code":"$wrong"}""").andExpect { status { isBadRequest() } })
+        assertEquals("CODE_MISMATCH", mismatch["code"].asString())
+        assertEquals(1, jdbc.sql("select attempts from email_contact_challenges where id = ?").param(UUID.fromString(challengeId)).query(Int::class.java).single())
+        val other = user()
+        assertEquals("CHALLENGE_EXPIRED", read(post(other, "/v1/me/contacts/email/verify", """{"challengeId":"$challengeId","code":"$code"}""").andExpect { status { isBadRequest() } })["code"].asString())
+
+        // 맞는 번호: 기존 이메일 항목(id·라벨 유지)의 값을 바꾸고 인증됨, 버전이 오른다
+        val verified = read(post(user, "/v1/me/contacts/email/verify", """{"challengeId":"$challengeId","code":" $code "}""").andExpect { status { isOk() } })
+        val email = contact(verified, "email")!!
+        assertEquals(listOf(emailId.toString(), "메일", "New@Example.com", true), listOf(email["id"].asString(), email["label"].asString(), email["value"].asString(), email["verified"].asBoolean()))
+        assertEquals(2, verified["version"].asInt())
+        // 쓴 challenge는 다시 쓸 수 없다
+        post(user, "/v1/me/contacts/email/verify", """{"challengeId":"$challengeId","code":"$code"}""").andExpect { status { isBadRequest() } }
+        // 같은 값으로 다시 저장해도(대소문자 달라도) 인증 유지
+        assertEquals(true, contact(saveProfile(user, email = "new@example.com", emailId = emailId, label = "메일"), "email")!!["verified"].asBoolean())
+        assertEquals(false, contact(saveProfile(user, email = "other@example.com", emailId = emailId, label = "메일"), "email")!!["verified"].asBoolean())
+
+        // 5번 틀리면 폐기. 1분 제한에 걸리지 않게 다른 이메일로
+        val second = read(post(user, "/v1/me/contacts/email/challenges", """{"email":"second@example.com"}""").andExpect { status { isOk() } })["challengeId"].asString()
+        val captor2 = ArgumentCaptor.forClass(SimpleMailMessage::class.java)
+        verify(mailSender, org.mockito.Mockito.times(2)).send(captor2.capture())
+        val code2 = captor2.allValues.last().subject!!.takeLast(6)
+        repeat(4) { post(user, "/v1/me/contacts/email/verify", """{"challengeId":"$second","code":"999999"}""").andExpect { status { isBadRequest() } } }
+        val discarded = read(post(user, "/v1/me/contacts/email/verify", """{"challengeId":"$second","code":"999999"}""").andExpect { status { isBadRequest() } })
+        assertEquals("CHALLENGE_EXPIRED", discarded["code"].asString())
+        assertEquals("CHALLENGE_EXPIRED", read(post(user, "/v1/me/contacts/email/verify", """{"challengeId":"$second","code":"$code2"}""").andExpect { status { isBadRequest() } })["code"].asString())
+        assertFalse(contact(read(mvc.get("/v1/profile") { asUser(user) }), "email")!!["value"].asString().contains("second"))
+
+        // 프로필이 없으면 보내지 않는다
+        assertEquals("PROFILE_REQUIRED", read(post(user(), "/v1/me/contacts/email/challenges", """{"email":"third@example.com"}""").andExpect { status { isBadRequest() } })["code"].asString())
+        assertNull(jdbc.sql("select id from email_contact_challenges where lower(email) = 'third@example.com'").query(UUID::class.java).optional().orElse(null))
+
+        // 메일을 보내지 못하면 503이고 발송 횟수에 세지 않는다
+        doThrow(MailSendException("down")).`when`(mailSender).send(org.mockito.ArgumentMatchers.any(SimpleMailMessage::class.java))
+        post(user, "/v1/me/contacts/email/challenges", """{"email":"fourth@example.com"}""").andExpect { status { isServiceUnavailable() } }
+        assertNull(jdbc.sql("select id from email_contact_challenges where lower(email) = 'fourth@example.com'").query(UUID::class.java).optional().orElse(null))
+    }
 
     private companion object {
         val LOGINS = mapOf("gh-code-1" to "octocat")
