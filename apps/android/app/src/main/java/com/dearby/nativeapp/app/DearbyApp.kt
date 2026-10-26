@@ -51,7 +51,9 @@ private sealed interface Route {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
-    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, sessions: SessionFavoritesViewModel, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
+    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, sessions: SessionFavoritesViewModel, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {},
+    /** 설정 `세션 이동 알림` (device-local, 2026-10-26); MainActivity plans the alarms from it. */
+    sessionReminders: Boolean = true, setSessionReminders: (Boolean) -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -116,13 +118,15 @@ private sealed interface Route {
     // notification permission once and starts push (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
     val context = androidx.compose.ui.platform.LocalContext.current
     val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted -> if (granted) notifications.register() }
+    // Asked once in all, by whichever first heart comes first (contract "찜한 세션 이동 알림": the first session heart follows the first program heart's rule).
+    val askNotificationsOnce = { if (!device.notificationsAsked) { device.notificationsAsked = true; if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION) } }
     val activityListState by activityModel.state.collectAsStateWithLifecycle()
     val favoriteIds by favorites.ids.collectAsStateWithLifecycle()
     val hearts = FavoriteHearts(favoriteIds.activities, favoriteIds.programs, favoriteIds.levels, toggle = { program, id ->
         if (!ready) needAccount()
         else {
             // The first program heart starts push (token only from now on) and, on Android 13+, asks for the permission this once.
-            if (program && id !in favoriteIds.programs && !device.pushStarted) { if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION); notifications.start() }
+            if (program && id !in favoriteIds.programs && !device.pushStarted) { askNotificationsOnce(); notifications.start() }
             val adding = id !in (if (program) favoriteIds.programs else favoriteIds.activities)
             val details = if (program) listOfNotNull(activityListState.programs.firstOrNull { it.id == id }?.fieldTags?.firstOrNull()?.nameEn?.let { "field" to it.lowercase() }).toTypedArray()
                 else activityModel.track(id, idKey = null)
@@ -133,7 +137,9 @@ private sealed interface Route {
     // `오늘 일정 n개` (dearby://favorites): 내 활동 → 즐겨찾기.
     LaunchedEffect(favoritesLink) { if (favoritesLink) { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; consumeFavoritesLink() } }
     // 세션 찜 (contract "트랙·세션 시간표"): signed out the login sheet, signed in without consent the consent screen — as the activity hearts.
-    val sessionHeart: (String) -> Unit = { id -> if (!ready) needAccount() else sessions.toggle(id) }
+    // A first session heart asks the notification permission once too, for the 세션 이동 알림 the 찜 sets.
+    val sessionIds by sessions.ids.collectAsStateWithLifecycle()
+    val sessionHeart: (String) -> Unit = { id -> if (!ready) needAccount() else { if (id !in sessionIds) askNotificationsOnce(); sessions.toggle(id) } }
     val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
@@ -152,7 +158,7 @@ private sealed interface Route {
     // A linked activity, once loaded, opens on 발견 with its detail pushed over whatever was showing; a gone or unreadable one only says so.
     LaunchedEffect(activityListState.linked, activityListState.linkNotice) {
         activityListState.linked?.let { wallet.closeShared(); route = null; tab = Tab.Discovery; discoveryOpen = it }
-        activityListState.linkNotice?.let { notice = it; queueReturn = false; inboxReturn = false }
+        activityListState.linkNotice?.let { notice = it; queueReturn = false; inboxReturn = false; sessions.dismissPending() }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
     // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first signed-in visit to 발견 (not in store screenshots).
@@ -222,7 +228,7 @@ private sealed interface Route {
                         (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
                         route = null
                     }
-                    Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }) { route = null }
+                    Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, sessionReminders, setSessionReminders) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }
                         ConsentPage(profileState.consenting, profileState.consentError,
