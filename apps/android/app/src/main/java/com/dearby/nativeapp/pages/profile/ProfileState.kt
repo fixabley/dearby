@@ -8,6 +8,9 @@ import com.dearby.nativeapp.entities.account.model.ActivityInfoRef
 import com.dearby.nativeapp.entities.account.model.ProfileJob
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.ProfileVersionDetail
+import com.dearby.nativeapp.entities.account.model.currentOrganization
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 import com.dearby.nativeapp.widgets.profile.profileFields.JobTag
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
 import com.dearby.nativeapp.widgets.profile.profileFields.historyPeriod
@@ -26,6 +29,8 @@ data class ProfileViewState(
     val consentRequired: Boolean = false, val consenting: Boolean = false, val consentError: String? = null,
     /** 직무 tag picker search (setup funnel and editor). */
     val jobSearch: PickerSearchState = PickerSearchState(),
+    /** 프로필 사진 (contract "프로필 사진"): its own upload/delete, saved at once and not part of 저장. */
+    val photoBusy: Boolean = false, val photoError: String? = null,
 ) {
     /** Never saved yet: the setup funnel replaces the editor and the tab bar hides. */
     val settingUp get() = phase == ProfilePhase.LOADED && profile?.version == 0
@@ -37,6 +42,10 @@ fun ProfileFormState.errors() = ProfileErrors(
     phone = when { phone.isBlank() -> "전화번호를 입력해 주세요."; !ContactRules.validPhone(phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."; else -> null },
     email = when { email.isBlank() -> "이메일을 입력해 주세요."; !ContactRules.validEmail(email) -> "이메일 주소를 확인해 주세요."; else -> null },
 )
+/** 보기 모드 맨 위의 명함 면(contract "프로필 사진" 2026-10-26 사용자 결정): 사진·이름·직무·소속·연락처. 소개·이력은 카드 아래에 따로 그린다. */
+fun ProfileFormState.cardState(photoUrl: String?) = CardState("profile", name.ifBlank { "이름 없음" }, jobsText, "", "", "",
+    (listOf(ContactState(phoneId, "phone", "", phone), ContactState(emailId, "email", "", email)) + extras.map { ContactState(it.id, it.kind, "", it.value) }).filter { it.value.isNotBlank() },
+    emptyList(), histories.currentOrganization(), photoUrl)
 /** First profile entry: accordion sections in this order; completed ones collapse to a row that reopens on tap. */
 enum class SetupStep(val label: String) { NAME("이름"), JOBS("직무"), PHONE("전화번호"), EMAIL("이메일"), INTRODUCTION("소개") }
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,17 +20,18 @@ import com.dearby.nativeapp.shared.ui.*
 /**
  * 명함 카드 면(contract "명함 표현", 2026-10-18): 흰 바탕·모서리 20·구분선 테두리·안쪽 여백 20. 머리(아바타·이름·직무 칩·소속) →
  * 소개 마크다운 → 연락처 → 활동 이력. 카드는 자기 높이만큼 펼쳐지고 스크롤은 담는 화면이 맡는다. 행동 버튼은 호출자가 카드 바깥에 둔다.
+ * [body] false는 머리와 연락처만 그린다 — 내 프로필 보기 모드가 소개·이력을 카드 아래에 따로 둔다.
  */
-@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, onContact: (ContactState) -> Unit) {
+@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, body: Boolean = true, onContact: (ContactState) -> Unit) {
     Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Header(state)
-            if (state.introduction.isNotBlank()) MarkdownBody(state.introduction)
+            if (body && state.introduction.isNotBlank()) MarkdownBody(state.introduction)
             Section("연락처") {
                 if (state.contacts.isEmpty()) Empty("공개된 연락처가 없어요")
                 else state.contacts.forEach { ContactRow(it) { onContact(it) } }
             }
-            Section("활동 이력") {
+            if (body) Section("활동 이력") {
                 if (state.histories.isEmpty()) Empty("공개된 활동 이력이 없어요")
                 else state.histories.forEach { HistoryRow(it) }
             }
@@ -39,7 +41,7 @@ import com.dearby.nativeapp.shared.ui.*
 
 @Composable private fun Header(state: CardState) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        InitialAvatar(state.person, 56.dp)
+        PersonAvatar(state.person, state.photoUrl, 56.dp)
         Text(state.person, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleLarge)
         // `job`은 서버가 승인된 직무 이름을 " · "로 이어 준 문자열이라 항목마다 칩으로 되돌린다.
         val jobs = state.job.split(" · ").map { it.trim() }.filter { it.isNotEmpty() }
@@ -59,14 +61,19 @@ import com.dearby.nativeapp.shared.ui.*
 
 @Composable private fun Empty(text: String) = Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
 
-/** 왼쪽 종류 아이콘(24·보조색, 접근성 이름은 종류)과 값만(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20); 행 전체를 눌러 열고, 열 수 있는 값이면 오른쪽에 외부 링크 아이콘을 둔다. */
+/**
+ * 왼쪽 종류 아이콘(24, 브랜드는 그 마크; 접근성 이름은 종류)과 값만(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20). 행 전체를 눌러 열거나(외부 링크 아이콘)
+ * 카카오톡 ID를 복사한다(복사 아이콘; 2026-10-26 "연락처 아이콘·바로가기").
+ */
 @Composable private fun ContactRow(contact: ContactState, open: () -> Unit) {
-    val openable = contact.target != null
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = openable, role = Role.Button, onClick = open).padding(vertical = 6.dp),
+    val opens = contact.target != null
+    val copies = contact.copyText != null
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = opens || copies, onClickLabel = when { copies -> "ID를 복사해요"; contact.kind == "phone" -> "전화를 걸어요"; contact.kind == "email" -> "메일을 보내요"; else -> "링크를 열어요" }, role = Role.Button, onClick = open).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(contactIcon(contact.kind), contact.label.ifBlank { contactKindName(contact.kind) }, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        ContactKindIcon(contact.kind, contact.label.ifBlank { contactKindName(contact.kind) })
         Text(contact.value, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        if (openable) Icon(Icons.AutoMirrored.Rounded.OpenInNew, "열기", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (opens) Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        else if (copies) Icon(Icons.Rounded.ContentCopy, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

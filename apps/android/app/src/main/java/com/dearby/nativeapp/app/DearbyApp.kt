@@ -134,6 +134,8 @@ private sealed interface Route {
     LaunchedEffect(favoritesLink) { favoritesLink?.let { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(it); consumeFavoritesLink() } }
     val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val showNotice: (String) -> Unit = remember(snackbar) { { text -> snackbarScope.launch { snackbar.showSnackbar(text) } } }
     LaunchedEffect(favoriteNotice) { favoriteNotice?.let { try { snackbar.showSnackbar(it) } finally { favorites.dismissNotice() } } }
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
@@ -194,6 +196,8 @@ private sealed interface Route {
     // Logged on every change and on coming back to the app (a view logged while in the background is dropped by Firebase).
     androidx.lifecycle.compose.LifecycleResumeEffect(screenName) { Analytics.screen(screenName); onPauseOrDispose {} }
     val imeVisible = WindowInsets.isImeVisible
+    // One Snackbar for screens below (연락처 복사, 2026-10-26 "연락처 아이콘·바로가기").
+    CompositionLocalProvider(LocalNotice provides showNotice) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             Box(Modifier.weight(1f)) {
@@ -261,6 +265,7 @@ private sealed interface Route {
                 }
             }
         }
+    }
     }
     // Contract #148 "신청 확인": ask once when the app comes back from the official application page.
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current

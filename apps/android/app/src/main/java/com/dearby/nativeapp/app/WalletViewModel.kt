@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
-import com.dearby.nativeapp.entities.account.model.AccountHistory
+import com.dearby.nativeapp.entities.account.model.currentOrganization
 import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.WalletReceipt
@@ -69,7 +69,9 @@ class WalletViewModel(private val account: AccountViewModel, private val activit
         val shared = try {
             val card = if (signedIn) account.authorized { account.client.publicCard(link.cardId, link.code, it) } else account.client.publicCard(link.cardId, link.code, null)
             val own = signedIn && account.authorized { account.client.cards(it) }.any { it.id == link.cardId }
-            SharedCard(card.toState(), link.activityId?.let { activityName(it) }, own)
+            // The photo has the card's read permission (contract "프로필 사진"): a non-holder reads it with the link's QR code too.
+            val face = card.toState().let { face -> face.copy(photoUrl = face.photoUrl?.let { url -> link.code?.let { url + (if ('?' in url) "&" else "?") + "code=" + it } ?: url }) }
+            SharedCard(face, link.activityId?.let { activityName(it) }, own)
         } catch (e: AccountException) {
             SharedCard(error = when (e.error) {
                 AccountError.FORBIDDEN -> "명함 주인에게 QR을 다시 보여 달라고 하세요."
@@ -166,6 +168,4 @@ private fun WalletReceipt.toReceived(): ReceivedCard {
 fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introduction,
     contacts.map { ContactState(it.id, it.kind, it.label, it.value) },
     histories.map { CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, ContactRules.period(it.startDate, it.endDate), it.isVerified, it.description) },
-    // 목록 칩용 소속: 승인된 이력 중 진행 중인 것, 그다음 시작일이 늦은 것(contract "받은 명함 목록 표시")
-    organization = histories.filter { it.isApproved }.sortedWith(compareBy<AccountHistory> { it.endDate != null }.thenByDescending { it.startDate })
-        .firstNotNullOfOrNull { it.organization?.name ?: it.organizationName }?.takeIf { it.isNotBlank() })
+    organization = histories.currentOrganization(), photoUrl = photoUrl)
