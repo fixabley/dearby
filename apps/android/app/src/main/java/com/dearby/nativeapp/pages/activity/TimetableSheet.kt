@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.HourglassEmpty
@@ -22,6 +23,7 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
@@ -32,44 +34,59 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 트랙·세션 시간표 (contract "트랙·세션 시간표", 2026-10-26): `전체 | 찜한 세션` on top, then the table — rows are time slots ([timetableRows]),
- * columns are tracks in `position` order. The whole table scrolls sideways at once while the time column stays put; a block without
- * tracks is one column without sideways scrolling. A tap on a session opens its description and speakers; [heart] is the 찜 tap (the
- * caller opens sign-in or the consent screen when the account is not ready).
+ * 트랙·세션 시간표 as a modal (2026-10-26 사용자 "그럼 차라리 모달로 보여줘"): a full-height Material 3 `ModalBottomSheet` opened from the
+ * block row, read when it opens. On top [title] (`{활동 이름} · {블록 제목}`), [range] and 닫기, then `전체 | 찜한 세션` and the table — rows
+ * are time slots ([timetableRows]), columns are tracks in `position` order. The whole table scrolls sideways at once while the time column
+ * stays put; the sheet only drags vertically, so the sideways scroll and the sheet's vertical nested scroll do not compete. A block without
+ * tracks is one column. A tap on a session opens its description and speakers; [heart] is the 찜 tap (the caller opens sign-in or the
+ * consent screen when the account is not ready).
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun TimetablePage(title: String, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, back: () -> Unit, retry: () -> Unit) {
+@Composable fun TimetableSheet(title: String, range: String?, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit,
+    /** 찜 실패 알림: the app's own Snackbar sits under this full-height sheet, so the sheet shows it. */
+    notices: SnackbarHostState? = null) {
     var favoritesOnly by remember { mutableStateOf(false) }
     var opened by remember { mutableStateOf<String?>(null) }
     val trackOf: (SessionState) -> TrackState? = { session -> timetable?.tracks?.firstOrNull { it.id == session.trackId } }
-    Column(Modifier.fillMaxSize()) {
-        DearbyTopBar(title, back)
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            listOf("전체", "찜한 세션").forEachIndexed { index, label ->
-                SegmentedButton(favoritesOnly == (index == 1), { favoritesOnly = index == 1 }, SegmentedButtonDefaults.itemShape(index, 2)) { Text(label) }
+    ModalBottomSheet(dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
+        Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    range?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium) }
+                }
+                IconButton(dismiss) { Icon(Icons.Rounded.Close, "닫기") }
+            }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                listOf("전체", "찜한 세션").forEachIndexed { index, label ->
+                    SegmentedButton(favoritesOnly == (index == 1), { favoritesOnly = index == 1 }, SegmentedButtonDefaults.itemShape(index, 2)) { Text(label) }
+                }
+            }
+            val all = timetable?.sessions.orEmpty()
+            val shown = if (favoritesOnly) all.filter { it.id in favorites } else all
+            when {
+                phase == TimetablePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                phase == TimetablePhase.FAILED -> DearbyErrorState("시간표를 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
+                timetable == null || all.isEmpty() -> DearbyEmptyState("시간표가 없어요", "이 일정에는 아직 세션 시간표가 없어요.", Modifier.fillMaxSize())
+                shown.isEmpty() -> DearbyEmptyState("찜한 세션이 없어요", "세션의 하트를 누르면 여기에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
+                else -> {
+                    val tracks = timetable.tracks
+                    val favored = all.filter { it.id in favorites }
+                    val overlap: (SessionState) -> Int = { session -> if (session.id in favorites) favored.count { it.overlaps(session) } else 0 }
+                    val card: @Composable (SessionState, Modifier) -> Unit = { session, modifier ->
+                        SessionItem(session, tracks, session.id in favorites, overlap(session), { heart(session.id) }, { opened = session.id }, modifier)
+                    }
+                    val rows = remember(shown) { timetableRows(shown) }
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+                        // 찜한 세션 = 나만의 시간표 (2026-10-26 사용자): one column in time order, no sideways scrolling.
+                        if (favoritesOnly) MyTimetable(shown.map { MyTimetableEntry("", "", it, trackOf(it), tracks.indexOf(trackOf(it))) }, favorites, heart, { opened = it.id }, Modifier.padding(horizontal = 16.dp))
+                        else if (tracks.isEmpty()) SingleColumn(rows, shown, card) else TrackGrid(rows, tracks, shown, card)
+                    }
+                }
             }
         }
-        val all = timetable?.sessions.orEmpty()
-        val shown = if (favoritesOnly) all.filter { it.id in favorites } else all
-        when {
-            phase == TimetablePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            phase == TimetablePhase.FAILED -> DearbyErrorState("시간표를 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
-            timetable == null || all.isEmpty() -> DearbyEmptyState("시간표가 없어요", "이 일정에는 아직 세션 시간표가 없어요.", Modifier.fillMaxSize())
-            shown.isEmpty() -> DearbyEmptyState("찜한 세션이 없어요", "세션의 하트를 누르면 여기에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
-            else -> {
-                val tracks = timetable.tracks
-                val favored = all.filter { it.id in favorites }
-                val overlap: (SessionState) -> Int = { session -> if (session.id in favorites) favored.count { it.overlaps(session) } else 0 }
-                val card: @Composable (SessionState, Modifier) -> Unit = { session, modifier ->
-                    SessionItem(session, tracks, session.id in favorites, overlap(session), { heart(session.id) }, { opened = session.id }, modifier)
-                }
-                val rows = remember(shown) { timetableRows(shown) }
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-                    // 찜한 세션 = 나만의 시간표 (2026-10-26 사용자): one column in time order, no sideways scrolling.
-                    if (favoritesOnly) MyTimetable(shown.map { MyTimetableEntry("", "", it, trackOf(it), tracks.indexOf(trackOf(it))) }, favorites, heart, { opened = it.id }, Modifier.padding(horizontal = 16.dp))
-                    else if (tracks.isEmpty()) SingleColumn(rows, shown, card) else TrackGrid(rows, tracks, shown, card)
-                }
-            }
+        notices?.let { SnackbarHost(it, Modifier.align(Alignment.BottomCenter)) }
         }
     }
     timetable?.sessions?.firstOrNull { it.id == opened }?.let { session ->

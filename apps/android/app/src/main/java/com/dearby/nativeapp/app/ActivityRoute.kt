@@ -28,7 +28,7 @@ import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
-import com.dearby.nativeapp.pages.activity.TimetablePage
+import com.dearby.nativeapp.pages.activity.TimetableSheet
 import com.dearby.nativeapp.pages.activity.MySessionsPage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
@@ -112,17 +112,17 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
-    // The timetable opened from this detail (the view model is shared by both tabs, so it shows only over its own activity).
+    // The timetable sheet opened from this detail's block row (the view model is shared by both tabs, so it shows only over its own activity).
     val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == selected }
+    // The sheet belongs to this detail: leaving it (back, another activity, the consent screen or a tab switch disposing this route) closes
+    // it, so it does not come back on its own the next time the activity is opened.
+    DisposableEffect(selected) { onDispose { sessions?.show(null, null) } }
+    val sheetNotices = remember { SnackbarHostState() }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
     val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
-    BackHandler(openTimetable != null) { sessions?.show(null, null) }
     BackHandler(mySessions && selected == null) { mySessions = false }
-    BackHandler(openTimetable == null && (selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
+    BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
-        openTimetable != null -> TimetablePage(
-            "${openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: activity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }?.name ?: "세션"} 시간표",
-            openTimetable.phase, openTimetable.timetable, sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry)
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, share, openMap,
             addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
@@ -146,6 +146,15 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     }
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), activityLink(activity.id), openPrivacy) { calendar = false }
+    if (openTimetable != null && sessions != null) {
+        // 찜 실패 알림 while the sheet is up: shown in the sheet (DearbyApp leaves it to us while a timetable is open).
+        val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
+        LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
+        val block = activity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
+        val blockTitle = openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: block?.name ?: "세션"
+        TimetableSheet(listOfNotNull(activity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
+            sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry, sheetNotices)
+    }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).
     // 403 CONSENT_REQUIRED on a 내 활동 write (consent version moved to 2026-10-22): go to 내 프로필, whose consent screen comes up on load.
