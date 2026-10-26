@@ -479,3 +479,16 @@ a:focus-visible {
 .place-option-source { margin-inline-start: auto; font-size: 11px; }
 .place-picked { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #e3e8ea; border-radius: 10px; }
 .place-coords { font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* 트랙·세션 시간표 (contract "트랙·세션 시간표", 2026-10-26): 앱과 같은 표 규칙의 미리보기 */
+.timetable-problems { margin: 0; padding-left: 18px; }
+.timetable-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.timetable-preview { overflow-x: auto; }
+.timetable-preview table { border-collapse: separate; border-spacing: 4px; min-width: 100%; table-layout: fixed; }
+.timetable-preview thead th { font-weight: 600; text-align: left; padding: 4px 8px; min-width: 180px; }
+.timetable-preview tbody th { position: sticky; left: 0; z-index: 1; width: 110px; background: #fff; font-weight: 500; font-size: 12px; text-align: left; vertical-align: top; padding: 6px 4px; }
+.timetable-session { vertical-align: top; padding: 8px; border: 1px solid #e3e8ea; border-radius: 8px; background: #fff; }
+.timetable-session.wide { background: rgba(0, 127, 128, 0.06); }
+.timetable-session.band { text-align: center; vertical-align: middle; background: #f0f2f3; color: #657078; }
+.timetable-empty { border-radius: 8px; background: #f5f7f7; }
+.timetable-title { font-weight: 600; margin: 4px 0 2px; }
