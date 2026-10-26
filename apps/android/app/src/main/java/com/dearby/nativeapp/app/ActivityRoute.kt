@@ -71,7 +71,7 @@ import kotlinx.coroutines.delay
     var progressId by remember { mutableStateOf<String?>(null) }
     var stageCalendar by remember { mutableStateOf<Int?>(null) }
     var prompt by remember { mutableStateOf(false) }
-    // 즐겨찾기 › 찜한 세션 (나만의 시간표).
+    // 즐겨찾기 › 내 시간표.
     var mySessions by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     LaunchedEffect(open) { open?.let { show(it, model.takeLinkSource() ?: "my_activity"); consumeOpen() } }
@@ -135,7 +135,7 @@ import kotlinx.coroutines.delay
     // route) closes it, so it does not come back on its own the next time the activity is opened.
     DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null); todaySheet = null } }
     val closeTimetable = { sessions?.show(null, null); todaySheet = null }
-    // A 세션 이동 알림 tap (MainActivity → openLinked): once that activity's detail is up, its block's timetable opens on 찜한 세션. After the
+    // A 세션 이동 알림 tap (MainActivity → openLinked): once that activity's detail is up, its block's timetable opens on 내 시간표. After the
     // DisposableEffect above, whose disposal on the detail change would otherwise close the sheet this opens.
     val pendingReminder = sessions?.pending?.collectAsStateWithLifecycle()?.value
     LaunchedEffect(selected, pendingReminder) { val id = selected; if (id != null && pendingReminder != null) sessions?.showPending(id) }

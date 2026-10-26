@@ -1,3 +1,9 @@
+## 2026-10-26 `찜한 세션` → `내 시간표` 문구(Android)
+
+- `python3 apps/android/scripts/check-fsd.py`: 통과(136 files)
+- `./gradlew lintDebug assembleDebug`: 통과(lint 오류 0, 경고 15건은 기존 의존성 버전·미사용 리소스 안내)
+- 실행하지 않은 것: 실기기 화면 확인(2026-10-18 지시로 에뮬레이터 없음, 연결된 기기 없음) — 시간표 시트 `전체 | 내 시간표`, 즐겨찾기 `내 시간표 · 세션 n개` 행, 빈 안내, 설정 설명, 알림 묶음 본문은 미확인; 자동 테스트(새로 만들지 않음); 큰 글씨 테스트(2026-10-06 지시)
+
 ## 2026-10-26 찜한 세션 이동 알림(Android)
 
 - `python3 scripts/check-fsd.py --self-test`: 통과(26 cases, 134 files)

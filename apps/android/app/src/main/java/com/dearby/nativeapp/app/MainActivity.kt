@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         if (recreated) return
         // A 세션 이동 알림 tap (features/reminder, payload `kind=session_reminder`): the activity opens on 발견 and, once its detail is up, the block's
-        // timetable on 찜한 세션. Before the push path below, which also carries `activityId`.
+        // timetable on 내 시간표. Before the push path below, which also carries `activityId`.
         if (intent.getStringExtra(SessionReminders.KIND) == SessionReminders.SESSION_REMINDER) {
             val id = intent.getStringExtra(SessionReminders.ACTIVITY) ?: return
             intent.getStringExtra(SessionReminders.SCHEDULE)?.let { sessions.remind(id, it) }
