@@ -74,17 +74,17 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 ## 시작 화면 (2026-10-14)
 
 - 스플래시: 실행할 때마다 AndroidX SplashScreen(`Theme.Dearby.Starting`)이 테마 배경(`@color/splash_background`, 라이트·다크)에 로고(`drawable/splash_logo.xml`, `dearby_logo` 워드마크를 원형 마스크 안에 맞춤)를 보여 주고 바로 `Theme.Dearby`로 넘어간다. 인위적인 지연은 없다.
-- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(심볼 + 앱 이름 `shared/ui/DearbyBrand`, "패스키로 시작하기", "Apple로 계속하기", "Google로 계속하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
+- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(심볼 + 앱 이름 `shared/ui/DearbyBrand`, "패스키로 로그인", "Apple로 계속하기", "Google로 계속하기", "둘러보기")를 띄운다. "패스키로 로그인"은 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
 
 ## 패스키 로그인 (2026-10-10)
 
 계약 [native-v1 "패스키 로그인"](../../shared/contracts/native-v1.md)을 따른다. 이메일 인증번호 로그인은 없앴다.
 
-- 흐름: 로그인 시트 `pages/account/SignInSheet.kt`의 "패스키로 로그인"(기본)·"새 패스키로 시작"(가입) → `app/AccountViewModel` → `entities/account/api/AccountClient`의 `/v1/auth/passkeys/*` 옵션 요청 → `features/passkey/Passkeys`(Credential Manager)에 `options` JSON을 그대로 넘김 → 결과 JSON을 `credential`로 완료 요청 → TokenPair.
+- 흐름: 로그인 시트 `pages/account/SignInSheet.kt`의 "패스키로 로그인"(기본; 2026-10-25부터 패스키 가입 "새 패스키로 시작"은 없고 새 계정은 Apple·Google로 만든다) → `app/AccountViewModel` → `entities/account/api/AccountClient`의 `/v1/auth/passkeys/*` 옵션 요청 → `features/passkey/Passkeys`(Credential Manager)에 `options` JSON을 그대로 넘김 → 결과 JSON을 `credential`로 완료 요청 → TokenPair.
 - 저장: Keystore AES-GCM `SessionVault` 새 이름 `account.tokens.v3`에 access·refresh token만 둔다(서버 응답도 토큰 두 개뿐이다). 사용자 id·만료는 access token 클레임에 있고, 401을 받으면 갱신한다. 이전 저장(`session`, 이메일 로그인의 `account.session.v2`)은 읽거나 지우지 않는다.
 - 401: `/v1/auth/refresh`를 한 번 시도하고(동시에 401을 받아도 갱신은 한 번), 거절되면 토큰을 지우고 로그인 시트로 돌아간다. 네트워크 오류면 토큰을 남긴다. 로그아웃(`AccountViewModel.signOut`)은 `/v1/auth/logout` 뒤 네트워크 실패여도 기기 토큰을 지운다. 로그아웃 버튼은 2026-10-20부터 설정 화면의 계정 섹션에 있다(위 "설정").
 - 계정 삭제(2026-10-16, 계약 "계정 삭제"; 2026-10-20부터 설정 화면의 계정 섹션에만 있고 내 프로필의 빨간 버튼은 지웠다): 확인 창("계정을 삭제할까요?" / 삭제·취소) → `ProfileViewModel.deleteAccount` → `AccountViewModel.deleteAccount`(`authorized`로 `DELETE /v1/me`, 401이면 갱신 후 재시도) → 204면 `SessionVault`를 지우고 로그인하지 않은 상태로 돌아가 "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요."를 한 번 띄운다. 갱신이 거절되면 이미 로그아웃된 것으로 보고 만료 안내, 그 밖의 실패는 "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."와 함께 토큰을 남긴다. 요청 중에는 버튼을 막는다. 기기에 저장한 계정 데이터는 토큰뿐이고, 로그아웃 상태가 되면 QR 탭의 명함·공유 링크와 프로필 캐시(메모리)도 비운다.
-- 사용자가 패스키 창을 닫으면 오류 없이 시트로 돌아간다. 기기에 패스키가 없으면 "새 패스키로 시작"을 안내한다. 패스키는 Android 9(API 28) 이상에서만 쓸 수 있다(minSdk 26).
+- 사용자가 패스키 창을 닫으면 오류 없이 시트로 돌아간다. 기기에 패스키가 없으면 Apple·Google로 시작하라고 안내한다. 패스키는 Android 9(API 28) 이상에서만 쓸 수 있다(minSdk 26).
 
 ## 애플 로그인 (2026-10-16)
 
@@ -177,7 +177,7 @@ python3 scripts/check-fsd.py --self-test
 - 처음 저장하기 전(`version` 0) 프로필 화면은 토스식 아코디언 퍼널(`ProfileSetupPage`, 2026-10-17 결정)이다: 이름 → 직무(선택) → 전화번호 → 이메일 → 소개(선택) 섹션이 순서대로 쌓이고, 열린 섹션은 하나뿐이며 답한 섹션은 56dp 행으로 접혀 탭하면 다시 열린다. 질문 `headlineMedium`(24sp 굵게), 입력은 기본 크기 `OutlinedTextField`(아래 "폼은 플랫폼 기본 컴포넌트"), 좌우 24dp, 하단 `DearbyButton`("다음" → 모두 답하면 "프로필 저장"). 퍼널 동안 하단 탭바를 숨긴다(`DearbyApp`, `ProfileViewState.settingUp`). 섹션 상태는 `remember`라 회전하면 첫 질문으로 돌아간다(입력값은 VM에 남는다). 저장되면 인라인 편집기로 바뀐다. 프로필 없이 명함 만들기를 열면 안내만 보여 준다.
 - 직무(계약 "직무", 2026-10-17): 직함 문자열 대신 `jobs` 태그. `JobTagPicker`(widgets/profile/profileFields)가 `GET /v1/jobs` 검색 결과(`ProfileViewModel.searchJobs`, 300ms 디바운스)를 `InputChip`으로 여러 개(10개) 고르고, 없으면 직접 적는다(시계 아이콘 = 승인 대기). 퍼널의 직무 섹션과 편집기의 "직무" 항목이 같은 위젯을 쓴다. 명함·버전 화면의 `job`은 서버가 승인된 이름을 이어 준 문자열 그대로다.
 - 이력은 단계별 입력(`HistoryFunnelPage`): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. 각 단계는 `ActivityInfoPicker`로 등록된 활동 정보를 검색(`GET /v1/organizations|programs|activities|roles`, 300ms 디바운스)하거나 그대로 적는다(직접 입력 = 승인 대기). 인증자료(`EvidenceFields`)는 저장된 이력에서 사진·PDF를 3개까지 올린다(파일 고르기는 `ProfileRoute`). `verified`가 아니면 "미확인".
-- 명함 만들기(`CardComposerRoute`): 명함 이름을 적고 공개할 연락처·이력을 고른다. 본문은 앱 내장 기본 템플릿(`TemplateDocument.starter`, 이름·직무·소개·전화·이메일 토큰)이며 사용자가 고치는 UI는 없다(2026-10-18 사용자 결정으로 렌더링 화면 편집기·웹 버전 스위치 삭제). 제작 화면은 채운 결과를 읽기 전용 "미리보기"(`MarkdownBody`)로 보이고, 서버가 발행할 때 같은 템플릿을 채운다. 본문에 들어간 연락처는 자동 공개, 미승인 이력은 선택 불가. 내용이 바뀌면 "원래대로"가 나타난다.
+- 명함 만들기(`CardComposerRoute`): 명함 이름을 적고 공개할 연락처·이력을 고른다. 본문은 프로필 자기소개 그대로이고 제작 화면은 그것을 읽기 전용 "미리보기"(`MarkdownBody`)로 보인다. 발행·고치기 요청에 `template`을 보내지 않고 서버가 자기소개를 복사한다(2026-10-26 템플릿 폐지: 템플릿 정규식이 Android 17 ICU에서 `PatternSyntaxException`으로 명함 만들기를 열자마자 앱을 끝냈다). 미승인 이력은 선택 불가. 내용이 바뀌면 "원래대로"가 나타난다.
 - 폼은 플랫폼 기본 컴포넌트(2026-10-19 밤, 계약 같은 이름; 사용자 "높이나 폰트가 앱에서 누르기는 힘들어 보여"): 직접 만든 입력 컨트롤(`shared/ui/Controls.kt`의 밑줄형 `DearbyInlineField`·둥근 `DearbySearchField`, 디버그 `ControlsPreview`)을 지우고 Material 3 기본 컴포넌트를 기본 크기 그대로 쓴다. 사용자 정의 높이·글자 크기는 없다. `shared/ui/Motion.kt`의 `rememberReduceMotion`만 남았다.
   - 글 입력(프로필 퍼널·프로필 편집의 이름·소개, 연락처의 전화번호·이메일·추가 연락처, 이력 퍼널의 설명, 명함 만들기의 명함 이름): `OutlinedTextField`(56dp, `bodyLarge`)에 항상 보이는 `label`, 예시는 `placeholder`, 필수·도움말·오류 문장은 `supportingText`(필수는 라벨의 `*`가 아니라 "필수예요." 문장)와 `isError`. 여러 줄(소개·설명)은 `minLines = 3`. 키보드 종류·`imeAction`·`KeyboardActions`(퍼널의 다음)와 `focusRequester`는 그대로다. 접근성 이름은 라벨뿐이다(라벨과 겹치던 `contentDescription`은 뺐고, 날짜 버튼의 `시작일, 필수, <날짜>`·삭제 아이콘처럼 정보를 더하는 것만 남겼다). 추가 연락처의 삭제는 칸의 `trailingIcon`, `연락처 추가`는 `DearbyOutlineButton`, 종류 고르기 시트는 `ListItem` 줄(이름 + 안내 문구).
   - 검색 칸: 직무 선택(`JobTagPicker`)과 이력 선택 창(`ActivityInfoPicker`)은 같은 slice의 `PickerSearchField`(돋보기 `leadingIcon`·지우기 `trailingIcon`을 둔 `OutlinedTextField`, 라벨이 접근성 이름). 받은 명함 검색은 `SearchBarDefaults.InputField`(56dp 둥근 바탕, 계약의 검색창 모양). 발견 탭 검색창은 `pages/activity/ActivityListPage.kt`가 따로 그린다(2026-10-19 밤 "발견 탭 스크롤 동작").

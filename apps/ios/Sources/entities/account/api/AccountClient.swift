@@ -30,13 +30,10 @@ struct AccountClient: Sendable {
         }
     }
 
-    /// Passkey sign-up: the server picks the passkey's `user.name` and `user.id`; the account is made on `register`.
-    /// With a `session` (Bearer) the same calls add a passkey to that account instead (contract "설정 — 패스키 추가").
-    func registrationOptions(session: TokenPair? = nil) async throws -> PasskeyChallenge<Passkey.CreationOptions> {
+    /// 패스키 추가 to the signed-in account (contract "설정"). The same endpoint without a Bearer still signs up for apps
+    /// already shipped, but new accounts start only with Apple or Google (2026-10-25), so this client always sends one.
+    func registrationOptions(session: TokenPair) async throws -> PasskeyChallenge<Passkey.CreationOptions> {
         try await send("auth/passkeys/registration/options", method: "POST", body: [String: String](), session: session, as: PasskeyChallenge.self)
-    }
-    func register(challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
-        try await send("auth/passkeys/registration", method: "POST", body: PasskeyAnswer(challengeId: challengeId, credential: credential), as: TokenPair.self)
     }
     /// Finishes adding a passkey to the signed-in account; the answer body (if any) is not needed, the session stays as it is.
     func addPasskey(challengeId: String, credential: Passkey.Credential, _ session: TokenPair) async throws {
@@ -295,6 +292,21 @@ struct AccountClient: Sendable {
         _ = try await request("me/eligibility-profile", method: "DELETE", session: session)
     }
 
+    /// 광고 목적 개인정보 제3자 제공 동의 (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25): `agreed` only for the current version.
+    func adConsent(_ session: TokenPair) async throws -> AdConsent {
+        try await send("me/consents/ad-third-party", session: session, as: AdConsent.self)
+    }
+    /// A version other than the server's is a 400 (`rejected`); agreeing again keeps the first `agreedAt`.
+    func agreeAdConsent(version: String, _ session: TokenPair) async throws -> AdConsent {
+        try await send("me/consents/ad-third-party", method: "PUT", body: AdConsentInput(version: version), session: session, as: AdConsent.self)
+    }
+    /// 철회: 204, also when there was nothing.
+    func withdrawAdConsent(_ session: TokenPair) async throws {
+        _ = try await request("me/consents/ad-third-party", method: "DELETE", session: session)
+    }
+    struct AdConsent: Decodable, Equatable, Sendable { let agreed: Bool }
+    private struct AdConsentInput: Encodable { let version: String }
+
     /// 푸시 알림 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): this device's APNs token with its IANA time zone (the server sends
     /// at 8:00 there, "프로그램·활동별 알림 수준"); the same token again updates it.
     func putPushDevice(token: String, timeZone: String, _ session: TokenPair) async throws {
@@ -366,11 +378,10 @@ struct AccountClient: Sendable {
     private struct StatusInput: Encodable { let statusId: Int64?; let kind: String? }
     private struct ItemsInput: Encodable { let items: [MyActivityImport] }
 
-    /// `POST /v1/cards`·`PUT /v1/cards/:id`: `template` is the app's built-in markdown template the server fills in at publish time.
+    /// `POST /v1/cards`·`PUT /v1/cards/:id`: the server copies the profile introduction as the body (no `template` since 2026-10-26).
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String
-        let template: String
         let contactIds: [String]
         let historyIds: [String]
     }

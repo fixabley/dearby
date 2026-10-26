@@ -6,7 +6,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.features.google.GoogleSignIn
 import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.pages.onboarding.IntroPage
+import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.AuthProvider
+import com.dearby.nativeapp.shared.config.ConsentVersions
 import kotlinx.coroutines.launch
 
 /** First-launch intro. Signing in (passkey, Apple or Google) or "둘러보기" both end it; a closed or failed sign-in stays here. */
@@ -19,6 +21,6 @@ import kotlinx.coroutines.launch
     LaunchedEffect(signedIn) { if (signedIn) done() }
     IntroPage(start = { signingIn = true }, apple = { scope.launch { account.startWeb(AuthProvider.APPLE, OAuthBrowser(context)) } },
         google = if (auth.googleAvailable) ({ scope.launch { account.signInWithGoogle(GoogleSignIn(context)) } }) else null,
-        browse = done, busy = auth.phase == AccountPhase.WORKING, message = auth.message.takeIf { !signingIn })
+        browse = done, privacyUrl = ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN), busy = auth.phase == AccountPhase.WORKING, message = auth.message.takeIf { !signingIn })
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
 }

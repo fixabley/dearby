@@ -88,9 +88,6 @@ val httpTransport: Transport = object : Transport {
 
 /** Owner API (contract native-v1): passkey sign-in, profile and card publishing. */
 class AccountClient(private val api: String, private val transport: Transport = httpTransport) {
-    /** Passkey sign-up; the account is made when [register] succeeds. The server names the passkey (`Dearby 사용자`). */
-    suspend fun registrationOptions() = send("POST", "auth/passkeys/registration/options", JSONObject()).toPasskeyChallenge()
-    suspend fun register(challengeId: String, credential: String) = send("POST", "auth/passkeys/registration", passkeyBody(challengeId, credential)).toSession()
     // The contract has no request body; an explicit {} keeps HttpURLConnection from sending a bodiless POST.
     suspend fun authenticationOptions() = send("POST", "auth/passkeys/authentication/options", JSONObject()).toPasskeyChallenge()
     suspend fun authenticate(challengeId: String, credential: String) = send("POST", "auth/passkeys/authentication", passkeyBody(challengeId, credential)).toSession()
@@ -159,13 +156,13 @@ class AccountClient(private val api: String, private val transport: Transport = 
         parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
         return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
     }
-    /** `POST /v1/cards`: [template] is the built-in markdown the server fills in at publish time. */
-    suspend fun publish(name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("POST", "cards", JSONObject().put("name", name).put("description", description).put("template", template)
+    /** `POST /v1/cards`: the server copies the profile introduction as the body (no `template` since 2026-10-26). */
+    suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
+        send("POST", "cards", JSONObject().put("name", name).put("description", description)
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
     /** 이 명함 고치기 (`PUT /v1/cards/:id`, contract "명함 고치기는 같은 명함을 수정", 2026-10-20): same body and validation as [publish]; the snapshot behind the same id is rebuilt from the current profile (200 Card, `id`·`createdAt` kept). Owner only; a withdrawn card is 404. */
-    suspend fun updateCard(id: String, name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("PUT", "cards/$id", JSONObject().put("name", name).put("description", description).put("template", template)
+    suspend fun updateCard(id: String, name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
+        send("PUT", "cards/$id", JSONObject().put("name", name).put("description", description)
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
     /** 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 with no body. */
     suspend fun deleteCard(id: String, session: AccountSession) { request("DELETE", "cards/$id", null, session) }
@@ -226,6 +223,12 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun saveEligibilityProfile(profile: EligibilityProfile, session: AccountSession) { request("PUT", "me/eligibility-profile", profile.toPutJson(), session) }
     /** Removes the values and the consent record. */
     suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
+    // 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25): `agreed` is true only for the current version.
+    suspend fun adConsent(session: AccountSession) = send("GET", "me/consents/ad-third-party", null, session).getBoolean("agreed")
+    /** 400 `CONSENT_VERSION` when [version] is not the current one. */
+    suspend fun agreeAdConsent(version: String, session: AccountSession) { request("PUT", "me/consents/ad-third-party", JSONObject().put("version", version), session) }
+    /** 204, also when there was none. */
+    suspend fun withdrawAdConsent(session: AccountSession) { request("DELETE", "me/consents/ad-third-party", null, session) }
     /** The server uses the saved settings and 지원 자격 정보; signed out is 401 (contract "비로그인에서 만들기·추천을 막음", 2026-10-25). */
     suspend fun recommendations(session: AccountSession, size: Int = 10): RecommendationPage =
         send("GET", "discovery/recommendations?size=$size", null, session).toRecommendations(api)

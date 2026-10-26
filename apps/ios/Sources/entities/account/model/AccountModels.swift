@@ -265,8 +265,7 @@ struct ExchangeContext: Decodable, Equatable, Sendable {
     let activityName: String?
     let programName: String?
 }
-/// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
-/// `template` comes only on owner reads (the built-in template the card was published with).
+/// A published card snapshot from `POST /v1/cards`. `introduction` is the markdown body (the profile introduction at publish).
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
@@ -274,7 +273,6 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let profileName: String
     let job: String
     var introduction: String? = nil
-    var template: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
@@ -308,4 +306,15 @@ extension AccountProfile {
         histories: [AccountHistory(id: "h1", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2026-01-01"),
                     AccountHistory(id: "h2", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2025-03-01",
                                    endDate: "2025-12-31")])
+}
+extension TokenPair {
+    /// The access token's `sub` (the account id), read without verifying the JWT: only a device-side key, e.g. a refused 광고 동의 per account.
+    var subject: String? {
+        let parts = accessToken.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var payload = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+        guard let data = Data(base64Encoded: payload), let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return object["sub"] as? String
+    }
 }

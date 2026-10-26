@@ -8,6 +8,7 @@ import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.LinkedIdentity
 import com.dearby.nativeapp.entities.account.model.PasskeyItem
+import com.dearby.nativeapp.features.ads.QueueAd
 import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.pages.settings.SettingsIdentityState
 import com.dearby.nativeapp.pages.settings.SettingsBlockState
@@ -15,6 +16,8 @@ import com.dearby.nativeapp.pages.settings.SettingsPasskeyState
 import com.dearby.nativeapp.pages.settings.SettingsPhase
 import com.dearby.nativeapp.pages.settings.SettingsState
 import com.dearby.nativeapp.shared.config.AuthProvider
+import com.dearby.nativeapp.shared.config.ConsentVersions
+import kotlin.coroutines.cancellation.CancellationException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -31,11 +34,14 @@ private const val LAST_METHOD = "마지막 로그인 수단은 지울 수 없어
  * 설정 (contract "설정"): loads `GET /v1/me`, `/v1/me/identities` and `/v1/me/passkeys` through [AccountViewModel.authorized], maps them to
  * display state and runs 로그아웃·연결 해제·패스키 추가/이름 바꾸기/삭제. Apple/Google 연결하기 is [AccountViewModel]'s own link flow; the
  * route reloads when its `linked` count moves. [version] is the build's version·build text for the 정보 section.
+ * 광고 목적 정보 제공 (contract "광고 목적 개인정보 제3자 제공 동의(선택)"): read only in a build with ads and with the required consent given
+ * ([AccountViewModel.ready]); a failed read hides the switch. Turning it off is also remembered as this device's decline, so the queue does not ask again.
  */
-class SettingsViewModel(private val account: AccountViewModel, private val version: String) : ViewModel() {
+class SettingsViewModel(private val account: AccountViewModel, private val version: String, private val device: DevicePreferences) : ViewModel() {
     private val mutable = MutableStateFlow(SettingsState(version = version))
     val state = mutable.asStateFlow()
     private val client get() = account.client
+    private var accountId: String? = null
     private val day = DateTimeFormatter.ofPattern("yyyy.M.d").withZone(ZoneId.of("Asia/Seoul"))
 
     fun load() {
@@ -47,9 +53,11 @@ class SettingsViewModel(private val account: AccountViewModel, private val versi
                 val identities = account.authorized { client.identities(it) }
                 val passkeys = account.authorized { client.passkeys(it) }
                 val blocks = account.authorized { client.blocks(it) }
+                accountId = summary.id
+                val ad = if (QueueAd.enabled && account.ready.value) adConsent() else null
                 mutable.update {
                     it.copy(phase = SettingsPhase.LOADED, createdAt = day(summary.createdAt), identities = rows(identities), passkeys = passkeys.map(::row),
-                        blocks = blocks.map { block -> SettingsBlockState(block.id, block.name, day(block.blockedAt)) })
+                        blocks = blocks.map { block -> SettingsBlockState(block.id, block.name, day(block.blockedAt)) }, adConsent = ad)
                 }
             } catch (e: AccountException) {
                 mutable.update { it.copy(phase = if (e.error == AccountError.UNAUTHORIZED) SettingsPhase.SIGNED_OUT else SettingsPhase.FAILED) }
@@ -57,6 +65,15 @@ class SettingsViewModel(private val account: AccountViewModel, private val versi
                 mutable.update { it.copy(phase = SettingsPhase.FAILED) }
             }
         }
+    }
+
+    private suspend fun adConsent() = try { account.authorized { client.adConsent(it) } }
+        catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+    /** On after the sheet's `동의하고 계속` (`PUT`); off at once (`DELETE`, no undo). An SDK this run already started stays until the app quits. */
+    fun setAdConsent(on: Boolean) = perform("광고 목적 정보 제공을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.") {
+        if (on) account.authorized { client.agreeAdConsent(ConsentVersions.AD, it) }
+        else { account.authorized { client.withdrawAdConsent(it) }; accountId?.let { device.declineAdConsent(it, ConsentVersions.AD) } }
+        mutable.update { it.copy(adConsent = on) }
     }
 
     /** Both providers always show; a missing identity row is "not linked". */

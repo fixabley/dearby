@@ -77,6 +77,10 @@
   "features/analytics": [
     "AppAnalytics"
   ],
+  "features/ads": [
+    "QueueAdLoader",
+    "QueueAdView"
+  ],
   "pages/home": [
     "HomePage"
   ],
@@ -167,7 +171,6 @@
     "ProfileVersionPage",
     "ProfileVersionsPage",
     "ReceivedCardRow",
-    "TemplateDocument",
     "WalletModel",
     "WalletPage",
     "ConsentPage",

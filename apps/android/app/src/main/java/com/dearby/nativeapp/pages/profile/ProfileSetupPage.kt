@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.profile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,11 +33,12 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
  * First profile entry, Toss-style accordion (2026-10-17 user decision): sections stack in order, only one is open, and
  * answered sections collapse to a tall row that reopens on tap. Fields are Material 3 `OutlinedTextField`s at their default size
  * (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤); the tab bar is hidden meanwhile (DearbyApp). Shown until the profile is saved once.
+ * `이전` and system back reopen the section before the open one with every answer kept (contract "뒤로 가기"). On the first section that slot is `나중에`, and
+ * back does the same: after "프로필은 나중에 프로필 탭에서 만들 수 있어요" [later] shows 발견, still signed in, the answers kept in the view model.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfileSetupPage(
     form: ProfileFormState, saving: Boolean, error: String?, jobSearch: PickerSearchState, searchJobs: (String) -> Unit,
-    change: (ProfileFormState) -> Unit, save: () -> Unit, modifier: Modifier = Modifier,
+    change: (ProfileFormState) -> Unit, save: () -> Unit, later: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val sections = SetupStep.entries
     var open by remember { mutableStateOf(SetupStep.NAME) }
@@ -57,10 +59,15 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
         }
     }
     fun reopen(step: SetupStep) { tried = false; open = step }
+    val previous = sections.getOrNull(open.ordinal - 1)
+    var leaving by remember { mutableStateOf(false) }
+    BackHandler(!saving) { if (previous != null) reopen(previous) else leaving = true }
+    if (leaving) AlertDialog({ leaving = false }, title = { Text("프로필 만들기를 그만할까요?") }, text = { Text("프로필은 나중에 프로필 탭에서 만들 수 있어요.") },
+        confirmButton = { TextButton({ leaving = false; later() }) { Text("나중에 하기") } }, dismissButton = { TextButton({ leaving = false }) { Text("계속 만들기") } })
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
         Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             sections.filter { it in reached }.forEach { step ->
                 if (step == open) OpenSection(step, form, tried, errorOf(step), jobSearch, searchJobs, change, focus, ::next)
                 else DoneRow(step, valueOf(step, form)) { reopen(step) }
@@ -69,8 +76,10 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-        Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp)) {
-            DearbyButton(::next, Modifier.fillMaxWidth(), enabled = !saving) {
+        Row(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (previous != null) DearbyOutlineButton({ reopen(previous) }, Modifier.weight(1f), enabled = !saving) { Text("이전") }
+            else DearbyOutlineButton({ leaving = true }, Modifier.weight(1f), enabled = !saving) { Text("나중에") }
+            DearbyButton(::next, Modifier.weight(1f), enabled = !saving) {
                 if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
                 else Text(if (allReached) "프로필 저장" else "다음")
             }

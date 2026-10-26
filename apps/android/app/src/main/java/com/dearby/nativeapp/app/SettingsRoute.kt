@@ -1,5 +1,13 @@
 package com.dearby.nativeapp.app
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.pages.profile.NotificationRow
+import com.dearby.nativeapp.pages.profile.UsageStatsRow
+import com.dearby.nativeapp.pages.profile.AdConsentRow
+import com.dearby.nativeapp.features.ads.AdConsentSheet
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -21,15 +29,19 @@ import kotlinx.coroutines.launch
  * 연결하기 reuses the native sign-in entry points, which link while signed in; 계정 삭제 reuses the profile's deletion flow and notice;
  * 개인정보·약관 open in a Custom Tab.
  */
-@Composable fun SettingsRoute(model: SettingsViewModel, account: AccountViewModel, profile: ProfileViewModel, close: () -> Unit) {
+@Composable fun SettingsRoute(model: SettingsViewModel, account: AccountViewModel, profile: ProfileViewModel, notifications: NotificationViewModel?, analytics: Boolean, setAnalytics: (Boolean) -> Unit, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     val deletion by profile.deletion.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var signingIn by remember { mutableStateOf(false) }
+    var askingAd by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     BackHandler(onBack = close)
+    // The system notification switch is read again whenever the app comes back (e.g. from its settings).
+    var systemOn by remember { mutableStateOf(true) }
+    LifecycleResumeEffect(Unit) { systemOn = Push.enabled(context); onPauseOrDispose {} }
     LaunchedEffect(signedIn, auth.linked) { if (signedIn) signingIn = false; model.load() }
     SettingsPage(state.copy(busy = state.busy || auth.linking || deletion.deleting), back = close, signIn = { signingIn = true }, signOut = model::signOut, deleteAccount = profile::deleteAccount, retry = model::load,
         link = { key ->
@@ -42,7 +54,19 @@ import kotlinx.coroutines.launch
         },
         unlink = model::unlink, addPasskey = { model.addPasskey(Passkeys(context)) }, renamePasskey = model::renamePasskey, deletePasskey = model::deletePasskey, unblock = model::unblock,
         openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }, openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
-        dismissNotice = model::dismissNotice, googleAvailable = auth.googleAvailable)
+        dismissNotice = model::dismissNotice, googleAvailable = auth.googleAvailable,
+        notifications = notifications?.let { push -> {
+            val notice by push.state.collectAsStateWithLifecycle()
+            NotificationRow(notice.newRecruitment, notice.saving, !systemOn, push::setNewRecruitment) {
+                runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
+            }
+            notice.message?.let { value -> AlertDialog(onDismissRequest = push::dismissMessage, title = { Text("알림") }, text = { Text(value) }, confirmButton = { TextButton(push::dismissMessage) { Text("확인") } }) }
+        } },
+        privacy = {
+            UsageStatsRow(analytics, setAnalytics)
+            state.adConsent?.let { on -> AdConsentRow(on, !state.busy) { if (it) askingAd = true else model.setAdConsent(false) } }
+        })
+    if (askingAd) AdConsentSheet({ askingAd = false; model.setAdConsent(true) }, { askingAd = false }) { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     // Link failures and the deletion result are one-time notices of their own owners.
     auth.linkMessage?.let { AlertDialog(onDismissRequest = account::clearLinkMessage, text = { Text(it) }, confirmButton = { TextButton(account::clearLinkMessage) { Text("확인") } }) }
     deletion.notice?.let { AlertDialog(onDismissRequest = profile::dismissDeletionNotice, text = { Text(it) }, confirmButton = { TextButton(profile::dismissDeletionNotice) { Text("확인") } }) }

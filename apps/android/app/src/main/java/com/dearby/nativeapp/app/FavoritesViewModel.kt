@@ -61,13 +61,13 @@ class FavoritesViewModel(
     private var loadJob: Job? = null
     // Writes go in order, so a quick heart → un-heart reaches the server as PUT then DELETE.
     private val writes = Mutex()
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private val signedIn get() = account.ready.value
 
     private data class Pending(val program: Boolean, val id: String, val programs: List<FavoriteProgram>, val activities: List<FavoriteActivity>, val ids: Ids)
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+            account.ready.map { if (it) AccountPhase.SIGNED_IN else AccountPhase.SIGNED_OUT }.collect { phase ->
                 if (phase == AccountPhase.SIGNED_IN) load() else clear()
             }
         }

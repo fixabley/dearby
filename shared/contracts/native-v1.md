@@ -18,7 +18,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 - Receipt: `id`, `card: Card`, `context: ExchangeContext`, `receivedAt`, `reciprocal: boolean`.
 - GuestSavedCard (기기 전용): `cardId`, `context`, `savedAt`. 영구 원본은 ID 중심, 오프라인 표시 캐시와 구분. 가져오기 성공 항목만 이관 완료 처리. 실패/미선택 보존.
 
-명함 발행은 현재 공개 선택의 스냅샷이다. 프로필 편집이 기존 발행본에 자동 전파되지 않는다. 이는 공개 범위가 의도치 않게 확대되는 것을 막는 초기 구현 결정이다. 명함 철회는 서버 재조회 시 404이며 이미 전달된 정보 자체의 원격 삭제를 보장하지 않는다. 갱신 정책 확대는 별도 이슈로 추적한다.
+명함 발행은 현재 공개 선택의 스냅샷이다. 프로필 편집이 기존 발행본에 자동 전파되지 않는다. 이는 공개 범위가 의도치 않게 확대되는 것을 막는 초기 구현 결정이다. 명함 철회는 서버 재조회 시 404이고 서버의 명함 내용도 바로 비운다(2026-10-25, 아래 "명함 지우기"). 이미 전달된 정보 자체의 원격 삭제는 보장하지 않는다. 갱신 정책 확대는 별도 이슈로 추적한다.
 
 ## 첫 수직 구현 API
 
@@ -30,7 +30,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
 | POST /cards | `{name,description,contactIds,historyIds}` | 201 Card |
 | GET /cards/:id | 없음·비로그인 가능 | 200 Card |
-| PUT /cards/:id | `{name,description,template?,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. `template`을 비우거나 빼면 기존 템플릿 유지 |
+| PUT /cards/:id | `{name,description,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. 본문은 현재 프로필 자기소개로 다시 만든다(아래 "템플릿") |
 | DELETE /cards/:id | 없음·소유자만 | 204 |
 | GET /wallet | 없음 | 200 `{items: Receipt[]}` |
 | POST /wallet/import | `{items:[{cardId,context,savedAt}]}` | 200 `{items:[{cardId,status:"imported"|"alreadySaved"|"failed",receiptId:string|null}]}` |
@@ -158,7 +158,10 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ## 패스키 로그인 — 2026-10-10 사용자 결정
 
-계정은 패스키로만 만들고 로그인한다. 이메일 인증번호 로그인은 없앤다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+이메일 인증번호 로그인은 없앤다. 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+
+- **2026-10-25 사용자 결정 — 패스키 가입 제거**: 새 계정은 애플·구글 로그인으로만 만든다. 앱(iOS·Android)의 로그인 화면에서 "새 패스키로 시작"을 없앴고, 시작 화면의 "패스키로 시작하기"는 "패스키로 로그인"이 됐다. 이미 패스키로 만든 계정의 "패스키로 로그인"과 설정의 패스키 추가·이름 바꾸기·삭제(로그인한 계정에 패스키를 더함)는 그대로다. 서버의 Bearer 없는 `registration/options`·`registration`(새 계정 생성)은 이미 배포된 앱 버전이 쓰므로 이번에는 지우지 않는다. 새 클라이언트는 이 경로를 Bearer 없이 부르지 않는다.
+- 변경 이력: 2026-10-10 결정은 "계정은 패스키로만 만들고 로그인한다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다."였다(애플·구글 로그인 추가 뒤에도 패스키 가입은 2026-10-25까지 남아 있었다).
 
 ### 신뢰 당사자와 연결
 
@@ -173,8 +176,8 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 | 메서드·경로 | 인증 | 요청 | 성공 응답 |
 | --- | --- | --- | --- |
-| POST /v1/auth/passkeys/registration/options | 없음 | `{displayName?}` | 200 `{challengeId, options}` |
-| POST /v1/auth/passkeys/registration | 없음 | `{challengeId, credential}` | 201 TokenPair. 이때 계정이 생긴다 |
+| POST /v1/auth/passkeys/registration/options | 없음(가입, 배포된 옛 앱만) 또는 Bearer(패스키 추가) | `{displayName?}` | 200 `{challengeId, options}` |
+| POST /v1/auth/passkeys/registration | 없음(가입, 배포된 옛 앱만) 또는 Bearer(패스키 추가) | `{challengeId, credential}` | 201 TokenPair. Bearer 없으면 이때 계정이 생긴다(2026-10-25부터 새 앱은 쓰지 않음) |
 | POST /v1/auth/passkeys/authentication/options | 없음 | 없음 | 200 `{challengeId, options}` (`allowCredentials`는 비움, 기기에 있는 패스키 중 고름) |
 | POST /v1/auth/passkeys/authentication | 없음 | `{challengeId, credential}` | 200 TokenPair |
 | POST /v1/auth/refresh | 없음 | `{refreshToken}` | 200 TokenPair. 쓴 refresh token은 폐기된다(회전) |
@@ -186,8 +189,9 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ### 앱 동작
 
-- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 "패스키로 시작하기"·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
-- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
+- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 로그인 버튼(애플·구글·"패스키로 로그인", 2026-10-25 전에는 "패스키로 시작하기")·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
+- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. 애플·구글·"패스키로 로그인"을 고른다. 두 플랫폼 모두 애플·구글이 위 주 버튼, "패스키로 로그인"은 그 아래 보조 버튼이다(2026-10-25, Android도 iOS 순서로). 새 계정은 애플·구글로만 만든다(2026-10-25, 이전에는 "새 패스키로 시작"으로 가입했다). 이 기기에 패스키가 없으면 애플·구글로 시작하라고 안내한다.
+- 로그인 시트 맨 위에는 락업 이미지 한 장(가로 워드마크 + 그 아래 캐치프레이즈 "대외활동, 매일 맞춤으로", 원본 `shared/assets/brand/sign-in-lockup.html`, 1240×480 투명 PNG 라이트·다크 두 장)을 둔다. 시트는 두 플랫폼 모두 화면 절반 높이로 고정하고(iOS `.presentationDetents([.medium])`, Android 부분 펼침 없이 본문 높이 화면의 50%; 작은 화면에서는 위쪽 내용이 스크롤되고 버튼은 보인다), 이미지는 높이 96pt/dp·비율 유지(시트의 약 1/4)·글자 배율과 무관한 고정 크기로 시트 높이의 약 1/4, 접근성 라벨 "Dearby, 대외활동, 매일 맞춤으로"(2026-10-25 사용자 요청; 이전에는 심볼 아래 앱 이름 텍스트). 다크 변형은 워드마크 #3FB3B4·문구 밝은 회색. 시작 화면도 두 플랫폼 모두 로그인 시트와 같게 한다(2026-10-25 사용자 승인, 이전에는 심볼 + 앱 이름과 큰 제목 "활동에서 만난 사람과 명함을 주고받아요"): 같은 락업 이미지만 두고(큰 제목·설명 없음), 버튼은 애플 → 구글 → 로그인 고지 한 줄(아래 "애플 로그인"의 "로그인 고지") → "패스키로 로그인"·"둘러보기" 보조(텍스트) 버튼. 로그인 시트도 본문 큰 제목·설명 없이 락업 아래 버튼 묶음이다(애플·구글이 없는 빌드는 "패스키로 로그인" 제목·설명과 주 버튼).
 - access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
 - 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
 - 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.
@@ -206,9 +210,9 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | GET /v1/profile/versions/:n | Bearer | — | 200 `{version, createdAt, profile}` 그때의 프로필 |
 | POST /v1/profile/versions/:n/restore | Bearer | — | 200 Profile. 그 버전 내용으로 새 버전을 만든다(이력은 지우지 않는다) |
 
-- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`. `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
+- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt, photoUrl}`. `photoUrl`은 아래 "프로필 사진"(없으면 null, 버전 스냅샷에는 싣지 않는다). `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
 - 직무(2026-10-17 사용자 결정, 이전 "직함" 문자열을 대체): 직무는 조직처럼 계층을 가진 활동 정보이고 프로필은 여러 개를 태그로 둔다. ProfileJob: `{id(클라이언트 UUID), job: {id, name} | null, jobName, approval: approved|pending|rejected, approvalReason}`. PUT에는 `{id, jobId?, jobName?}`를 보낸다(둘 다 보내면 `jobId`). 검색에 없으면 `jobName`만 적는 직접 입력이고 이력과 같은 규칙으로 관리자 승인 전(`pending`)에는 명함 `job`에 들어가지 않는다. 직접 입력 값이 그대로면 승인·거절 결과가 유지되고 바뀌면 다시 `pending`. 최대 10개, 같은 직무 중복 400. 검색은 `GET /v1/jobs`(아래 "이력"의 선택 창 검색과 같은 형식, `q?`, `parentId?`, `rootsOnly?`, `cursor?`, `size?`; 항목에 바로 위 직무 `parent: {id, name}`). V18 이전 버전 스냅샷의 `job` 문자열은 승인된 직접 입력 직무로 읽힌다.
-- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 꾸미기(마크다운 템플릿)는 명함 제작에서 한다(아래 "템플릿").
+- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 명함 본문은 이 글을 그대로 복사한다(아래 "템플릿", 2026-10-26 템플릿 폐지).
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
 
@@ -235,30 +239,55 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 - Evidence: `{id, fileName, contentType, size, uploadedAt}`. 파일은 DB에 둔다(bytea). 명함에는 실리지 않는다.
 - 올리면 `verification`이 `pending`이 된다(이미 `verified`면 유지). 건너뛰고 나중에 올릴 수 있다. 다 지워도 `verified`는 유지된다.
 
+### 프로필 사진 — 2026-10-26 사용자 결정
+
+사용자: 프로필 사진을 올릴 수 있게 한다. 보이는 곳은 내 프로필과 명함(명함 면·웹 `/cards/:id`). 명함을 만들 때 "사진 넣기"를 고른다(기본 켬). 자르기는 사용자가 위치·크기를 직접 조절하고 앱이 정사각형으로 잘라 올리며, 화면에는 원형으로 보인다. 선택 항목이며 처리방침에 "프로필 사진(선택)"을 적어야 한다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| PUT /v1/profile/photo | Bearer | multipart `file` | 200 `{photoUrl}`. 있으면 바꾼다. `image/jpeg`·`image/png`만, 5MB, 한 변 4096px까지. 어기거나 읽을 수 없으면 400 |
+| GET /v1/profile/photo | Bearer(본인) | — | 200 `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`. 없으면 404 |
+| DELETE /v1/profile/photo | Bearer | — | 204. 없어도 204 |
+
+- **앱이 올리는 것**: 사용자가 위치·크기를 고른 **정사각형** 크롭을 회전(EXIF 방향)이 적용된 픽셀 그대로, 한 변 1024px 이하로 줄여 JPEG(또는 PNG)로 올린다. HEIC·WebP는 서버가 읽지 못하므로 앱이 JPEG로 바꿔 올린다(iOS 사진 앱 기본 HEIC). 서버는 EXIF 방향을 읽지 않는다.
+- **서버가 하는 것**: 파일 종류(요청 `Content-Type`)·크기를 확인하고 JDK ImageIO로 실제로 풀어 본다(헤더만 맞고 내용이 이미지가 아니거나 CMYK JPEG처럼 읽지 못하면 400). 크기를 먼저 읽어 한 변 4096px을 넘으면 풀지 않고 400. 정사각형이 아니면 가운데 정사각형으로 자른다. 한 변 512px로 줄이고(더 작으면 키우지 않는다) 흰 바탕(투명 PNG)에 JPEG(품질 0.85)로 **다시 인코딩**한다. 픽셀만 새로 쓰므로 EXIF(위치·기기)·ICC 등 메타데이터는 남지 않는다. 원본은 저장하지 않는다.
+- **저장**: V58 `profile_photos(user_id pk → users on delete cascade, data bytea, updated_at timestamptz)`. 인증자료처럼 DB에 두고 사용자당 하나다. 프로필 버전(`profile_versions`)·버전 되돌리기와 무관하다.
+- **`photoUrl`**: `GET`·`PUT /v1/profile`·`restore` 응답과 `PUT /v1/profile/photo` 응답에 `"/v1/profile/photo?v=<바뀐 시각 epoch ms>"` 또는 null. API 경로라 앱이 API base를 붙인다. 사진을 바꾸면 `v`가 바뀌므로 앱은 `v`가 같으면 캐시를 그대로 쓴다. 조회는 Bearer가 필요해 시스템 이미지 로더(`AsyncImage`·Coil 기본)로 바로 못 열고, 앱의 인증 HTTP 클라이언트로 받는다.
+- **동의**: `PUT`·`DELETE`는 다른 프로필 쓰기처럼 현재 버전 필수 동의가 없으면 403 `CONSENT_REQUIRED`("개인정보 동의"). `GET`은 막지 않는다.
+- **계정 삭제**: `users` cascade로 함께 지운다(아래 "계정 삭제").
+- **명함에 싣기**:
+  - 요청: `POST /v1/cards`·`PUT /v1/cards/:id`에 `includePhoto?: boolean`(생략하면 true). 제작 화면의 "사진 넣기" 스위치(기본 켬, 프로필 사진이 없으면 스위치 대신 "프로필에서 사진을 넣을 수 있어요"). 프로필 사진이 없으면 true여도 사진 없는 명함이 된다.
+  - **발행 시점 복사**: 명함은 발행 시점 스냅샷이므로 프로필 사진을 참조하지 않고 그때의 바이트를 명함 쪽에 복사한다. V59 `business_card_photos(card_id pk → business_cards on delete cascade, data bytea)`와 `business_cards.photo_updated_at`(복사한 프로필 사진의 `updated_at`, 없으면 null). 프로필 사진을 바꾸거나 지워도 이미 낸 명함의 사진은 그대로이고, 바꾸려면 명함을 고치거나(`PUT /v1/cards/:id`가 그때 프로필 사진으로 다시 복사, `includePhoto=false`면 비움) 지운다. 앱은 프로필 사진을 지울 때 "이미 만든 명함의 사진은 명함을 고치거나 지워야 바뀌어요" 안내를 둔다(사용자 확인 필요한 결과).
+  - 응답: Card(내 명함 목록·발행·고치기·공개 조회·지갑·게스트 목록)에 `photoUrl: "/v1/cards/:id/photo?v=<ms>" | null`. `GET /v1/cards/:id/photo`는 `GET /v1/cards/:id`와 같은 조회 권한(주인·받은 명함·게스트 저장·유효한 `?code=`, "명함 QR 코드")이고 실패도 같은 403·404다(사진이 없으면 404). `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`.
+  - 명함 지우기·어드민 내리기는 내용과 함께 사진도 바로 지운다(위 "명함 지우기", V56 규칙과 같다).
+  - 웹 `/cards/:id`: 로드 뒤 주소에서 `code`를 지우므로 `<img>`가 코드를 실을 수 없다. 웹 프록시(`/api/cards/:id`)가 명함을 조회할 때 `photoUrl`이 있으면 사진도 같은 권한(코드·게스트 쿠키)으로 받아 응답에 `photo: "data:image/jpeg;base64,…"`로 넣고, 카드 면은 이니셜 원 대신 원형 사진을 그린다. 사진을 못 받으면 이니셜 그대로. `/saved` 목록 행은 이니셜 그대로다. 오픈그래프에는 넣지 않는다("오픈그래프" — 이름·사진 미포함 그대로).
+  - 신고 스냅샷: 사칭·부적절 신고의 근거라 신고 시점 명함 사진도 V59 `card_report_photos(report_id pk → card_reports on delete cascade, data bytea)`에 복사해 둔다(`card_snapshot`과 같은 수명: 신고일 1개월 뒤 삭제, 내 명함에 대한 신고는 계정 삭제 때 삭제). 24시간 안 재신고(기존 신고 200)는 다시 복사하지 않는다. 어드민 `GET /v1/admin/card-reports/:id/photo`(ADMIN, `image/jpeg`, `no-store`, 없으면 404).
+
 ### 명함·지갑
 
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `template`은 앱 내장 기본 템플릿(아래 "템플릿") |
+| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[], includePhoto?}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
-| DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
+| DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], photoUrl, createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introduction`은 발행(고치기) 시점 프로필 자기소개를 **그대로 복사한** 공개 본문(마크다운)이다. `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. `photoUrl`(`includePhoto`)은 위 "프로필 사진".
+- **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
 
 ### 템플릿
 
-명함 본문(`introduction`)은 발행할 때 서버가 `template`을 채운 결과다. 사용자가 템플릿을 고치는 UI는 없다.
+**2026-10-26 폐지(사용자 결정).** 명함 본문(`introduction`)은 발행·고치기 시점 프로필 자기소개(`profile.introduction`)를 서버가 그대로 복사한 것이다. 템플릿·토큰 채우기는 없다.
 
-- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고, `template`에는 **앱 내장 기본 템플릿** `{{profile.introduction}}` 하나를 그대로 보낸다. 제작 화면은 채운 결과를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그리므로 본문에 다시 넣지 않는다.
-- 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 서버는 발행할 때 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다.
-- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
-- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)과 10,000자·제어 문자 규칙. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
-- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다.
+- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고 `template`을 보내지 않는다. 제작 화면은 자기소개를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그린다.
+- 서버는 `POST`·`PUT /v1/cards`의 `template`을 선택값으로 받고 **무시**한다(이미 배포된 옛 앱이 보내므로 400을 내지 않는다). 응답 Card의 `template`(주인 조회만)은 옛 앱 호환으로 당분간 남기며 새 스냅샷은 빈 문자열이다. DB 열 `business_cards.template`은 이번에 지우지 않는다.
+- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지). 고치면 본문도 그때의 자기소개로 바뀐다.
+- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)으로 렌더한다. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
+- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다. · 2026-10-26 템플릿 폐지(사용자 결정): 앱 내장 템플릿 `{{profile.introduction}}` 하나뿐이라 본문을 자기소개 복사로 바꾸고 앱·서버의 템플릿 코드를 지움. 계기는 Android 앱 템플릿 정규식(`}}` 미이스케이프)이 Android 17 ICU에서 `PatternSyntaxException`으로 명함 만들기를 열자마자 앱을 끝낸 일. 폐지 전 토큰 규칙은 [`2c01befa`](https://github.com/fixabley/dearby/blob/2c01befa/shared/contracts/native-v1.md#템플릿).
 
 ## 애플 로그인 — 2026-10-16 사용자 결정
 
@@ -298,6 +327,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
   - iOS는 credential의 `authorizationCode`를 함께 보낸다. 웹 방식은 콜백의 `code`를 서버가 쓴다.
   - 서버는 `.p8` 키로 서명한 client secret으로 code를 애플 refresh token으로 바꿔 `user_identities`에 둔다. 아래 "계정 삭제" 때 폐기하기 위해서다.
   - 키가 설정되지 않았거나 교환이 실패해도 로그인은 막지 않는다. 다시 로그인하면 새 토큰으로 바꾼다.
+- **로그인 고지(2026-10-25 사용자 결정, 구글 로그인에도 적용)**: 로그인 화면(로그인 시트·시작 화면)의 Apple·Google 버튼 바로 아래에 작은 보조 글씨 한 줄 `로그인하면 계정 식별을 위해 Apple·Google 계정 정보(이메일 등)를 개인정보처리방침에 따라 처리해요.`를 둔다(`개인정보처리방침`은 `https://dearby.wid.io.kr/privacy` 링크). 별도 동의 단계는 아니다(아래 "광고 목적 개인정보 제3자 제공 동의(선택)"의 "동의 시점 원칙(JIT) 점검"). iOS 로그인 시트는 같은 날 본문 큰 제목·설명을 없애고(내비게이션 제목 `로그인`과 락업은 유지) `패스키로 로그인`을 고지 아래 보조(텍스트) 버튼으로 낮춘다.
 
 ## 계정 삭제 — 2026-10-16 사용자 결정
 
@@ -309,7 +339,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - 되돌릴 수 없다. 앱은 내 프로필 탭 맨 아래 "계정 삭제"에서 확인 대화상자("계정을 삭제할까요?" / "명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.")를 거쳐 부른다. 성공하면 저장한 토큰과 메모리의 계정 데이터를 지우고 로그아웃 상태로 돌아간다. 401 뒤 refresh도 거절되면 로그아웃된 것으로 본다.
 - 지우는 것
-  - 사용자, 역할, 연락처, 프로필, 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
+  - 사용자, 역할, 연락처, 프로필, 프로필 사진(2026-10-26), 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
   - refresh token. 이미 발급한 access token은 수명(1분)이 지나면 끝난다.
   - 패스키 user entity와 credential. 기기에 남은 패스키는 앱이 지울 수 없어 안내만 한다(iOS "설정 > 암호", Android "비밀번호 관리자").
   - 외부 로그인 연결
@@ -349,13 +379,14 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "프로필 입력하기 전에 개인정보동의 필수로 구할 수 있게". 프로필(이름·연락처·이력)을 처음 저장하기 전에 **개인정보 수집·이용 동의**와 **이용약관 동의**를 필수로 받고 서버에 기록한다.
 
-- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(기본 `2026-10-19`, 웹 `/privacy`·`/terms` 시행일과 같다). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
+- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(웹 `/privacy`·`/terms` 시행일과 같다. 처음 `2026-10-19`, 2026-10-22부터 둘 다 `2026-10-22`). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
 - 저장: V37 `user_consents(user_id pk → users on delete cascade, privacy_version, terms_version, consented_at timestamptz)`. 계정 삭제와 함께 지워진다.
 - API: `POST /v1/me/consents {privacyVersion, termsVersion}`(Bearer) → 204. 현재 버전과 다르면 400 `CONSENT_VERSION`. `GET /v1/profile` 응답에 `consent: {privacyVersion, termsVersion, consentedAt}|null`과 `consentRequired: boolean`(기록이 없거나 버전이 다르면 true)을 더한다. **`PUT /v1/profile`은 `consentRequired`이면 403 `CONSENT_REQUIRED`**(이력 인증자료 업로드 등 프로필 하위 쓰기도 같다). 명함 발행·받은 명함·활동 신청 표시는 프로필이 있어야 하므로 자연히 뒤에 온다.
 - 앱(iOS·Android): 첫 프로필 퍼널의 첫 단계 앞, 그리고 프로필 화면을 열었을 때 `consentRequired`이면 **동의 화면**을 전체 화면으로 보인다. 제목 "시작하기 전에 동의가 필요해요", 필수 체크 두 개(`개인정보 수집·이용에 동의합니다 (필수)`, `이용약관에 동의합니다 (필수)`), 각 항목의 `보기`는 `https://dearby.wid.io.kr/privacy`·`/terms`를 인앱 브라우저(iOS `SFSafariViewController`, Android Custom Tab)로 연다. 둘 다 체크해야 `동의하고 계속`이 켜지고, 누르면 `POST /v1/me/consents` 뒤 원래 흐름으로 간다. 동의 전에는 프로필 입력 단계로 갈 수 없다. 서버가 403 `CONSENT_REQUIRED`를 돌려주면 같은 화면을 보인다. 로그아웃 상태에서는 보이지 않는다(로그인 뒤 프로필에서).
 - 웹: 프로필 입력이 없으므로 바뀌지 않는다(비로그인 저장 쿠키 안내는 `/privacy`에 이미 있다).
 
 - 2026-10-20: iOS는 동의 화면을 프로필 탭 위의 **시트**로 띄우고 닫을 수 있다(닫으면 미동의, 저장하면 다시 뜸; "터치 영역·검색 경험·시트 닫기" 절). Android는 전체 화면이되 뒤로 가기로 나간다.
+- 2026-10-25 사용자 결정(버그 보고 "약관 동의하지 않고 뒤로가기 눌렀을 때 프로필 생성 퍼널로 넘어가" 뒤): 동의는 프로필 탭이 아니라 **앱 전체**에서 묻는다. 로그인됨 + 현재 버전 필수 동의 없음이면 (1) 앱을 시작할 때·포그라운드로 돌아올 때마다 동의 화면(iOS 앱 루트 시트, Android 전체 화면)을 다시 띄우고, (2) 계정 데이터를 쓰는 기능(프로필·명함 탭은 "동의가 필요해요 / 동의하기" 안내로 대신, 즐겨찾기 하트·알림 목록·맞춤 대기열·추천 설정·지원 자격 정보·명함 만들기·받은 명함 저장 링크)은 그 기능 대신 동의 화면을 띄운다. 발견 둘러보기·활동 상세·내 활동(기기 저장)은 그대로 쓴다. 동의 없이 닫거나 뒤로 가면 **로그인을 유지**하고 다음에 다시 묻는다. 동의하면 하던 곳으로 이어지고, 가입 직후(프로필 버전 0)면 프로필 만들기로 간다. 동의 전에는 앱이 계정 데이터를 서버로 보내거나 동기화하지 않는다(내 활동 서버 저장·즐겨찾기·알림 목록·푸시 토큰·추천 설정·대기열 신호, 사용 통계 `signed_in` 속성은 동의 뒤 `yes`). 동의 화면의 `동의하고 계속` 아래 보조 버튼: 가입 직후 계정은 **`가입 취소`**(확인 "가입을 취소할까요? / 가입을 취소하면 방금 만든 계정이 삭제돼요." 뒤 기존 계정 삭제 `DELETE /v1/me`, Apple 토큰 해지 등 서버 삭제 흐름 그대로, 로그아웃 상태로 그 화면에 남음), 이미 프로필이 있어 새 버전 재동의를 하는 계정은 **`로그아웃`**(계정 삭제는 설정에서만). 서버가 동의를 강제하는 쓰기는 지금 프로필과 그 하위(`PUT /v1/profile`·되돌리기·인증자료 올리기·지우기)뿐이고, 내 활동·즐겨찾기·푸시 기기·알림 설정·추천 설정·대기열 신호는 앱만 막는다(서버 보강은 조율 세션 판단).
 
 ## 발견 카드 리뉴얼 — 2026-10-19 사용자 결정
 
@@ -393,7 +424,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **프로그램·활동별 알림 수준(2026-10-25 사용자 "프로그램, 활동 별 알림 설정도 할 수 있게 해줘. 유튜브처럼 모든 활동 일정 + 신규 항목(각 나라별 아침 8시), 혹은 활동 신청일만 알림 처럼 지정")**: 즐겨찾기한 프로그램·활동마다 종 버튼(하트 옆, 즐겨찾기했을 때만 보임; iOS `bell`/`bell.fill`/`bell.slash`, Android `NotificationsNone`/`NotificationsActive`/`NotificationsOff`)을 누르면 유튜브처럼 시트에서 셋 중 하나를 고른다: `전체`(모든 활동 일정 + 신규 항목) · `신청일만`(모집 시작·모집 마감) · `없음`. 기본값은 하트를 누를 때 `신청일만`. 저장: `user_favorites.notify_level ALL|APPLICATION|NONE`, `PUT /v1/me/favorites/{programs|activities}/{id} {notifyLevel?}`(본문 없으면 기본값, 이미 있으면 수준만 바꿈), GET 응답 항목에 `notifyLevel`.
   - 알림 거리(서버가 매일 만든다): 신규 항목 = 즐겨찾기 프로그램에 새로 게시되어 열린 활동(`전체`·`신청일만` 모두, 프로그램 단위). 신청일 = 모집 시작 당일·모집 마감 하루 전·마감 당일. 전체 = 신청일 + 그 밖의 일정(발표·면접·행사·활동 시작 등 `schedules`) 당일. 활동 단위 수준이 프로그램 수준보다 앞선다(활동을 따로 `없음`으로 두면 그 활동은 조용히).
   - 보내는 시각: **사용자 기기 시간대의 아침 8시**에 그날 거리를 보낸다(`push_devices.time_zone` IANA 이름, 앱이 토큰과 함께 보냄; 기기가 여럿이면 각 기기 시간대 8시). 같은 날 거리가 3개를 넘으면 하나로 묶어 `오늘 일정 n개` 알림(누르면 즐겨찾기 캘린더). 앞의 "22:00~08:00 미룸·하루 3건" 규칙은 이것으로 바꾼다.
-  - 프로필 `알림` 행의 `새 모집 알림`은 전체 스위치(`notification-settings.newRecruitment`가 꺼지면 모두 보내지 않음)로 남긴다.
+  - 설정 `알림` 섹션(2026-10-25 프로필에서 옮김)의 `새 모집 알림`은 전체 스위치(`notification-settings.newRecruitment`가 꺼지면 모두 보내지 않음)로 남긴다.
   - 서버 구현(2026-10-25): 배치가 매시 정각에 기기 시간대가 8시인 기기를 골라 보낸다(밤 수집·대기열 잡과 따로). 중복 방지는 기기마다(2026-10-25 사용자 결정): 같은 (사용자, 기기 토큰, 활동, 종류, 그 기기 날짜)는 한 번, 신규는 기기마다 날짜와 상관없이 한 번. 기기 시간대가 여럿이면 기기마다 그 시간대 8시에 그 날짜의 거리를 받고, 3개를 넘으면 묶는 규칙도 기기마다. 신규가 있는 날은 같은 활동의 모집 시작 알림을 따로 보내지 않는다. `push_deliveries`에 `device_token`(V54). 문구: 신규 `{프로그램} 새 모집이 열렸어요`/`{활동} · {M월 d일 마감}`, 모집 시작 `{활동} 모집이 시작됐어요`/`{프로그램} · {M월 d일 마감}`, 마감 전날 `{활동} 내일 마감`, 마감 당일 `{활동} 오늘 마감`, 일정 `{활동} 오늘 {일정 제목}`(본문 `{프로그램}`), 묶음 `오늘 일정 n개`/`{활동} · {활동} 외 n개`. 수동 실행 `--send-push-now`는 기기 시각과 상관없이 지금 보낸다(같은 날 다시 보내지 않음).
   - **페이로드**: APNs `{"aps":{"alert":{"title","body"},"sound":"default"},"activityId":<number>,"notificationId":<number>,"url":"https://dearby.wid.io.kr/activities/{id}"}`(`apns-push-type: alert`, topic `io.wid.dearby`). FCM HTTP v1 `message{token, notification{title, body}, data{activityId: "<id>", notificationId: "<id>", url: "<같은 url>"}, android{priority: HIGH, notification{channel_id: "new_recruitment"}}}`(data 값은 문자열). 묶음 알림은 `activityId`·`notificationId`가 없고 `url`은 `dearby://favorites?view=calendar`(앱이 즐겨찾기 캘린더를 연다). APNs 410·FCM `UNREGISTERED`면 그 토큰을 지운다.
 - **발송 경로와 인증 정보(사용자 준비)**: iOS는 APNs 토큰 인증(.p8 키·Key ID·Team ID, 운영 `.env.prod`에만), Android는 FCM HTTP v1(Firebase 프로젝트, `google-services.json`, 서버 발송 자격). 인증 정보가 없으면 서버는 발송만 건너뛰고(로그 한 줄) 나머지 기능은 동작한다. 배치 환경값: `APNS_KEY_P8`(.p8 PEM 내용 또는 파일 경로)·`APNS_KEY_ID`·`APNS_TEAM_ID`·`APNS_TOPIC`(기본 `io.wid.dearby`)·`APNS_ENV`(`production` 기본, 개발 빌드 토큰은 `development`), `FCM_PROJECT_ID`·`FCM_CREDENTIALS_PATH`(서비스 계정 JSON 파일 경로). 토큰·인증 정보는 로그에 남기지 않는다. 개인정보처리방침에 기기 토큰(플랫폼·시간대·앱 판 포함)·알림 기록을 더한다(계정 삭제 때 함께 지움).
@@ -403,7 +434,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 사용자: "명함과 프로필, 지원 자격, 관심 분야, 활동 종류 생성은 비로그인 시점에서 지원하지 말아줘" + "오늘의 맞춤대기열도 비로그인 시점에서 제공하지 말아줘". 아래 규칙이 이 문서의 앞선 비로그인 문구(추천 설정 기기 저장, 비로그인 추천 쿼리, 비로그인 대기열)를 대신한다.
 
 - **로그인해야 하는 것**: 명함 만들기·고치기, 프로필 입력·고치기, 지원 자격 정보, 추천 설정 퍼널(관심 분야·활동 종류·얻고 싶은 것), 오늘의 맞춤 대기열과 그 신호.
-- **앱(iOS·Android)**: 비로그인일 때 발견 맨 위 `오늘의 맞춤 대기열` 행은 `로그인하면 나에게 맞는 활동을 골라 드려요` 보조 글자와 함께 보이고, 누르면 기존 로그인 시트를 연다(로그인하면 퍼널 → 대기열 기존 흐름). 퍼널은 비로그인에서 저절로 뜨지 않는다. 명함·프로필 탭의 만들기·편집 버튼과 지원 자격 정보·관심 분야 행은 비로그인에서 로그인 시트를 연다(지금 기기에 쓰던 비로그인 초안 화면은 열지 않는다). 둘러보기·활동 상세·받은 명함 보기(공개 링크)·내 활동(기기 저장)은 그대로.
+- **앱(iOS·Android)**: 비로그인일 때 발견 맨 위 `오늘의 맞춤 대기열` 행은 `로그인하면 나에게 맞는 활동을 골라 드려요` 보조 글자와 함께 보이고, 누르면 기존 로그인 시트를 연다(로그인하면 퍼널 → 대기열 기존 흐름). 퍼널은 비로그인에서 저절로 뜨지 않는다. 명함·프로필 탭의 만들기·편집 버튼은 비로그인에서 로그인 시트를 연다(지금 기기에 쓰던 비로그인 초안 화면은 열지 않는다). 2026-10-25 사용자 "로그인 전엔 추천 기능을 제공하지 않기 때문에, 비로그인일 때 내 프로필에서 추천은 없어도 되는 섹션 같아": 비로그인 내 프로필에는 `추천` 묶음(지원 자격 정보·관심 분야·활동 종류)을 보이지 않는다(로그인하면 다시 보임). 둘러보기·활동 상세·받은 명함 보기(공개 링크)·내 활동(기기 저장)은 그대로.
 - **웹**: 로그인이 없으므로 추천 설정 퍼널, `/queue`, 발견의 `오늘의 맞춤 대기열` 행을 없앤다. 웹 비로그인 명함 저장(받은 명함 보관, `/v1/guest/*`)은 만들기가 아니므로 그대로 둔다.
 - **서버**: `GET /v1/discovery/recommendations`는 로그인만 받는다(비로그인 401). `/v1/me/*`는 원래 로그인만.
 - **기존 기기 데이터**: 비로그인일 때 기기에 저장했던 추천 설정·대기열 반응은 읽지도 지우지도 않고 더 쓰지 않는다(AGENTS.md 기존 기기 데이터 원칙). 로그인할 때 기기 추천 설정을 서버로 올리던 동작도 없앤다.
@@ -524,16 +555,39 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **활동 카드와 다른 점(정책: 광고 배경은 눌리지 않고 광고를 앱 콘텐츠·이동 버튼처럼 꾸미지 않는다)**: 4초 자동 넘김·장면 진행·켄 번즈·글자 떠오름 없음. 왼쪽·오른쪽 탭 영역(이전·다음 장면)과 두 번 탭(관심 있어요)을 끈다. 오른쪽 버튼 줄(♥ `관심`·`자세히`·`다음`·`⋯`)을 숨긴다 — 광고 뷰와 겹치면 잘못 누른 클릭이 되기 때문이다. 넘김은 상하 스와이프(대기열과 같은 넘김; Google 전체 화면 네이티브 정책 "If the app's content naturally uses a swipe-to-dismiss action, this option may remain unchanged")와 대기열 닫기 버튼(광고 뷰 밖)으로 한다. 신호(`recommendation-signals`)는 보내지 않는다. 진행 막대는 대기열 전체가 아니라 한 카드 안의 장면 막대이므로 광고 카드에는 진행 막대를 두지 않는다(막대가 없는 것으로 활동 카드와 구분된다, Android PR #367 구현). 화면 읽기는 `광고` 배지를 먼저 읽고 헤드라인·본문·CTA 순서. 동작 줄이기에서도 광고 동영상 재생은 SDK 기본을 따른다.
 - **로드**: 대기열 화면을 열 때(대기열 응답을 받은 뒤) 광고 1개를 미리 요청한다. 마지막 활동 카드에서 위로 넘길 때 광고가 로드돼 있지 않거나(아직 요청 중 포함) 실패했으면 광고 카드 없이 바로 끝 화면으로 간다(사용자를 기다리게 하지 않는다). 다시 요청하지 않는다. 화면을 닫으면 받은 광고를 버린다(`destroy`). 광고 단위는 이 자리 전용 하나(Google 권장: 자리마다 다른 광고 단위).
 - **요청 설정(두 플랫폼 같음)**: 비개인화 — 요청마다 네트워크 extras `npa = "1"`(Android `AdMobAdapter` extras 번들, iOS `GADExtras.additionalParameters`). 최대 광고 콘텐츠 등급 PG(Android `RequestConfiguration.MAX_AD_CONTENT_RATING_PG`, iOS `GADMaxAdContentRating.parentalGuidance`). 게시자 자사 ID(Publisher first-party ID, SDK 기본 켬; Google 설명 "deliver more relevant and personalized ads")는 끈다(iOS `setPublisherFirstPartyIDEnabled(false)`, Android `MobileAds.putPublisherFirstPartyIdEnabled(false)`를 초기화 뒤 호출 — 판단, 되돌릴 수 있음). 게시자 개인정보 처리(PPT, `publisherPrivacyPersonalizationState = disabled`) API는 Beta라 지금 쓰지 않는다(쓰면 npa와 함께, 더 엄격한 쪽이 적용된다). UMP 동의 창 없음(위 전제).
-- **iOS ATT(2026-10-25 사용자 결정)**: 광고가 켜진 빌드에서 맞춤 대기열을 처음 열 때, 첫 광고 요청 전에 ATT 권한 창을 한 번 띄운다(`ATTrackingManager.trackingAuthorizationStatus == .notDetermined`일 때만; 이미 답했으면 묻지 않는다). 응답을 받은 뒤 광고를 요청하며 거절이어도 그대로 진행한다(거절이면 IDFA는 0). 허용해도 `npa=1`을 유지하므로 개인 맞춤 광고가 아니다 — IDFA는 광고 노출 횟수 제한과 광고 성과 측정에만 쓰인다. 광고가 꺼진 빌드(Release에 ID 없음)는 창을 띄우지 않는다. `NSUserTrackingUsageDescription` 문구(목적: 광고 노출 횟수 제한과 광고 성과 측정, 초안): `같은 광고를 너무 자주 보여 드리지 않고 광고 성과를 측정하는 데 쓰여요. 허용해도 맞춤 광고는 보여 드리지 않아요.` 결과는 선택 이벤트 `att_prompt_result`([analytics-v1.md](analytics-v1.md)).
+- **선택 동의 먼저(2026-10-25 사용자 결정)**: 아래 "광고 목적 개인정보 제3자 제공 동의(선택)"에 동의한 사용자에게만 SDK를 시작하고 광고를 요청한다. 이 절의 로드·ATT·요청 설정은 모두 동의 뒤의 일이고, 미동의·철회면 광고 카드 없이 끝 화면으로 간다.
+- **iOS ATT(2026-10-25 사용자 결정)**: 광고가 켜진 빌드에서 광고 동의를 받은 뒤(미동의면 ATT 창도 띄우지 않는다) 맞춤 대기열의 첫 광고 요청 전에 ATT 권한 창을 한 번 띄운다(`ATTrackingManager.trackingAuthorizationStatus == .notDetermined`일 때만; 이미 답했으면 묻지 않는다). 응답을 받은 뒤 광고를 요청하며 거절이어도 그대로 진행한다(거절이면 IDFA는 0). 허용해도 `npa=1`을 유지하므로 개인 맞춤 광고가 아니다 — IDFA는 광고 노출 횟수 제한과 광고 성과 측정에만 쓰인다. 광고가 꺼진 빌드(Release에 ID 없음)는 창을 띄우지 않는다. `NSUserTrackingUsageDescription` 문구(목적: 광고 노출 횟수 제한과 광고 성과 측정, 초안): `같은 광고를 너무 자주 보여 드리지 않고 광고 성과를 측정하는 데 쓰여요. 허용해도 맞춤 광고는 보여 드리지 않아요.` 결과는 선택 이벤트 `att_prompt_result`([analytics-v1.md](analytics-v1.md)).
 - **식별자 주입**: AdMob 앱 ID와 네이티브 광고 단위 ID는 플랫폼별 빌드 설정으로 넣고 값은 GitHub 저장소 변수(iOS `ADMOB_IOS_APP_ID`·`ADMOB_IOS_QUEUE_NATIVE_UNIT_ID`, Android `ADMOB_ANDROID_APP_ID`·`ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID`; 비밀값이 아니라 `vars`)에 둔다. 저장소에 실제 ID를 커밋하지 않는다. Debug는 Google 공식 테스트 ID([Android](https://developers.google.com/admob/android/test-ads)·[iOS](https://developers.google.com/admob/ios/test-ads), 2026-10-25 확인): 앱 ID Android `ca-app-pub-3940256099942544~3347511713`·iOS `ca-app-pub-3940256099942544~1458002511`, 네이티브 단위 Android `ca-app-pub-3940256099942544/2247696110`·iOS `ca-app-pub-3940256099942544/3986624511`(동영상 확인은 각 페이지의 Native Video 단위). Release 빌드에 값이 없으면 SDK를 시작하지 않고 광고 카드를 늘 생략한다(앱은 정상 동작, 끝 화면으로 바로).
   - 크래시 주의(각 플랫폼이 처리): Android 레거시 SDK는 매니페스트 `com.google.android.gms.ads.APPLICATION_ID` 메타데이터가 없으면 앱 시작 때 자동 초기화 ContentProvider가 예외를 던진다 — `initialize`를 부르지 않는 것만으로는 막히지 않는다. 값이 없는 빌드는 그 provider를 매니페스트에서 빼거나(`tools:node="remove"`) 다른 방법을 쓴다(빈 문자열·자리표시자 동작은 **확인 필요**, 실기기로). iOS는 `GADApplicationIdentifier`가 없을 때 SDK를 시작하거나 광고를 요청하면 예외가 난다고 알려져 있어 값이 없으면 `MobileAds.shared.start`·광고 요청 코드를 아예 타지 않게 한다(**확인 필요**). Android SDK는 레거시(유지 모드)와 GMA Next-Gen 중 플랫폼이 고른다(데이터 공개 내용은 두 판이 같다).
 - **Android 매니페스트**: `com.google.android.gms.permission.AD_ID`의 `tools:node="remove"`를 해제해 권한을 유지한다(Play 콘솔 "광고 ID 사용: 예"와 맞춘다). `ACCESS_ADSERVICES_AD_ID`·`ACCESS_ADSERVICES_ATTRIBUTION`·`ACCESS_ADSERVICES_TOPICS`(광고 SDK가 병합; 제거 목록에 더한다)는 Privacy Sandbox 개인화·기여 측정용이라 비개인화와 맞지 않으므로 **계속 제거**한다(사용자 결정 전 기본값; 되돌릴 수 있음). Firebase Analytics 쪽 `google_analytics_adid_collection_enabled=false`·`google_analytics_ssaid_collection_enabled=false`·`google_analytics_default_allow_ad_personalization_signals=false`는 그대로다(사용 통계는 계속 광고 ID를 쓰지 않는다). `apps/android/README.md`의 "AD_ID 권한 제거" 설명을 함께 고친다.
 - **iOS Info.plist**: `GADApplicationIdentifier`(빌드 설정 변수), Google이 요구하는 `SKAdNetworkItems`(목록은 [iOS 빠른 시작](https://developers.google.com/admob/ios/quick-start)·[iOS 개인정보 전략](https://developers.google.com/admob/ios/privacy/strategies)의 최신 목록을 넣을 때 그대로 옮기고 확인 날짜를 커밋에 적는다). `NSUserTrackingUsageDescription`(위 "iOS ATT" 문구). Firebase용 `GOOGLE_ANALYTICS_*` 끔 키는 그대로. 광고 SDK의 개인정보 매니페스트(13.11.0 `PrivacyInfo.xcprivacy`)가 들어오므로 아카이브의 Privacy Report로 라벨을 맞춘다.
-- **통계**: [analytics-v1.md](analytics-v1.md) "맞춤 대기열 도달"에 `queue_ad_shown`·`queue_ad_skipped_unloaded`를 더한다. 클릭·노출 수익은 AdMob 보고서로 본다. 이 이벤트는 프로필 `사용 통계 보내기`를 따르지만 AdMob 자체의 광고 노출·측정은 그 설정과 무관하다(설정 문구가 광고까지 끄는 것처럼 읽히지 않게 한다).
+- **통계**: [analytics-v1.md](analytics-v1.md) "맞춤 대기열 도달"에 `queue_ad_shown`·`queue_ad_skipped_unloaded`를 더한다. 클릭·노출 수익은 AdMob 보고서로 본다. 이 이벤트는 설정 `사용 통계 보내기`를 따르지만 AdMob 자체의 광고 노출·측정은 그 설정과 무관하다(설정 문구가 광고까지 끄는 것처럼 읽히지 않게 한다).
 - **바꿔야 할 문서·답안(게시 전 사용자 확인)**:
-  - 개인정보처리방침: 제3자 제공 Google(AdMob)(처리 위탁이 아니라 제3자 제공으로 적는다, 2026-10-25 사용자 결정) — 항목 기기·광고 식별자(Android 광고 ID·앱 세트 ID, iOS IDFV), IP 주소(대략적 위치 추정), 광고 상호작용(노출·클릭·동영상 재생), 진단 정보 / 목적 비개인화 광고 표시·빈도 제한·광고 보고·부정 클릭 방지 / 거부 방법 Android 설정의 광고 ID 재설정·삭제, iOS 설정 › 개인정보 보호 › Apple 광고. 위 "맞춤 대기열" 절의 처리방침 추가와 함께 게시한다.
+  - 개인정보처리방침: 제3자 제공 Google(AdMob)(처리 위탁이 아니라 제3자 제공으로 적는다, 2026-10-25 사용자 결정) — 항목 기기·광고 식별자(Android 광고 ID·앱 세트 ID, iOS 추적 허용 시 IDFA, 그 밖에는 IDFV), IP 주소(대략적 위치 추정), 광고 상호작용(노출·클릭·동영상 재생), 진단 정보 / 목적 비개인화 광고 표시·빈도 제한·광고 보고·부정 클릭 방지 / 거부 방법 Android 설정의 광고 ID 재설정·삭제, iOS ATT 창에서 거부하거나 설정 › 개인정보 보호 및 보안 › 추적에서 Dearby 끄기(IDFA를 보내지 않음, IDFV는 막지 못함). 위 "맞춤 대기열" 절의 처리방침 추가와 함께 게시한다.
   - 스토어: Play "앱에 광고 포함" 예, "광고 ID" 선언 예(광고), 데이터 보안 공유 예(Google AdMob); App Store 개인정보 라벨에 제3자 광고 용도 항목, 기기 ID "추적에 사용: 예"(2026-10-25 사용자 결정) — 표와 근거는 [광고 스토어 답안](../../docs/store/ads-2026-10-25.md). 스토어 등록 문안의 "광고 식별자·추적 없음"·심사 노트의 사용 통계 문장을 "사용 통계는 광고 ID를 쓰지 않음, 광고는 비개인화 AdMob"으로 고친다.
   - 운영: `https://dearby.wid.io.kr/app-ads.txt`에 AdMob 게시자 줄을 게시하고, 스토어 게시 뒤 AdMob 콘솔에서 앱을 스토어와 연결·검토 받는다. 콘솔 분류 차단(교육·채용만 남김)은 별도 작업.
+
+## 광고 목적 개인정보 제3자 제공 동의(선택) — 2026-10-25 사용자 결정
+
+사용자: "AdMob 광고는 Google LLC에 대한 개인정보 제3자 제공으로 보고 선택 동의를 받는다. 동의한 사용자에게만 광고를 요청·표시하고, 미동의·철회 사용자는 광고 SDK를 시작하지도 요청하지도 않는다(서비스 이용에 불이익 없음)." + "모든 동의 항목은 실제로 그 정보가 수집되는 지점 바로 직전에 구한다(Just-in-time)." 위 "맞춤 대기열 끝 광고" 절의 로드·ATT·요청 설정은 모두 이 동의 **뒤에만** 일어난다.
+
+- **성격**: 선택 동의. 동의하지 않거나 철회해도 모든 기능을 그대로 쓰고, 맞춤 대기열 끝 광고 카드만 없다(마지막 활동 카드 다음 바로 끝 화면). 광고 동의는 프로필 필수 동의("개인정보 동의")와 묶지 않는다(서로의 전제가 아니다).
+- **묻는 시점(JIT)**: 맞춤 대기열을 열어 대기열 응답을 받은 뒤, 첫 광고 요청 직전. 순서: 대기열 응답 → `GET /v1/me/consents/ad-third-party` → `agreed`이면 SDK 시작 → (iOS) ATT `.notDetermined`이면 ATT 창 → 광고 요청. `agreed=false`이고 이 기기에서 이 계정·이 버전으로 아직 묻지 않았으면 동의 시트 → `동의하고 계속`이면 `PUT` 뒤 SDK 시작 → (iOS) ATT → 광고 요청. `동의하지 않음`·시트 닫기면 SDK 시작·ATT 창·광고 요청 모두 없이 대기열을 그대로 본다. 거부는 기기에만 기억해(계정·버전별) 다시 띄우지 않고, 바꾸려면 프로필 스위치를 쓴다(서버에 거부 기록을 남기지 않는다; 다른 기기에서는 한 번 더 물을 수 있다). GET이 실패하면 미동의로 보고 광고 없이 진행한다(사용자를 기다리게 하지 않는다). 앱 시작·로그인·발견 탭에서는 묻지 않는다. 광고가 꺼진 빌드(Release에 광고 ID 없음)는 시트도 띄우지 않는다.
+- **시트 문구 요소(문구 게시는 사용자 확인 뒤)**: 제목 `광고를 보여 드려도 될까요?`, 한 줄 설명 `맞춤 대기열 끝에 광고 1장을 보여 드리려면 아래 정보를 Google에 제공해야 해요. 맞춤 광고는 아니에요.` 그리고 표 다섯 줄:
+  - 제공받는 자: **Google LLC**(AdMob)
+  - 제공 목적: 앱 안 광고 표시(비개인화), 같은 광고 노출 횟수 제한, 광고 성과 측정, 부정 클릭 방지
+  - 제공 항목: 광고 식별자(Android 광고 ID·앱 세트 ID, iOS는 추적 허용 시 IDFA, 그 밖에는 IDFV), IP 주소(대략적 위치 추정), 기기 정보(모델·OS·언어), 광고 상호작용(노출·클릭·동영상 재생), 진단 정보
+  - 보유·이용 기간: **제공받는 자(Google)의 개인정보처리방침에 따름**(`전문 보기`에 Google 정책 링크)
+  - 국외 이전: 미국(Google LLC), 광고를 요청할 때 네트워크로 전송 — 개인정보 보호법 국외 이전 고지 항목(이전받는 자·국가·시기와 방법·항목·목적·기간·거부 방법)을 처리방침 `광고` 항목에 함께 둔다(판단: 같은 데이터가 미국으로 가므로 함께 고지; 법률 검토는 확인 필요)
+  - 거부 권리: `동의하지 않을 수 있어요. 동의하지 않아도 모든 기능을 그대로 쓸 수 있고, 광고가 표시되지 않을 뿐이에요.`
+  - 버튼: `동의하고 계속`(기본)·`동의하지 않음`(같은 크기, 같은 눈에 띄는 정도 — 거부를 숨기지 않는다). `[선택]` 표시와 `전문 보기`(웹 `/privacy`의 광고 항목을 인앱 브라우저로). iOS는 기본 시트(`.presentationDetents`), Android Material 3 `ModalBottomSheet`.
+- **버전**: `2026-10-25`(서버 상수 `AdConsent.VERSION`, 앱이 같은 값을 보낸다). 시트 문구(제공받는 자·목적·항목)를 바꾸면 버전을 올리고, 옛 버전 기록은 `agreed=false`가 되어 다음 대기열에서 다시 묻는다(그전까지 광고 없음). 처리방침 버전(`dearby.consent.privacy-version`)과 따로 움직인다(지원 자격 정보 동의 `2026-10-24`와 같은 방식).
+- **철회·다시 켜기**: 프로필 설정에 스위치 `광고 목적 정보 제공`(보조 글자 `끄면 광고가 보이지 않아요`, iOS `Toggle`, Android Material 3 `Switch`). 켜면 위 시트 내용을 다시 보여 주고 `동의하고 계속`일 때 `PUT`, 끄면 바로 `DELETE`(되돌리기 없이). 끄면 그 실행에서 더 광고를 요청하지 않고 받아 둔 광고를 버린다(`destroy`). 이미 시작한 SDK는 앱 프로세스가 끝날 때까지 남을 수 있고 다음 실행부터 시작하지 않는다(SDK에 끄는 API가 없다). iOS의 ATT 답은 OS 설정이라 이 스위치가 바꾸지 않는다(스위치를 끄면 광고 요청 자체가 없어 IDFA도 가지 않는다).
+- **SDK를 시작하지 않기(구현)**: 앱 시작 때 `MobileAds.initialize`/`MobileAds.shared.start`를 부르지 않고 위 순서에서만 부른다. 광고 SDK가 명시 시작 전에 앱 측정을 시작하지 않게 iOS Info.plist `GADDelayAppMeasurementInit = YES`(Google 문서 "delay app measurement until you explicitly initialize the Mobile Ads SDK or load an ad", 2026-10-25 검색 확인). Android는 앱이 동의 전 `MobileAds.initialize`를 부르지 않는 것으로 충분하다(SDK의 자동 ContentProvider는 초기화·네트워크 요청을 하지 않는다, PR #375 조사; 근거 없는 `DELAY_APP_MEASUREMENT_INIT` 메타데이터는 두지 않는다). 실기기에서 동의 전 `googleads`·`app-measurement` 요청이 없는지 네트워크로 확인한다. 미동의 상태에서 광고 관련 네트워크 요청이 0건이어야 한다.
+- **서버 API(Bearer, 로그인만)**: `GET /v1/me/consents/ad-third-party` → `{consent: {version, agreedAt}|null, agreed: boolean}`(`agreed`는 기록의 `version`이 현재 버전일 때만 true). `PUT` 같은 경로 `{version}` → 같은 모양(현재 버전과 다르면 400 `CONSENT_VERSION`; 같은 버전에 다시 동의하면 처음 `agreedAt`을 지킨다). `DELETE` 같은 경로 → 204(없어도 204). 비로그인 401. `GET /v1/profile`에는 싣지 않는다(대기열에서 읽는 값이고 프로필 탭과 시점이 다르다).
+- **저장**: V57 `user_ad_consents(user_id pk → users on delete cascade, version, consented_at timestamptz)`. 철회하면 행을 지운다(철회 시각은 남기지 않는다; 필요해지면 `withdrawn_at`을 더한다). 계정 삭제와 함께 지워진다.
+- **바꿔야 할 문서(게시 전 사용자 확인)**: 처리방침의 Google(AdMob) 제3자 제공 항목에 "선택 동의를 받은 경우에만 제공, 거부해도 불이익 없음, 철회는 프로필 설정"과 국외 이전 고지를 더한다(열린 PR #344 문구를 이것에 맞춘다). Play 데이터 보안의 광고 데이터 항목은 "사용자가 선택할 수 있음"으로, 스토어 심사 노트에 "광고는 앱 안 선택 동의 뒤에만"을 더한다.
+- **동의 시점 원칙(JIT) 점검**: 처리방침·약관 필수 동의는 프로필 첫 저장 전(이름·연락처·이력 수집 직전), 지원 자격 정보 동의는 그 입력 직전, 알림 권한은 첫 프로그램 하트(토큰은 권한 허용 뒤에만 서버로), 기기 캘린더는 겹침 확인·`캘린더에 추가`에서 OS 권한·시스템 화면으로(기기 안에서만 비교, 서버로 보내지 않음), 광고는 이 절. 로그인 때 저장되는 계정 식별자(Apple·Google `sub`, 이메일, 애플 이름)와 Firebase 사용 통계(앱 시작부터 기본 켬)는 동의 없이 처리방침 고지로 처리한다 — 근거와 남은 판단은 2026-10-25 동의 점검 기록(PR 본문).
 
 ## 태그 아이콘+라벨·분야 1개·자동 펼침 없음 — 2026-10-24 사용자 결정
 
@@ -585,7 +639,15 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **iOS**: 입력 화면은 `Form`(또는 `List`) + `.insetGrouped` 섹션으로 구성하고 행에는 `TextField`·`SecureField`·`Toggle`·`Picker`·`DatePicker`·`LabeledContent`를 그대로 둔다. 글꼴은 시스템 텍스트 스타일(`.body`, Pretendard 매핑은 크기 17 유지), 행 최소 높이 44, 섹션 제목은 `Section("…")`, 도움말은 `footer`. 여러 줄 입력은 `TextField(axis: .vertical)` + `lineLimit(3...)`. 검색창은 `.searchable` 대신 발견 페이지의 고정 제목 구조를 지키므로 `TextField`를 `.textFieldStyle(.roundedBorder)` 대신 **둥근 `Color(.tertiarySystemFill)` 바탕 높이 44의 시스템 검색 모양**(`magnifyingglass` + 지우기 버튼)으로 둔다. 주 버튼은 `.borderedProminent` + `.controlSize(.large)`(높이 50). 키보드 종류·`submitLabel`·`textContentType`을 지정한다. 오류 문구는 행 아래 `.footnote` 빨강.
 - **Android**: Material 3 `OutlinedTextField`(기본 높이 56dp, `bodyLarge`, `label`·`supportingText`·`isError`), 여러 줄은 `minLines`, 선택은 `ExposedDropdownMenuBox`, 날짜는 `DatePickerDialog`, 스위치는 `Switch` + `ListItem`, 주 버튼은 `Button` 기본 높이 48 이상(`ButtonDefaults`), `KeyboardOptions`/`KeyboardActions` 지정. 사용자 정의 높이·폰트 크기를 두지 않는다. 검색창은 `OutlinedTextField`가 아니라 Material 3 `SearchBar`의 입력 필드 모양(`SearchBarDefaults.InputField`, 높이 56, 둥근 바탕)을 쓴다.
 - 공통: 터치 영역은 iOS 44pt·Android 48dp 이상, 라벨은 항상 보이는 라벨(placeholder만으로 설명하지 않음), 필수 표시는 라벨 끝 `*`가 아니라 도움말 문장. 기존 입력값·검증·저장 흐름은 바꾸지 않는다.
-- **키보드 내리기(사용자 "키보드가 올라왔을 때 폼을 제외한 다른 곳 클릭 시 내려가게")**: 입력 필드 밖을 누르면 키보드가 내려간다. 스크롤로도 내려간다. iOS: 화면 루트에 `.scrollDismissesKeyboard(.interactively)`와, 빈 곳 탭 때 `@FocusState`를 `nil`로 만드는 탭 제스처(버튼·링크·필드의 탭은 그대로 전달, `simultaneousGesture` 아님 — 배경 전용). 앱 전체 입력 화면에 공통 modifier(`shared/ui`)로 적용한다. Android: 입력 화면 루트 `Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }`(필드·버튼은 자기 탭을 먼저 받으므로 영향 없음) + LazyColumn/Column 스크롤에 `imeNestedScroll`·`imePadding`. 발견 검색창도 같다.
+- **키보드 내리기(사용자 "키보드가 올라왔을 때 폼을 제외한 다른 곳 클릭 시 내려가게")**: 입력 필드 밖을 누르면 키보드가 내려간다. 스크롤로도 내려간다. iOS: 화면 루트에 `.scrollDismissesKeyboard(.interactively)`와, 빈 곳 탭 때 `@FocusState`를 `nil`로 만드는 탭 제스처(버튼·링크·필드의 탭은 그대로 전달, `simultaneousGesture` 아님 — 배경 전용). 앱 전체 입력 화면에 공통 modifier(`shared/ui`)로 적용한다. Android: 입력 화면 루트 `Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }`(필드·버튼은 자기 탭을 먼저 받으므로 영향 없음) + LazyColumn/Column 스크롤에 `shared/ui`의 `dismissKeyboardOnScroll()`(손가락이 터치 슬롭 넘게 끌리면 `clearFocus()`, 이벤트는 소비하지 않음; 길게 누른 뒤 끌기는 제외). `imePadding`은 앱 셸이 한 번만 적용한다. `imeNestedScroll`은 쓰지 않는다 — 목록 끝에서 더 끌어올리면 포커스 없이도 키보드가 올라와 탭 바가 사라졌다(2026-10-26 사용자 보고). 포커스된 `DearbyField`는 키보드가 올라오는 동안 행 전체(라벨·칸·도움말)를 키보드와 하단 막대 위로 보이게 한다. `CardComposer`는 명함 템플릿 제거 PR 뒤 같은 modifier로 바꾼다. 발견 검색창도 같다.
+
+## 뒤로 가기 — 2026-10-25 사용자 결정
+
+사용자: "뒤로가기 버튼은 어지간하면 지원해줄 수 있을까? 프로필 만들기 퍼널 등." 화면을 쌓은 곳은 플랫폼 뒤로가 이전 화면으로 간다(iOS 내비게이션 바 뒤로·가장자리 스와이프, Android 상단 바 뒤로 화살표·시스템 뒤로 제스처).
+
+- **퍼널**(한 화면에 질문 하나: 추천 설정·지원 자격 정보·이력 입력): 뒤로 = 이전 질문, 입력값은 그대로. iOS는 단계를 퍼널 자신의 `NavigationStack(path:)`에 쌓는다. Android는 상단 화살표와 시스템 뒤로가 같은 함수(`BackHandler`)로 이전 질문에 가고, 퍼널 전체를 닫지 않는다. 첫 질문(저장된 이력은 요약)에서 뒤로 = 닫기이며 바꾼 답이 있으면 "작성 중인 내용을 버릴까요?"(버리기·취소, iOS `confirmationDialog`·Android `AlertDialog`)를 먼저 묻는다. iOS 시트는 바꾼 답이 있는 동안 끌어내려 닫기를 막는다.
+- **프로필 만들기**는 탭 첫 화면의 아코디언(2026-10-17 결정)이라 쌓인 화면이 없다: `다음` 옆 `이전`과 Android 시스템 뒤로가 앞 단계를 다시 연다. 첫 단계에서는 그 자리가 `나중에`이고 Android 뒤로도 같다: "프로필 만들기를 그만할까요? / 프로필은 나중에 프로필 탭에서 만들 수 있어요."(나중에 하기·계속 만들기) 뒤 발견 탭으로 가며 로그인과 입력값은 그대로다(프로필 없이도 로그인 상태로 앱을 쓸 수 있다; 명함 만들기는 "먼저 프로필을 적어 주세요").
+- **스토리형 전체 화면**(맞춤 대기열): 뒤로 = 닫기(`queue_exit` 그대로). iOS 전체 화면 표시는 스와이프 닫기가 없으므로 `닫기` 버튼을 쓴다.
 
 ## 신청 확인 조건 완화·공개 applicationUrl — 2026-10-19 밤 사용자 결정
 
@@ -635,6 +697,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   2. `연결된 로그인`: Apple·Google 두 행. 연결됨이면 이메일(가린 이메일 그대로)·연결일과 `연결 해제`, 아니면 `연결하기`(기존 네이티브 로그인 → `POST /v1/me/identities/{apple|google}` 링크 흐름 재사용). **마지막 로그인 수단은 해제할 수 없다**(패스키 0개이고 다른 OAuth 연결이 없으면 해제 버튼 비활성 + 설명).
   3. `패스키`: 이 계정의 패스키 목록(이름 `label`, 만든 날, 마지막 사용, 기기 동기화 여부 `backupState`). 행을 밀거나 누르면 `이름 바꾸기`·`삭제`. 맨 아래 `패스키 추가`(기존 등록 흐름 `POST /v1/auth/passkeys/registration/options` → `registration`, 로그인 상태에서 호출). 마지막 로그인 수단이면 삭제 불가(위와 같은 규칙).
   4. `정보`: 개인정보 처리방침·이용약관(인앱 브라우저), 앱 버전·빌드.
+  - 2026-10-25 사용자 결정: `정보` 위에 `알림`·`개인정보` 섹션을 둔다(프로필의 `알림` 묶음은 없앤다). `알림`: `새 모집 알림` 스위치와, 기기 알림 권한이 꺼져 있으면 안내 행(설정 앱 열기). 푸시는 계정 기능이라 로그인 + 동의 뒤에만 보인다(비로그인·동의 전 숨김). `개인정보`: `사용 통계 보내기`(설명 "어떤 화면과 기능을 쓰는지 모아 앱을 고치는 데 써요. 이름·연락처는 보내지 않아요.", 기기 저장)로 비로그인에서도 보인다. 광고 제3자 제공 동의 철회 스위치가 나중에 이 섹션에 들어간다. 비로그인 설정은 `로그인` CTA·`개인정보`·`정보`.
 - **API(`auth` 모듈, Bearer)**:
   | 메서드·경로 | 응답 |
   | --- | --- |
@@ -644,7 +707,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   | GET /v1/me/passkeys | 200 `{items: [{id(credentialId), label, createdAt, lastUsedAt, backedUp, transports[]}]}` |
   | PATCH /v1/me/passkeys/{id} | `{label}`(1~60자) → 200 항목 |
   | DELETE /v1/me/passkeys/{id} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 남이 가진 id면 404 |
-  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
+  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름 — 2026-10-25부터 배포된 옛 앱만 쓴다).
 - 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
 - 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
 
@@ -1092,7 +1155,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - **카드 면**: 흰 바탕, 모서리 20, 1px 구분선 색 테두리, 안쪽 여백 20. 웹은 최대 너비 480px 가운데 정렬. 명함은 "한 장의 카드"로 보이고 행동 버튼(고치기·저장)은 카드 바깥 아래에 둔다.
 - **머리**: 가운데 정렬. 이니셜 아바타 56(민트 바탕·청록 글자) → 이름(title 굵게) → 직무 칩(`job`을 ` · `로 나눈 각 항목을 옅은 배경 칩으로, 없으면 생략) → 소속(가장 최근 승인 이력의 조직 이름, 보조색 작은 글자, 없으면 생략).
-- **소개**: `introduction`(기본 템플릿을 채운 결과 = 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
+- **소개**: `introduction`(발행 시점 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
 - **연락처**: 절 제목 `연락처`. 행마다 왼쪽 종류 아이콘(전화·메일·카카오톡·Instagram·GitHub·Behance), 라벨(보조색 작은 글자: `label`이 있으면 그것, 없으면 종류 이름), 값(본문색), 열 수 있으면 오른쪽 외부 링크 아이콘. 행 전체가 눌려 기존 동작(전화·메일·링크 열기)을 한다. 연락처가 없으면 `공개된 연락처가 없어요`.
 - **활동 이력**: 절 제목 `활동 이력`. 행마다 기간(보조색 작은 글자, `2026.03 – 진행 중`), 제목(굵게, 조직 · 프로그램 · 활동), 역할과 인증 배지(`확인됨`/`미확인`, 기존 배지). 설명이 있으면 아래 한 줄. 이력이 없으면 `공개된 활동 이력이 없어요`.
 - **내 명함 탭**: 가로 스크롤 타일 대신 2열 격자. 첫 칸 `+ 새 명함`, 각 칸은 명함 이름(굵게)·프로필 이름·직무 한 줄. 선택한 칸은 민트 바탕·청록 테두리. 격자 아래에 선택한 명함의 카드(위 규칙)와 `이 명함 고치기` 버튼, 그 아래 위험 색 `이 명함 지우기`(확인 대화상자 "공개 링크도 더 열리지 않아요. 되돌릴 수 없어요." → `DELETE /v1/cards/:id`, 2026-10-18 사용자 요청 "내 명함 삭제가 없어"), 그리고 `QR 보이기`("명함 교환"). 지운 뒤 다음 명함(가장 새 것)을 고르고, 마지막 명함이면 첫 명함 안내로 돌아간다. 명함이 없을 때의 안내 카드는 유지.

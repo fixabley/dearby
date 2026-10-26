@@ -38,15 +38,15 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
  * the editor (floating-label fields, 이력 추가, 연락처 추가) with the 저장/원래대로 bar below. `수정` becomes `완료`: no changes → back to reading, changes → 저장/버리기/취소
  * dialog; system back in edit mode does the same. A successful save returns to reading ([ProfileViewState.editing]). 변경 이력·명함 만들기 live in the top-bar `더 보기` menu.
  */
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
     changed: Boolean, edit: (Boolean) -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
-    /** 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천"), drawn in read mode and while signed out; null when the feature is not there. */
+    /** 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천"), drawn in read mode; null signed out and when the feature is not there. */
     recommendation: (@Composable () -> Unit)? = null,
-    /** 프로필 `알림` 묶음 ([NotificationRow] signed in, [UsageStatsRow] always) in read mode and while signed out. */
-    notifications: (@Composable () -> Unit)? = null,
+    /** `나중에` on the first-profile funnel ([ProfileSetupPage]). */
+    leaveSetup: () -> Unit = {},
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
@@ -72,15 +72,13 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.SIGNED_OUT -> {
                 CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
                     primary = MessageAction("로그인", signIn))
-                recommendation?.let { Box(Modifier.padding(20.dp)) { it() } }
-                notifications?.let { Box(Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp)) { it() } }
             }
             ProfilePhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonCardBody(); SkeletonRows(3) }
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
-                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
-                if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation, notifications); return@let }
-                Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, leaveSetup, Modifier.weight(1f)); return@let }
+                if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation); return@let }
+                Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     // Floating-label rows (contract "플로팅 라벨·필수 표시"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
                     DearbyField("이름", form.name, { change(form.copy(name = it)) }, placeholder = "실명 또는 활동명", error = state.errors?.name, required = true, imeAction = ImeAction.Next)
@@ -124,12 +122,12 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /** Read mode (contract "프로필 탭은 읽기 모드가 기본"): the same sections as the editor as read-only rows in the card body's idiom; no inputs, no bar. */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun ReadOnlyProfile(form: ProfileFormState, rows: List<HistoryRowState>, modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null, notifications: (@Composable () -> Unit)? = null) {
+@Composable private fun ReadOnlyProfile(form: ProfileFormState, rows: List<HistoryRowState>, modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(form.name.ifBlank { "이름 없음" }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             if (form.jobs.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { form.jobs.forEach { ExampleBadge(it.title) } }
-            // The introduction is typed text, not a filled template: plain text, no markdown.
+            // The introduction as typed: plain text here, no markdown (the card body renders it as markdown).
             if (form.introduction.isNotBlank()) Text(form.introduction, style = MaterialTheme.typography.bodyLarge)
         }
         Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
@@ -144,7 +142,6 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
         if (rows.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         rows.forEach { HistoryRow(it, null, null) }
         recommendation?.invoke()
-        notifications?.invoke()
     }
 }
 

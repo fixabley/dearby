@@ -15,11 +15,13 @@ data class SettingsBlockState(val id: String, val name: String, val blocked: Str
 /**
  * 설정 (contract "설정"): [createdAt] is the 가입일 display string, [identities] the Apple·Google rows, [passkeys] this account's passkeys, [blocks] the people blocked from 받은 명함.
  * [busy] while a request runs (buttons disable); [notice] is a one-time result sentence (409 `LAST_SIGN_IN_METHOD`, failures). [version] is the
- * app version·build text for the 정보 section.
+ * app version·build text for the 정보 section. [adConsent] is the 광고 목적 정보 제공 switch; null hides it (no ads in this build, required consent
+ * missing or the read failed).
  */
 data class SettingsState(
     val phase: SettingsPhase = SettingsPhase.LOADING, val createdAt: String? = null, val identities: List<SettingsIdentityState> = emptyList(),
     val passkeys: List<SettingsPasskeyState> = emptyList(), val blocks: List<SettingsBlockState> = emptyList(), val busy: Boolean = false, val notice: String? = null, val version: String = "",
+    val adConsent: Boolean? = null,
 ) {
     /** The "last sign-in method" rule: passkeys + linked providers; one means nothing may be removed. */
     val signInMethods get() = passkeys.size + identities.count { it.linked }

@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -31,6 +33,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -61,6 +64,12 @@ import androidx.compose.ui.unit.dp
     val focusManager = LocalFocusManager.current
     val colors = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
+    // The text field only brings its cursor line into view; while focused, keep the whole row (label, box, hint) above the keyboard and any bar under the
+    // scroll area as the keyboard slides in. The inset is read in the flow, so the rows are not recomposed per frame.
+    val rowInView = remember { BringIntoViewRequester() }
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    LaunchedEffect(focused) { if (focused) snapshotFlow { ime.getBottom(density) }.collect { rowInView.bringIntoView() } }
     val floating = focused || value.isNotEmpty()
     val reduceMotion = rememberReduceMotion()
     val progress by animateFloatAsState(if (floating) 1f else 0f, if (reduceMotion) snap() else tween(200), label = "floatingLabel")
@@ -72,7 +81,7 @@ import androidx.compose.ui.unit.dp
     // Where the label rests inside the box: after the box padding (and the leading icon); it floats to the box's top-left corner, above it.
     val restX = FIELD_PADDING + if (leadingIcon == null) 0.dp else ICON_SIZE + ICON_GAP
     val restY = LABEL_LINE + LABEL_GAP + FIELD_PADDING_VERTICAL
-    Column(modifier.fillMaxWidth().pointerInput(requester) { detectTapGestures { requester.requestFocus() } }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier.fillMaxWidth().bringIntoViewRequester(rowInView).pointerInput(requester) { detectTapGestures { requester.requestFocus() } }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(Modifier.fillMaxWidth()) {
             Column {
                 Spacer(Modifier.height(LABEL_LINE + LABEL_GAP))

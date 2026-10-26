@@ -12,9 +12,11 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
+import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReportPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -37,6 +39,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfilePhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
@@ -60,6 +63,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserAdConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
@@ -134,6 +138,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val APPLE_SIGN_IN_STATES: AppleSignInStates get() = AppleSignInStates.APPLE_SIGN_IN_STATES
 
     /**
+     * The table <code>public.business_card_photos</code>.
+     */
+    val BUSINESS_CARD_PHOTOS: BusinessCardPhotos get() = BusinessCardPhotos.BUSINESS_CARD_PHOTOS
+
+    /**
      * The table <code>public.business_cards</code>.
      */
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
@@ -147,6 +156,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.card_qr_codes</code>.
      */
     val CARD_QR_CODES: CardQrCodes get() = CardQrCodes.CARD_QR_CODES
+
+    /**
+     * The table <code>public.card_report_photos</code>.
+     */
+    val CARD_REPORT_PHOTOS: CardReportPhotos get() = CardReportPhotos.CARD_REPORT_PHOTOS
 
     /**
      * The table <code>public.card_reports</code>.
@@ -257,6 +271,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.profile_jobs</code>.
      */
     val PROFILE_JOBS: ProfileJobs get() = ProfileJobs.PROFILE_JOBS
+
+    /**
+     * The table <code>public.profile_photos</code>.
+     */
+    val PROFILE_PHOTOS: ProfilePhotos get() = ProfilePhotos.PROFILE_PHOTOS
 
     /**
      * The table <code>public.profile_versions</code>.
@@ -374,6 +393,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USER_ACTIVITY_SCHEDULE_STATUSES: UserActivityScheduleStatuses get() = UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES
 
     /**
+     * The table <code>public.user_ad_consents</code>.
+     */
+    val USER_AD_CONSENTS: UserAdConsents get() = UserAdConsents.USER_AD_CONSENTS
+
+    /**
      * The table <code>public.user_consents</code>.
      */
     val USER_CONSENTS: UserConsents get() = UserConsents.USER_CONSENTS
@@ -439,9 +463,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityRoles.ACTIVITY_ROLES,
         ActivityTags.ACTIVITY_TAGS,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
+        BusinessCardPhotos.BUSINESS_CARD_PHOTOS,
         BusinessCards.BUSINESS_CARDS,
         CardBlocks.CARD_BLOCKS,
         CardQrCodes.CARD_QR_CODES,
+        CardReportPhotos.CARD_REPORT_PHOTOS,
         CardReports.CARD_REPORTS,
         CollectionFeedback.COLLECTION_FEEDBACK,
         CollectionRuns.COLLECTION_RUNS,
@@ -464,6 +490,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProfileEligibility.PROFILE_ELIGIBILITY,
         ProfileHistories.PROFILE_HISTORIES,
         ProfileJobs.PROFILE_JOBS,
+        ProfilePhotos.PROFILE_PHOTOS,
         ProfileVersions.PROFILE_VERSIONS,
         Profiles.PROFILES,
         ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,
@@ -487,6 +514,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         Tags.TAGS,
         UserActivities.USER_ACTIVITIES,
         UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES,
+        UserAdConsents.USER_AD_CONSENTS,
         UserConsents.USER_CONSENTS,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,

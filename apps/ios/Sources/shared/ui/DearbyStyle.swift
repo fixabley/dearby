@@ -57,17 +57,11 @@ extension Font {
     }
 }
 
-/// 브랜드 표시: 심볼(맞물린 두 고리, 2026-10-19 사용자 선택) 아래 앱 이름. 소개 화면과 로그인 시트에만 쓰고, 일반 화면에는 로고를 두지 않는다(2026-10-19 사용자 결정).
-/// 심볼은 청록 단색이라 템플릿으로 그려 다크 모드에서 밝은 청록을 따른다.
-struct DearbyBrand: View {
-    var symbolSize: CGFloat = 72
+/// 로그인 시트·시작 화면 락업: 가로 워드마크 아래 캐치프레이즈를 한 장으로 그린 이미지(`DearbyLockup`, 원본 shared/assets/brand/sign-in-lockup.html, 라이트·다크 두 장).
+/// 고정 높이 96pt(비율 1240:480 → 너비 약 248pt, 큰 글씨 설정과 무관): 중간 높이 로그인 시트의 약 1/4.
+struct DearbyLockup: View {
     var body: some View {
-        VStack(spacing: 12) {
-            Image("DearbySymbol").renderingMode(.template).resizable().scaledToFit().frame(width: symbolSize, height: symbolSize)
-                .foregroundStyle(DearbyStyle.teal)
-            Text("Dearby").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore).accessibilityLabel("Dearby")
+        Image("DearbyLockup").resizable().scaledToFit().frame(height: 96)
+            .accessibilityLabel("Dearby, 대외활동, 매일 맞춤으로")
     }
 }

@@ -90,7 +90,8 @@ class WalletViewModel(private val account: AccountViewModel, private val activit
     fun dismissNotice() = mutable.update { it.copy(notice = null) }
     private suspend fun savePending() {
         val link = pending ?: return
-        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.update { it.copy(needSignIn = true) }; return }
+        // Saving is account data: signed in without the current consent it waits like signed out ([AccountViewModel.ready]).
+        if (!account.ready.value) { mutable.update { it.copy(needSignIn = true) }; return }
         mutable.update { it.copy(needSignIn = false) }
         val notice = try {
             val receipt = account.authorized { account.client.saveReceipt(link.cardId, link.activityId, link.code, it) }

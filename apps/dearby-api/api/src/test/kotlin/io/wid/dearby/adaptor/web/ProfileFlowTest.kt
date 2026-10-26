@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.web
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.mock.web.MockMultipartFile
@@ -11,7 +12,10 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.*
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.util.*
+import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -206,6 +210,52 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         assertEquals("verified", read(mvc.get("/v1/profile") { asUser(user) })["histories"].single()["verification"].asString())
     }
 
+    // native-v1.md "프로필 사진": 동의 뒤에만 올리고, 서버가 JPEG·정사각 512px 이하로 다시 인코딩하며 버전 스냅샷에는 싣지 않는다
+    @Test
+    fun `프로필 사진은 동의 뒤에만 올리고, 정사각 JPEG로 다시 인코딩해 photoUrl로 주며 지우면 사라진다`() {
+        fun image(width: Int, height: Int, format: String, type: Int = BufferedImage.TYPE_INT_RGB) =
+            ByteArrayOutputStream().also { ImageIO.write(BufferedImage(width, height, type), format, it) }.toByteArray()
+        fun upload(who: UUID, type: String, bytes: ByteArray) = mvc.multipart(HttpMethod.PUT, "/v1/profile/photo") {
+            file(MockMultipartFile("file", "photo", type, bytes)); asUser(who)
+        }
+        fun stored(who: UUID) = mvc.get("/v1/profile/photo") { asUser(who) }.andExpect { status { isOk() } }.andReturn().response
+        fun side(bytes: ByteArray) = ImageIO.read(bytes.inputStream()).let { listOf(it.width, it.height) }
+
+        val denied = userWithoutConsent()
+        assertEquals("CONSENT_REQUIRED", read(upload(denied, "image/png", image(10, 10, "png")).andExpect { status { isForbidden() } })["code"].asString())
+
+        val user = user()
+        assertTrue(read(mvc.get("/v1/profile") { asUser(user) })["photoUrl"].isNull)
+        mvc.get("/v1/profile/photo") { asUser(user) }.andExpect { status { isNotFound() } }
+        upload(user, "image/webp", image(10, 10, "png")).andExpect { status { isBadRequest() } }
+        upload(user, "image/png", byteArrayOf(1, 2, 3)).andExpect { status { isBadRequest() } }
+        upload(user, "image/png", image(4097, 1, "png")).andExpect { status { isBadRequest() } }
+        upload(user, "image/png", ByteArray(5 * 1024 * 1024 + 1)).andExpect { status { isBadRequest() } }
+
+        // 투명 PNG·직사각형도 받아 가운데 정사각형 JPEG(512px)로 바꾼다
+        val first = read(upload(user, "image/png", image(1000, 800, "png", BufferedImage.TYPE_INT_ARGB)).andExpect { status { isOk() } })["photoUrl"].asString()
+        assertTrue(first.startsWith("/v1/profile/photo?v="), first)
+        val photo = stored(user)
+        assertEquals("image/jpeg", photo.contentType)
+        assertTrue(photo.getHeader("Cache-Control")!!.contains("private"))
+        assertEquals(listOf(512, 512), side(photo.contentAsByteArray))
+        // 작은 사진은 키우지 않는다. 다시 올리면 v가 바뀐다
+        put(user, """{"name":"사진","contacts":${contacts()},"histories":[]}""").andExpect { status { isOk() } }
+        val second = read(upload(user, "image/jpeg", image(200, 200, "jpg")).andExpect { status { isOk() } })["photoUrl"].asString()
+        assertEquals(listOf(200, 200), side(stored(user).contentAsByteArray))
+        val profile = read(mvc.get("/v1/profile") { asUser(user) })
+        assertEquals(second, profile["photoUrl"].asString())
+        assertTrue(first != second)
+        assertTrue(read(mvc.get("/v1/profile/versions/${profile["version"].asInt()}") { asUser(user) })["profile"]["photoUrl"].isNull)
+        // 다른 사람의 사진은 볼 수 없다(본인 것만 조회)
+        mvc.get("/v1/profile/photo") { asUser(user()) }.andExpect { status { isNotFound() } }
+
+        mvc.delete("/v1/profile/photo") { asUser(user) }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/profile/photo") { asUser(user) }.andExpect { status { isNoContent() } }
+        assertTrue(read(mvc.get("/v1/profile") { asUser(user) })["photoUrl"].isNull)
+        mvc.get("/v1/profile/photo") { asUser(user) }.andExpect { status { isNotFound() } }
+    }
+
     @Test
     fun `선택 창 검색은 로그인이 필요하고 조직·프로그램·역할을 keyset 페이지로 준다`() {
         val user = user()
@@ -288,5 +338,29 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val earlier = userWithoutConsent()
         jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-19', '2026-10-19', now())").param(earlier).update()
         assertEquals(true, read(mvc.get("/v1/profile") { asUser(earlier) })["consentRequired"].asBoolean())
+    }
+
+    @Test
+    fun `광고 목적 제3자 제공 동의는 선택이라 프로필 동의와 따로 기록·철회되고, 현재 버전일 때만 agreed다`() {
+        val user = userWithoutConsent()
+        fun get() = read(mvc.get("/v1/me/consents/ad-third-party") { asUser(user) }.andExpect { status { isOk() } })
+        fun putAd(version: String) = mvc.put("/v1/me/consents/ad-third-party") { asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"version":"$version"}""" }
+        assertEquals(listOf(true, false), listOf(get()["consent"].isNull, get()["agreed"].asBoolean()))
+        assertEquals("CONSENT_VERSION", read(putAd("2026-10-24").andExpect { status { isBadRequest() } })["code"].asString())
+        // 프로필 동의가 없어도 기록된다(서로 묶지 않는다)
+        val given = read(putAd("2026-10-25").andExpect { status { isOk() } })
+        assertEquals(listOf(true, "2026-10-25"), listOf(given["agreed"].asBoolean(), given["consent"]["version"].asString()))
+        fun instant(body: JsonNode) = java.time.OffsetDateTime.parse(body["consent"]["agreedAt"].asString()).toInstant()
+        // 같은 버전에 다시 동의해도 처음 시각을 지킨다(응답 시간대는 저장 경로마다 다를 수 있어 시각으로 비교)
+        assertEquals(instant(given), instant(read(putAd("2026-10-25").andExpect { status { isOk() } })))
+        assertEquals(instant(given), instant(get()))
+        assertEquals(true, read(mvc.get("/v1/profile") { asUser(user) })["consentRequired"].asBoolean())
+        // 옛 버전 기록은 agreed=false(다시 묻는다)
+        jdbc.sql("update user_ad_consents set version = '2026-01-01' where user_id = ?").param(user).update()
+        assertEquals(listOf(false, "2026-01-01"), listOf(get()["agreed"].asBoolean(), get()["consent"]["version"].asString()))
+        // 철회는 멱등이다
+        repeat(2) { mvc.delete("/v1/me/consents/ad-third-party") { asUser(user) }.andExpect { status { isNoContent() } } }
+        assertEquals(listOf(true, false), listOf(get()["consent"].isNull, get()["agreed"].asBoolean()))
+        mvc.get("/v1/me/consents/ad-third-party").andExpect { status { isUnauthorized() } }
     }
 }

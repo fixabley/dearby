@@ -79,6 +79,14 @@ struct ConnectionProvider: Sendable {
                 try await Self.bearer(account) { try await ActivityClient.sendRecommendationSignal(api: api, activityID: id, kind: kind, tagID: tag, bearer: $0) }
             })
     }
+    /// 광고 동의 for the signed-in `account`; each call refreshes the tokens once on a 401.
+    @MainActor func adConsentServer(_ account: AccountViewModel) -> AdConsentServer {
+        let client = account.client
+        return AdConsentServer(
+            load: { try await account.authorized { (try await client.adConsent($0).agreed, $0.subject ?? "") } },
+            agree: { _ = try await account.authorized { try await client.agreeAdConsent(version: ConsentVersions.adThirdParty, $0) } },
+            withdraw: { try await account.authorized { try await client.withdrawAdConsent($0) } })
+    }
     /// 즐겨찾기 for the signed-in `account`; each call refreshes the tokens once on a 401.
     @MainActor func favoritesServer(_ account: AccountViewModel) -> FavoritesServer {
         let api = origins.api

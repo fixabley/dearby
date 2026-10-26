@@ -7,28 +7,20 @@ import com.dearby.nativeapp.widgets.card.cardContent.ComposerContact
 import com.dearby.nativeapp.widgets.card.cardContent.ComposerHistory
 
 /**
- * Composer state: the saved profile's data and which contacts and histories the card shows. The body [template] is always the
- * built-in starter (2026-10-18 앱 안 꾸미기 삭제); the user does not edit it.
+ * Composer state: the saved profile's data and which contacts and histories the card shows. The body is the profile's
+ * introduction as it is (contract "템플릿" 폐지, 2026-10-26); the user does not edit it here.
  */
 data class CardDraft(
     val profile: AccountProfile, val cardTitle: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>, val initial: Initial,
 ) {
     data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>)
-    val template get() = TemplateDocument.starter(profile)
     val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds) != initial
     fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories)
-    /** Contacts the starter template names. */
-    val tokenContactIds get() = TemplateDocument.contactIds(template)
-    /** Contacts the template names are always public (the server leaves unselected tokens empty). */
-    val effectiveContactIds: Set<String> get() {
-        val fromTokens: List<String> = profile.contacts.filter { it.id.lowercase() in tokenContactIds }.map { it.id }
-        return publicContactIds + fromTokens
-    }
-    val preview get() = TemplateDocument.fill(template, profile, effectiveContactIds)
+    val preview get() = profile.introduction
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
-    val contactIds get() = profile.contacts.map { it.id }.filter { it in effectiveContactIds }
+    val contactIds get() = profile.contacts.map { it.id }.filter { it in publicContactIds }
     val historyIds get() = profile.histories.map { it.id }.filter { it in publicHistoryIds }
-    val contacts get() = profile.contacts.map { ComposerContact(it.id, it.label, it.value, it.id in effectiveContactIds, it.id.lowercase() in tokenContactIds) }
+    val contacts get() = profile.contacts.map { ComposerContact(it.id, it.label, it.value, it.id in publicContactIds) }
     val histories get() = profile.histories.map {
         ComposerHistory(it.id, it.chain.joinToString(" · "), listOf(it.roleTitle, ContactRules.period(it.startDate, it.endDate)).filter(String::isNotEmpty).joinToString(" · "),
             it.id in publicHistoryIds, if (it.isApproved) null else if (it.approval == "rejected") "거절된 이력은 명함에 넣을 수 없어요" else "관리자 승인 뒤 명함에 넣을 수 있어요")

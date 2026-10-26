@@ -18,7 +18,7 @@ const CONTACT_KIND_NAME: Record<ContactKind, string> = {
 };
 
 /**
- * 공개 명함 카드 면 (contract "명함 표현", iOS `CardView`): one grouped surface — centred head (avatar, name, job capsules, organization),
+ * 공개 명함 카드 면 (contract "명함 표현", iOS `CardView`): one grouped surface — centred head (photo or initial avatar, name, job capsules, organization),
  * introduction, 연락처 rows (kind icon on the left, label for screen readers only, whole row is the link) and 활동 이력 rows.
  */
 export function PublicCardBody({ card }: { card: Card }) {
@@ -30,12 +30,18 @@ export function PublicCardBody({ card }: { card: Card }) {
   return (
     <Surface className="flex flex-col gap-6 p-5">
       <header className="flex flex-col items-center gap-2.5 text-center">
-        <span
-          aria-hidden="true"
-          className="grid size-14 place-items-center rounded-full bg-mint text-title2 font-bold text-teal"
-        >
-          {Array.from(card.profileName)[0] || <Icon name="card" />}
-        </span>
+        {card.photo ? (
+          // A data URI from the proxy (contract "프로필 사진"); next/image has nothing to optimise here.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={card.photo} alt="" className="size-14 rounded-full object-cover" />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid size-14 place-items-center rounded-full bg-mint text-title2 font-bold text-teal"
+          >
+            {Array.from(card.profileName)[0] || <Icon name="card" />}
+          </span>
+        )}
         <h1 className="text-title2 font-bold break-keep">{card.profileName || "이름 미등록"}</h1>
         {jobs.length > 0 && (
           <ul className="flex flex-wrap justify-center gap-1.5" aria-label="직무">

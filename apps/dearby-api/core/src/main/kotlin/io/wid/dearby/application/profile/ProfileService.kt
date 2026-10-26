@@ -27,6 +27,7 @@ class ProfileService(
     private val profiles: ProfileRepository,
     private val versions: ProfileVersionRepository,
     private val evidence: EvidenceRepository,
+    private val photos: ProfilePhotoRepository,
     private val reviews: HistoryReviewRepository,
     private val organizations: OrganizationRepository,
     private val programs: ProgramRepository,
@@ -116,6 +117,32 @@ class ProfileService(
         }
     }
 
+    // 프로필 사진(native-v1.md "프로필 사진"): 앱이 정사각형으로 자른 JPEG·PNG를 서버가 다시 인코딩해 둔다. 버전 스냅샷과 무관하다
+    @Transactional
+    fun putPhoto(userId: UserId, contentType: String, data: ByteArray): OffsetDateTime {
+        requireConsent(userId)
+        if (contentType !in PHOTO_TYPES) throw InvalidInputException("사진은 JPEG·PNG만 올릴 수 있습니다")
+        if (data.isEmpty() || data.size > MAX_PHOTO_BYTES) throw InvalidInputException("사진은 5MB까지입니다")
+        val encoded = ProfilePhotoImage.reencode(data)
+        // DB(timestamptz)는 마이크로초까지라 photoUrl의 버전도 저장값과 같게 자른다
+        val now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)
+        photos.save(userId, encoded, now)
+        return now
+    }
+
+    @Transactional(readOnly = true)
+    fun photo(userId: UserId): ByteArray = photos.find(userId) ?: throw NotFoundException("프로필 사진이 없습니다", "Profile photo not found: $userId")
+
+    @Transactional(readOnly = true)
+    fun photoUpdatedAt(userId: UserId): OffsetDateTime? = photos.updatedAt(userId)
+
+    // 없어도 204(한 칸짜리라 지운 상태가 목표)
+    @Transactional
+    fun deletePhoto(userId: UserId) {
+        requireConsent(userId)
+        photos.delete(userId)
+    }
+
     // 개인정보 동의(native-v1.md "개인정보 동의"): 기록이 없거나 버전이 다르면 프로필 쓰기를 막는다
     @Transactional(readOnly = true)
     fun consent(userId: UserId): ConsentStatus {
@@ -130,6 +157,24 @@ class ProfileService(
         }
         consents.save(userId, Consent(privacyVersion, termsVersion, OffsetDateTime.now(ZoneOffset.UTC)))
     }
+
+    // 광고 목적 제3자 제공 동의(선택, native-v1.md "광고 목적 개인정보 제3자 제공 동의(선택)"): 프로필 동의와 별개이고 프로필 쓰기를 막지 않는다
+    @Transactional(readOnly = true)
+    fun adConsent(userId: UserId): AdConsent? = consents.findAd(userId)
+
+    // 현재 버전이 아니면 400 CONSENT_VERSION. 같은 버전에 다시 동의하면 처음 동의 시각을 지킨다
+    @Transactional
+    fun giveAdConsent(userId: UserId, version: String): AdConsent {
+        if (version != AdConsent.VERSION) {
+            throw InvalidInputException("광고 목적 개인정보 제3자 제공 동의 버전이 현재 버전과 다릅니다", "Ad consent version mismatch: $version", code = CONSENT_VERSION)
+        }
+        consents.findAd(userId)?.takeIf { it.version == version }?.let { return it }
+        // DB(timestamptz)는 마이크로초까지라 응답도 저장값과 같게 자른다
+        return AdConsent(version, OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)).also { consents.saveAd(userId, it) }
+    }
+
+    @Transactional
+    fun withdrawAdConsent(userId: UserId) = consents.deleteAd(userId)
 
     private fun requireConsent(userId: UserId) {
         if (!consentVersions.satisfiedBy(consents.find(userId))) {
@@ -274,7 +319,9 @@ class ProfileService(
         const val MAX_EVIDENCE_PER_HISTORY = 3
         const val MAX_JOBS = 10
         const val MAX_EVIDENCE_BYTES = 5 * 1024 * 1024
+        const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
         val EVIDENCE_TYPES = setOf("image/jpeg", "image/png", "image/webp", "application/pdf")
+        val PHOTO_TYPES = setOf("image/jpeg", "image/png")
         private const val MAX_NAME = 100
         private const val MAX_VALUE = 500
         private const val MAX_ACTIVITY_INFO_NAME = 200

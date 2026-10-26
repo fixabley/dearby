@@ -2,6 +2,8 @@ package com.dearby.nativeapp.app
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import com.dearby.nativeapp.pages.profile.ConsentRequiredMessage
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -25,12 +27,14 @@ enum class CardsSegment(val label: String) { MINE("내 명함"), RECEIVED("받�
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun CardsRoute(
-    segment: CardsSegment, select: (CardsSegment) -> Unit, myCards: MyCardsViewModel, wallet: WalletViewModel, account: AccountViewModel,
+    consentNeeded: Boolean, askConsent: () -> Unit, segment: CardsSegment, select: (CardsSegment) -> Unit, myCards: MyCardsViewModel, wallet: WalletViewModel, account: AccountViewModel,
     create: () -> Unit, showQr: (PublishedCard) -> Unit, edit: (PublishedCard) -> Unit, openReceived: (ReceivedCard) -> Unit, settings: () -> Unit, notify: () -> Unit, unread: Int = 0,
 ) {
     val topBar = TopAppBarDefaults.pinnedScrollBehavior()
     Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection)) {
         DearbyTopBar("명함", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
+        // Both sections are account data: signed in without the current consent the gate shows instead (contract "개인정보 동의" 2026-10-25).
+        if (consentNeeded) { ConsentRequiredMessage(askConsent, Modifier.weight(1f).fillMaxWidth()); return@Column }
         PrimaryTabRow(segment.ordinal, containerColor = MaterialTheme.colorScheme.background) {
             CardsSegment.entries.forEach { Tab(segment == it, { select(it) }, text = { Text(it.label) }) }
         }

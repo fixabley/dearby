@@ -22,7 +22,10 @@ import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.shared.config.AuthProvider
 import com.dearby.nativeapp.shared.config.AuthRedirect
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -61,6 +64,19 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     private val refreshing = Mutex()
     private val mutable = MutableStateFlow(AccountState(if (session == null) AccountPhase.SIGNED_OUT else AccountPhase.SIGNED_IN, pending = savedPending(), googleAvailable = googleServerClientId.isNotBlank()))
     val state = mutable.asStateFlow()
+    /** The current required consent as the profile last said (contract "개인정보 동의" 2026-10-25); null until read, and again once signed out. */
+    private val consentGiven = MutableStateFlow<Boolean?>(null)
+    /**
+     * Signed in with the consent known and given: only then do the view models sync or send account data (내 활동, 즐겨찾기, 알림 목록, 푸시,
+     * 추천, 대기열). Signed in without it they stay in their signed-out mode.
+     */
+    val ready = combine(mutable, consentGiven) { s, consent -> s.phase == AccountPhase.SIGNED_IN && consent == true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    /** Set by [ProfileViewModel] from each profile read (null: unknown, e.g. a failed read). */
+    fun consentKnown(given: Boolean?) { consentGiven.value = given }
+    init {
+        viewModelScope.launch { mutable.collect { if (it.phase != AccountPhase.SIGNED_IN) consentGiven.value = null } }
+    }
 
     private fun savedPending(): PendingLink? {
         saved.get<String>(WEB_LINK_TOKEN) ?: return null
@@ -72,11 +88,6 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     suspend fun signIn(passkeys: Passkeys) = enter {
         val challenge = client.authenticationOptions()
         passkeys.get(challenge.options)?.let { client.authenticate(challenge.id, it) }
-    }
-    /** "새 패스키로 시작": a new passkey, and with it a new account. */
-    suspend fun signUp(passkeys: Passkeys) = enter {
-        val challenge = client.registrationOptions()
-        passkeys.create(challenge.options)?.let { client.register(challenge.id, it) }
     }
 
     /**
@@ -304,7 +315,7 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     /** The sentence shown for a failed prompt (sign-in and 설정 연결하기 alike); anything unexpected (cancellation included) is rethrown. */
     private fun failureMessage(e: Exception, provider: AuthProvider?): String = when (e) {
         is GetCredentialUnsupportedException, is CreateCredentialUnsupportedException -> UNSUPPORTED
-        is NoCredentialException -> "이 기기에 Dearby 패스키가 없어요. 새 패스키로 시작해 주세요."
+        is NoCredentialException -> "이 기기에 Dearby 패스키가 없어요. Apple이나 Google로 시작해 주세요."
         is GetCredentialException -> "패스키로 로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
         is CreateCredentialException -> "패스키를 만들지 못했어요. 잠시 후 다시 시도해 주세요."
         is AccountException -> when (e.error) {

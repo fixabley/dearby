@@ -54,7 +54,7 @@
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="new_recruitment"/>
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/dearby_symbol"/>
         <!-- 2026-10-25 user decisions: no FCM token until the first program heart (Push.enable); Firebase Analytics without the advertising id,
-             SSAID or ad personalisation (collection itself follows 내 프로필 `사용 통계 보내기`, features/analytics). -->
+             SSAID or ad personalisation (collection itself follows 설정 `사용 통계 보내기`, features/analytics). -->
         <!-- AdMob app id from ADMOB_ANDROID_APP_ID (build.gradle.kts); Google's test app id in Debug or when the release has none. -->
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${adMobAppId}"/>
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false"/>

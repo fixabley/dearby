@@ -11,6 +11,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.NOTIFICATION_SETTINGS__NOTIFI
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_PHOTOS__PROFILE_PHOTOS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DEVICES__PUSH_DEVICES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
@@ -18,6 +19,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_PREFERENCES__R
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ACTIVITIES__USER_ACTIVITIES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_AD_CONSENTS__USER_AD_CONSENTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_FAVORITES__USER_FAVORITES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_NOTIFICATIONS__USER_NOTIFICATIONS_USER_ID_FKEY
@@ -31,12 +33,14 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility.ProfileEligibilityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfilePhotos.ProfilePhotosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices.PushDevicesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences.RecommendationPreferencesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities.UserActivitiesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserAdConsents.UserAdConsentsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites.UserFavoritesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications.UserNotificationsPath
@@ -250,6 +254,22 @@ open class Users(
     val profileJobs: ProfileJobsPath
         get(): ProfileJobsPath = profileJobs()
 
+    private lateinit var _profilePhotos: ProfilePhotosPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_photos</code> table
+     */
+    fun profilePhotos(): ProfilePhotosPath {
+        if (!this::_profilePhotos.isInitialized)
+            _profilePhotos = ProfilePhotosPath(this, null, PROFILE_PHOTOS__PROFILE_PHOTOS_USER_ID_FKEY.inverseKey)
+
+        return _profilePhotos;
+    }
+
+    val profilePhotos: ProfilePhotosPath
+        get(): ProfilePhotosPath = profilePhotos()
+
     private lateinit var _profileVersions: ProfileVersionsPath
 
     /**
@@ -345,6 +365,22 @@ open class Users(
 
     val userActivities: UserActivitiesPath
         get(): UserActivitiesPath = userActivities()
+
+    private lateinit var _userAdConsents: UserAdConsentsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_ad_consents</code> table
+     */
+    fun userAdConsents(): UserAdConsentsPath {
+        if (!this::_userAdConsents.isInitialized)
+            _userAdConsents = UserAdConsentsPath(this, null, USER_AD_CONSENTS__USER_AD_CONSENTS_USER_ID_FKEY.inverseKey)
+
+        return _userAdConsents;
+    }
+
+    val userAdConsents: UserAdConsentsPath
+        get(): UserAdConsentsPath = userAdConsents()
 
     private lateinit var _userConsents: UserConsentsPath
 

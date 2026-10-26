@@ -6,11 +6,14 @@ import io.wid.dearby.application.card.CardQrCodes
 import io.wid.dearby.application.card.CardReportService
 import io.wid.dearby.application.card.CardService
 import io.wid.dearby.application.guest.GuestService
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.*
+import java.time.Duration
 import java.util.*
 
 // native-v1.md "명함·지갑"·"명함 QR 코드". GET /v1/cards/{id}는 보안 계층에서는 열려 있고(ApiAccessRules) 볼 근거는 CardService.view가 확인한다. 나머지는 주인만
@@ -26,12 +29,12 @@ class CardController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun publish(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: CardPublishRequest) =
-        CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
+        CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.contactIds, request.historyIds, request.includePhoto), includeTemplate = true)
 
     // 명함 고치기(native-v1.md "명함 고치기는 같은 명함을 수정"): 같은 id의 스냅샷을 현재 프로필로 다시 만든다. 남의·철회된 명함은 404
     @PutMapping("/{id}")
     fun update(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID, @RequestBody request: CardPublishRequest) =
-        CardResponse.from(cards.update(userId(jwt), id, request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
+        CardResponse.from(cards.update(userId(jwt), id, request.name, request.description, request.contactIds, request.historyIds, request.includePhoto), includeTemplate = true)
 
     // 근거: 주인·받은 계정(Bearer), 웹 프록시가 보낸 게스트 세션(게스트 경로와 같은 헤더), 또는 ?code=. 없으면 403 CARD_CODE_REQUIRED·CARD_CODE_EXPIRED
     @GetMapping("/{id}")
@@ -41,6 +44,18 @@ class CardController(
     ): CardResponse {
         val digest = guests.sessionDigest(guestProperties.proxySecret, key, token)
         return CardResponse.from(cards.view(id, jwt?.let(::userId), guests.holds(digest, id), code), includeTemplate = false)
+    }
+
+    // 명함 사진(native-v1.md "프로필 사진"): 조회와 같은 근거. photoUrl의 v가 바뀌므로 오래 캐시한다
+    @GetMapping("/{id}/photo")
+    fun photo(
+        @AuthenticationPrincipal jwt: Jwt?, @PathVariable id: UUID, @RequestParam(required = false) code: String?,
+        @RequestHeader(GuestController.PROXY_KEY, required = false) key: String?, @RequestHeader(GuestController.TOKEN, required = false) token: String?,
+    ): ResponseEntity<ByteArray> {
+        val digest = guests.sessionDigest(guestProperties.proxySecret, key, token)
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG)
+            .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable())
+            .body(cards.photo(id, jwt?.let(::userId), guests.holds(digest, id), code))
     }
 
     // 신고(native-v1.md "명함 신고·차단"): 볼 권한이 있는 계정·게스트·코드. 첫 신고 201, 같은 신고자의 24시간 안 재신고 200(기존 신고), 내 명함 400
