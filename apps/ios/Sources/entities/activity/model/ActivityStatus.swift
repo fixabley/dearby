@@ -43,8 +43,4 @@ enum StatusGroup: String, CaseIterable, Sendable {
     init(_ status: ActivityStatus) {
         self = StatusGroup.allCases.first { $0.statuses.contains(status) } ?? .past
     }
-    /// The button's summary: one title, two joined, `전체` for all three (in this order).
-    static func summary(_ groups: Set<StatusGroup>) -> String {
-        groups.count == allCases.count ? "전체" : allCases.filter(groups.contains).map(\.title).joined(separator: "·")
-    }
 }

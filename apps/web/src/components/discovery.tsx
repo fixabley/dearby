@@ -10,7 +10,6 @@ import {
   type ProgramSummary,
   type StatusGroup,
   STATUS_GROUPS,
-  STATUS_GROUP_IDS,
   activityStatus,
   applicable,
   deadlineLabel,
@@ -35,10 +34,10 @@ import { Input } from "@/shared/ui/input";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Segmented } from "@/shared/ui/segmented";
-import { MultiSelect } from "@/shared/ui/multi-select";
 import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
+import { DiscoveryFilterBar, type DiscoveryFilters } from "@/widgets/activity/discovery-filter";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
-import { categoriesSummary, categoryLabels, groupByCategory, kindCategories } from "@/lib/category";
+import { categoryLabels, groupByCategory } from "@/lib/category";
 import { CategoryIcon } from "@/shared/ui/category-icon";
 
 /**
@@ -63,11 +62,6 @@ function homePath(kind: Kind, q = "", groups: StatusGroup[] = ["available"], cat
   if (categories.length) params.set("category", categories.join(","));
   return params.size ? `/?${params}` : "/";
 }
-/** `지원 가능` · `지원 가능·진행 중` · `전체`. */
-function groupsSummary(groups: StatusGroup[]): string {
-  return groups.length === STATUS_GROUP_IDS.length ? "전체" : groups.map((group) => STATUS_GROUPS[group].label).join("·");
-}
-
 function programsPath(q: string, groups: StatusGroup[], kind: Kind, categories: string[], cursor?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -84,7 +78,8 @@ function programsPath(q: string, groups: StatusGroup[], kind: Kind, categories: 
  * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
  * with the API cursor. A card expands only when tapped — never on first load, search or coming back (contract
  * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's activities in the chosen 활동 상태 묶음
- * (`groups`, contract "활동 상태" 2026-10-26) as the usual activity cards.
+ * (`groups`, contract "활동 상태" 2026-10-26) and 종류 (`categories`, 프로그램 side only) as the usual activity cards. Both come from the
+ * 필터 sheet (contract "필터 시트" 2026-10-26) and live in the URL.
  */
 export function Discovery({ q, kind, groups, categories }: { q: string; kind: Kind; groups: StatusGroup[]; categories: string[] }) {
   const router = useRouter();
@@ -121,13 +116,21 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
       .catch((error) => setMoreError(errorMessage(error)))
       .finally(() => setLoadingMore(false));
   }
-  /** The user changed the 종류 (사용 통계 `discovery_category_filter`, empty for 전체): reloads the list with them in the URL. */
-  function chooseCategories(next: string[]) {
-    if (next.join(",") === categoryKey) return;
-    track("discovery_category_filter", { categories: next.map((code) => code.toLowerCase()).join(",") });
+  /**
+   * The 필터 sheet's `적용`, a chip's × or an empty state's button: puts both filters in the URL in one navigation and reports the ones that
+   * changed (사용 통계 `discovery_status_filter` with the 묶음 ids, `discovery_category_filter` with the 종류 codes, empty for 전체).
+   */
+  function applyFilters(next: DiscoveryFilters) {
+    const nextGroups: StatusGroup[] = next.groups.length ? next.groups : ["available"];
+    const groupsChanged = nextGroups.join(",") !== statusKey;
+    const categoriesChanged = next.categories.join(",") !== categoryKey;
+    if (!groupsChanged && !categoriesChanged) return;
+    if (groupsChanged) track("discovery_status_filter", { groups: nextGroups.join(",") });
+    if (categoriesChanged) track("discovery_category_filter", { categories: next.categories.map((code) => code.toLowerCase()).join(",") });
+    // Clear the list so the loading state shows while the other states load.
     setPage(undefined);
     setExpanded(new Set());
-    router.replace(homePath(kind, q, groups, next), { scroll: false });
+    router.replace(homePath(kind, q, nextGroups, next.categories), { scroll: false });
   }
   function toggle(id: number) {
     setExpanded((ids) => {
@@ -151,32 +154,7 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
         value={kind}
         onChange={(next) => next !== kind && router.replace(homePath(next, q, groups), { scroll: false })}
       />
-      {/* 활동 상태 (contract "활동 상태" 2026-10-26, replacing 마감 숨기기): a multi-select row; none chosen falls back to 지원 가능. */}
-      <MultiSelect
-        label="활동 상태"
-        summary={groupsSummary(groups)}
-        className="mt-3 mb-2.5"
-        options={STATUS_GROUP_IDS.map((id) => ({ value: id, label: STATUS_GROUPS[id].label }))}
-        value={groups}
-        onChange={(next) => {
-          const chosen: StatusGroup[] = next.length ? next : ["available"];
-          if (chosen.join(",") === statusKey) return;
-          track("discovery_status_filter", { groups: chosen.join(",") });
-          // Clear the list so the loading state shows while the other states load.
-          setPage(undefined);
-          setExpanded(new Set());
-          router.replace(homePath(kind, q, chosen, categories), { scroll: false });
-        }}
-      />
-      {/* 종류 (contract "종류 필터" 2026-10-26): this side's 종류 with their icons; none chosen is 전체. */}
-      <MultiSelect
-        label="종류"
-        summary={categoriesSummary(categories)}
-        className="mb-2.5"
-        options={kindCategories(kind).map((code) => ({ value: code, label: categoryLabels[code], icon: <CategoryIcon code={code} /> }))}
-        value={categories}
-        onChange={(next) => chooseCategories(next)}
-      />
+      <DiscoveryFilterBar kind={kind} groups={groups} categories={categories} onApply={applyFilters} className="mt-3 mb-2.5" />
       {error ? (
         <Failure
           message={error}
@@ -200,7 +178,7 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
             icon="explore"
             title={`고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
             message="다른 종류를 고르거나 종류 필터를 지워 보세요."
-            primary={{ label: "종류 필터 지우기", onClick: () => chooseCategories([]) }}
+            primary={{ label: "종류 필터 지우기", onClick: () => applyFilters({ groups, categories: [] }) }}
           />
         ) : groups.includes("past") ? (
           <CenteredMessage
@@ -219,7 +197,7 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
                   : "지금 모집 중인 프로그램이 없어요"
             }
             message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. ‘지난 활동’도 고르면 최근 활동한 프로그램도 보여요."
-            primary={{ label: "지난 활동도 보기", href: homePath(kind, q, [...groups, "past"]) }}
+            primary={{ label: "지난 활동도 보기", onClick: () => applyFilters({ groups: [...groups, "past"], categories }) }}
           />
         )
       ) : (
