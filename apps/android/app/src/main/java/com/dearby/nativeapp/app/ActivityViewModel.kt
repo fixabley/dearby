@@ -425,7 +425,7 @@ internal fun ProgramSummary.toState() = ProgramState(id, name, organization, ope
 private fun ActivityModel.toState(now: Instant) = ActivityState(
     // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-    stages().map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it)) },
+    stages().map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
     safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
     eligibility = eligibility?.lines() ?: emptyList(),
     category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,

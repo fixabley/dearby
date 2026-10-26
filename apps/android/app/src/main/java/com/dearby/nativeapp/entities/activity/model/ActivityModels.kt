@@ -35,6 +35,8 @@ data class StageSchedule(
     val startDate: String?, val endDateExclusive: String?, val dateLabel: String,
     val id: String? = null, val statuses: List<ScheduleStatus> = emptyList(), val overlapStart: String? = null, val overlapEnd: String? = null,
     val recurrence: String? = null,
+    /** The block has a 트랙·세션 시간표 (contract "트랙·세션 시간표": `hasTimetable`), opened with `GET …/schedules/:id/timetable`. */
+    val hasTimetable: Boolean = false,
 ) {
     /**
      * The windows the calendar comparison uses (contract "겹침 확인 시간"): a timed schedule with both ends is its own window; a

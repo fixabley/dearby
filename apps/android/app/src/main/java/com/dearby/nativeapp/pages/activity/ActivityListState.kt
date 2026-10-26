@@ -49,7 +49,9 @@ data class ActivityState(
  * One row of the detail's `행사 일정`: 모집 마감, each schedule, then the activity period (the progress stages, contract "내 캘린더에 추가");
  * [draft] is null for an undated one, which gets no `캘린더에 추가` button.
  */
-data class ScheduleItemState(val name: String, val dateText: String, val draft: CalendarDraft?)
+data class ScheduleItemState(val name: String, val dateText: String, val draft: CalendarDraft?,
+    /** The block's id and whether it has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): then the row offers `{name} 시간표`. */
+    val scheduleId: String? = null, val hasTimetable: Boolean = false)
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matchedCount] is how many open activities' names the search hit (shown as `맞는 활동 n개`).
  * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정

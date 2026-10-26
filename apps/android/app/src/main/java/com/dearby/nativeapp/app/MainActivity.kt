@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
     private val favorites: FavoritesViewModel by viewModels {
         viewModelFactory { initializer { FavoritesViewModel(account, activityModel::adopt) } }
     }
+    private val sessions: SessionFavoritesViewModel by viewModels { viewModelFactory { initializer { SessionFavoritesViewModel(account) } } }
     private val notifications: NotificationViewModel by viewModels {
         viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed,
             { device.pushStarted }, { device.pushStarted = true; Push.enable(applicationContext) }) } }
@@ -121,7 +122,7 @@ class MainActivity : ComponentActivity() {
             DearbyTheme { CompositionLocalProvider(LocalPhotoLoader provides account.photos::load) {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
-                    favoritesLink, { favoritesLink = false }, screenshot)
+                    sessions, favoritesLink, { favoritesLink = false }, screenshot)
                 PendingAccountRoute(account)
             } }
         }

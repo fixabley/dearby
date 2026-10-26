@@ -28,6 +28,7 @@ import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
+import com.dearby.nativeapp.pages.activity.TimetablePage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
 import androidx.compose.foundation.layout.Column
@@ -41,7 +42,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
     openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, header: (@Composable () -> Unit)? = null,
     hearts: FavoriteHearts = FavoriteHearts(), favorites: FavoritesViewModel? = null, segment: MineSegment = MineSegment.MINE, selectSegment: (MineSegment) -> Unit = {},
-    signIn: () -> Unit = {}, unread: Int = 0, active: (Boolean) -> Unit,
+    signIn: () -> Unit = {}, unread: Int = 0,
+    /** 트랙·세션 시간표 and its 찜 (contract "트랙·세션 시간표"); [sessionHeart] opens sign-in or the consent screen when the account is not ready. */
+    sessions: SessionFavoritesViewModel? = null, sessionHeart: (String) -> Unit = {},
+    active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
     // `+` beside an activity heart (contract "`+` 내 활동에 추가"): adds it to 내 활동, or opens it there once it is in.
@@ -105,11 +109,19 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
-    BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
+    // The timetable opened from this detail (the view model is shared by both tabs, so it shows only over its own activity).
+    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == selected }
+    val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
+    BackHandler(openTimetable != null) { sessions?.show(null, null) }
+    BackHandler(openTimetable == null && (selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
+        openTimetable != null -> TimetablePage(
+            "${openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: activity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }?.name ?: "세션"} 시간표",
+            openTimetable.phase, openTimetable.timetable, sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry)
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, share, openMap,
-            addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts)
+            addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
+            openTimetable = { sessions?.show(activity.id, it) })
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { show(progress.id, "my_activity") },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
         mine -> MineTab(segment, selectSegment, settings, notify, unread) {

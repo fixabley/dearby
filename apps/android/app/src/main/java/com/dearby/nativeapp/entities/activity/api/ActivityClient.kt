@@ -21,6 +21,12 @@ import com.dearby.nativeapp.entities.activity.model.QueueItem
 import com.dearby.nativeapp.entities.activity.model.QueueScene
 import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
+import com.dearby.nativeapp.entities.activity.model.Session
+import com.dearby.nativeapp.entities.activity.model.SessionFavorite
+import com.dearby.nativeapp.entities.activity.model.Speaker
+import com.dearby.nativeapp.entities.activity.model.Timetable
+import com.dearby.nativeapp.entities.activity.model.Track
+import java.time.OffsetDateTime
 import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.entities.activity.model.TagKind
 import com.dearby.nativeapp.entities.activity.model.instant
@@ -85,6 +91,35 @@ fun fetchActivity(api: String, id: String): ActivityModel? = try {
     parseActivity(JSONObject(get(api, "activities/$id", emptyList())))
 } catch (e: NotFound) { null }
 
+/**
+ * `GET /v1/activities/:id/schedules/:scheduleId/timetable` (contract "트랙·세션 시간표"), read without a token: the hearts come from
+ * `GET /v1/me/session-favorites`. Null when the block has no timetable or is gone (404); other failures throw. Call off the main thread.
+ */
+fun fetchTimetable(api: String, activityId: String, scheduleId: String): Timetable? = try {
+    parseTimetable(JSONObject(get(api, "activities/$activityId/schedules/$scheduleId/timetable", emptyList())))
+} catch (e: NotFound) { null }
+
+/** Tracks are put in `position` order; an unreadable session is skipped. */
+fun parseTimetable(body: JSONObject) = Timetable(
+    body.get("activityId").toString(), body.optJSONObject("schedule")?.optString("title").orEmpty(),
+    body.optJSONArray("tracks")?.objects()?.mapNotNull { runCatching { Track(it.get("id").toString(), it.getString("name"), it.text("room"), it.optInt("position")) }.getOrNull() }.orEmpty().sortedBy { it.position },
+    body.optJSONArray("sessions")?.objects()?.mapNotNull { runCatching { it.session() }.getOrNull() }.orEmpty(),
+)
+
+/** `GET /v1/me/session-favorites` → `{items: [{activityId, activityName, scheduleId, scheduleTitle, session}]}`; an unreadable item is skipped. */
+fun parseSessionFavorites(body: JSONObject): List<SessionFavorite> = body.optJSONArray("items")?.objects()?.mapNotNull { item ->
+    runCatching {
+        SessionFavorite(item.get("activityId").toString(), item.optString("activityName"), item.get("scheduleId").toString(), item.optString("scheduleTitle"), item.getJSONObject("session").session())
+    }.getOrNull()
+}.orEmpty()
+
+private fun JSONObject.session() = Session(
+    get("id").toString(), get("scheduleId").toString(), if (isNull("trackId") || !has("trackId")) null else get("trackId").toString(), text("kind") ?: "TALK",
+    getString("title"), text("description"), OffsetDateTime.parse(getString("startAt")), OffsetDateTime.parse(getString("endAt")),
+    optJSONArray("speakers")?.objects()?.mapNotNull { runCatching { Speaker(it.getString("name"), it.text("affiliation")) }.getOrNull() }.orEmpty(),
+    tags("tags"),
+)
+
 fun parseActivities(json: String): ActivityPage {
     val body = JSONObject(json)
     return ActivityPage(body.getJSONArray("items").objects().map(::parseActivity), body.text("nextCursor"))
@@ -120,7 +155,7 @@ private fun JSONObject.stageSchedule() = StageSchedule(
     optString("title"), text("kind") ?: "EVENT", text("startAt")?.takeIf { instant(it) != null }, text("endAt")?.takeIf { instant(it) != null },
     text("timeZone") ?: "Asia/Seoul", text("startDate"), text("endDateExclusive"), text("dateLabel").orEmpty(),
     idText(), statuses(), optJSONObject("overlapCheck")?.text("startTime"), optJSONObject("overlapCheck")?.text("endTime"),
-    text("recurrence"),
+    text("recurrence"), optBoolean("hasTimetable", false),
 )
 
 /** Contract "내 활동 서버 저장·일정 상태": `statuses [{id?, name, kind}]`; an unreadable entry is skipped, none → the defaults downstream. */
