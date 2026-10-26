@@ -162,7 +162,7 @@ private fun JSONObject.stageSchedule() = StageSchedule(
     optString("title"), text("kind") ?: "EVENT", text("startAt")?.takeIf { instant(it) != null }, text("endAt")?.takeIf { instant(it) != null },
     text("timeZone") ?: "Asia/Seoul", text("startDate"), text("endDateExclusive"), text("dateLabel").orEmpty(),
     idText(), statuses(), optJSONObject("overlapCheck")?.text("startTime"), optJSONObject("overlapCheck")?.text("endTime"),
-    text("recurrence"), optBoolean("hasTimetable", false),
+    text("recurrence"), optBoolean("hasTimetable", false), text("phase"),
 )
 
 /** Contract "내 활동 서버 저장·일정 상태": `statuses [{id?, name, kind}]`; an unreadable entry is skipped, none → the defaults downstream. */

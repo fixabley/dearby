@@ -35,8 +35,10 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
 
 /**
  * One applied activity's stages (contract "내 활동 진행 트랙"), compact (2026-10-26 사용자 "활동탐색 카드처럼 깔끔하게", "마진이 너무 크고 경계가
- * 뚜렷하지 않아"): the discovery [ActivityCard] as the head (tap → [openDetail]), then small headed sections, each one card of
- * divider-separated rows — `진행 단계` (with the track's badge, e.g. `D-3 · 면접`, beside the heading).
+ * 뚜렷하지 않아"): the discovery [ActivityCard] without its tag chips as the head (tap → [openDetail]), then small headed sections, each one card of
+ * divider-separated rows — `선발 과정` (SELECTION steps) and `활동 일정` (ACTIVITY steps; contract "선발 과정·활동 일정 분리"), an empty one left
+ * out. The track's badge (e.g. `D-3 · 면접`) sits beside the first heading; once every 선발 단계 is 통과 the `활동 일정` heading carries `참여 중`
+ * instead (the badge would say the same, so it is shown once, where it applies).
  * A stage row is icon, name and date, with the user's 대기/통과/탈락 on the right only on a 선발 단계 (contract "내 활동 서버 저장·일정 상태",
  * the user's own mark, never the organizer's result) and a timetable icon before it when the block has a 트랙·세션 시간표 (2026-10-26 사용자).
  * Tapping a row with actions unfolds them: `시간표 보기` ([openTimetable], the block's sheet) first, then the status choice, `겹치는 시간 확인`
@@ -52,15 +54,22 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("진행 단계", back)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // No tag chips on this head card (user 2026-10-26); the card draws none when given none. Discovery and 즐겨찾기 keep theirs.
             ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, openDetail,
-                fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, deadlineCount = activity.deadlineCount, undated = activity.noRecruitment,
-                subtitle = progress.subtitle)
-            SectionHeading("진행 단계") { if (progress.badge.isNotEmpty()) ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed) }
-            SectionCard { progress.stages.forEachIndexed { index, stage ->
-                if (index > 0) HorizontalDivider()
-                StageRow(stage, expanded == index, { expanded = if (expanded == index) null else index }, { mark(index, it) }, { checkCalendar(index) }, addToCalendar, openTimetable)
-            } }
-            Text(PROGRESS_NOTE, Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                deadlineCount = activity.deadlineCount, undated = activity.noRecruitment, subtitle = progress.subtitle)
+            // Stages keep their track index (the key of [mark]/[checkCalendar]) whichever section they land in.
+            val selection = progress.stages.withIndex().filter { it.value.selection }
+            val activityStages = progress.stages.withIndex().filterNot { it.value.selection }
+            val badge: @Composable () -> Unit = { if (progress.badge.isNotEmpty() && !progress.participating) ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed) }
+            if (selection.isNotEmpty()) {
+                SectionHeading("선발 과정", badge)
+                StageCard(selection, expanded, { expanded = it }, mark, checkCalendar, addToCalendar, openTimetable)
+                Text(PROGRESS_NOTE, Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            if (activityStages.isNotEmpty()) {
+                SectionHeading("활동 일정") { if (progress.participating) ExampleBadge("참여 중", accent = true) else if (selection.isEmpty()) badge() }
+                StageCard(activityStages, expanded, { expanded = it }, mark, checkCalendar, addToCalendar, openTimetable)
+            }
             RemoveFromMineButton(remove, Modifier.align(Alignment.CenterHorizontally))
         }
     }
@@ -72,8 +81,15 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
         trailing()
     }
 
-@Composable private fun SectionCard(content: @Composable ColumnScope.() -> Unit) =
-    OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) { content() }
+/** One section's stages as a card of divider-separated [StageRow]s; [expanded] is the unfolded stage's track index. */
+@Composable private fun StageCard(stages: List<IndexedValue<ProgressStage>>, expanded: Int?, expand: (Int?) -> Unit,
+    mark: (Int, StatusOption) -> Unit, checkCalendar: (Int) -> Unit, addToCalendar: (CalendarDraft) -> Unit, openTimetable: (String) -> Unit) =
+    OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        stages.forEachIndexed { position, (index, stage) ->
+            if (position > 0) HorizontalDivider()
+            StageRow(stage, expanded == index, { expand(if (expanded == index) null else index) }, { mark(index, it) }, { checkCalendar(index) }, addToCalendar, openTimetable)
+        }
+    }
 
 /**
  * One stage as a ListItem-height row: kind icon (TealFill check once past, primary while current), name (bold while current) and date,

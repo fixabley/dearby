@@ -849,16 +849,24 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val ot = create("""{"title":"OT","kind":"EVENT","dateLabel":"12월 1일"}""")
         // phase를 보내지 않으면 저장하지 않고(null) 읽을 때 판정한다: 마감·발표·면접은 선발, EVENT는 활동
         assertEquals(listOf("SELECTION", "ACTIVITY", "ACTIVITY"), listOf(deadline, test, ot).map { it["phase"].asString() })
+        assertEquals(listOf("RESOLVED", "RESOLVED", "RESOLVED"), listOf(deadline, test, ot).map { it["phaseSource"].asString() })
         assertEquals(null, stored(test["id"].asLong()))
         // 저장값이 없는 EVENT는 운영자가 상태를 지정하면 저절로 선발(옛 앱 판정과 같다). 운영자가 phase를 직접 정하면 그 값이 상태 지정보다 앞선다
         mvc.put("/v1/admin/activities/$activity/schedules/${test["id"].asLong()}/statuses") { asAdmin(); body("""{"items":[{"name":"응시","kind":"WAITING"},{"name":"합격","kind":"PASSED"}]}""") }.andExpect { status { isOk() } }
         assertEquals("SELECTION", read(patch(test["id"].asLong(), "{}"))["phase"].asString())
         assertEquals("ACTIVITY", read(patch(test["id"].asLong(), """{"phase":"ACTIVITY"}""").andExpect { status { isOk() } })["phase"].asString())
         // 운영자가 정하면 저장되고 다른 필드를 고쳐도 남는다
-        assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"phase":"selection"}""").andExpect { status { isOk() } })["phase"].asString())
+        val chosen = read(patch(ot["id"].asLong(), """{"phase":"selection"}""").andExpect { status { isOk() } })
+        assertEquals("SELECTION" to "STORED", chosen["phase"].asString() to chosen["phaseSource"].asString())
         assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"title":"합격자 OT 전 사전과제"}""").andExpect { status { isOk() } })["phase"].asString())
         assertEquals("SELECTION", stored(ot["id"].asLong()))
-        assertEquals("ACTIVITY", create("""{"title":"수료식","kind":"ANNOUNCEMENT","dateLabel":"12월 3일","phase":"ACTIVITY"}""")["phase"].asString())
+        // JSON null은 저장값을 지워 자동 판정으로 되돌린다(EVENT·상태 없음 → ACTIVITY). 생략은 유지
+        val cleared = read(patch(ot["id"].asLong(), """{"phase":null}""").andExpect { status { isOk() } })
+        assertEquals("ACTIVITY" to "RESOLVED", cleared["phase"].asString() to cleared["phaseSource"].asString())
+        assertEquals(null, stored(ot["id"].asLong()))
+        patch(ot["id"].asLong(), """{"phase":3}""").andExpect { status { isBadRequest() } }
+        val graduation = create("""{"title":"수료식","kind":"ANNOUNCEMENT","dateLabel":"12월 3일","phase":"ACTIVITY"}""")
+        assertEquals("ACTIVITY" to "STORED", graduation["phase"].asString() to graduation["phaseSource"].asString())
         // 모르는 값은 400, 모집·활동 기간 행의 phase는 고칠 수 없다(400)
         patch(deadline["id"].asLong(), """{"phase":"TEST"}""").andExpect { status { isBadRequest() } }
         patch(created["application"]["id"].asLong(), """{"phase":"ACTIVITY"}""").andExpect { status { isBadRequest() } }

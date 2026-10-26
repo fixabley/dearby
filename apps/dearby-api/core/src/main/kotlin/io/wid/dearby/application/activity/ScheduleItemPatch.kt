@@ -29,10 +29,11 @@ data class ScheduleItemPatch(
     val overlapCheck: OverlapCheck? = null,
     val hasRecurrence: Boolean = false, // recurrence가 왔으면(null 포함) 바꾼다(native-v1.md "반복 일정과 겹침 결과 묶음")
     val recurrence: Recurrence? = null,
-    val phase: SchedulePhase? = null, // 선발 과정·활동 일정(native-v1.md "선발 과정·활동 일정 분리"). 모집·활동 기간 행은 고정이라 이 필드가 오면 timingOnly가 아니다
+    val hasPhase: Boolean = false, // phase가 왔으면(null 포함) 바꾼다. null은 저장값을 지워 자동 판정으로 되돌린다(admin-v1.md "phase")
+    val phase: SchedulePhase? = null, // 모집·활동 기간 행은 고정이라 이 필드가 오면 timingOnly가 아니다
 ) {
     // 겹침 확인 시간·반복 규칙만 바꾸는 요청. 모집·활동 기간 행은 이것만 이 편집기로 고칠 수 있다
-    val timingOnly: Boolean get() = (hasOverlapCheck || hasRecurrence) && !hasTime && listOf(title, kind, status, timeZone, dateLabel, note, phase).all { it == null }
+    val timingOnly: Boolean get() = (hasOverlapCheck || hasRecurrence) && !hasTime && !hasPhase && listOf(title, kind, status, timeZone, dateLabel, note).all { it == null }
 
     // 보낸 값은 바꾸고 아니면 기존 값. 반복이 남으면 날짜·겹침 확인 시간과 맞는지 본다
     fun timing(existing: Schedule?, time: ScheduleTime?): Pair<OverlapCheck?, Recurrence?> {
@@ -55,6 +56,7 @@ data class ScheduleItemPatch(
         val note = (if (this.note != null) this.note.ifEmpty { null } else existing?.curatedNote)
         if (note != null && note.length > 300) throw InvalidInputException("사유는 300자까지입니다")
         val (overlap, rule) = timing(existing, time)
+        val phase = if (hasPhase) phase else existing?.storedPhase
         return ScheduleItem(title, kind, status, time, dateLabel, note, overlap, rule, phase)
     }
 }

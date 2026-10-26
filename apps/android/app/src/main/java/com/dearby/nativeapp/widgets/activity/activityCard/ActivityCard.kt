@@ -19,7 +19,7 @@ import com.dearby.nativeapp.shared.ui.*
 /**
  * 펼친 프로그램 카드 안의 활동 카드(contract "발견 카드 리뉴얼", Material 3 `Card`): 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 `SuggestionChip`, 그 아래 분야 [fieldTag] 1개와 성격 [traitTags]의 아이콘+글자 칩 한 줄(넘치면 `+n`, 없으면 생략), `모집`·`활동`·`장소` 세 줄.
  * [status]는 서버 상태 라벨(contract "활동 상태": `모집 예정`·`모집 중`·`모집 마감`·`진행 중`·`종료`, 옛 API면 날짜 판정)이며 칩은 민트 / 청록 채움(`TealFill`·흰 글자) / 회색 / 보조색 / 회색(판정 불가는 회색 `확인 필요`)이다.
- * `모집 일정 미정`([undated])은 칩 없이 `모집` 줄 값으로 보인다.
+ * `모집 일정 미정`([undated])은 칩 없이 `모집` 줄 값으로 보인다. `모집 예정`이고 모집 시작을 알면 칩 왼쪽에 [startCount](`시작 D-5`·`오늘 시작`) 배지(user 2026-10-26).
  * [recruitment]은 시작·끝이 다 있으면 `10.1 – 10.20`(모집 중이면 옆에 [deadlineCount] 배지), 마감만 있으면 `~ 10월 20일 (화) 마감`이고 null이면 `미정`, [place]가 null이면 `장소` 줄을 생략한다. 모집이 지나지 않았으면([recruiting]) `모집` 값은 청록 굵은 글씨에 민트 바탕이다.
  * 카드(또는 상태 칩)를 누르면 [open](상세 이동). 접근성에서는 카드 하나로 읽히고 상태가 상태 설명으로 붙는다.
  */
@@ -36,6 +36,8 @@ import com.dearby.nativeapp.shared.ui.*
     undated: Boolean = false,
     /** `프로그램 · 조직` under the title (내 활동 진행 단계's head card); null leaves it out, as on discovery. */
     subtitle: String? = null,
+    /** `시작 D-5`/`오늘 시작` beside the `모집 예정` chip (user 2026-10-26): the deadline badge's size and tone in the chip's colour; null for none. */
+    startCount: String? = null,
 ) {
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, TealFill, Color.White)
@@ -44,13 +46,18 @@ import com.dearby.nativeapp.shared.ui.*
         "모집 마감", "종료" -> Triple(status, MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
         else -> Triple(if (undated) status else "확인 필요", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    Card(open, modifier.fillMaxWidth().semantics { stateDescription = label }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+    // The start badge is read with the status (the badge itself is visual only, like the chip).
+    Card(open, modifier.fillMaxWidth().semantics { stateDescription = listOfNotNull(label, startCount).joinToString(" · ") }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Text(title, Modifier.weight(1f).padding(top = 4.dp), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 // The chip's semantics fold into the card (state description above); tapping it opens the detail like the card.
-                if (!undated) SuggestionChip(open, { Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium) }, Modifier.height(28.dp).clearAndSetSemantics {},
-                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = container, labelColor = content), border = null)
+                if (!undated) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // 시작 D-n before the 모집 예정 chip, in the chip's colours (user 2026-10-26).
+                    if (startCount != null) CountBadge(startCount, container, content)
+                    SuggestionChip(open, { Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium) }, Modifier.height(28.dp).clearAndSetSemantics {},
+                        colors = SuggestionChipDefaults.suggestionChipColors(containerColor = container, labelColor = content), border = null)
+                }
             }
             subtitle?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             // 분야 1개 + 성격, the same chip line as the program card's (contract "태그 아이콘+라벨·분야 1개").
@@ -75,6 +82,10 @@ import com.dearby.nativeapp.shared.ui.*
         Text(label, Modifier.width(36.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         Text(value, Modifier.weight(1f), color = if (emphasised) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
             fontWeight = if (emphasised) FontWeight.Bold else null, style = MaterialTheme.typography.bodySmall)
-        if (count != null) Badge(containerColor = TealFill, contentColor = Color.White) { Text(count, Modifier.padding(horizontal = 2.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+        if (count != null) CountBadge(count, TealFill, Color.White)
     }
 }
+
+/** The D-day badge: Material 3 `Badge`, bold `labelSmall`; the deadline one is teal with white text, the start one takes the 모집 예정 chip's colours. */
+@Composable private fun CountBadge(text: String, container: Color, content: Color) =
+    Badge(containerColor = container, contentColor = content) { Text(text, Modifier.padding(horizontal = 2.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }

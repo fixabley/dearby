@@ -16,6 +16,9 @@ import {
   rangeDraft,
   type RangeDraft,
   type Schedule,
+  type SchedulePhase,
+  phaseLabels,
+  PhaseTag,
   ScheduleBlock,
   scheduleInput,
   scheduleText,
@@ -32,12 +35,19 @@ const kindColors: Record<ScheduleKind, string> = { DEADLINE: "red", ANNOUNCEMENT
 const statusLabels: Record<ScheduleStatus, string> = { TENTATIVE: "미정", CONFIRMED: "확정", CANCELLED: "취소" };
 const kindOf = (value: string): ScheduleKind => (value in kindLabels ? (value as ScheduleKind) : "EVENT");
 const statusOf = (value: string): ScheduleStatus => (value in statusLabels ? (value as ScheduleStatus) : "CONFIRMED");
+/**
+ * 구분 choice in the form (contract "선발 과정·활동 일정(phase)", "phaseSource"): `AUTO` means the server rule (kind·상태 지정). A new
+ * schedule then sends no `phase`; an edited one whose value is `STORED` sends `phase: null` to drop it, a `RESOLVED` one sends nothing.
+ */
+type PhaseChoice = SchedulePhase | "AUTO";
 
 /** `POST/PATCH activities/:id/schedules[/:sid]` body. Period fields come from the shared `scheduleInput`; `timeZone` is left to the server default (Asia/Seoul). */
 type ScheduleItemInput = {
   title: string;
   kind: ScheduleKind;
   status: ScheduleStatus;
+  /** Omitted to keep (PATCH) or let the server resolve (POST); null on PATCH drops the stored value so the rule applies again. */
+  phase?: SchedulePhase | null;
   startAt?: string;
   endAt?: string;
   startDate?: string;
@@ -124,7 +134,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
           일정 추가
         </Button>
         <span className="muted">
-          활동 기간 {scheduleText(activity.activitySchedule)}
+          활동 기간 {scheduleText(activity.activitySchedule)} <PhaseTag phase="ACTIVITY" fixed />
         </span>
         <TimetableButton activityId={activity.id} schedule={activity.activitySchedule} />
         <span className="muted">
@@ -144,6 +154,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
             { title: "제목", dataIndex: "title", render: (title: string, schedule) => <>{title}{schedule.curated && <CuratedTag />}</> },
             { title: "종류", dataIndex: "kind", render: (kind: string) => <Tag color={kindColors[kindOf(kind)]}>{kindLabels[kindOf(kind)]}</Tag> },
             { title: "상태", dataIndex: "status", render: (status: string) => statusLabels[statusOf(status)] },
+            { title: "구분", dataIndex: "phase", render: (phase: SchedulePhase | undefined, schedule) => <PhaseTag phase={phase} stored={schedule.phaseSource === "STORED"} /> },
             { title: "기간", render: (_, schedule) => <>{scheduleText(schedule)}{overlapUnavailable(schedule) && <OverlapUnavailableTag />}</> },
             { title: "원문", dataIndex: "dateLabel", render: (label: string) => label || <span className="muted">없음</span> },
             { title: "사유", dataIndex: "curatedNote", render: (note: string | null | undefined) => note || <span className="muted">없음</span> },
@@ -260,6 +271,7 @@ function ScheduleForm({
   const saveOnce = useSingleFlight();
   const timed: boolean = Form.useWatch("timed", form) ?? false;
   const initial: RangeDraft = schedule ? rangeDraft(schedule) : { range: day ? [day, day] : null, timed: false };
+  const stored = schedule?.phaseSource === "STORED";
   const save = useMutation({
     mutationFn: (body: ScheduleItemInput) =>
       schedule ? api<Schedule>(`activities/${activityId}/schedules/${schedule.id}`, "PATCH", body) : api<Schedule>(`activities/${activityId}/schedules`, "POST", body),
@@ -278,6 +290,7 @@ function ScheduleForm({
           title: schedule?.title ?? "",
           kind: schedule ? kindOf(schedule.kind) : "EVENT",
           status: schedule ? statusOf(schedule.status) : "CONFIRMED",
+          phase: stored ? schedule.phase : "AUTO",
           dateLabel: schedule?.dateLabel ?? "",
           range: initial.range,
           timed: initial.timed,
@@ -285,7 +298,7 @@ function ScheduleForm({
           overlap: overlapDraft(schedule?.overlapCheck),
           recurrence: recurrenceDraft(schedule?.recurrence),
         }}
-        onFinish={(values: { title: string; kind: ScheduleKind; status: ScheduleStatus; dateLabel: string; range: RangeDraft["range"]; timed: boolean; note: string; overlap: OverlapDraft; recurrence: RecurrenceDraft }) => {
+        onFinish={(values: { title: string; kind: ScheduleKind; status: ScheduleStatus; phase: PhaseChoice; dateLabel: string; range: RangeDraft["range"]; timed: boolean; note: string; overlap: OverlapDraft; recurrence: RecurrenceDraft }) => {
           const period = scheduleInput({ range: values.range, timed: values.timed }, values.note);
           const dateLabel = values.dateLabel.trim();
           if (!period && !dateLabel) {
@@ -298,6 +311,7 @@ function ScheduleForm({
               title: values.title.trim(),
               kind: values.kind,
               status: values.status,
+              ...(values.phase !== "AUTO" ? { phase: values.phase } : stored && { phase: null }),
               ...dates,
               ...(dateLabel && { dateLabel }),
               ...(note && { note }),
@@ -318,6 +332,23 @@ function ScheduleForm({
           </Form.Item>
           <Form.Item name="status" label="상태">
             <Select style={{ width: 120 }} options={(Object.keys(statusLabels) as ScheduleStatus[]).map((status) => ({ value: status, label: statusLabels[status] }))} />
+          </Form.Item>
+          <Form.Item
+            name="phase"
+            label="구분"
+            tooltip={
+              stored
+                ? "지금은 운영자나 수집기가 정한 구분이에요. 자동으로 바꾸면 저장값을 지우고 종류·진행 상태로 판정해요."
+                : "자동은 종류·진행 상태로 서버가 판정해요. 코딩테스트·과제처럼 선발인 행사는 선발 과정으로 골라요. 고르면 그 값이 판정보다 우선해요."
+            }
+          >
+            <Select<PhaseChoice>
+              style={{ width: 200 }}
+              options={[
+                { value: "AUTO", label: schedule?.phase && !stored ? `자동 (지금: ${phaseLabels[schedule.phase]})` : "자동" },
+                ...(Object.keys(phaseLabels) as SchedulePhase[]).map((phase) => ({ value: phase, label: phaseLabels[phase] })),
+              ]}
+            />
           </Form.Item>
         </Space>
         <ScheduleBlock title="기간" schedule={schedule} rangeName="range" timedName="timed" noteName="note" overlapName="overlap" recurrenceName="recurrence" timed={timed} startOptional />

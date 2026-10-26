@@ -15,6 +15,7 @@ import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.entities.activity.model.scheduleText
 import com.dearby.nativeapp.entities.activity.model.rangeText
 import com.dearby.nativeapp.entities.activity.model.deadlineCount
+import com.dearby.nativeapp.entities.activity.model.startCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
@@ -461,7 +462,7 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
     return ActivityState(
         // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
         id, name, description, organization, program, status, activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
+        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable, it.selection && !it.hasTimetable) },
         safeHttpsUrl(officialUrl), applyUrl(now), range ?: period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
         eligibility = eligibility?.lines() ?: emptyList(),
         category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE, categoryCode = category?.name,
@@ -474,6 +475,8 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
         periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
         deadlineDraft = deadline?.let { draft(it) },
         noRecruitment = this.status == "NO_RECRUITMENT",
+        // 시작 D-n (user 2026-10-26): by the label, so an older API without `status` gets it from the same date judgment.
+        startCount = application?.takeIf { status == "모집 예정" }?.startCount(),
     )
 }
 /**
@@ -499,13 +502,13 @@ private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDat
             else -> ProgressStatus.UPCOMING
         }
         ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage),
-            stage.scheduleId?.takeIf { stage.hasTimetable })
+            stage.scheduleId?.takeIf { stage.hasTimetable }, stage.selection)
     }
-    // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (one with status choices) before the activity period is marked PASSED.
-    val selection = (if (activitySchedule != null) stages.indices.toList().dropLast(1) else stages.indices.toList()).filter { options[it].isNotEmpty() }.map { picks[it] }
-    val participating = selection.isNotEmpty() && selection.all { it?.passed == true }
+    // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (contract "선발 과정·활동 일정 분리": `phase`) is marked PASSED, none FAILED, and a step is still ahead.
+    val selection = stages.indices.filter { stages[it].selection }.map { picks[it] }
+    val participating = failedAt == null && current != null && selection.isNotEmpty() && selection.all { it?.passed == true }
     val badge = when { stages.isEmpty() -> ""; failedAt != null -> shown[failedAt].selected?.name ?: "탈락"; current == null -> "지남"; participating -> "참여 중"; else -> stageBadge(stages[current], today) }
-    return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
+    return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day }, participating)
 }
 
 /** The recruitment window as text (contract "일정 표시 우선순위" format: `10월 1일 (수) 14:07 ~ 10월 8일 (수) 00:00`, end only `~ … 마감`), null without one. */

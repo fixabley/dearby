@@ -5,12 +5,14 @@ struct ActivityProgressRoute: Hashable {
     let activityID: String
 }
 
-/// 진행 단계 (contract "내 활동 진행 트랙 — 2026-10-18", 정리 "진행 단계 화면 정리" 2026-10-26): an inset-grouped `List` in three sections with
-/// system separators. `활동 정보` is the discovery `ActivityCard` (opens the detail) with the program and organization under it; `진행 단계`
-/// has one row per stage (icon, name, date · 지남/진행 중/예정, and on the right the marked status of a 선발 단계 only — 2026-10-26) whose
-/// header names the current stage (`D-3 · 면접`); pressing a row opens its menu (the schedule's statuses, contract "진행 단계 상태" 2026-10-22,
-/// `캘린더에 추가`, `겹치는 시간 확인`); a block with a 트랙·세션 시간표 shows the `tablecells` glyph and its menu starts with `시간표 보기`
-/// (user 2026-10-26), opening the same sheet as the activity detail. `내 활동에서 빼기` is the last row. A FAILED kind ends the track.
+/// 진행 단계 (contract "내 활동 진행 트랙 — 2026-10-18", 정리 "진행 단계 화면 정리" 2026-10-26, "선발 과정·활동 일정 분리" 2026-10-26): an
+/// inset-grouped `List` with system separators. `활동 정보` is the discovery `ActivityCard` (opens the detail) with the program and organization
+/// under it. The stages split into `선발 과정` and `활동 일정` (an empty one is left out), one row each (icon, name, date · 지남/진행 중/예정, and
+/// on the right the marked status of a 선발 과정 stage only); the current state (`D-3 · 면접`/`지남`/`탈락`) sits on the first header, and once
+/// every selection stage is passed the `활동 일정` header carries `참여 중` instead. Pressing a row opens its menu (the schedule's statuses,
+/// contract "진행 단계 상태" 2026-10-22, `캘린더에 추가`, `겹치는 시간 확인`); a block with a 트랙·세션 시간표 shows the `tablecells` glyph and
+/// its menu starts with `시간표 보기` (user 2026-10-26), opening the same sheet as the activity detail. `내 활동에서 빼기` is the last row.
+/// A FAILED kind ends the track.
 struct ActivityProgressPage: View {
     let state: ActivityViewModel
     let activityID: String
@@ -34,16 +36,24 @@ struct ActivityProgressPage: View {
                         let line = [activity.program, activity.organization].compactMap { $0 }.joined(separator: " · ")
                         if !line.isEmpty { Text(line) }
                     }
-                    Section {
-                        ForEach(progress.stages) { stage in stageRow(stage, activity: activity) }
-                    } header: {
-                        HStack {
-                            Text("진행 단계")
-                            Spacer()
-                            DearbyBadge(title: progress.badge(now: Date()), danger: progress.failed).textCase(nil)
+                    let selection = progress.stages.filter { !$0.inActivitySection }, activities = progress.stages.filter(\.inActivitySection)
+                    if !selection.isEmpty {
+                        Section {
+                            ForEach(selection) { stage in stageRow(stage, activity: activity) }
+                        } header: {
+                            // 참여 중 is announced on `활동 일정` below instead of here, where every stage is already 통과.
+                            header("선발 과정", badge: progress.participating ? nil : progress.badge(now: Date()), danger: progress.failed)
+                        } footer: {
+                            Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요.")
                         }
-                    } footer: {
-                        Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요.")
+                    }
+                    if !activities.isEmpty {
+                        Section {
+                            ForEach(activities) { stage in stageRow(stage, activity: activity) }
+                        } header: {
+                            header("활동 일정", badge: progress.participating ? "참여 중" : (selection.isEmpty ? progress.badge(now: Date()) : nil),
+                                   danger: progress.failed)
+                        }
                     }
                     Section {
                         Button("내 활동에서 빼기", role: .destructive) { removing = activityID }
@@ -66,13 +76,22 @@ struct ActivityProgressPage: View {
         // After removal the timeline closes and the list shows again (contract "빼기는 눈에 보이게").
         .removeFromMineDialog($removing, state: state) { dismiss() }
     }
-    /// The discovery card as it looks there, without the `+` (the activity is already here).
+    /// A section header read as a heading, with the state badge at its trailing end when there is one.
+    private func header(_ title: String, badge: String?, danger: Bool) -> some View {
+        HStack {
+            Text(title).accessibilityAddTraits(.isHeader)
+            Spacer()
+            if let badge { DearbyBadge(title: badge, danger: danger).textCase(nil) }
+        }
+    }
+    /// The discovery card as it looks there, without the `+` (the activity is already here) and without the tag chip line (user
+    /// 2026-10-26, contract "진행 단계 화면 정리"): no tags are passed, so the card leaves the line out; discovery and 즐겨찾기 keep theirs.
     private func card(_ activity: ActivityModel) -> some View {
         let recruitmentDate = activity.recruitmentDate(at: state.loadedAt)
         return ActivityCard(activityID: activity.id, title: activity.title, status: activity.status(at: state.loadedAt),
                             recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday,
                             startDDay: activity.upcomingStartDDay(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
-                            place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
+                            place: activity.place?.name ?? activity.location,
                             surface: Color(.secondarySystemGroupedBackground), hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id))
         } open: {

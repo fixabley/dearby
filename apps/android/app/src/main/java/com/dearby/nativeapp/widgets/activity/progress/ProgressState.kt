@@ -31,18 +31,20 @@ data class CalendarDraft(val title: String, val begin: Long, val end: Long, val 
  * One step as shown. [kind] picks the icon (APPLICATION, DEADLINE, ANNOUNCEMENT, INTERVIEW, EVENT); [options] are its statuses and
  * [selected] the user's choice (the first waiting status until one is chosen); [hasWindow] when the calendar comparison can open on it;
  * [draft] for `캘린더에 추가`, null for an undated step. [timetableId] is the schedule id of a step with a 트랙·세션 시간표 (`hasTimetable`), else null.
+ * [selection] puts the step under `선발 과정` (the only steps with [options]); otherwise it is 활동 일정 (contract "선발 과정·활동 일정 분리").
  */
 data class ProgressStage(val name: String, val kind: String, val dateText: String, val status: ProgressStatus, val options: List<StatusOption>, val selected: StatusOption?, val hasWindow: Boolean,
-    val draft: CalendarDraft? = null, val timetableId: String? = null)
+    val draft: CalendarDraft? = null, val timetableId: String? = null, val selection: Boolean = false)
 
 /**
  * The progress track of one applied activity (contract "내 활동 진행 트랙"). [stages] is empty for an activity without
  * schedules, which keeps the plain 신청함 row. [ended] (a FAILED status, [failed], or every step over) moves it to
- * 끝난 활동; [nextDay] sorts 진행 중 with undated activities last.
+ * 끝난 활동; [nextDay] sorts 진행 중 with undated activities last. [participating] is the `참여 중` badge's condition (every 선발 단계 marked
+ * 통과, none 탈락, an 활동 일정 step still ahead), which also emphasises the `활동 일정` section.
  */
 data class ProgressState(
     val id: String, val title: String, val subtitle: String, val stages: List<ProgressStage>, val current: Int?,
-    val badge: String, val ended: Boolean, val failed: Boolean, val nextDay: LocalDate?,
+    val badge: String, val ended: Boolean, val failed: Boolean, val nextDay: LocalDate?, val participating: Boolean = false,
 ) {
     /** The whole track as one accessibility node: "5단계 중 3단계 1차 면접 진행 중". */
     val trackDescription: String get() =

@@ -28,7 +28,8 @@ data class ScheduleStatus(val id: String?, val name: String, val kind: String) {
  * ([startDate]/[endDateExclusive]) or undated ([dateLabel] only). [kind] is DEADLINE, ANNOUNCEMENT, INTERVIEW or EVENT.
  * [id] is the schedule id the progress status is saved under; [statuses] its choices; [overlapStart]/[overlapEnd] the admin's
  * Seoul `HH:mm` overlap-check window for a date-only schedule (contract "겹침 확인 시간", 2026-10-22); [recurrence] the RRULE body
- * (contract "반복 일정과 겹침 결과 묶음"), null for a one-off schedule.
+ * (contract "반복 일정과 겹침 결과 묶음"), null for a one-off schedule. [phase] is `SELECTION` or `ACTIVITY` (contract "선발 과정·활동 일정
+ * 분리", 2026-10-26), null from an older API; see `isSelection` in ActivityStages.
  */
 data class StageSchedule(
     val title: String, val kind: String, val startAt: String?, val endAt: String?, val timeZone: String,
@@ -37,6 +38,7 @@ data class StageSchedule(
     val recurrence: String? = null,
     /** The block has a 트랙·세션 시간표 (contract "트랙·세션 시간표": `hasTimetable`), opened with `GET …/schedules/:id/timetable`. */
     val hasTimetable: Boolean = false,
+    val phase: String? = null,
 ) {
     /**
      * The windows the calendar comparison uses (contract "겹침 확인 시간"): a timed schedule with both ends is its own window; a

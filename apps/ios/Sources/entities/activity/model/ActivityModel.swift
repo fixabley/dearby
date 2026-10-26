@@ -211,6 +211,10 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     var recurrence: ScheduleRecurrence? = nil
     /// The block has a track·session timetable (contract "트랙·세션 시간표" 2026-10-26: `Schedule.hasTimetable`); false on older responses.
     var hasTimetable = false
+    /// 선발 과정 or 활동 일정 (contract "선발 과정·활동 일정 분리" 2026-10-26: `Schedule.phase`); nil on older responses, which the app
+    /// judges by `kind`·statuses instead (`ActivityStages`).
+    var phase: Phase? = nil
+    enum Phase: String, Sendable { case selection = "SELECTION", activity = "ACTIVITY" }
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
     /// The last moment within the stage: a timed end, or Seoul midnight of an all-day stage's last day (the exclusive end minus a day).
