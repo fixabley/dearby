@@ -34,6 +34,12 @@ dearby:
   consent:
     privacy-version: ${CONSENT_PRIVACY_VERSION:2026-10-26}
     terms-version: ${CONSENT_TERMS_VERSION:2026-10-22}
+  # GitHub 연락처 연결(native-v1.md "연락처 인증"). 셋 중 하나라도 비어 있으면 /v1/me/contacts/github/*는 503
+  github:
+    client-id: ${GITHUB_CLIENT_ID:}
+    client-secret: ${GITHUB_CLIENT_SECRET:}
+    callback-url: ${GITHUB_CALLBACK_URL:}
+    web-redirect-uri: ${GITHUB_WEB_REDIRECT_URI:https://dearby.wid.io.kr/profile}
   # 웹 비로그인 저장. Next 서버의 GUEST_PROXY_SECRET과 같은 값(32자 이상). 비어 있으면 /v1/guest/*는 503
   guest:
     proxy-secret: ${GUEST_PROXY_SECRET:}
