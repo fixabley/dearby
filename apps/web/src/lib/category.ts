@@ -12,6 +12,24 @@ export const categoryLabels: Record<string, string> = {
   OTHER: "기타",
 };
 const order = Object.keys(categoryLabels);
+/** 이벤트 종류 (the server's `kind=event` set); every other code is 프로그램. */
+const EVENT_CATEGORIES = ["CONFERENCE", "WORKSHOP", "LECTURE", "MEETUP"];
+
+/** 종류 필터의 항목 (contract "종류 필터" 2026-10-26): the side's codes in contract order. */
+export function kindCategories(kind: "program" | "event"): string[] {
+  return order.filter((code) => EVENT_CATEGORIES.includes(code) === (kind === "event"));
+}
+/** `?category=BOOTCAMP,CLUB` → the side's known codes in contract order; anything else is dropped (none = 전체). */
+export function parseCategories(value: string | undefined, kind: "program" | "event"): string[] {
+  const codes = new Set(value?.split(","));
+  return kindCategories(kind).filter((code) => codes.has(code));
+}
+/** The 종류 button's summary: `전체`, up to two names joined, else `부트캠프 외 2`. */
+export function categoriesSummary(codes: string[]): string {
+  const names = codes.map((code) => categoryLabels[code]);
+  if (!names.length) return "전체";
+  return names.length <= 2 ? names.join("·") : `${names[0]} 외 ${names.length - 1}`;
+}
 
 export function categoryLabel(code: string | null | undefined): string {
   return (code && categoryLabels[code]) || "미분류";
