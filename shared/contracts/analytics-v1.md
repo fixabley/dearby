@@ -61,6 +61,7 @@
 | `discovery_mode` | 발견 맨 위 `프로그램 \| 이벤트` 전환을 사용자가 바꿈(앱 시작 때 기억된 값은 보내지 않음, 2026-10-26) | `mode` = `program`·`event` |
 | `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`) |
 | `discovery_category_filter` | 발견 `종류` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
+| `today_card_tap` | 발견 맨 위 `오늘 내 행사` 카드를 누름(2026-10-26, [native-v1.md](native-v1.md) "오늘 내 행사 카드") | `target` = `timetable`(오늘, 블록 시간표 시트)·`progress`(진행 단계)·`qr`(`명함 QR`), `activity_id`, `field`, `category` |
 
 접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
 
