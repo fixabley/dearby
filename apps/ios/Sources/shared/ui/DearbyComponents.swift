@@ -17,6 +17,14 @@ struct DearbyBadge: View {
             .background(danger ? DearbyStyle.danger.opacity(0.1) : quiet ? DearbyStyle.muted : DearbyStyle.mint, in: Capsule())
     }
 }
+/// 인증됨 (contract "아이콘 통일" `인증`, "연락처 인증" 2026-10-26): `checkmark.seal.fill` 16 teal after a value the owner proved is theirs; reads `인증됨`.
+struct DearbyVerifiedMark: View {
+    @ScaledMetric(relativeTo: .subheadline) private var side: CGFloat = 16
+    var body: some View {
+        Image(systemName: "checkmark.seal.fill").resizable().scaledToFit().frame(width: side, height: side)
+            .foregroundStyle(DearbyStyle.teal).accessibilityLabel("인증됨")
+    }
+}
 /// The small capsule beside a card title or a date (`시간표`, `D-3`): caption2 semibold teal on mint, with an optional SF Symbol;
 /// `filled` is white on the teal fill (a countdown, readable on a mint row too).
 struct DearbyMiniBadge: View {

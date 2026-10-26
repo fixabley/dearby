@@ -71,9 +71,9 @@ struct CardView: View {
     }
 }
 
-/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20, "연락처 아이콘·바로가기" 2026-10-26): kind glyph on the left, the value, and
-/// a mark for what a tap does — open (`arrow.up.right`) or copy a KakaoTalk ID (`doc.on.doc`, then "ID를 복사했어요" for a moment).
-/// The kind (or the owner's label) is VoiceOver-only.
+/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20, "연락처 아이콘·바로가기" 2026-10-26): kind glyph on the left, the value, a
+/// `checkmark.seal.fill` after a verified value (contract "연락처 인증" 2026-10-26; VoiceOver `인증됨`), and a mark for what a tap does — open
+/// (`arrow.up.right`) or copy a KakaoTalk ID (`doc.on.doc`, then "ID를 복사했어요" for a moment). The kind (or the owner's label) is VoiceOver-only.
 private struct ContactRow: View {
     let contact: ContactModel
     @Environment(\.openURL) private var openURL
@@ -82,19 +82,23 @@ private struct ContactRow: View {
         switch contact.action {
         case .open(let url):
             Button { openURL(url) } label: { content(mark: "arrow.up.right") }.buttonStyle(.plain)
-                .accessibilityLabel(contact.rowLabel + ": " + contact.displayValue)
+                .accessibilityLabel(label)
                 .accessibilityHint(contact.kind == "phone" ? "전화를 걸어요" : contact.kind == "email" ? "메일을 보내요" : "링크를 열어요")
         case .copy(let id):
             Button { copy(id) } label: { content(mark: "doc.on.doc") }.buttonStyle(.plain)
-                .accessibilityLabel(contact.rowLabel + ": " + contact.displayValue).accessibilityHint("ID를 복사해요")
+                .accessibilityLabel(label).accessibilityHint("ID를 복사해요")
         case nil:
-            content(mark: nil).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.displayValue)
+            content(mark: nil).accessibilityElement(children: .ignore).accessibilityLabel(label)
         }
     }
+    private var label: String { contact.rowLabel + ": " + contact.displayValue + (contact.verified ? ", 인증됨" : "") }
     private func content(mark: String?) -> some View {
         HStack(spacing: 12) {
             DearbyGlyphView(glyph: ContactModel.glyph(kind: contact.kind))
-            Text(contact.displayValue).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
+            HStack(spacing: 4) {
+                Text(contact.displayValue).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
+                if contact.verified { DearbyVerifiedMark() }
+            }
             Spacer(minLength: 0)
             if copied {
                 Text("ID를 복사했어요").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.teal)

@@ -236,7 +236,7 @@ extension PublishedCard {
     /// The saved or own card shown with the identity components.
     var cardModel: CardModel {
         CardModel(id: id, name: name, profileName: profileName, job: job, introLink: introLink, description: description,
-                  contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
+                  contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value, verified: $0.verified) },
                   histories: histories.map(\.historyModel), organization: latestOrganization, photoUrl: photoUrl)
     }
     var latestOrganization: String? { histories.latestOrganization }
