@@ -120,7 +120,9 @@
     "DearbyRowsSkeleton",
     "DearbyQuestionPage",
     "InboxRoute",
-    "InboxEntry"
+    "InboxEntry",
+    "PromptLayers",
+    "PromptHost"
   ],
   "widgets/activity": [
     "ActivityCard",
