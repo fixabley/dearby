@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -37,10 +36,11 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
 /**
  * One applied activity's stages (contract "내 활동 진행 트랙"), compact (2026-10-26 사용자 "활동탐색 카드처럼 깔끔하게", "마진이 너무 크고 경계가
  * 뚜렷하지 않아"): the discovery [ActivityCard] as the head (tap → [openDetail]), then small headed sections, each one card of
- * divider-separated rows — `진행 단계` (with the track's badge, e.g. `D-3 · 면접`, beside the heading) and `시간표` for blocks with sessions.
+ * divider-separated rows — `진행 단계` (with the track's badge, e.g. `D-3 · 면접`, beside the heading).
  * A stage row is icon, name and date, with the user's 대기/통과/탈락 on the right only on a 선발 단계 (contract "내 활동 서버 저장·일정 상태",
- * the user's own mark, never the organizer's result). Tapping a row with actions unfolds them: the status choice, `겹치는 시간 확인`
- * ([checkCalendar]) and `캘린더에 추가`. A 시간표 row opens the block's sheet via [openTimetable]. 내 활동에서 빼기 stays a text button at the bottom.
+ * the user's own mark, never the organizer's result) and a timetable icon before it when the block has a 트랙·세션 시간표 (2026-10-26 사용자).
+ * Tapping a row with actions unfolds them: `시간표 보기` ([openTimetable], the block's sheet) first, then the status choice, `겹치는 시간 확인`
+ * ([checkCalendar]) and `캘린더에 추가`. 내 활동에서 빼기 stays a text button at the bottom.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityProgressPage(
@@ -58,24 +58,9 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
             SectionHeading("진행 단계") { if (progress.badge.isNotEmpty()) ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed) }
             SectionCard { progress.stages.forEachIndexed { index, stage ->
                 if (index > 0) HorizontalDivider()
-                StageRow(stage, expanded == index, { expanded = if (expanded == index) null else index }, { mark(index, it) }, { checkCalendar(index) }, addToCalendar)
+                StageRow(stage, expanded == index, { expanded = if (expanded == index) null else index }, { mark(index, it) }, { checkCalendar(index) }, addToCalendar, openTimetable)
             } }
             Text(PROGRESS_NOTE, Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            // Blocks with a 트랙·세션 시간표 (contract "트랙·세션 시간표"), in the same row shape; the whole row opens the sheet.
-            val timetables = progress.stages.filter { it.timetableId != null }
-            if (timetables.isNotEmpty()) {
-                SectionHeading("시간표")
-                SectionCard { timetables.forEachIndexed { index, stage ->
-                    if (index > 0) HorizontalDivider()
-                    ListItem({ Text(stage.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        Modifier.clickable(role = Role.Button, onClickLabel = "시간표 보기") { openTimetable(stage.timetableId!!) },
-                        supportingContent = { Text(stage.dateText) }, leadingContent = { Icon(Icons.Rounded.ViewTimeline, null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingContent = { Row(verticalAlignment = Alignment.CenterVertically) {
-                            TimetableMark()
-                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
-                } }
-            }
             RemoveFromMineButton(remove, Modifier.align(Alignment.CenterHorizontally))
         }
     }
@@ -92,13 +77,14 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
 
 /**
  * One stage as a ListItem-height row: kind icon (TealFill check once past, primary while current), name (bold while current) and date,
- * the chosen status on the right of a 선발 단계 (failed in error colour). A row with actions has a chevron and unfolds them on tap.
+ * a timetable icon (`시간표 있음`) then the chosen status on the right of a 선발 단계 (failed in error colour). A row with actions has a
+ * chevron and unfolds them on tap.
  */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun StageRow(stage: ProgressStage, open: Boolean, toggle: () -> Unit, mark: (StatusOption) -> Unit, checkCalendar: () -> Unit, addToCalendar: (CalendarDraft) -> Unit) {
+@Composable private fun StageRow(stage: ProgressStage, open: Boolean, toggle: () -> Unit, mark: (StatusOption) -> Unit, checkCalendar: () -> Unit, addToCalendar: (CalendarDraft) -> Unit, openTimetable: (String) -> Unit) {
     val current = stage.status == ProgressStatus.CURRENT
     val past = stage.status == ProgressStatus.PAST
-    val actions = stage.options.isNotEmpty() || stage.hasWindow || stage.draft != null
+    val actions = stage.timetableId != null || stage.options.isNotEmpty() || stage.hasWindow || stage.draft != null
     val state = when { past -> "지남"; current -> "진행 중"; else -> "예정" }
     Column {
         ListItem(
@@ -110,6 +96,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
                 else Icon(stageIcon(stage.kind), null, tint = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             },
             trailingContent = { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (stage.timetableId != null) Icon(Icons.Rounded.ViewTimeline, "시간표 있음", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (stage.options.isNotEmpty()) stage.selected?.let { ExampleBadge(it.name, accent = it.passed, danger = it.failed) }
                 if (actions) Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             } },
@@ -129,6 +116,9 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
                     stage.options.forEach { option -> FilterChip(stage.selected == option, { mark(option) }, { Text(option.name) }) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    stage.timetableId?.let { id ->
+                        TextButton({ openTimetable(id) }, contentPadding = PaddingValues(0.dp)) { Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("시간표 보기") }
+                    }
                     if (stage.hasWindow) TextButton(checkCalendar, contentPadding = PaddingValues(0.dp)) { Text("겹치는 시간 확인") }
                     stage.draft?.let { draft ->
                         TextButton({ addToCalendar(draft) }, contentPadding = PaddingValues(0.dp)) { Icon(Icons.Rounded.EventAvailable, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("캘린더에 추가") }
