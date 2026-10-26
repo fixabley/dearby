@@ -216,6 +216,10 @@ import SwiftUI
             }
             // 세션 이동 알림 follow the favorites: a heart, the list read after sign-in, sign-out (`[]` removes them all) and the switch.
             .onChange(of: sessionFavorites.items) { _, items in sessionReminders.reschedule(items) }
+            // The first read of this run, also when it comes back empty or the server has no session favorites: stale reminders go.
+            .onChange(of: sessionFavorites.phase) { _, phase in
+                if phase == .loaded || phase == .unavailable { sessionReminders.reschedule(sessionFavorites.items) }
+            }
             .onChange(of: sessionReminders.enabled) { _, _ in sessionReminders.refresh() }
             .task {
                 // The first session heart asks for the notification permission (as the first program heart); granted, the reminders are set.

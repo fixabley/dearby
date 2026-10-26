@@ -21,6 +21,9 @@ import UserNotifications
     @ObservationIgnored private var running: Task<Void, Never>?
     /// The favorites of the last `reschedule`, for `refresh` after the permission was asked.
     @ObservationIgnored private var items: [FavoriteSession] = []
+    /// `reschedule` ran this process: before that (a cold launch whose list has not arrived, or failed to) the reminders of the last run
+    /// are kept rather than wiped by an empty list.
+    @ObservationIgnored private var loaded = false
     init() {
         enabled = UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true
     }
@@ -28,10 +31,13 @@ import UserNotifications
     /// Replaces every pending reminder with the ones `items` need from now on; a run still going is cancelled first.
     func reschedule(_ items: [FavoriteSession]) {
         self.items = items
+        loaded = true
         refresh()
     }
-    /// The same favorites again: after the permission sheet, the switch or a return to the foreground.
+    /// The same favorites again: after the permission sheet, the switch or a return to the foreground. Nothing until the list was read
+    /// once this run, except that the switch off always removes.
     func refresh() {
+        guard loaded || !enabled else { return }
         running?.cancel()
         running = Task { await replace(enabled ? Self.requests(items, now: Date()) : []) }
     }
