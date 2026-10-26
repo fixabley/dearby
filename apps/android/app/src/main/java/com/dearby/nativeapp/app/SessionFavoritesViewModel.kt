@@ -38,7 +38,7 @@ import kotlinx.coroutines.withContext
  * null until read: an unread list must not cancel the alarms already set.
  */
 class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewModel() {
-    /** [favoritesOnly] opens the sheet on 찜한 세션 (a 세션 이동 알림 tap). */
+    /** [favoritesOnly] opens the sheet on 내 시간표 (a 세션 이동 알림 tap). */
     data class Open(val activityId: String, val scheduleId: String, val phase: TimetablePhase = TimetablePhase.LOADING, val timetable: TimetableState? = null, val favoritesOnly: Boolean = false)
 
     private val openFlow = MutableStateFlow<Open?>(null)
@@ -48,7 +48,7 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
     private val itemsFlow = MutableStateFlow<List<SessionFavorite>?>(null)
     /** 내 시간표 (session start order); null until read (and again once signed out or the consent is missing). */
     val items = itemsFlow.asStateFlow()
-    /** 나만의 시간표 across activities (즐겨찾기 › 찜한 세션), session start order; the track comes with each item (2026-10-26). */
+    /** 나만의 시간표 across activities (즐겨찾기 › 내 시간표), session start order; the track comes with each item (2026-10-26). */
     val entries = itemsFlow.map { items ->
         items.orEmpty().map { item ->
             val track = item.track?.let { TrackState(it.id, it.name, it.room) }
@@ -57,7 +57,7 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private val noticeFlow = MutableStateFlow<String?>(null)
     val notice = noticeFlow.asStateFlow()
-    /** A 세션 이동 알림 tap (MainActivity): the block whose timetable should open on 찜한 세션 once its activity's detail is up ([showPending]). */
+    /** A 세션 이동 알림 tap (MainActivity): the block whose timetable should open on 내 시간표 once its activity's detail is up ([showPending]). */
     private val pendingFlow = MutableStateFlow<Pair<String, String>?>(null)
     val pending = pendingFlow.asStateFlow()
     private var timetableJob: Job? = null
@@ -93,7 +93,7 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
     fun remind(activityId: String, scheduleId: String) { pendingFlow.value = activityId to scheduleId }
     /** The activity could not be opened (gone or unreadable): nothing waits any more. */
     fun dismissPending() { pendingFlow.value = null }
-    /** The detail of [activityId] is up (ActivityRoute): if it is the remembered one, its timetable opens on 찜한 세션. */
+    /** The detail of [activityId] is up (ActivityRoute): if it is the remembered one, its timetable opens on 내 시간표. */
     fun showPending(activityId: String) {
         val (activity, schedule) = pendingFlow.value?.takeIf { it.first == activityId } ?: return
         pendingFlow.value = null

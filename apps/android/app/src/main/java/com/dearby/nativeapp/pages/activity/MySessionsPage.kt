@@ -21,14 +21,14 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * 즐겨찾기 › 찜한 세션 (2026-10-26 사용자 "찜한 시간표만 따로"): `GET /v1/me/session-favorites` as 나만의 시간표, grouped by activity (its
+ * 즐겨찾기 › 내 시간표 (2026-10-26 사용자 "찜한 시간표만 따로"): `GET /v1/me/session-favorites` as 나만의 시간표, grouped by activity (its
  * name opens the activity) and then by the session's own date. A heart tap un-찜s at once; a tap on a card opens its description.
  */
 @Composable fun MySessionsPage(entries: List<MyTimetableEntry>, favorites: Set<String>, heart: (String) -> Unit, openActivity: (String) -> Unit, back: () -> Unit) {
     var opened by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize()) {
-        DearbyTopBar("찜한 세션", back)
-        if (entries.isEmpty()) DearbyEmptyState("찜한 세션이 없어요", "시간표에서 세션의 하트를 누르면 여기에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
+        DearbyTopBar("내 시간표", back)
+        if (entries.isEmpty()) DearbyEmptyState("내 시간표가 비어 있어요", "세션에 하트를 누르면 내 시간표에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
         else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             entries.groupBy { it.activityId }.forEach { (activityId, ofActivity) ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 8.dp).clickable(role = Role.Button) { openActivity(activityId) }.semantics { heading() },
