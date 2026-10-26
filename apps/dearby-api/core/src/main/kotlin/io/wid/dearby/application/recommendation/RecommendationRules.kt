@@ -51,8 +51,10 @@ class RecommendationRules(
         val category = activity.category?.takeIf { it in preferences.categories }?.also { reasons += CATEGORY_NAMES.getValue(it) }
         val traits = activity.tags.filter { it.kind == TagKind.TRAIT && it.id in preferences.traitTagIds }.onEach { reasons += it.name }
         val deadline = deadline(activity)
-        val soon = deadline != null && deadline > now && Duration.between(now, deadline) <= DEADLINE_WINDOW
-        if (soon) reasons += deadline.minusNanos(1).atZoneSameInstant(SEOUL).let { "${it.monthValue}월 ${it.dayOfMonth}일 마감" }
+        // 마감 임박은 실제 모집 마감만 본다(활동 시작을 `마감`이라 쓰지 않는다)
+        val end = recruitmentEnd(activity)
+        val soon = end != null && end > now && Duration.between(now, end) <= DEADLINE_WINDOW
+        if (soon) reasons += end.minusNanos(1).atZoneSameInstant(SEOUL).let { "${it.monthValue}월 ${it.dayOfMonth}일 마감" }
         // 대상자 조건이 정리되지 않은 활동은 빼지 않고 알린다(지원 자격 정보가 있을 때만)
         val unchecked = flagUnchecked && !activity.eligibilityChecked
         if (unchecked) reasons += UNCHECKED_REASON
@@ -69,7 +71,7 @@ class RecommendationRules(
             ProgramSummary(
                 id = first.program.id, name = first.program.name, nameEn = first.program.nameEn,
                 organizationId = first.organization.id, organizationName = first.organization.name, organizationNameEn = first.organization.nameEn,
-                openActivityCount = listings.size, nearestRecruitmentEndAt = listings.mapNotNull { deadline(it.activity) }.minOrNull(),
+                openActivityCount = listings.size, nearestRecruitmentEndAt = listings.mapNotNull { recruitmentEnd(it.activity) }.minOrNull(),
                 matchedActivityIds = emptyList(), category = first.program.category,
             )
         }).associateBy { it.id }
@@ -103,13 +105,13 @@ class RecommendationRules(
         )
 
         // 정렬 키와 같다(native-v1.md "발견 프로그램 묶음"): 모집 마감(시각 또는 날짜의 서울 0시) → 없으면 활동 시작
-        fun deadline(activity: Activity): OffsetDateTime? {
-            val end = when (val time = activity.application?.time) {
-                is ScheduleTime.Timed -> time.end?.toOffsetDateTime()
-                is ScheduleTime.AllDay -> time.endExclusive.atStartOfDay(SEOUL).toOffsetDateTime()
-                null -> null
-            }
-            return end ?: start(activity.activitySchedule.time)
+        fun deadline(activity: Activity): OffsetDateTime? = recruitmentEnd(activity) ?: start(activity.activitySchedule.time)
+
+        // 실제 모집 마감(시각 또는 날짜의 서울 0시)만. 없으면 null(nearestRecruitmentEndAt·`M월 d일 마감` 표기)
+        fun recruitmentEnd(activity: Activity): OffsetDateTime? = when (val time = activity.application?.time) {
+            is ScheduleTime.Timed -> time.end?.toOffsetDateTime()
+            is ScheduleTime.AllDay -> time.endExclusive.atStartOfDay(SEOUL).toOffsetDateTime()
+            null -> null
         }
 
         fun start(time: ScheduleTime?): OffsetDateTime? = when (time) {

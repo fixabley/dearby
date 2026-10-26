@@ -47,6 +47,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             // 열린 활동만(발견 묶음과 같은 규칙)
             if (condition.openOnly) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.open(OffsetDateTime.now(ZoneOffset.UTC)))))
+            // 활동 상태 필터(발견 묶음과 같은 판정)
+            condition.statuses?.let { add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.statusIn(it, OffsetDateTime.now(ZoneOffset.UTC))))) }
             // 활동 이력 후보만(7일 미만 행사 제외, 이력 쓰기 검사와 같은 규칙)
             if (condition.forHistory) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.historyEligible)))
         }

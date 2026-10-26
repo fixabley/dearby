@@ -68,7 +68,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "favorited", "hasTimetable"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "favorited", "status", "hasTimetable"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -123,6 +123,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(1, summary["openActivityCount"].asInt())
         assertEquals(0, summary["matchedActivityIds"].size())
         assertEquals(false, summary["nearestIsActivityStart"].asBoolean())
+        assertEquals(1, summary["statusCounts"]["RECRUITING"].asInt())
         // 활동 이름으로만 맞아도 프로그램이 나오고, 그 활동 id가 함께 온다. 프로그램 이름으로 맞으면 활동 id는 비어 있다
         val matched = programs("q=묶음 확인")["items"].single()["matchedActivityIds"]
         assertEquals(listOf(openId), (0 until matched.size()).map { matched[it].asLong() })
@@ -131,7 +132,8 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(0, programs("participationType=REGISTRATION")["items"].size())
         assertEquals(1, programs("participationType=selection")["items"].single()["openActivityCount"].asInt())
         mvc.get("/v1/discovery/programs?participationType=ANY").andExpect { status { isBadRequest() } }
-        // 정렬 기준 보완(admin-v1.md): 모집 기간이 없는 활동은 활동 시작을 모집 마감으로 본다. 시작이 아직 오지 않았으면 열린 활동이고 가장 가까운 마감이 그 시작이 된다
+        // 모집 일정이 없는 활동은 종류와 상관없이 마감으로 본다(2026-10-26 사용자 결정, 그 전에는 활동 시작이 남았으면 열었다).
+        // 활동 시작이 사흘 뒤여도 열린 활동·모집 예정이 아니고 상태는 NO_RECRUITMENT(모집 정보 없음)
         val upcomingId = createActivity("시작 예정 활동")
         jdbc.sql(
             """
@@ -139,23 +141,37 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             where activity_id = ? and slot = 'ACTIVITY'
             """
         ).param(upcomingId).update()
+        val noRecruitment = programs("")["items"].single()
+        assertEquals(1, noRecruitment["openActivityCount"].asInt())
+        assertEquals(0, noRecruitment["upcomingActivityCount"].asInt())
+        assertTrue(upcomingId !in search("open=true")["items"].toList().map { it["id"].asLong() })
+        assertEquals("NO_RECRUITMENT", search("q=시작 예정 활동")["items"].single { it["id"].asLong() == upcomingId }["status"].asString())
+        assertTrue(upcomingId in search("status=no_recruitment&size=100")["items"].toList().map { it["id"].asLong() })
+        // 모집 시작만 있고 끝이 없는 모집 기간은 모집 일정이 있으므로 모집 중이다. nearestRecruitmentEndAt은 모집 마감만 보므로 활동 시작(사흘 뒤)이 아니라 다른 활동의 마감(이레 뒤)
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(upcomingId).update()
         val withUpcoming = programs("")["items"].single()
         assertEquals(2, withUpcoming["openActivityCount"].asInt())
         val nearest = java.time.OffsetDateTime.parse(withUpcoming["nearestRecruitmentEndAt"].asString())
         val nearestSeoulDate = nearest.atZoneSameInstant(java.time.ZoneId.of("Asia/Seoul")).toLocalDate()
-        assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(3), nearestSeoulDate)
-        // 가장 가까운 값이 모집 마감이 아니라 활동 시작이면 앱이 `마감`이라 쓰지 않도록 알린다
-        assertEquals(true, withUpcoming["nearestIsActivityStart"].asBoolean())
+        assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(7), nearestSeoulDate)
+        // nearestIsActivityStart는 폐지 예정으로 항상 false
+        assertEquals(false, withUpcoming["nearestIsActivityStart"].asBoolean())
         // 발견 프로그램·이벤트 전환(native-v1.md, 2026-10-26): kind=event는 컨퍼런스·워크샵·밋업·강연, kind=program은 그 밖과 미분류(null).
         // 묶음은 그 kind의 활동만으로 세고 마감을 고른다. 생략하면 전부, 모르는 값은 400
         jdbc.sql("update activities set category = 'CONFERENCE' where id = ?").param(upcomingId).update()
         val eventSummary = programs("kind=event")["items"].single()
         assertEquals(1, eventSummary["openActivityCount"].asInt())
-        assertEquals(true, eventSummary["nearestIsActivityStart"].asBoolean())
+        assertEquals(false, eventSummary["nearestIsActivityStart"].asBoolean())
+        assertTrue(eventSummary["nearestRecruitmentEndAt"].isNull) // 모집 마감이 없는 이벤트만 있으면 null
         val programSummary = programs("kind=PROGRAM")["items"].single()
         assertEquals(1, programSummary["openActivityCount"].asInt())
         assertEquals(false, programSummary["nearestIsActivityStart"].asBoolean())
-        assertTrue(java.time.OffsetDateTime.parse(programSummary["nearestRecruitmentEndAt"].asString()).isAfter(nearest))
+        assertEquals(nearest, java.time.OffsetDateTime.parse(programSummary["nearestRecruitmentEndAt"].asString()))
         assertEquals(2, programs("")["items"].single()["openActivityCount"].asInt())
         assertEquals(listOf(upcomingId), search("open=true&kind=event")["items"].toList().map { it["id"].asLong() })
         assertEquals(listOf(openId), search("open=true&kind=program")["items"].toList().map { it["id"].asLong() })
@@ -206,7 +222,40 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertTrue(timedClosedId in ids(search("q=시각 모집 끝")))
         assertTrue(timedClosedId !in ids(search("open=true&q=시각 모집 끝")))
         assertEquals(setOf(openId, allDayOpenId), ids(search("open=true")).toSet())
-        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId, pastConferenceId).update()
+        // 활동 상태(native-v1.md "활동 상태", 2026-10-26): 모집이 끝났고 활동이 아직이면 모집 마감, 활동 기간 안이면 진행 중, 활동 기간이 없으면 모집 마감 뒤 종료
+        fun activityPeriod(activityId: Long, startOffset: Int, endOffset: Int) = jdbc.sql(
+            """
+            update schedules set time_type = 'ALL_DAY', start_date = (now() at time zone 'Asia/Seoul')::date + ?, end_date_exclusive = (now() at time zone 'Asia/Seoul')::date + ?
+            where activity_id = ? and slot = 'ACTIVITY'
+            """
+        ).params(startOffset, endOffset, activityId).update()
+        val closedId = createActivity("상태 모집 마감")
+        applicationAllDay(closedId, -10, -2)
+        activityPeriod(closedId, 5, 30)
+        val inProgressId = createActivity("상태 진행 중")
+        applicationAllDay(inProgressId, -30, -10)
+        activityPeriod(inProgressId, -3, 30)
+        val expected = mapOf(
+            openId to "RECRUITING", allDayOpenId to "RECRUITING", allDayEndedId to "ENDED", timedClosedId to "ENDED",
+            pastConferenceId to "ENDED", closedId to "RECRUITMENT_CLOSED", inProgressId to "IN_PROGRESS",
+        )
+        // 응답의 status(앱 계산)와 status 필터(SQL 판정)가 같다
+        assertEquals(expected, expected.keys.associateWith { id ->
+            json.readTree(mvc.get("/v1/activities/$id").andExpect { status { isOk() } }.andReturn().response.contentAsString)["status"].asString()
+        })
+        expected.values.toSet().forEach { status ->
+            assertEquals(expected.filterValues { it == status }.keys, ids(search("status=$status&size=100")).filter { it in expected }.toSet(), status)
+        }
+        assertEquals(setOf(closedId, inProgressId), ids(search("status=RECRUITMENT_CLOSED,in_progress&size=100")).filter { it in expected }.toSet())
+        mvc.get("/v1/activities?status=OPEN").andExpect { status { isBadRequest() } }
+        // 발견 묶음의 status 필터는 openOnly 대신 그 상태의 활동으로 센다
+        val inProgressSummary = programs("status=IN_PROGRESS")["items"].single()
+        assertEquals(mapOf("IN_PROGRESS" to 1), inProgressSummary["statusCounts"].properties().associate { it.key to it.value.asInt() })
+        assertEquals(0, inProgressSummary["openActivityCount"].asInt())
+        val supportable = programs("status=RECRUITING_UPCOMING,RECRUITING")["items"].single()
+        assertEquals(programs("")["items"].single()["openActivityCount"].asInt(), supportable["openActivityCount"].asInt())
+        mvc.get("/v1/discovery/programs?status=nope").andExpect { status { isBadRequest() } }
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?, ?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId, pastConferenceId, closedId, inProgressId).update()
         // 모집 중인 프로그램만 보기(native-v1.md): openOnly=false면 최근 3년 안에 활동이 있었던 프로그램까지, 열린 프로그램 먼저. 3년 넘게 지난 활동만 있는 프로그램은 빠진다
         fun pastProgram(name: String, daysAgo: Int): Long {
             jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp)").params(organizationId, name).update()
@@ -269,6 +318,10 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(true, upcomingSummary["nearestRecruitmentEndAt"].isNull)
         assertTrue(java.time.OffsetDateTime.parse(upcomingSummary["nearestRecruitmentStartAt"].asString()).isAfter(java.time.OffsetDateTime.now()))
         assertEquals(0, openOnlyItems[0]["upcomingActivityCount"].asInt())
+        // 활동 상태: 모집 시작 전은 RECRUITING_UPCOMING, 활동 기간 없이 모집이 끝나면 ENDED. status=모집 예정·모집 중은 openOnly=true와 같은 묶음
+        assertEquals(mapOf("RECRUITING_UPCOMING" to 1), upcomingSummary["statusCounts"].properties().associate { it.key to it.value.asInt() })
+        assertTrue("어제 마감 프로그램" in programs("status=ENDED")["items"].toList().map { it["name"].asString() })
+        assertEquals(openOnlyNames, programs("status=RECRUITING_UPCOMING,RECRUITING")["items"].toList().map { it["name"].asString() })
         // 검색어가 모집 예정 활동 이름에 맞아도 프로그램이 나오고 그 활동 id가 함께 온다
         assertEquals(1, programs("q=모집 예정 프로그램 활동")["items"].single()["matchedActivityIds"].size())
         assertTrue("어제 마감 프로그램" in (programs("openOnly=false")["items"].let { all2 -> (0 until all2.size()).map { all2[it]["name"].asString() } }))
