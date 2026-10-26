@@ -13,6 +13,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
+import com.dearby.nativeapp.pages.activity.DiscoveryKind
 import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
 import com.dearby.nativeapp.entities.activity.api.fetchActivity
@@ -44,10 +45,11 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 ActivityViewModel(
-                    { query, cursor, openOnly -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly) } },
-                    { query, cursor, programId, open -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open) } },
+                    { query, cursor, openOnly, kind -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly, kind) } },
+                    { query, cursor, programId, open, kind -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open, kind) } },
                     { id -> withContext(Dispatchers.IO) { fetchActivity(ApiOrigin.current, id) } },
                     account,
+                    DiscoveryKind.of(device.discoveryKind), { device.discoveryKind = it.code },
                 )
             }
         }

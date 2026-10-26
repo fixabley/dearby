@@ -44,8 +44,8 @@ import org.json.JSONObject
  * open activities only (contract "열린 활동 판정 일원화", 2026-10-19: the client never judges openness itself). Transport or
  * parsing failure throws, never an empty page. Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, open: Boolean = false): ActivityPage =
-    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, if (open) "open" to "true" else null)))
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, open: Boolean = false, kind: String? = null): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, if (open) "open" to "true" else null, kind?.let { "kind" to it })))
 
 /**
  * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
@@ -53,10 +53,11 @@ fun fetchActivities(api: String, query: String?, cursor: String?, programId: Str
  * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text. [openOnly] false
  * (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last three years, open ones first.
  * [query] also matches tag names (contract "태그 칩 줄 제거", 2026-10-19 밤: tags are a search condition only; the app sends no tag filter).
- * The program logo path is resolved against [api] (contract "프로그램 로고").
+ * The program logo path is resolved against [api] (contract "프로그램 로고"). [kind] `program`|`event` (contract "프로그램·이벤트 전환", 2026-10-26)
+ * narrows to that kind's activities on both this call and [fetchActivities]; a server without it ignores the parameter and lists everything.
  */
-fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, openOnly: Boolean = true): ProgramPage =
-    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, if (openOnly) null else "openOnly" to "false")), api)
+fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, openOnly: Boolean = true, kind: String? = null): ProgramPage =
+    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, if (openOnly) null else "openOnly" to "false", kind?.let { "kind" to it })), api)
 
 private fun get(api: String, path: String, params: List<Pair<String, String>>): String {
     val query = params.joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }

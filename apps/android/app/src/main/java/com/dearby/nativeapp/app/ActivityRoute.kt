@@ -140,7 +140,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                     signIn, favorites::load, sessionEntries.size, sessionEntries.map { it.session.startAt.toLocalDate() }.toSet()) { sessions?.load(); mySessions = true }
             }
         }
-        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread)
+        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread, model::setKind)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }

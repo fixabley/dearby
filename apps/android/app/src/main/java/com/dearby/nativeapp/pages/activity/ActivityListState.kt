@@ -8,6 +8,13 @@ import java.time.Instant
 import java.time.LocalDate
 
 enum class ActivityListPhase { LOADING, FAILED, LOADED }
+/**
+ * 발견 `프로그램 | 이벤트` (2026-10-26, contract "프로그램·이벤트 전환"): the API `kind` code. 이벤트 is 컨퍼런스·워크샵·밋업·강연; 프로그램 is every
+ * other kind and 미분류 (해커톤 included).
+ */
+enum class DiscoveryKind(val code: String, val label: String) { PROGRAM("program", "프로그램"), EVENT("event", "이벤트");
+    companion object { fun of(code: String?) = entries.firstOrNull { it.code == code } ?: PROGRAM }
+}
 enum class ProgramPhase { LOADING, FAILED, LOADED }
 
 /**
@@ -39,6 +46,8 @@ data class ActivityState(
     val applicationUrl: String? = null,
     /** At least one schedule can be compared with the device calendar (timed, or date-only with an overlap-check time; contract "겹침 확인 시간"). */
     val overlapCheckable: Boolean = false,
+    /** A block of this activity has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): the discovery row says `시간표`. */
+    val hasTimetable: Boolean = false,
     /** A 내 활동 record whose activity is gone (contract "내 활동 서버 저장"): shown as "삭제된 활동" with only 빼기. */
     val deleted: Boolean = false,
 ) {
@@ -98,6 +107,8 @@ data class ActivityListState(
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
     val refreshFailed: Boolean = false, val mineNotice: String? = null, val consentNeeded: Boolean = false,
     val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
+    /** 발견 `프로그램 | 이벤트`, kept on the device. */
+    val kind: DiscoveryKind = DiscoveryKind.PROGRAM,
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

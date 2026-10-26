@@ -18,6 +18,7 @@ import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
+import com.dearby.nativeapp.pages.activity.DiscoveryKind
 import com.dearby.nativeapp.pages.activity.ProgramActivities
 import com.dearby.nativeapp.pages.activity.ProgramPhase
 import com.dearby.nativeapp.pages.activity.ProgramState
@@ -66,12 +67,14 @@ import kotlinx.coroutines.launch
  * loaded (`GET /v1/activities/:id`, null when it is gone → "삭제된 활동"). Signing out drops the account's records from memory.
  */
 class ActivityViewModel(
-    private val fetchPrograms: suspend (String?, String?, Boolean) -> ProgramPage, // query, cursor, openOnly
-    private val fetch: suspend (String?, String?, String?, Boolean) -> ActivityPage, // query, cursor, programId, open
+    private val fetchPrograms: suspend (String?, String?, Boolean, String) -> ProgramPage, // query, cursor, openOnly, kind
+    private val fetch: suspend (String?, String?, String?, Boolean, String?) -> ActivityPage, // query, cursor, programId, open, kind
     private val fetchOne: suspend (String) -> ActivityModel? = { null },
     private val account: AccountViewModel? = null,
+    /** 발견 `프로그램 | 이벤트` remembered on the device (2026-10-26): the starting choice and where a change is saved. */
+    kind: DiscoveryKind = DiscoveryKind.PROGRAM, private val saveKind: (DiscoveryKind) -> Unit = {},
 ) : ViewModel() {
-    private val mutable = MutableStateFlow(ActivityListState())
+    private val mutable = MutableStateFlow(ActivityListState(kind = kind))
     val state = mutable.asStateFlow()
     private var models: Map<String, ActivityModel> = emptyMap()
     // The user's own stage statuses by activity id, then schedule id (contract "내 활동 서버 저장·일정 상태").
@@ -113,6 +116,14 @@ class ActivityViewModel(
     fun setOpenOnly(value: Boolean) {
         if (value == state.value.openOnly) return
         mutable.update { it.copy(openOnly = value) }
+        start(debounce = false)
+    }
+    /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind. */
+    fun setKind(value: DiscoveryKind) {
+        if (value == state.value.kind) return
+        mutable.update { it.copy(kind = value) }
+        saveKind(value)
+        Analytics.event("discovery_mode", "mode" to value.code)
         start(debounce = false)
     }
     private fun start(debounce: Boolean) {
@@ -164,7 +175,7 @@ class ActivityViewModel(
         }
     }
     private suspend fun programPage(cursor: String?): ProgramPage? = try {
-        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly)
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly, state.value.kind.code)
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
@@ -188,13 +199,14 @@ class ActivityViewModel(
     private fun loadProgram(programId: String) {
         if (programJobs[programId]?.isActive == true) return
         mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities())) }
+        val kind = state.value.kind.code
         programJobs[programId] = viewModelScope.launch {
             val items = mutableListOf<ActivityModel>()
             var cursor: String? = null
             try {
                 // Every page of the program's open activities (contract "열린 활동 판정 일원화": the server decides openness).
                 for (attempt in 1..MAX_PROGRAM_PAGES) {
-                    val page = fetch(null, cursor, programId, true)
+                    val page = fetch(null, cursor, programId, true, kind)
                     items += page.items
                     // `break`, not `return@repeat`: the latter only skips to the next pass, which fetched page 1 again (each activity shown 5 times).
                     cursor = page.nextCursor ?: break
@@ -209,7 +221,7 @@ class ActivityViewModel(
             // start still ahead, nearest first) is shown always; 지난 활동 (started within three years, most recent first) only while the
             // switch is off. Activities already shown as open are excluded.
             val others = try {
-                fetch(null, null, programId, false).items
+                fetch(null, null, programId, false, kind).items
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
                 emptyList()
@@ -434,6 +446,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     place = place,
     applicationUrl = safeHttpsUrl(applicationUrl),
     overlapCheckable = schedules.isNotEmpty(),
+    hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
 )
 /**
  * The stage track with the user's [marks] (by schedule id): a PASSED status makes the stage past, the earliest other stage not

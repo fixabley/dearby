@@ -3,6 +3,8 @@ package com.dearby.nativeapp.widgets.activity.activityCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ViewTimeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +29,8 @@ import com.dearby.nativeapp.shared.ui.*
     fieldTag: TagLabel? = null, traitTags: List<TagLabel> = emptyList(),
     /** 즐겨찾기 하트·`+` (contract "즐겨찾기(하트)·새 모집 푸시 알림"), at the end of the tag line; their own taps, not the card's. */
     actions: (@Composable () -> Unit)? = null,
+    /** The activity has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): a `시간표` line under the dates. */
+    timetable: Boolean = false,
 ) {
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, TealFill, Color.White)
@@ -49,6 +53,10 @@ import com.dearby.nativeapp.shared.ui.*
                 ValueRow("모집", recruitment ?: "미정", emphasised = recruiting)
                 ValueRow("활동", period.ifBlank { "미정" })
                 if (place != null) ValueRow("장소", place)
+            }
+            if (timetable) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                Text("시간표", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
             }
         }
     }
