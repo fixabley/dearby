@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { type Schedule, type Session, type Timetable, type Track, clockTime } from "@/lib/models";
+import { type Schedule, type Session, type Timetable, type Track, clockTime, scheduleLabel } from "@/lib/models";
 import { errorMessage, request, RequestError } from "@/lib/client";
 import { track } from "@/shared/lib/analytics";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
+import { Icon } from "@/shared/ui/icon";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/shared/ui/sheet";
 import { Failure } from "@/shared/ui/states";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { TagIcon } from "@/shared/ui/tag-icon";
@@ -35,11 +37,60 @@ function rowsOf(sessions: Session[]): Row[] {
 }
 
 /**
- * The timetable of one schedule block, loaded when opened: rows are time slots, columns the tracks in `position` order, an empty
- * slot stays empty and a full-width session (`trackId` null) spans the row. The whole table scrolls sideways at once with the time
- * column pinned when the tracks do not fit; wider screens widen it past the page column. The web has no sign-in, so no 찜.
+ * The timetable of one schedule block as a modal (contract "트랙·세션 시간표" › 앱·웹 화면, 2026-10-26 "웹도 마찬가지로"): a
+ * near-full-height bottom sheet on phones, a large centred dialog from `md`. Radix gives ESC, the focus trap, focus return and
+ * `aria-labelledby`/`aria-describedby` from the title and time range. Content mounts on open, so each open loads afresh. The web
+ * has no sign-in, so no 찜 and no `전체 | 찜한 세션` switch — a footer line points to the app.
  */
-export function TimetableView({ activityId, schedule }: { activityId: number; schedule: Schedule }) {
+export function TimetableSheet({
+  activityId,
+  activityName,
+  schedule,
+  open,
+  onOpenChange,
+}: {
+  activityId: number;
+  activityName: string;
+  schedule?: Schedule;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Sheet open={open && !!schedule} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-[92dvh] flex-col bg-background px-0 md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(85dvh,960px)] md:w-[min(1200px,calc(100vw-4rem))] md:max-w-none md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-card md:pt-5 md:[&>:first-child]:hidden">
+        {schedule && (
+          <>
+            <header className="flex items-start gap-3 px-5 pb-3">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <SheetTitle className="break-keep">
+                  {activityName} · {schedule.title || "활동"}
+                </SheetTitle>
+                <SheetDescription className="tabular-nums">{scheduleLabel(schedule, "activity")}</SheetDescription>
+              </div>
+              <SheetClose
+                aria-label="닫기"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-fill text-secondary-label"
+              >
+                <Icon name="close" size="inline" />
+              </SheetClose>
+            </header>
+            <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3">
+              <TimetableView activityId={activityId} schedule={schedule} />
+            </div>
+            <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">세션 찜은 Dearby 앱에서 할 수 있어요.</p>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/**
+ * The timetable of one schedule block, loaded on mount: rows are time slots, columns the tracks in `position` order, an empty slot
+ * stays empty and a full-width session (`trackId` null) spans the row. The sheet body scrolls the whole table both ways at once,
+ * with the time column and the track row pinned; a wide dialog fits every column without sideways scrolling.
+ */
+function TimetableView({ activityId, schedule }: { activityId: number; schedule: Schedule }) {
   const [timetable, setTimetable] = useState<Timetable | null>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -93,77 +144,68 @@ function TimetableTable({ timetable }: { timetable: Timetable }) {
     sessions.find((s) => s.trackId === trackId && Date.parse(s.startAt) <= row.start && row.end <= Date.parse(s.endAt));
   const time = (value: number) => clockTime(value, timeZone);
   return (
-    // Past the 720px page column up to what the tracks need (never past the viewport); narrower screens scroll the table itself.
-    <div
-      className="relative left-1/2 -translate-x-1/2"
-      style={{ width: `min(calc(100vw - 2rem), max(100%, ${tracks.length * 14 + 6}rem))` }}
+    <table
+      className="w-full table-fixed border-separate border-spacing-1.5"
+      style={{ minWidth: tracks.length > 1 ? `${tracks.length * 11 + 5}rem` : undefined }}
     >
-      <div className="overflow-x-auto overscroll-x-contain">
-        <table
-          className="w-full table-fixed border-separate border-spacing-1.5"
-          style={{ minWidth: tracks.length > 1 ? `${tracks.length * 11 + 5}rem` : undefined }}
-        >
-          <caption className="sr-only">
-            {schedule.title} 시간표{tracks.length ? `, 트랙 ${tracks.length}개` : ""}
-          </caption>
-          <colgroup>
-            <col className="w-[4.5rem]" />
-            {Array.from({ length: columns }, (_, index) => (
-              <col key={index} />
+      <caption className="sr-only">
+        {schedule.title} 시간표{tracks.length ? `, 트랙 ${tracks.length}개` : ""}
+      </caption>
+      <colgroup>
+        <col className="w-[4.5rem]" />
+        {Array.from({ length: columns }, (_, index) => (
+          <col key={index} />
+        ))}
+      </colgroup>
+      {tracks.length > 0 && (
+        <thead className="sticky top-0 z-20 bg-background">
+          <tr>
+            <td className="sticky left-0 z-10 bg-background" />
+            {tracks.map((track) => (
+              <th key={track.id} scope="col" className="px-1 pb-1 text-left align-bottom">
+                <TrackBadge track={track} />
+              </th>
             ))}
-          </colgroup>
-          {tracks.length > 0 && (
-            <thead>
-              <tr>
-                <td className="sticky left-0 z-10 bg-background" />
-                {tracks.map((track) => (
-                  <th key={track.id} scope="col" className="px-1 pb-1 text-left align-bottom">
-                    <TrackBadge track={track} />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-          )}
-          <tbody>
-            {rows.map((row) => {
-              const wide = at(row, null);
-              return (
-                <tr key={row.start}>
-                  <th
-                    scope="row"
-                    className="sticky left-0 z-10 bg-background pr-1 text-left align-top text-caption font-semibold text-secondary-label tabular-nums"
-                  >
-                    {time(row.start)}
-                    <span aria-hidden="true"> –</span>
-                    <span className="sr-only">부터</span>
-                    <br />
-                    {time(row.end)}
-                    <span className="sr-only">까지</span>
-                  </th>
-                  {wide
-                    ? Date.parse(wide.startAt) === row.start && (
-                        <td colSpan={columns} rowSpan={span(wide)} className="h-px align-top">
-                          <SessionCard session={wide} time={time} spansRows={span(wide) > 1} />
-                        </td>
-                      )
-                    : tracks.map((track) => {
-                        const session = at(row, track.id);
-                        if (!session) return <td key={track.id} className="rounded-[14px] bg-fill/40" />;
-                        if (Date.parse(session.startAt) !== row.start) return null;
-                        return (
-                          <td key={track.id} rowSpan={span(session)} className="h-px align-top">
-                            <SessionCard session={session} track={track} time={time} spansRows={span(session) > 1} />
-                          </td>
-                        );
-                      })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-1.5 px-4 text-footnote text-secondary-label">세션 찜은 Dearby 앱에서 할 수 있어요.</p>
-    </div>
+          </tr>
+        </thead>
+      )}
+      <tbody>
+        {rows.map((row) => {
+          const wide = at(row, null);
+          return (
+            <tr key={row.start}>
+              <th
+                scope="row"
+                className="sticky left-0 z-10 bg-background pr-1 text-left align-top text-caption font-semibold text-secondary-label tabular-nums"
+              >
+                {time(row.start)}
+                <span aria-hidden="true"> –</span>
+                <span className="sr-only">부터</span>
+                <br />
+                {time(row.end)}
+                <span className="sr-only">까지</span>
+              </th>
+              {wide
+                ? Date.parse(wide.startAt) === row.start && (
+                    <td colSpan={columns} rowSpan={span(wide)} className="h-px align-top">
+                      <SessionCard session={wide} time={time} spansRows={span(wide) > 1} />
+                    </td>
+                  )
+                : tracks.map((track) => {
+                    const session = at(row, track.id);
+                    if (!session) return <td key={track.id} className="rounded-[14px] bg-fill/40" />;
+                    if (Date.parse(session.startAt) !== row.start) return null;
+                    return (
+                      <td key={track.id} rowSpan={span(session)} className="h-px align-top">
+                        <SessionCard session={session} track={track} time={time} spansRows={span(session) > 1} />
+                      </td>
+                    );
+                  })}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 

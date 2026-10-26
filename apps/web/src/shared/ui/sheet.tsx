@@ -7,6 +7,7 @@ import { cn } from "@/shared/lib/utils";
  * is used here, so the side variants are left out.
  */
 const Sheet = DialogPrimitive.Root;
+const SheetClose = DialogPrimitive.Close;
 
 function SheetContent({
   className,
@@ -41,4 +42,4 @@ function SheetDescription({ className, ...props }: React.ComponentProps<typeof D
   return <DialogPrimitive.Description className={cn("text-subheadline text-secondary-label", className)} {...props} />;
 }
 
-export { Sheet, SheetContent, SheetDescription, SheetTitle };
+export { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle };
