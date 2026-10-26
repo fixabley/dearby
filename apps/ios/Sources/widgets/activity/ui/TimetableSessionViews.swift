@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The track badge (contract "트랙·세션 시간표" 2026-10-26): the track's palette color as an 18% fill with a dot and primary text (contrast in
-/// light and dark), the room after the name. `large` for 나만의 시간표, where the room says where to go.
+/// light and dark), the room after the name. `large` for 내 시간표, where the room says where to go.
 struct TimetableTrackBadge: View {
     let track: TimetableTrack
     var large = false
@@ -31,13 +31,13 @@ enum TimetableText {
     }
 }
 
-/// One session in the table or 나만의 시간표: track badge, up to two 분야 tags, title, speakers and the heart (`heart`/`heart.fill`, `찜`/`찜 해제`).
+/// One session in the table or 내 시간표: track badge, up to two 분야 tags, title, speakers and the heart (`heart`/`heart.fill`, `찜`/`찜 해제`).
 /// 쉬는시간·점심 are a quiet band without a heart. The card opens the session sheet; the heart sits outside the card's button.
 struct TimetableSessionCard: View {
     let session: TimetableSession
     let track: TimetableTrack?
     let zone: String
-    /// Show the time inside the card (나만의 시간표 and the single-track list have no time column).
+    /// Show the time inside the card (내 시간표 and the single-track list have no time column).
     var showsTime = false
     var largeTrack = false
     /// `같은 시간 찜 n개` when the favorite overlaps others (contract "찜 겹침").
