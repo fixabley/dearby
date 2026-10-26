@@ -1,12 +1,12 @@
 package com.dearby.nativeapp.widgets.card.cardContent
 
+import com.dearby.nativeapp.entities.account.model.ContactRules
+
 data class ContactState(val id: String, val kind: String, val label: String, val value: String) {
-    /** 앱이 열 수 있는 주소(전화·메일은 항상, 그 밖은 https만). 있으면 행에 외부 링크 아이콘을 둔다; `openContact`가 같은 값을 쓴다. */
-    val target: String? get() = when (kind) {
-        "phone" -> "tel:" + value.filter { it.isDigit() || it == '+' }
-        "email" -> "mailto:$value"
-        else -> value.takeIf { it.startsWith("https://") }
-    }
+    /** 누르면 여는 주소(2026-10-26 "연락처 아이콘·바로가기", `ContactRules.link`); 있으면 행에 외부 링크 아이콘을 둔다. `openContact`가 같은 값을 쓴다. */
+    val target: String? get() = ContactRules.link(kind, value)
+    /** 주소가 아닌 카카오톡 ID: 누르면 복사한다(행에 복사 아이콘). */
+    val copyText: String? get() = ContactRules.copyText(kind, value)
 }
 /** [title] is 조직 · 프로그램 · 활동; [verified] picks the 확인됨/미확인 badge; [description] is the optional one-line note (contract "이력"). */
 data class CardHistoryState(val id: String, val title: String, val role: String, val date: String, val verified: Boolean = false, val description: String = "")

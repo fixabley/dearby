@@ -58,7 +58,7 @@ val ProfileContactKinds = listOf(
             val meta = ProfileContactKinds.firstOrNull { it.first == item.kind }
             val label = meta?.second ?: item.kind
             DearbyField(label, item.value, { onExtraChange(item.copy(value = it)) }, placeholder = meta?.third, imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next,
-                leadingIcon = contactIcon(item.kind), trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
+                leadingIcon = contactIcon(item.kind), leadingIconTint = contactIconTint(item.kind), trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
         }
         AddRow("연락처 추가") { choosing = true }
     }

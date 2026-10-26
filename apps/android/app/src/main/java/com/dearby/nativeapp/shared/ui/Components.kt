@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -213,15 +214,23 @@ fun contactKindName(kind: String) = when (kind) {
     else -> kind
 }
 
-/** 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20): 입력 행과 명함 표시 행이 같은 표를 쓴다. */
-fun contactIcon(kind: String): ImageVector = when (kind) {
+/**
+ * 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20): 입력 행과 명함 표시 행이 같은 표를 쓴다. GitHub·Instagram·Behance·카카오톡은
+ * 그 브랜드의 마크(2026-10-26 "연락처 아이콘·바로가기", Simple Icons 원본 그대로 — `res/drawable/ic_brand_*`), 나머지는 Material 기호다. 색은 [contactIconTint].
+ */
+@Composable fun contactIcon(kind: String): ImageVector = when (kind) {
     "phone" -> Icons.Rounded.Call
     "email" -> Icons.Rounded.Mail
-    "kakao" -> Icons.Rounded.ChatBubble
-    "instagram" -> Icons.Rounded.CameraAlt
-    "github" -> Icons.Rounded.Code
-    "behance" -> Icons.Rounded.Palette
+    "kakao" -> ImageVector.vectorResource(R.drawable.ic_brand_kakaotalk)
+    "instagram" -> ImageVector.vectorResource(R.drawable.ic_brand_instagram)
+    "github" -> ImageVector.vectorResource(R.drawable.ic_brand_github)
+    "behance" -> ImageVector.vectorResource(R.drawable.ic_brand_behance)
     else -> Icons.Rounded.Link
+}
+/** Brand marks stay one solid black or white (the brands' guides allow no other recolouring); the Material symbols use the secondary colour. */
+@Composable fun contactIconTint(kind: String): Color = when (kind) {
+    "kakao", "instagram", "github", "behance" -> if (isSystemInDarkTheme()) Color.White else Color.Black
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {

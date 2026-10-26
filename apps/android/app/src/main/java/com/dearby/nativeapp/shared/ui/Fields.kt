@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -58,7 +59,7 @@ import androidx.compose.ui.unit.dp
     label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String? = null, error: String? = null, hint: String? = null,
     minLines: Int = 1, imeAction: ImeAction = if (minLines > 1) ImeAction.Default else ImeAction.Done, keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions? = null, focusRequester: FocusRequester? = null, readOnly: Boolean = false, trailingIcon: (@Composable () -> Unit)? = null,
-    leadingIcon: ImageVector? = null, required: Boolean = false,
+    leadingIcon: ImageVector? = null, required: Boolean = false, leadingIconTint: Color = Color.Unspecified,
 ) {
     val requester = focusRequester ?: remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -85,7 +86,7 @@ import androidx.compose.ui.unit.dp
         Box(Modifier.fillMaxWidth()) {
             Column {
                 Spacer(Modifier.height(LABEL_LINE + LABEL_GAP))
-                FieldBox(multiline = multiline, leadingIcon = leadingIcon, trailing = trailingIcon) {
+                FieldBox(multiline = multiline, leadingIcon = leadingIcon, leadingIconTint = leadingIconTint, trailing = trailingIcon) {
                     BasicTextField(value, onValueChange,
                         Modifier.weight(1f).padding(vertical = FIELD_PADDING_VERTICAL).focusRequester(requester).onFocusChanged { focused = it.isFocused }
                             .semantics { contentDescription = if (required) "$label, 필수" else label },
@@ -108,11 +109,12 @@ import androidx.compose.ui.unit.dp
  * 입력 칸·검색창이 함께 쓰는 상자(lead 2026-10-20 "검색창과 입력 칸은 같은 모양"): 둥근 10, `surfaceContainerHighest` 채움, 높이 48 이상, 테두리 없음, 안쪽 여백 16(오른쪽에 버튼이 있으면 4).
  * [leadingIcon]은 왼쪽 24 보조색, [field]는 세로 여백 12를 스스로 두고(한 줄 24 → 48), [trailing]은 오른쪽 끝.
  */
-@Composable internal fun FieldBox(modifier: Modifier = Modifier, multiline: Boolean = false, leadingIcon: ImageVector? = null, trailing: (@Composable () -> Unit)? = null, field: @Composable RowScope.() -> Unit) {
+@Composable internal fun FieldBox(modifier: Modifier = Modifier, multiline: Boolean = false, leadingIcon: ImageVector? = null, leadingIconTint: Color = Color.Unspecified,
+                                  trailing: (@Composable () -> Unit)? = null, field: @Composable RowScope.() -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(modifier.fillMaxWidth().heightIn(min = FIELD_HEIGHT).background(colors.surfaceContainerHighest, RoundedCornerShape(10.dp))
         .padding(start = FIELD_PADDING, end = if (trailing == null) FIELD_PADDING else 4.dp), verticalAlignment = if (multiline) Alignment.Top else Alignment.CenterVertically) {
-        if (leadingIcon != null) Icon(leadingIcon, null, Modifier.padding(top = if (multiline) FIELD_PADDING_VERTICAL else 0.dp, end = ICON_GAP).size(ICON_SIZE), tint = colors.onSurfaceVariant)
+        if (leadingIcon != null) Icon(leadingIcon, null, Modifier.padding(top = if (multiline) FIELD_PADDING_VERTICAL else 0.dp, end = ICON_GAP).size(ICON_SIZE), tint = leadingIconTint.takeOrElse { colors.onSurfaceVariant })
         field()
         trailing?.invoke()
     }
