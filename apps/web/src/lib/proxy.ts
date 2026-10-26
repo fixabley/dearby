@@ -11,7 +11,6 @@ import {
   uuid,
 } from "./models";
 import { accountProxy, isAccountRoute } from "./account-proxy";
-import { readSession } from "./session";
 import {
   acceptLanguage,
   apiOrigin,
@@ -211,9 +210,6 @@ export async function proxy(
   const token = readGuestCookie(request.headers.get("cookie"));
   // A card view also counts this browser's unrecalled saves (contract "명함 QR 코드"), so it carries a well-formed guest token.
   const cardAsGuest = (cardRoute || reportRoute) && token !== undefined && TOKEN.test(token) && guestProxyKey() !== undefined;
-  // Signed in (contract "웹 화면 — 2단계 C"): the same view also carries the account's Bearer, so a card in the wallet (or my own)
-  // opens without a code and a report from the wallet detail is allowed. An expired token answers 401 `SIGNED_OUT` for a refresh.
-  const bearer = cardRoute || reportRoute ? readSession(request.headers.get("cookie")).access : undefined;
   if (guest && token !== undefined && !TOKEN.test(token)) {
     if (path === "guest/session" && method === "DELETE")
       return new Response(null, {
@@ -235,8 +231,9 @@ export async function proxy(
   // API fills `favorited` (it varies on Authorization; this response is already `no-store` and varies on Cookie). The token is sent
   // only while its `exp` is ahead — the API rejects an expired Bearer even on a public path — and a session whose access token has
   // lapsed (refresh cookie alone) gets 401 `SIGNED_OUT` like an account route, so the browser refreshes once and retries rather than
-  // seeing every heart unfilled. No session at all reads anonymously.
-  const session = search || activityRoute || timetableRoute ? readSession(request.headers.get("cookie")) : {};
+  // seeing every heart unfilled. No session at all reads anonymously. A card view and a report (contract "웹 화면 — 2단계 C") carry
+  // it too, so a card in the wallet (or my own) opens without a code and a report from the wallet detail is allowed.
+  const session = search || activityRoute || timetableRoute || cardRoute || reportRoute ? readSession(request.headers.get("cookie")) : {};
   const bearer = accessSecondsLeft(session.access) > 0 ? session.access : undefined;
   if (!bearer && session.refresh) return failure(401, "SIGNED_OUT");
   try {
