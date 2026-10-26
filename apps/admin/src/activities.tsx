@@ -41,6 +41,8 @@ export type Schedule = {
   overlapCheck?: OverlapCheck | null;
   /** 반복 (native-v1 "반복 일정과 겹침 결과 묶음"): RRULE body without the `RRULE:` prefix; absent on older responses. */
   recurrence?: string | null;
+  /** 트랙·세션 시간표가 붙어 있다 (native-v1 "트랙·세션 시간표", 2026-10-26); absent on older responses. */
+  hasTimetable?: boolean;
 };
 export type OverlapCheck = { startTime: string; endTime: string };
 /** `PATCH activities/:id` schedule value: all-day dates or Korea-time instants (either end may be missing for 모집 기간), an optional 사유, or null to drop the structured dates. */
