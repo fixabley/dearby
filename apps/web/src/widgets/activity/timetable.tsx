@@ -40,7 +40,7 @@ function rowsOf(sessions: Session[]): Row[] {
  * The timetable of one schedule block as a modal (contract "트랙·세션 시간표" › 앱·웹 화면, 2026-10-26 "웹도 마찬가지로"): a
  * near-full-height bottom sheet on phones, a large centred dialog from `md`. Radix gives ESC, the focus trap, focus return and
  * `aria-labelledby`/`aria-describedby` from the title and time range. Content mounts on open, so each open loads afresh. The web
- * has no sign-in, so no 찜 and no `전체 | 찜한 세션` switch — a footer line points to the app.
+ * has no sign-in, so no 찜 and no `전체 | 내 시간표` switch — a footer line points to the app.
  */
 export function TimetableSheet({
   activityId,
@@ -77,7 +77,7 @@ export function TimetableSheet({
             <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3">
               <TimetableView activityId={activityId} schedule={schedule} />
             </div>
-            <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">세션 찜은 Dearby 앱에서 할 수 있어요.</p>
+            <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">내 시간표는 Dearby 앱에서 만들 수 있어요.</p>
           </>
         )}
       </SheetContent>
