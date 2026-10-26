@@ -31,7 +31,7 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
     activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
     openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
     hearts: FavoriteHearts = FavoriteHearts(),
-    /** `{블록 제목} 시간표` (contract "트랙·세션 시간표"): opens the block's timetable by its schedule id. */
+    /** A block row with a 트랙·세션 시간표 (contract "트랙·세션 시간표"): opens the block's timetable sheet by its schedule id. */
     openTimetable: (String) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -93,14 +93,18 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                 Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
                 // 모집 마감, each schedule and the activity period as plain rows, each dated one with `캘린더에 추가` (contract "내 캘린더에 추가").
                 Column { activity.schedules.forEach { item ->
-                    ListItem({ Text(item.name) }, supportingContent = { Text(item.dateText) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        trailingContent = item.draft?.let { draft -> { IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "${item.name} 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } } })
-                    // A block with sessions (`hasTimetable`) gets its own `오전 세션 시간표` button under the row.
-                    item.scheduleId?.takeIf { item.hasTimetable }?.let { id ->
-                        DearbyOutlineButton({ openTimetable(id) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                            Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("${item.name} 시간표")
-                        }
-                    }
+                    // A block with sessions (`hasTimetable`): the whole row opens its 시간표 as a modal (2026-10-26 사용자), `시간표` + chevron on the right.
+                    val timetableId = item.scheduleId?.takeIf { item.hasTimetable }
+                    val calendarButton: (@Composable () -> Unit)? = item.draft?.let { draft -> { IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "${item.name} 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } } }
+                    ListItem({ Text(item.name) }, if (timetableId == null) Modifier else Modifier.clickable(role = Role.Button, onClickLabel = "시간표 보기") { openTimetable(timetableId) },
+                        supportingContent = { Text(item.dateText) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        trailingContent = if (timetableId == null) calendarButton else { {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                calendarButton?.invoke()
+                                TimetableMark()
+                                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        } })
                 } }
                 // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침"); it needs one comparable schedule — timed,
                 // or date-only with the admin's overlap-check time (contract "겹침 확인 시간", 2026-10-22). Otherwise one line says why not.
