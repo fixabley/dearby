@@ -12,6 +12,7 @@ import {
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
 import { errorMessage, request, RequestError } from "@/lib/client";
+import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
@@ -25,6 +26,15 @@ import { LargeTitle } from "@/shared/ui/nav-title";
 import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 
+/** 사용 통계 매개변수 (contract analytics-v1.md "웹"): `source` is `link`, the web page being the shared link itself. */
+function eventParams(activity: Activity) {
+  return {
+    activity_id: activity.id,
+    ...(activity.category && { category: activity.category.toLowerCase() }),
+    source: "link",
+  };
+}
+
 /**
  * Activity detail (contract "웹 리디자인" › 활동 상세, iOS `ActivityDetailView`): an information block (status/category capsules,
  * the name as a title that collapses into the bar, organization, description), inset-grouped sections, and a sticky bottom CTA.
@@ -37,7 +47,10 @@ export function ActivityDetail({ id }: { id: number }) {
   useEffect(() => {
     const controller = new AbortController();
     request<Activity>(`/activities/${id}`, { signal: controller.signal })
-      .then(setActivity)
+      .then((found) => {
+        setActivity(found);
+        track("activity_view", eventParams(found));
+      })
       .catch((error) => {
         if (controller.signal.aborted) return;
         if (error instanceof RequestError && error.status === 404) setActivity(null);
@@ -201,7 +214,12 @@ export function ActivityDetail({ id }: { id: number }) {
       <BottomBar>
           {cta ? (
             <Button asChild size="lg" variant="filled">
-              <a href={cta} target="_blank" rel="noopener noreferrer">
+              <a
+                href={cta}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => apply && track("apply_click", eventParams(activity))}
+              >
                 {closed ? "공식 안내 보기" : apply ? "신청 사이트 열기" : "공식 사이트에서 신청"}{" "}
                 <Icon name="external-link" size="inline" />
               </a>

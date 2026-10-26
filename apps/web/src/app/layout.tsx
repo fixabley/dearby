@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/widgets/shell/shell";
+import { GoogleAnalytics } from "@/shared/ui/google-analytics";
+import { VercelAnalytics } from "@/shared/ui/vercel-analytics";
 import { siteOpenGraph, WEB_ORIGIN } from "@/lib/preview";
 import "./globals.css";
 export const metadata: Metadata = {
@@ -21,6 +23,9 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
+// 사용 통계 only on the production deployment (preview builds also run with NODE_ENV=production); GA also needs a measurement id.
+const production = process.env.VERCEL_ENV === "production";
+const gaId = production ? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() : undefined;
 export default function RootLayout({
   children,
 }: {
@@ -30,6 +35,8 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <Shell>{children}</Shell>
+        {gaId && <GoogleAnalytics id={gaId} />}
+        {production && <VercelAnalytics />}
       </body>
     </html>
   );
