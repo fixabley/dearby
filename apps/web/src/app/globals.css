@@ -136,4 +136,7 @@
   & th {
     @apply font-semibold whitespace-nowrap text-secondary-label;
   }
+  & :where(p:not([class]), ul, table) + :where(p:not([class]), ul, table) {
+    @apply mt-2;
+  }
 }
