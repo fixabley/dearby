@@ -3,8 +3,9 @@ import { Icon } from "./icon";
 
 /**
  * 하트 토글 (contract "즐겨찾기(하트)"·"트랙·세션 시간표": iOS `heart`/`heart.fill`): a 44px round target whose glyph is the outline
- * when off and the filled teal heart when on; `aria-pressed` carries the state and `labels` the accessibility name pair
- * (`즐겨찾기`/`즐겨찾기 해제` for programs and activities, `찜`/`찜 해제` for sessions). `size="sm"` is the 36px variant inside cards.
+ * when off and the filled teal heart when on. The state is carried by the accessibility name pair in `labels` (`즐겨찾기`/`즐겨찾기 해제`
+ * for programs and activities, `찜`/`찜 해제` for sessions), as the apps do — no `aria-pressed`, which would announce it twice.
+ * `size="sm"` is the 36px variant inside cards.
  */
 export function HeartButton({
   on,
@@ -24,7 +25,6 @@ export function HeartButton({
   return (
     <button
       type="button"
-      aria-pressed={on}
       aria-label={on ? labels[1] : labels[0]}
       disabled={disabled}
       onClick={(event) => {

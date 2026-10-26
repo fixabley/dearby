@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { type Favorites as FavoritesPage, type SessionFavorite, calendarDay, dayLabel } from "@/lib/models";
+import { type Favorites as FavoritesPage, type SessionFavorite, type StatusGroup, calendarDay, dayLabel } from "@/lib/models";
 import { RequestError } from "@/lib/client";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { favorites as listFavorites, programSeen, sessionFavorites as listSessionFavorites } from "@/features/favorites/api/favorites-client";
@@ -133,6 +133,9 @@ function Content() {
   );
 }
 
+// Stable filter values for the reused discovery row (fresh literals would rerun its activity effect on every render).
+const AVAILABLE: StatusGroup[] = ["available"];
+const NO_CATEGORIES: string[] = [];
 /** A favorited program as the discovery row (지원 가능 activities on expansion); the first open reports `seen` and drops `새 모집`. */
 function FavoriteProgram({ program, newRecruitment }: { program: FavoritesPage["programs"][number]["program"]; newRecruitment: boolean }) {
   const [open, setOpen] = useState(false);
@@ -148,8 +151,8 @@ function FavoriteProgram({ program, newRecruitment }: { program: FavoritesPage["
         }
         setOpen((value) => !value);
       }}
-      groups={["available"]}
-      categories={[]}
+      groups={AVAILABLE}
+      categories={NO_CATEGORIES}
       newRecruitment={fresh}
     />
   );
