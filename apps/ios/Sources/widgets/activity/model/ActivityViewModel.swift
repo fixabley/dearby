@@ -108,6 +108,8 @@ import Observation
     /// next; the tab clears it once pushed.
     var showInDiscovery: String?
     @ObservationIgnored private var linkSources: [String: String] = [:]
+    /// A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): the block whose timetable the opened detail shows on 찜한 세션, taken once.
+    @ObservationIgnored private var linkTimetables: [String: String] = [:]
     /// Every activity seen this session, so details and applied marks outlive a new search.
     private var seen: [String: ActivityModel] = [:]
     private var cursor: Int64?
@@ -154,6 +156,13 @@ import Observation
         }
     }
     func takeLinkSource(_ id: String) -> String? { linkSources.removeValue(forKey: id) }
+    /// Opens a linked activity with its block's timetable sheet on 찜한 세션 (a tapped 세션 이동 알림).
+    func openLinkedTimetable(_ id: String, scheduleID: String) async {
+        guard await prepare(id) else { return }
+        linkTimetables[id] = scheduleID
+        await openLinked(id, source: "push")
+    }
+    func takeLinkTimetable(_ id: String) -> String? { linkTimetables.removeValue(forKey: id) }
     /// Loads an activity discovery has not shown so its detail can open (알림 목록 rows); false, with `notice`, when it could not be loaded.
     /// A 404 is still true: the detail says the activity is gone.
     func prepare(_ id: String) async -> Bool {

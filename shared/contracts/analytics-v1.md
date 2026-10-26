@@ -50,6 +50,7 @@
 | `myactivity_add` | `activity_id`, `field`, `category`, `source` |
 | `apply_click`(공식 신청 링크) | `activity_id`, `field`, `category`, `source` |
 | `push_open`(알림을 눌러 앱 열림) | `kind` = `new`·`application`·`schedule`·`summary` |
+| `session_reminder_scheduled`(찜한 세션 이동 알림을 기기에 예약함, 2026-10-26, [native-v1.md](native-v1.md) "찜한 세션 이동 알림") | `count`(이번에 예약한 알림 수; 찜 변경·스위치·포그라운드 복귀로 다시 예약해 실제로 넣을 때마다. 로컬 알림이라 눌러도 `push_open`은 보내지 않는다) |
 
 유입경로 예: `activity_view` → `favorite_add` 또는 `myactivity_add` → `apply_click`.
 
@@ -74,6 +75,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 - 화면 이름: `discovery`, `activity_detail`, `program_detail`, `queue`, `funnel`, `my_activity`, `activity_progress`, `favorites`, `my_cards`, `received_cards`, `profile`, `settings`, `notifications_inbox`, `timetable`(시간표 모달 시트 — 활동 상세의 일정 행을 눌러 열 때마다, 2026-10-26), `session_favorites`(즐겨찾기 › 찜한 세션), `card_qr`(내 명함 QR 시트 — 앱 구현 시, 2026-10-26 "비공개 테스트 성공 지표"). (`favorites_calendar` 화면·메뉴 값은 2026-10-26 즐겨찾기 목록 보기를 없애며 지웠다. 즐겨찾기는 `favorites` 하나다.)
 - `menu_open(history)`는 프로필 이력 입력, `menu_open(notifications)`는 프로필의 `기기 알림이 꺼져 있어요` 행(iOS는 알림 묶음이 프로필 안에 펼쳐져 있다).
 - `push_open`의 `kind`: 지금 푸시 페이로드에 종류가 없어 묶음 알림(`activityId` 없음)만 `summary`로 보내고 나머지는 `kind` 없이 보낸다. 서버가 페이로드에 종류를 넣으면 채운다.
+- `session_reminder_scheduled`(2026-10-26): 찜한 세션 이동 알림은 기기 로컬 알림이라 예약 때만 보내고, 눌러 열릴 때는 `push_open`을 보내지 않는다(상세의 `activity_view`는 source `push`로 간다).
 
 ## 웹 (2026-10-26)
 

@@ -43,6 +43,13 @@ struct ActivityDetailView: View {
             let from = state.takeLinkSource(activityID) ?? source
             openedFrom = from
             AppAnalytics.event("activity_view", parameters(["source": from]))
+            // A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): its block's timetable opens on 찜한 세션; a block gone from the activity
+            // leaves the detail alone.
+            if let scheduleID = state.takeLinkTimetable(activityID), let activity,
+               let row = scheduleRows(activity).first(where: { $0.id == scheduleID && $0.hasTimetable }) {
+                timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: row.id, scheduleTitle: row.title,
+                                           date: row.date, favoritesFirst: true)
+            }
         }
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -69,6 +76,8 @@ struct ActivityDetailView: View {
             HStack(spacing: 8) {
                 // 활동 상태 (contract "활동 상태" 2026-10-26); 모집 정보 없음 has no badge.
                 if let badge = activity.status(at: state.loadedAt)?.badge { DearbyBadge(title: badge) }
+                // 모집 시작 D-day (contract "모집 예정 시작 D-day" 2026-10-26): the mini badge in the 모집 예정 colours beside the status.
+                if let startDDay = activity.upcomingStartDDay(at: state.loadedAt) { DearbyMiniBadge(title: startDDay) }
                 if let category = activity.category { DearbyBadge(title: category.label, quiet: true, systemImage: category.systemImage) }
             }
             // 분야·얻을 수 있는 것 (contract "분야·성격 태그와 아이콘" 2026-10-24): every tag as icon and text, empty groups omitted.

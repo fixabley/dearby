@@ -73,6 +73,9 @@ class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRe
             .execute()
     }
 
+    override fun recallAll(digest: String, now: OffsetDateTime): Int =
+        dsl.update(GUEST_CARDS).set(GUEST_CARDS.RECALLED_AT, now).where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull).execute()
+
     override fun recallExpired(savedBefore: OffsetDateTime, now: OffsetDateTime): Int =
         dsl.update(GUEST_CARDS).set(GUEST_CARDS.RECALLED_AT, now).where(GUEST_CARDS.RECALLED_AT.isNull, GUEST_CARDS.SAVED_AT.lt(savedBefore)).execute()
 

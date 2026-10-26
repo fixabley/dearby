@@ -1,3 +1,9 @@
+## 2026-10-26 찜한 세션 이동 알림(Android)
+
+- `python3 scripts/check-fsd.py --self-test`: 통과(26 cases, 134 files)
+- `./gradlew lintDebug assembleDebug`: 통과(lint 경고 14건은 모두 기존 의존성 버전·미사용 리소스 안내)
+- 실행하지 않은 것: 실기기 화면 흐름과 알람 발화(2026-10-18 지시로 에뮬레이터 없음, 연결된 기기 없음) — 세션 하트 뒤 10분 전 알림, 묶음 본문, 알림 탭 → 시간표 시트 `찜한 세션`, 설정 스위치 끔 → 취소, 재부팅 복원, Android 14+ 정확 알람 미허용 시 지연은 미확인; 자동 테스트(새로 만들지 않음); 큰 글씨 테스트(2026-10-06 지시)
+
 ## 2026-10-22 내용 로딩 스켈레톤
 
 - `python3 scripts/check-fsd.py --self-test`: 통과(26 cases, 96 files)

@@ -20,6 +20,7 @@ import {
   startLabel,
   recruitmentDate,
   scheduleLabel,
+  upcomingStartDday,
 } from "@/lib/models";
 import { track } from "@/shared/lib/analytics";
 import { errorMessage, request } from "@/lib/client";
@@ -308,6 +309,8 @@ function cardProps(activity: Activity, now: number) {
     status,
     recruitmentLabel,
     recruitmentDday,
+    // 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26") beside the 모집 예정 capsule.
+    startDday: upcomingStartDday(activity, now),
     recruitmentActive: applicable(status) && recruitmentLabel !== "",
     activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
