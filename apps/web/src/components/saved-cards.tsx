@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type GuestItem, expiryLabel } from "@/lib/models";
 import { InstallOffer } from "./install-offer";
+import { useIosHomeScreenApp } from "@/lib/install";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
@@ -25,6 +26,7 @@ export function SavedCards() {
   const [actionError, setActionError] = useState("");
   const [notice, setNotice] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const homeScreenApp = useIosHomeScreenApp();
   useEffect(() => {
     const controller = new AbortController();
     request<{ items: GuestItem[] }>("/guest/cards", {
@@ -169,6 +171,8 @@ export function SavedCards() {
             ))}
           </Card>
         </SkeletonGroup>
+      ) : !cards.length && homeScreenApp ? (
+        <HomeScreenEmpty />
       ) : !cards.length ? (
         <CenteredMessage
           icon="inbox"
@@ -206,6 +210,38 @@ export function SavedCards() {
           </DialogActions>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+/**
+ * Empty list in the iOS home-screen web app (contract "홈 화면 세션 잇기"): the session code is single-use and short-lived on
+ * purpose, and only the manifest read while adding the shortcut carries one, so this app cannot fetch a new one. The way back is
+ * Safari's `/saved`, then adding the shortcut again; 주소 복사 helps since a link here would stay inside the web app.
+ */
+function HomeScreenEmpty() {
+  const [copied, setCopied] = useState(false);
+  const address = `${location.host}/saved`;
+  return (
+    <>
+      <CenteredMessage
+        icon="inbox"
+        title="브라우저에서 저장한 명함을 불러오지 못했어요"
+        message={`Safari에서 ${address}를 열면 다시 이어져요.`}
+        primary={{
+          label: copied ? "주소를 복사했어요" : "주소 복사",
+          onClick: () =>
+            navigator.clipboard?.writeText(`https://${address}`).then(
+              () => setCopied(true),
+              () => {},
+            ),
+        }}
+        secondary={{ label: "활동 둘러보기", href: "/" }}
+      />
+      <p className="-mt-4 px-6 text-center text-footnote break-keep text-secondary-label">
+        Safari에서 연 뒤 공유 › 홈 화면에 추가로 바로가기를 다시 추가하면, 새 바로가기에서 목록이 보여요. 지금 바로가기는 지워도
+        돼요.
+      </p>
     </>
   );
 }

@@ -8,10 +8,11 @@ import { inAppBrowser } from "./in-app-browser";
  * Share → 홈 화면에 추가 on iOS Safari and Chrome, the ⋮ / ≡ menu on Android Chrome and Samsung Internet. Other browsers and
  * in-app browsers get nothing. iPadOS reports a Mac user agent, hence `maxTouchPoints`.
  */
+const isIos = (userAgent: string, maxTouchPoints: number) =>
+  /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
 export function shortcutKind(userAgent: string, maxTouchPoints = 0): ShortcutSteps | undefined {
   if (inAppBrowser(userAgent)) return;
-  const ios = /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
-  if (ios) {
+  if (isIos(userAgent, maxTouchPoints)) {
     if (/CriOS/.test(userAgent)) return "ios-chrome";
     return /Safari\//.test(userAgent) && !/FxiOS|EdgiOS|OPiOS/.test(userAgent) ? "ios-safari" : undefined;
   }
@@ -76,4 +77,16 @@ export function useInstall() {
           }
         : undefined,
   };
+}
+
+/**
+ * Opened as the iOS home-screen web app, whose cookie jar is separate from Safari's: an empty saved list there may mean the
+ * one-time session code (홈 화면 세션 잇기) expired before the first launch. Android shares the browser's cookies.
+ */
+export function useIosHomeScreenApp() {
+  return useSyncExternalStore(
+    subscribe,
+    () => isStandalone() && isIos(navigator.userAgent, navigator.maxTouchPoints),
+    () => false,
+  );
 }
