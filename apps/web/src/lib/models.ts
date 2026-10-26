@@ -41,6 +41,8 @@ export const cardSchema = z.object({
   contacts: z.array(contact),
   histories: z.array(history),
   createdAt: text,
+  // 명함 사진(contract "프로필 사진"): the proxy fetches `photoUrl` with the same view right and inlines it, because the page drops `code` from its address.
+  photo: z.string().startsWith("data:image/jpeg;base64,").optional(),
 });
 export type Card = z.infer<typeof cardSchema>;
 // 명함 교환(contract "명함 교환 — 2026-10-19"): where a saved card was exchanged and when the server recalls it.
