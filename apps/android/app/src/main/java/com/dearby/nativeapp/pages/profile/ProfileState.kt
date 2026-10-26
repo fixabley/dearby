@@ -12,6 +12,7 @@ import com.dearby.nativeapp.entities.account.model.currentOrganization
 import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
+import com.dearby.nativeapp.widgets.profile.profileFields.EmailCodeEntry
 import com.dearby.nativeapp.widgets.profile.profileFields.JobTag
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
 import com.dearby.nativeapp.widgets.profile.profileFields.historyPeriod
@@ -32,10 +33,22 @@ data class ProfileViewState(
     val jobSearch: PickerSearchState = PickerSearchState(),
     /** 프로필 사진 (contract "프로필 사진"): its own upload/delete, saved at once and not part of 저장. */
     val photoBusy: Boolean = false, val photoError: String? = null,
+    /** 연락처 인증 (contract "연락처 인증"): GitHub 연결·이메일 인증번호 in the editor. */
+    val verify: ContactVerifyState = ContactVerifyState(),
+    /** A one-line notice for the shell's Snackbar (연락처 인증 failures, "지금은 쓸 수 없어요"); the route shows it once and clears it. */
+    val notice: String? = null,
+    /** Counts GitHub 연결 returns, so the app brings the profile editor back in front (after process death the tab was lost). */
+    val returned: Int = 0,
 ) {
     /** Never saved yet: the setup funnel replaces the editor and the tab bar hides. */
     val settingUp get() = phase == ProfilePhase.LOADED && profile?.version == 0
 }
+/**
+ * 연락처 인증 in the editor (contract "연락처 인증", 2026-10-26). [githubAvailable]·[emailAvailable] turn false on a 503 (the server has no GitHub app or mail), which hides the
+ * buttons; [challengeId] is the open 이메일 인증번호 challenge whose code the [entry] holds (null: the `인증번호 받기` button shows instead).
+ */
+data class ContactVerifyState(val githubAvailable: Boolean = true, val githubBusy: Boolean = false, val emailAvailable: Boolean = true, val emailBusy: Boolean = false,
+                              val challengeId: String? = null, val entry: EmailCodeEntry = EmailCodeEntry())
 /** Messages shown once the user tries to save (editor) or presses 다음 (setup funnel). */
 data class ProfileErrors(val name: String? = null, val phone: String? = null, val email: String? = null)
 fun ProfileFormState.errors() = ProfileErrors(
@@ -45,25 +58,35 @@ fun ProfileFormState.errors() = ProfileErrors(
 )
 /** 보기 모드 맨 위의 명함 면(contract "프로필 사진" 2026-10-26 사용자 결정): 사진·이름과 소개 링크·직무·소속·연락처. 이력은 [historyCards]로 카드 아래에 따로 그린다. */
 fun ProfileFormState.cardState(photoUrl: String?) = CardState("profile", name.ifBlank { "이름 없음" }, jobsText, "", "", introLink.trim().ifEmpty { null },
-    (listOf(ContactState(phoneId, "phone", "", phone), ContactState(emailId, "email", "", email)) + extras.map { ContactState(it.id, it.kind, "", it.value) }).filter { it.value.isNotBlank() },
+    (listOf(ContactState(phoneId, "phone", "", phone), ContactState(emailId, "email", "", email, emailVerified)) + extras.map { ContactState(it.id, it.kind, "", it.value, it.verified) }).filter { it.value.isNotBlank() },
     emptyList(), histories.currentOrganization(), photoUrl)
 /** First profile entry: accordion sections in this order; completed ones collapse to a row that reopens on tap. */
 enum class SetupStep(val label: String) { NAME("이름"), JOBS("직무"), PHONE("전화번호"), EMAIL("이메일") }
 
-/** The in-place edit form: required phone and email, added contacts by kind, 직무 tags, histories from the step funnel, and the version for `If-Match`. */
+/**
+ * The in-place edit form: required phone and email, added contacts by kind, 직무 tags, histories from the step funnel, and the version for `If-Match`.
+ * [emailVerifiedValue] (contract "연락처 인증"): the address the server verified, or null; the mark stays while [email] is that address (case-insensitive).
+ */
 data class ProfileFormState(
     /** [introLink] is the 소개 링크 field as typed; blank means none. */
     val name: String, val jobs: List<ProfileJob>, val introLink: String, val phone: String, val email: String,
     val extras: List<ProfileExtraContact>, val histories: List<AccountHistory>, val version: Int, val phoneId: String, val emailId: String,
+    val emailVerifiedValue: String? = null,
 ) {
+    val emailVerified: Boolean get() = emailVerifiedValue != null && email.trim().equals(emailVerifiedValue.trim(), ignoreCase = true)
+    /** The email was verified and is being changed: saving will drop the mark. */
+    val emailUnverifying: Boolean get() = emailVerifiedValue != null && !emailVerified
+    /** `인증번호 받기` makes sense: a well-formed address that is not the verified one. */
+    val emailCanVerify: Boolean get() = !emailVerified && ContactRules.validEmail(email)
     companion object {
         const val MAX_JOBS = 10
         fun from(profile: AccountProfile): ProfileFormState {
             val phone = profile.contacts.firstOrNull { it.kind == "phone" }
             val email = profile.contacts.firstOrNull { it.kind == "email" }
             return ProfileFormState(profile.name, profile.jobs, profile.introLink.orEmpty(), phone?.value.orEmpty(), email?.value.orEmpty(),
-                profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, ContactRules.shown(it.kind, it.value)) }, // a profile URL saved before 2026-10-26 reads as its username
-                profile.histories, profile.version, phone?.id ?: UUID.randomUUID().toString(), email?.id ?: UUID.randomUUID().toString())
+                profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, ContactRules.shown(it.kind, it.value), it.value.takeIf { _ -> it.verified }) }, // a profile URL saved before 2026-10-26 reads as its username
+                profile.histories, profile.version, phone?.id ?: UUID.randomUUID().toString(), email?.id ?: UUID.randomUUID().toString(),
+                emailVerifiedValue = email?.value?.takeIf { email.verified })
         }
     }
     /** Chips for the tag picker. */

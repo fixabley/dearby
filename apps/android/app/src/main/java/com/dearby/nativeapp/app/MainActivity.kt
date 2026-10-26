@@ -30,6 +30,7 @@ import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.activityAppLink
 import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
+import com.dearby.nativeapp.shared.config.githubLinkRedirect
 import com.dearby.nativeapp.shared.config.isFavoritesLink
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.features.reminder.SessionReminders
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
+    private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account, createSavedStateHandle()) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", device) } } }
     // 추천 and 오늘의 맞춤 대기열 need a session (contract "비로그인에서 만들기·추천을 막음", 2026-10-25): nothing is kept on the device, and the
@@ -173,7 +174,8 @@ class MainActivity : ComponentActivity() {
         receive(intent)
     }
     /**
-     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), a received card
+     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), GitHub 연결's `dearby://contacts/github`
+     * (contract "연락처 인증"; the profile editor spends the code), a received card
      * `dearby://cards/<id>?activity=<n>` from the web card page's save button (contract "명함 교환"; saved at once), or an App Link (contract
      * "유니버설 링크·App Links·활동 공유·오픈그래프"): the same card page, which opens the 받은 명함 detail or 공유받은 명함 보기 without saving, or
      * `/activities/<id>`, which opens the detail on 발견. Other links only open the app.
@@ -200,6 +202,7 @@ class MainActivity : ComponentActivity() {
         }
         if (isFavoritesLink(link)) { favoritesLink = true; return }
         authRedirect(link)?.let { account.returned(it); return }
+        githubLinkRedirect(link)?.let { profile.githubReturned(it); return }
         cardLink(link, BuildConfig.WEB_ORIGIN)?.let { if (it.web) wallet.view(it) else wallet.receive(it); return }
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let { activityModel.openLinked(it, if (fromPush) "push" else "link") }
     }

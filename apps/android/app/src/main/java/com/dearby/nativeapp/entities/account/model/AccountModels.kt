@@ -18,8 +18,11 @@ sealed interface WebSignIn {
     data class NeedsAccount(val linkToken: String, val email: String) : WebSignIn
 }
 
-/** Profile contact. IDs are client-generated UUIDs; the server keeps them as given. */
-data class AccountContact(val id: String, val kind: String, val label: String, val value: String)
+/**
+ * Profile contact. IDs are client-generated UUIDs; the server keeps them as given. [verified]·[verifiedAt] (contract "연락처 인증", 2026-10-26) are set by the
+ * server only (GitHub 연결·이메일 인증번호) and never sent back; snapshots from before V64 read as false·null.
+ */
+data class AccountContact(val id: String, val kind: String, val label: String, val value: String, val verified: Boolean = false, val verifiedAt: String? = null)
 /** A registered 활동 정보 item (organization, program, activity or role) a history points at; ids are the server's numbers. */
 data class ActivityInfoRef(val id: Long, val name: String)
 /** An uploaded evidence file's metadata (contract "인증자료"); the bytes stay on the server. */
@@ -166,7 +169,10 @@ fun JSONObject.toPasskeys() = getJSONArray("items").objects().map { it.toPasskey
 fun JSONObject.toPasskey() = PasskeyItem(getString("id"), optString("label"), getString("createdAt"), text("lastUsedAt"), optBoolean("backedUp", false))
 
 private fun JSONObject.toRef() = ActivityInfoRef(getLong("id"), getString("name"))
-private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"))
+private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"), optBoolean("verified", false), text("verifiedAt"))
+/** `POST /v1/me/contacts/email/challenges`: the challenge to answer with the 6-digit code mailed to the address, until [expiresAt] (10 minutes). */
+data class EmailChallenge(val id: String, val expiresAt: String)
+fun JSONObject.toEmailChallenge() = EmailChallenge(getString("challengeId"), getString("expiresAt"))
 private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("kind"),
     optJSONObject("organization")?.toRef(), text("organizationName"), optJSONObject("program")?.toRef(), text("programName"),
     optJSONObject("activity")?.toRef(), text("activityName"), optJSONObject("role")?.toRef(), text("roleName"),
