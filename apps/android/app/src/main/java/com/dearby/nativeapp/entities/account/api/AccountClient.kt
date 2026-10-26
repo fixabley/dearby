@@ -166,14 +166,14 @@ class AccountClient(private val api: String, private val transport: Transport = 
         parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
         return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
     }
-    /** `POST /v1/cards`: the server copies the profile introduction as the body (no `template` since 2026-10-26). */
-    suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("POST", "cards", JSONObject().put("name", name).put("description", description)
-            .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    /** `POST /v1/cards`: the server copies the profile introduction as the body (no `template` since 2026-10-26) and, with [includePhoto], the profile photo (contract "프로필 사진"). */
+    suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean, session: AccountSession): PublishedCard =
+        send("POST", "cards", cardBody(name, description, contactIds, historyIds, includePhoto), session).toPublishedCard()
     /** 이 명함 고치기 (`PUT /v1/cards/:id`, contract "명함 고치기는 같은 명함을 수정", 2026-10-20): same body and validation as [publish]; the snapshot behind the same id is rebuilt from the current profile (200 Card, `id`·`createdAt` kept). Owner only; a withdrawn card is 404. */
-    suspend fun updateCard(id: String, name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("PUT", "cards/$id", JSONObject().put("name", name).put("description", description)
-            .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    suspend fun updateCard(id: String, name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean, session: AccountSession): PublishedCard =
+        send("PUT", "cards/$id", cardBody(name, description, contactIds, historyIds, includePhoto), session).toPublishedCard()
+    private fun cardBody(name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean) =
+        JSONObject().put("name", name).put("description", description).put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)).put("includePhoto", includePhoto)
     /** 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 with no body. */
     suspend fun deleteCard(id: String, session: AccountSession) { request("DELETE", "cards/$id", null, session) }
     /** Your non-withdrawn cards in creation order, so the newest is last. */

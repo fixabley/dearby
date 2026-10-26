@@ -11,11 +11,14 @@ import com.dearby.nativeapp.widgets.card.cardContent.ComposerHistory
  * introduction as it is (contract "템플릿" 폐지, 2026-10-26); the user does not edit it here.
  */
 data class CardDraft(
-    val profile: AccountProfile, val cardTitle: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>, val initial: Initial,
+    val profile: AccountProfile, val cardTitle: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>, val includePhoto: Boolean, val initial: Initial,
 ) {
-    data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>)
-    val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds) != initial
-    fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories)
+    data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>, val includePhoto: Boolean)
+    val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds, includePhoto) != initial
+    fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories, includePhoto = initial.includePhoto)
+    /** 사진 넣기 (contract "프로필 사진"): the switch shows only when the profile has a photo; without one the card has none either way. */
+    val hasPhoto get() = profile.photoUrl != null
+    val sendsPhoto get() = includePhoto && hasPhoto
     val preview get() = profile.introduction
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
     val contactIds get() = profile.contacts.map { it.id }.filter { it in publicContactIds }
@@ -32,13 +35,15 @@ data class CardDraft(
         else -> null
     }
     companion object {
-        /** A new card starts with every contact and approved history public; a republish starts from that card's name and selections. */
+        /** A new card starts with every contact and approved history public and the photo in; a republish starts from that card's name and selections. */
         fun from(profile: AccountProfile, prefill: PublishedCard? = null): CardDraft {
             val approved = profile.histories.filter { it.isApproved }.map { it.id }.toSet()
             val title = prefill?.name.orEmpty()
             val contacts = prefill?.contacts?.map { it.id }?.toSet() ?: profile.contacts.map { it.id }.toSet()
             val histories = prefill?.histories?.map { it.id }?.toSet()?.intersect(approved) ?: approved
-            return CardDraft(profile, title, contacts, histories, Initial(title, contacts, histories))
+            // 고치기 starts from what the card shows now: a card without a photo stays without unless the switch is turned on.
+            val photo = prefill?.let { it.photoUrl != null } ?: true
+            return CardDraft(profile, title, contacts, histories, photo, Initial(title, contacts, histories, photo))
         }
     }
 }

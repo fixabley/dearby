@@ -39,7 +39,7 @@ import com.dearby.nativeapp.shared.ui.*
 
 @Composable private fun Header(state: CardState) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        InitialAvatar(state.person, 56.dp)
+        PersonAvatar(state.person, state.photoUrl, 56.dp)
         Text(state.person, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleLarge)
         // `job`은 서버가 승인된 직무 이름을 " · "로 이어 준 문자열이라 항목마다 칩으로 되돌린다.
         val jobs = state.job.split(" · ").map { it.trim() }.filter { it.isNotEmpty() }

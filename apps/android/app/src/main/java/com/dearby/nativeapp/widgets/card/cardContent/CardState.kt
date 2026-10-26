@@ -18,4 +18,6 @@ data class CardState(
     val contacts: List<ContactState>, val histories: List<CardHistoryState>,
     /** 명함 머리의 소속·받은 명함 목록 칩: 가장 최근 승인 이력의 조직 이름(없으면 null). */
     val organization: String? = null,
+    /** 명함 사진(contract "프로필 사진"): API 경로, 없으면 null. 머리 아바타가 원형으로 그린다. */
+    val photoUrl: String? = null,
 )

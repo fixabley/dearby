@@ -51,8 +51,8 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
         try {
             val card = account.authorized {
-                if (editing == null) account.client.publish(draft.cardName, "", draft.contactIds, draft.historyIds, it)
-                else account.client.updateCard(editing.id, draft.cardName, "", draft.contactIds, draft.historyIds, it)
+                if (editing == null) account.client.publish(draft.cardName, "", draft.contactIds, draft.historyIds, draft.sendsPhoto, it)
+                else account.client.updateCard(editing.id, draft.cardName, "", draft.contactIds, draft.historyIds, draft.sendsPhoto, it)
             }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {
