@@ -39,8 +39,6 @@ object ContactRules {
     )
     /** The fixed text before a username field (`github.com/`); null for other kinds and 카카오톡. */
     fun usernamePrefix(kind: String): String? = usernameRules[kind]?.host?.let { "$it/" }
-    /** Whether [kind] takes a username only (no typed link). */
-    fun takesUsername(kind: String) = kind in usernameRules
     /**
      * The username in [text] — a pasted profile URL (`https://github.com/name`) gives its first path part, `@` and spaces are dropped — or null when
      * what is left is empty, too long or has characters other than 영문·숫자·`.`·`_`·`-`.
