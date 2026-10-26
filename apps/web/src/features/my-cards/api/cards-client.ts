@@ -1,7 +1,8 @@
 // 내 명함 (contract native-v1.md "명함·지갑", "명함 고치기는 같은 명함을 수정", "명함 QR 코드") through the account branch of `/api/*`.
 import { account, accountSend } from "@/lib/client";
 import type { Activity } from "@/lib/models";
-import type { CardPublish, MyCard, Profile, QrCode, UserActivities } from "@/lib/account-models";
+import type { CardPublish, MyCard, Profile, QrCode } from "@/lib/account-models";
+import type { MyActivity } from "@/lib/models";
 
 export const listCards = () => account<{ items: MyCard[] }>("/cards").then((result) => result.items);
 export const publishCard = (body: CardPublish) => accountSend<MyCard>("/cards", "POST", body);
@@ -13,5 +14,5 @@ export const closeQrCode = (cardId: string, codeId: string) => accountSend<void>
 /** 명함 만들기가 고르는 연락처·이력·사진·소개 링크의 출처. */
 export const myProfile = () => account<Profile>("/profile");
 /** 내 활동(QR 활동 칩의 후보). */
-export const myActivities = () => account<UserActivities>("/me/activities").then((result) => result.items);
+export const myActivities = () => account<{ items: MyActivity[] }>("/me/activities").then((result) => result.items);
 export const activityById = (id: number) => account<Activity>(`/activities/${id}`);

@@ -7,7 +7,7 @@ import { type ExchangeContext, expiryLabel } from "@/lib/models";
  */
 const CHOSEONG = ["ㄱ", "ㄱ", "ㄴ", "ㄷ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅂ", "ㅅ", "ㅅ", "ㅇ", "ㅈ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
 const ORDER = [...new Set(CHOSEONG), ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"];
-export function initialOf(name: string): string {
+function initialOf(name: string): string {
   const first = [...name.trim()][0];
   if (!first) return "#";
   const code = first.codePointAt(0)!;
@@ -42,7 +42,7 @@ export function receiptBadge(receipt: Receipt): { label: string; reciprocal: boo
   return { label: receipt.expiresAt ? expiryLabel(receipt.expiresAt) : "", reciprocal: false };
 }
 /** `2026.10.28에 받음` in Seoul time. */
-export function receivedLabel(receivedAt: string): string {
+function receivedLabel(receivedAt: string): string {
   const time = Date.parse(receivedAt);
   if (Number.isNaN(time)) return "";
   const [year, month, day] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" })

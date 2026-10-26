@@ -193,18 +193,3 @@ export type NotificationGroup = z.infer<typeof notificationGroupSchema>;
 export const notificationPageSchema = z.object({ groups: z.array(notificationGroupSchema), nextCursor: z.number().int().nullable() });
 export type NotificationPage = z.infer<typeof notificationPageSchema>;
 export const unreadCountSchema = z.object({ count: z.number().int().nonnegative() });
-
-// ── 내 활동 (contract "내 활동 서버 저장"; the QR activity chip reads it) ──────────────────────────────────────────────────────
-export const userActivitiesSchema = z.object({
-  items: z.array(
-    z.object({
-      activityId: z.number().int(),
-      createdAt: text,
-      deleted: z.boolean(),
-      statuses: z
-        .array(z.object({ scheduleId: z.number().int(), statusId: z.number().int().nullable().optional(), kind: text.nullable().optional() }))
-        .catch([]),
-    }),
-  ),
-});
-export type UserActivities = z.infer<typeof userActivitiesSchema>;
