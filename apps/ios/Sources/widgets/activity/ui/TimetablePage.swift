@@ -8,6 +8,8 @@ struct TimetableRoute: Identifiable {
     let scheduleTitle: String
     /// The block's date and time, as on the schedule row.
     let date: String
+    /// Open on `찜한 세션` instead of `전체` (the 오늘 내 행사 card, contract "오늘 내 행사 카드": favorites first when the block has any).
+    var favoritesFirst = false
     var id: String { activityID + "/" + scheduleID }
 }
 
@@ -18,12 +20,17 @@ struct TimetablePage: View {
     let state: ActivityViewModel
     let route: TimetableRoute
     enum Mode: Hashable { case all, favorites }
-    @State private var mode = Mode.all
+    @State private var mode: Mode
     @State private var phase = Phase.loading
     @State private var opened: TimetableSession?
     @Environment(SessionFavoritesModel.self) private var favorites
     @Environment(\.dismiss) private var dismiss
     private enum Phase { case loading, missing, failed, loaded(Timetable) }
+    init(state: ActivityViewModel, route: TimetableRoute) {
+        self.state = state
+        self.route = route
+        _mode = State(initialValue: route.favoritesFirst ? .favorites : .all)
+    }
     var body: some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {

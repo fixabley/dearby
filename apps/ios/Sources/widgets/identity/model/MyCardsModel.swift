@@ -18,6 +18,9 @@ import Observation
         self.appliedActivities = appliedActivities
     }
     var card: PublishedCard? { cards.first { $0.id == selectedCardID } }
+    /// `명함 QR` on the 오늘 내 행사 card (contract "오늘 내 행사 카드"): the activity whose QR 보이기 내 명함 should open next, for the selected
+    /// card once the list is loaded; the page clears it (or drops it when there is no card to show).
+    var qrActivityID: String?
 
     func load() async {
         guard account.session != nil else {
