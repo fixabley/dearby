@@ -57,7 +57,8 @@ struct NotificationInboxPage: View {
     private func card(_ group: InboxGroup, now: Date) -> some View {
         let program = group.program, open = model.expanded.contains(group.id)
         return VStack(alignment: .leading, spacing: 0) {
-            ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: 0, nearestDeadline: nil,
+            ProgramHeader(name: program.name, organization: program.organization, category: program.category, logoURL: program.logoURL,
+                          openCount: 0, nearestDeadline: nil,
                           fieldTags: program.fieldTags, traitTags: program.traitTags, unreadCount: group.unread, expanded: open) {
                 EmptyView()
             } toggle: {

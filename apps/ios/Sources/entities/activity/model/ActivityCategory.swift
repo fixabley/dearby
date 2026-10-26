@@ -19,6 +19,21 @@ enum ActivityCategory: String, CaseIterable, Sendable {
         case .other: "기타"
         }
     }
+    /// SF Symbol (contract "아이콘 통일" 의미별 표의 활동 종류, 2026-10-26): the program card's 종류 줄 and the detail's 종류 칩.
+    var systemImage: String {
+        switch self {
+        case .bootcamp: "graduationcap"
+        case .conference: "person.3"
+        case .workshop: "pencil.and.ruler"
+        case .study: "books.vertical"
+        case .club: "person.2"
+        case .lecture: "mic"
+        case .hackathon: "keyboard"
+        case .contest: "trophy"
+        case .meetup: "cup.and.saucer"
+        case .other: "square.grid.2x2"
+        }
+    }
     static let unclassifiedLabel = "미분류"
     /// Activities grouped in contract order, 미분류 last; one entry per category present. Inside a group the nearest
     /// recruitment deadline comes first, activities without one last, ties by title.

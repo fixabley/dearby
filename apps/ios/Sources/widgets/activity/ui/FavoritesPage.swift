@@ -67,7 +67,8 @@ struct FavoritesPage: View {
     }
     private func programRow(_ favorite: FavoriteProgram) -> some View {
         let program = favorite.program
-        return ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
+        return ProgramHeader(name: program.name, organization: program.organization, category: program.category, logoURL: program.logoURL,
+                             openCount: program.openActivityCount,
                              nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                              nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                              fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable, newRecruitment: favorite.newRecruitment, expanded: false) {
@@ -111,7 +112,8 @@ struct ProgramDetailPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
+                ProgramHeader(name: program.name, organization: program.organization, category: program.category, logoURL: program.logoURL,
+                              openCount: program.openActivityCount,
                               nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                               nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                               fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable, expanded: false,

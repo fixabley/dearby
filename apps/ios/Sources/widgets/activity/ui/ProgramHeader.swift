@@ -9,6 +9,8 @@ import SwiftUI
 struct ProgramHeader<Accessory: View>: View {
     let name: String
     let organization: String
+    /// 프로그램 기본 종류 (contract "종류 아이콘 라벨" 2026-10-26): icon and name on a small line above the name; nil draws no line.
+    var category: ActivityCategory?
     /// The program logo, resolved against the API origin; nil without one.
     var logoURL: URL?
     let openCount: Int
@@ -69,6 +71,9 @@ struct ProgramHeader<Accessory: View>: View {
         HStack(alignment: .top, spacing: 12) {
             logo
             VStack(alignment: .leading, spacing: 2) {
+                if let category {
+                    Label(category.label, systemImage: category.systemImage).font(.dearby(.caption)).foregroundStyle(.secondary).lineLimit(1)
+                }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                     if newRecruitment { DearbyBadge(title: "새 모집") }
@@ -83,7 +88,7 @@ struct ProgramHeader<Accessory: View>: View {
     }
     private var showsTimetable: Bool { hasTimetable && !expanded }
     private var spokenLabel: String {
-        [name, newRecruitment ? "새 모집" : nil, showsTimetable ? "시간표 있음" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
+        [category?.label, name, newRecruitment ? "새 모집" : nil, showsTimetable ? "시간표 있음" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
             .compactMap { $0 }.joined(separator: ", ")
     }
     /// The 44-point logo slot: the image filled and clipped to a 14-point continuous corner; the initial avatar until it loads, on failure or without a URL.
@@ -162,7 +167,7 @@ struct ProgramHeader<Accessory: View>: View {
 #if DEBUG
 #Preview("프로그램 머리") {
     VStack(spacing: 10) {
-        ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", openCount: 2,
+        ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", category: .bootcamp, openCount: 2,
                       nearestDeadline: ISO8601DateFormatter().date(from: "2026-11-10T09:00:00Z"),
                       fieldTags: [Tag(id: 10, name: "IT", nameEn: "it", kind: .field), Tag(id: 11, name: "데이터·AI", nameEn: "dataAi", kind: .field)],
                       traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")], expanded: true) { EmptyView() } toggle: {}

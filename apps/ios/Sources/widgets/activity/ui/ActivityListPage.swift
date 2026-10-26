@@ -201,7 +201,8 @@ struct ActivityListPage: View {
     @ViewBuilder private func section(_ program: ProgramSummary) -> some View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 0) {
-            ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
+            ProgramHeader(name: program.name, organization: program.organization, category: program.category, logoURL: program.logoURL,
+                          openCount: program.openActivityCount,
                           nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity, statusCounts: program.statusCounts,
                           fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable,
@@ -224,7 +225,7 @@ struct ActivityListPage: View {
     private var programsSkeleton: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(0..<4, id: \.self) { _ in
-                ProgramHeader(name: "불러오는 프로그램", organization: "주최 기관 이름", openCount: 1, nearestDeadline: nil, expanded: false) { EmptyView() } toggle: {}
+                ProgramHeader(name: "불러오는 프로그램", organization: "주최 기관 이름", category: .bootcamp, openCount: 1, nearestDeadline: nil, expanded: false) { EmptyView() } toggle: {}
                     .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
             }
         }.dearbySkeleton()

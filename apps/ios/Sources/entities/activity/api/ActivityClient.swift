@@ -41,6 +41,7 @@ enum ActivityClient {
     }
     private static func summary(_ program: Program, api: URL) -> ProgramSummary {
         ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
+                       category: program.category.flatMap(ActivityCategory.init(rawValue:)),
                        openActivityCount: program.openActivityCount ?? 0,
                        // An older server's activity-start stand-in (`nearestIsActivityStart`) is not a deadline: dropped (user 2026-10-26).
                        nearestRecruitmentEndAt: program.nearestIsActivityStart == true ? nil : program.nearestRecruitmentEndAt,
@@ -358,6 +359,8 @@ enum ActivityClient {
     }
     private struct Program: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
+        /// 프로그램 기본 종류 code; absent on older responses.
+        let category: String?
         /// Both absent outside discovery (a favorite's ProgramSummary); read as 0 and none.
         let openActivityCount: Int?; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]?; let latestActivityAt: String?
         let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?; let nearestIsActivityStart: Bool?
