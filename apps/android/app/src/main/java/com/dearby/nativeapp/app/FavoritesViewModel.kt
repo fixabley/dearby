@@ -16,9 +16,7 @@ import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.CalendarEntry
 import com.dearby.nativeapp.pages.activity.CalendarMark
 import com.dearby.nativeapp.pages.activity.FavoriteProgramRow
-import com.dearby.nativeapp.pages.activity.FavoriteUndo
 import com.dearby.nativeapp.pages.activity.FavoritesPhase
-import com.dearby.nativeapp.pages.activity.FavoritesView
 import com.dearby.nativeapp.pages.activity.FavoritesViewState
 import com.dearby.nativeapp.pages.activity.favoriteKey
 import com.dearby.nativeapp.shared.ui.BellLevel
@@ -40,30 +38,24 @@ import kotlinx.coroutines.sync.withLock
  * 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25), signed in only. The favorited ids come from `GET /v1/me/favorites` (the
  * discovery reads are anonymous, so they never carry `favorited`); a heart changes them at once and `PUT`/`DELETE` follows, and a failure (a 404
  * before the server ships it included) puts the heart back and sets [notice]. The 맞춤 대기열 ♥ is the same activity heart: the server records its
- * LIKE/UNLIKE itself. A swiped-away favorite waits on its `되돌리기` snackbar before the `DELETE` goes. [adopt] hands the activities to discovery so
- * their rows and details open. [view] is the remembered `목록 | 캘린더` choice ([saveView] keeps it on the device).
+ * LIKE/UNLIKE itself. [adopt] hands the activities to discovery so their rows and details open.
  */
 class FavoritesViewModel(
-    private val account: AccountViewModel, initialView: FavoritesView, private val saveView: (FavoritesView) -> Unit,
-    private val adopt: (List<ActivityModel>) -> Unit,
+    private val account: AccountViewModel, private val adopt: (List<ActivityModel>) -> Unit,
 ) : ViewModel() {
     data class Ids(val activities: Set<String> = emptySet(), val programs: Set<String> = emptySet(), val levels: Map<String, BellLevel> = emptyMap())
     private val mutableIds = MutableStateFlow(Ids())
     val ids = mutableIds.asStateFlow()
-    private val mutable = MutableStateFlow(FavoritesViewState(view = initialView))
+    private val mutable = MutableStateFlow(FavoritesViewState())
     val state = mutable.asStateFlow()
     private val noticeFlow = MutableStateFlow<String?>(null)
     val notice = noticeFlow.asStateFlow()
     private var programs: List<FavoriteProgram> = emptyList()
     private var activities: List<FavoriteActivity> = emptyList()
-    private var pending: Pending? = null
-    private var undoSerial = 0
     private var loadJob: Job? = null
     // Writes go in order, so a quick heart → un-heart reaches the server as PUT then DELETE.
     private val writes = Mutex()
     private val signedIn get() = account.ready.value
-
-    private data class Pending(val program: Boolean, val id: String, val programs: List<FavoriteProgram>, val activities: List<FavoriteActivity>, val ids: Ids)
 
     init {
         viewModelScope.launch {
@@ -75,9 +67,9 @@ class FavoritesViewModel(
 
     private fun clear() {
         loadJob?.cancel()
-        programs = emptyList(); activities = emptyList(); pending = null
+        programs = emptyList(); activities = emptyList()
         mutableIds.value = Ids()
-        mutable.update { FavoritesViewState(FavoritesPhase.SIGNED_OUT, view = it.view) }
+        mutable.value = FavoritesViewState(FavoritesPhase.SIGNED_OUT)
     }
 
     /** Reads the account's favorites; a 404 (not deployed yet) is an empty list, other failures the retry state. */
@@ -108,7 +100,6 @@ class FavoritesViewModel(
     /** A heart tap: on → `PUT` (the server's default level, `신청일만`) and the list is read again; off → `DELETE`. */
     fun toggle(program: Boolean, id: String) {
         if (!signedIn) return
-        commit()
         val before = Triple(programs, activities, mutableIds.value)
         val on = id !in (if (program) before.third.programs else before.third.activities)
         mutableIds.update { ids ->
@@ -141,30 +132,6 @@ class FavoritesViewModel(
         }
     }
 
-    /** Swipe to remove: the row goes at once, the `DELETE` waits for the snackbar ([commit]) and [undo] brings it back without a call. */
-    fun remove(program: Boolean, id: String) {
-        commit()
-        pending = Pending(program, id, programs, activities, mutableIds.value)
-        if (program) programs = programs.filterNot { it.program.id == id } else activities = activities.filterNot { it.activity.id == id }
-        mutableIds.update { if (program) it.copy(programs = it.programs - id) else it.copy(activities = it.activities - id) }
-        show()
-        mutable.update { it.copy(undo = FavoriteUndo("즐겨찾기에서 뺐어요", ++undoSerial)) }
-    }
-    fun undo() {
-        val undone = pending ?: return
-        pending = null
-        programs = undone.programs; activities = undone.activities; mutableIds.value = undone.ids
-        show()
-        mutable.update { it.copy(undo = null) }
-    }
-    fun commit() {
-        val done = pending ?: return
-        pending = null
-        mutable.update { it.copy(undo = null) }
-        write(revert = { load() }) { account.client.deleteFavorite(kind(done.program), done.id, it) }
-    }
-
-    fun setView(view: FavoritesView) { mutable.update { it.copy(view = view) }; saveView(view) }
     fun dismissNotice() { noticeFlow.value = null }
 
     private fun write(revert: () -> Unit, refresh: Boolean = false, call: suspend (AccountSession) -> Unit) {

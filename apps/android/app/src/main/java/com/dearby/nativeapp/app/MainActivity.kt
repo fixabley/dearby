@@ -27,11 +27,10 @@ import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.activityAppLink
 import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
-import com.dearby.nativeapp.shared.config.favoritesLink
+import com.dearby.nativeapp.shared.config.isFavoritesLink
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.features.ads.QueueAd
 import com.dearby.nativeapp.features.analytics.Analytics
-import com.dearby.nativeapp.pages.activity.FavoritesView
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
@@ -76,17 +75,17 @@ class MainActivity : ComponentActivity() {
     private val recommendation: RecommendationViewModel by viewModels { viewModelFactory { initializer { RecommendationViewModel(account) } } }
     private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account, QueueAd(applicationContext), device) } } }
     private val inbox: InboxViewModel by viewModels { viewModelFactory { initializer { InboxViewModel(account) } } }
-    // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25): the view choice and the asked-once flag in a new preferences file.
+    // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25): the asked-once flag in a new preferences file.
     private val device by lazy { DevicePreferences(applicationContext) }
     private val favorites: FavoritesViewModel by viewModels {
-        viewModelFactory { initializer { FavoritesViewModel(account, device.favoritesView, { device.favoritesView = it }, activityModel::adopt) } }
+        viewModelFactory { initializer { FavoritesViewModel(account, activityModel::adopt) } }
     }
     private val notifications: NotificationViewModel by viewModels {
         viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed,
             { device.pushStarted }, { device.pushStarted = true; Push.enable(applicationContext) }) } }
     }
-    // `오늘 일정 n개` opens 즐겨찾기 in this view (dearby://favorites?view=calendar), consumed once by DearbyApp.
-    private var favoritesLink by mutableStateOf<FavoritesView?>(null)
+    // `오늘 일정 n개` opens 즐겨찾기 (dearby://favorites), consumed once by DearbyApp.
+    private var favoritesLink by mutableStateOf(false)
     // The server sends at 8 in the morning in the device's time zone, so a change is sent again while the app runs (and at every start).
     private val timeZoneChanged = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) = notifications.register() }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
@@ -122,7 +121,7 @@ class MainActivity : ComponentActivity() {
             DearbyTheme { CompositionLocalProvider(LocalPhotoLoader provides account.photos::load) {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
-                    favoritesLink, { favoritesLink = null }, screenshot)
+                    favoritesLink, { favoritesLink = false }, screenshot)
                 PendingAccountRoute(account)
             } }
         }
@@ -149,11 +148,11 @@ class MainActivity : ComponentActivity() {
         // Opened from a push (analytics-v1 `push_open`); the server's `kind` when it sends one, the summary by its favorites link.
         val fromPush = intent.getBooleanExtra(Push.OPENED, false) || (intent.dataString == null && intent.hasExtra("url"))
         if (fromPush) {
-            val kind = intent.getStringExtra("kind")?.lowercase() ?: if (favoritesLink(link) != null) "summary" else null
+            val kind = intent.getStringExtra("kind")?.lowercase() ?: if (isFavoritesLink(link)) "summary" else null
             Analytics.event("push_open", *listOfNotNull(kind?.let { "kind" to it }).toTypedArray())
             intent.getStringExtra("notificationId")?.let(inbox::read)
         }
-        favoritesLink(link)?.let { view -> favoritesLink = FavoritesView.entries.firstOrNull { it.name.equals(view, ignoreCase = true) } ?: FavoritesView.LIST; return }
+        if (isFavoritesLink(link)) { favoritesLink = true; return }
         authRedirect(link)?.let { account.returned(it); return }
         cardLink(link, BuildConfig.WEB_ORIGIN)?.let { if (it.web) wallet.view(it) else wallet.receive(it); return }
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let { activityModel.openLinked(it, if (fromPush) "push" else "link") }

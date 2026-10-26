@@ -28,7 +28,6 @@ import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
-import com.dearby.nativeapp.pages.activity.FavoritesView
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
 import androidx.compose.foundation.layout.Column
@@ -120,7 +119,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                 val favoritesState by favorites.state.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { favorites.load() }
                 FavoritesPage(favoritesState, state, hearts, openDetail, plus, { favorites.seen(it); model.ensureProgram(it) }, model::retryProgram,
-                    favorites::remove, favorites::undo, favorites::commit, { view -> if (view == FavoritesView.CALENDAR) Tracking.menu("favorites_calendar"); favorites.setView(view) }, signIn, favorites::load)
+                    signIn, favorites::load)
             }
         }
         else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread)
