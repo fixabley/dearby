@@ -3,7 +3,10 @@ package io.wid.dearby.admin.adaptor.web
 import io.wid.dearby.admin.application.CardReportAdminService
 import io.wid.dearby.domain.card.CardReportListing
 import io.wid.dearby.domain.card.CardSnapshot
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.*
@@ -17,6 +20,10 @@ class CardReportAdminController(private val reports: CardReportAdminService) {
 
     @GetMapping("/card-reports")
     fun list(@RequestParam(required = false) status: String?) = CardReportListResponse(reports.list(status).map(CardReportResponse::from))
+
+    @GetMapping("/card-reports/{id}/photo")
+    fun photo(@PathVariable id: UUID): ResponseEntity<ByteArray> =
+        ResponseEntity.ok().contentType(MediaType.IMAGE_JPEG).cacheControl(CacheControl.noStore()).body(reports.photo(id))
 
     @PatchMapping("/card-reports/{id}")
     fun update(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID, @RequestBody request: CardReportUpdateRequest) =

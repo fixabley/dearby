@@ -210,7 +210,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | GET /v1/profile/versions/:n | Bearer | — | 200 `{version, createdAt, profile}` 그때의 프로필 |
 | POST /v1/profile/versions/:n/restore | Bearer | — | 200 Profile. 그 버전 내용으로 새 버전을 만든다(이력은 지우지 않는다) |
 
-- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`. `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
+- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt, photoUrl}`. `photoUrl`은 아래 "프로필 사진"(없으면 null, 버전 스냅샷에는 싣지 않는다). `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
 - 직무(2026-10-17 사용자 결정, 이전 "직함" 문자열을 대체): 직무는 조직처럼 계층을 가진 활동 정보이고 프로필은 여러 개를 태그로 둔다. ProfileJob: `{id(클라이언트 UUID), job: {id, name} | null, jobName, approval: approved|pending|rejected, approvalReason}`. PUT에는 `{id, jobId?, jobName?}`를 보낸다(둘 다 보내면 `jobId`). 검색에 없으면 `jobName`만 적는 직접 입력이고 이력과 같은 규칙으로 관리자 승인 전(`pending`)에는 명함 `job`에 들어가지 않는다. 직접 입력 값이 그대로면 승인·거절 결과가 유지되고 바뀌면 다시 `pending`. 최대 10개, 같은 직무 중복 400. 검색은 `GET /v1/jobs`(아래 "이력"의 선택 창 검색과 같은 형식, `q?`, `parentId?`, `rootsOnly?`, `cursor?`, `size?`; 항목에 바로 위 직무 `parent: {id, name}`). V18 이전 버전 스냅샷의 `job` 문자열은 승인된 직접 입력 직무로 읽힌다.
 - 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 명함 본문은 이 글을 그대로 복사한다(아래 "템플릿", 2026-10-26 템플릿 폐지).
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
@@ -239,17 +239,41 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 - Evidence: `{id, fileName, contentType, size, uploadedAt}`. 파일은 DB에 둔다(bytea). 명함에는 실리지 않는다.
 - 올리면 `verification`이 `pending`이 된다(이미 `verified`면 유지). 건너뛰고 나중에 올릴 수 있다. 다 지워도 `verified`는 유지된다.
 
+### 프로필 사진 — 2026-10-26 사용자 결정
+
+사용자: 프로필 사진을 올릴 수 있게 한다. 보이는 곳은 내 프로필과 명함(명함 면·웹 `/cards/:id`). 명함을 만들 때 "사진 넣기"를 고른다(기본 켬). 자르기는 사용자가 위치·크기를 직접 조절하고 앱이 정사각형으로 잘라 올리며, 화면에는 원형으로 보인다. 선택 항목이며 처리방침에 "프로필 사진(선택)"을 적어야 한다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| PUT /v1/profile/photo | Bearer | multipart `file` | 200 `{photoUrl}`. 있으면 바꾼다. `image/jpeg`·`image/png`만, 5MB, 한 변 4096px까지. 어기거나 읽을 수 없으면 400 |
+| GET /v1/profile/photo | Bearer(본인) | — | 200 `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`. 없으면 404 |
+| DELETE /v1/profile/photo | Bearer | — | 204. 없어도 204 |
+
+- **앱이 올리는 것**: 사용자가 위치·크기를 고른 **정사각형** 크롭을 회전(EXIF 방향)이 적용된 픽셀 그대로, 한 변 1024px 이하로 줄여 JPEG(또는 PNG)로 올린다. HEIC·WebP는 서버가 읽지 못하므로 앱이 JPEG로 바꿔 올린다(iOS 사진 앱 기본 HEIC). 서버는 EXIF 방향을 읽지 않는다.
+- **서버가 하는 것**: 파일 종류(요청 `Content-Type`)·크기를 확인하고 JDK ImageIO로 실제로 풀어 본다(헤더만 맞고 내용이 이미지가 아니거나 CMYK JPEG처럼 읽지 못하면 400). 크기를 먼저 읽어 한 변 4096px을 넘으면 풀지 않고 400. 정사각형이 아니면 가운데 정사각형으로 자른다. 한 변 512px로 줄이고(더 작으면 키우지 않는다) 흰 바탕(투명 PNG)에 JPEG(품질 0.85)로 **다시 인코딩**한다. 픽셀만 새로 쓰므로 EXIF(위치·기기)·ICC 등 메타데이터는 남지 않는다. 원본은 저장하지 않는다.
+- **저장**: V58 `profile_photos(user_id pk → users on delete cascade, data bytea, updated_at timestamptz)`. 인증자료처럼 DB에 두고 사용자당 하나다. 프로필 버전(`profile_versions`)·버전 되돌리기와 무관하다.
+- **`photoUrl`**: `GET`·`PUT /v1/profile`·`restore` 응답과 `PUT /v1/profile/photo` 응답에 `"/v1/profile/photo?v=<바뀐 시각 epoch ms>"` 또는 null. API 경로라 앱이 API base를 붙인다. 사진을 바꾸면 `v`가 바뀌므로 앱은 `v`가 같으면 캐시를 그대로 쓴다. 조회는 Bearer가 필요해 시스템 이미지 로더(`AsyncImage`·Coil 기본)로 바로 못 열고, 앱의 인증 HTTP 클라이언트로 받는다.
+- **동의**: `PUT`·`DELETE`는 다른 프로필 쓰기처럼 현재 버전 필수 동의가 없으면 403 `CONSENT_REQUIRED`("개인정보 동의"). `GET`은 막지 않는다.
+- **계정 삭제**: `users` cascade로 함께 지운다(아래 "계정 삭제").
+- **명함에 싣기**:
+  - 요청: `POST /v1/cards`·`PUT /v1/cards/:id`에 `includePhoto?: boolean`(생략하면 true). 제작 화면의 "사진 넣기" 스위치(기본 켬, 프로필 사진이 없으면 스위치 대신 "프로필에서 사진을 넣을 수 있어요"). 프로필 사진이 없으면 true여도 사진 없는 명함이 된다.
+  - **발행 시점 복사**: 명함은 발행 시점 스냅샷이므로 프로필 사진을 참조하지 않고 그때의 바이트를 명함 쪽에 복사한다. V59 `business_card_photos(card_id pk → business_cards on delete cascade, data bytea)`와 `business_cards.photo_updated_at`(복사한 프로필 사진의 `updated_at`, 없으면 null). 프로필 사진을 바꾸거나 지워도 이미 낸 명함의 사진은 그대로이고, 바꾸려면 명함을 고치거나(`PUT /v1/cards/:id`가 그때 프로필 사진으로 다시 복사, `includePhoto=false`면 비움) 지운다. 앱은 프로필 사진을 지울 때 "이미 만든 명함의 사진은 명함을 고치거나 지워야 바뀌어요" 안내를 둔다(사용자 확인 필요한 결과).
+  - 응답: Card(내 명함 목록·발행·고치기·공개 조회·지갑·게스트 목록)에 `photoUrl: "/v1/cards/:id/photo?v=<ms>" | null`. `GET /v1/cards/:id/photo`는 `GET /v1/cards/:id`와 같은 조회 권한(주인·받은 명함·게스트 저장·유효한 `?code=`, "명함 QR 코드")이고 실패도 같은 403·404다(사진이 없으면 404). `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`.
+  - 명함 지우기·어드민 내리기는 내용과 함께 사진도 바로 지운다(위 "명함 지우기", V56 규칙과 같다).
+  - 웹 `/cards/:id`: 로드 뒤 주소에서 `code`를 지우므로 `<img>`가 코드를 실을 수 없다. 웹 프록시(`/api/cards/:id`)가 명함을 조회할 때 `photoUrl`이 있으면 사진도 같은 권한(코드·게스트 쿠키)으로 받아 응답에 `photo: "data:image/jpeg;base64,…"`로 넣고, 카드 면은 이니셜 원 대신 원형 사진을 그린다. 사진을 못 받으면 이니셜 그대로. `/saved` 목록 행은 이니셜 그대로다. 오픈그래프에는 넣지 않는다("오픈그래프" — 이름·사진 미포함 그대로).
+  - 신고 스냅샷: 사칭·부적절 신고의 근거라 신고 시점 명함 사진도 V59 `card_report_photos(report_id pk → card_reports on delete cascade, data bytea)`에 복사해 둔다(`card_snapshot`과 같은 수명: 신고일 1개월 뒤 삭제, 내 명함에 대한 신고는 계정 삭제 때 삭제). 24시간 안 재신고(기존 신고 200)는 다시 복사하지 않는다. 어드민 `GET /v1/admin/card-reports/:id/photo`(ADMIN, `image/jpeg`, `no-store`, 없으면 404).
+
 ### 명함·지갑
 
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
+| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[], includePhoto?}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introduction`은 발행(고치기) 시점 프로필 자기소개를 **그대로 복사한** 공개 본문(마크다운)이다. `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], photoUrl, createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introduction`은 발행(고치기) 시점 프로필 자기소개를 **그대로 복사한** 공개 본문(마크다운)이다. `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. `photoUrl`(`includePhoto`)은 위 "프로필 사진".
 - **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
@@ -315,7 +339,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - 되돌릴 수 없다. 앱은 내 프로필 탭 맨 아래 "계정 삭제"에서 확인 대화상자("계정을 삭제할까요?" / "명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.")를 거쳐 부른다. 성공하면 저장한 토큰과 메모리의 계정 데이터를 지우고 로그아웃 상태로 돌아간다. 401 뒤 refresh도 거절되면 로그아웃된 것으로 본다.
 - 지우는 것
-  - 사용자, 역할, 연락처, 프로필, 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
+  - 사용자, 역할, 연락처, 프로필, 프로필 사진(2026-10-26), 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
   - refresh token. 이미 발급한 access token은 수명(1분)이 지나면 끝난다.
   - 패스키 user entity와 credential. 기기에 남은 패스키는 앱이 지울 수 없어 안내만 한다(iOS "설정 > 암호", Android "비밀번호 관리자").
   - 외부 로그인 연결

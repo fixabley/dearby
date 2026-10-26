@@ -18,21 +18,21 @@ import java.util.*
 class CardService(private val cards: CardRepository, private val profiles: ProfileRepository, private val wallet: WalletRepository, private val codes: CardQrCodes) {
 
     @Transactional
-    fun publish(ownerId: UserId, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
+    fun publish(ownerId: UserId, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>, includePhoto: Boolean = true): BusinessCard {
         val now = OffsetDateTime.now(ZoneOffset.UTC)
         val card = snapshot(UUID.randomUUID(), ownerId, name, description, contactIds, historyIds, createdAt = now, updatedAt = now)
         cards.create(card)
-        return card
+        return card.copy(photoUpdatedAt = cards.snapshotPhoto(card.id, ownerId, includePhoto))
     }
 
     // 명함 고치기(native-v1.md "명함 고치기는 같은 명함을 수정"): 같은 id·createdAt으로 현재 프로필 기준 스냅샷을 다시 만든다.
     // 없거나 철회됐거나 남의 명함이면 모두 404(지우기의 403과 다르다)
     @Transactional
-    fun update(ownerId: UserId, id: UUID, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
+    fun update(ownerId: UserId, id: UUID, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>, includePhoto: Boolean = true): BusinessCard {
         val existing = cards.find(id)?.takeIf { it.ownerId == ownerId } ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found or not owned: $id by $ownerId")
         val card = snapshot(id, ownerId, name, description, contactIds, historyIds, createdAt = existing.createdAt, updatedAt = OffsetDateTime.now(ZoneOffset.UTC))
         if (!cards.update(card)) throw NotFoundException("명함을 찾을 수 없습니다", "Card revoked while updating: $id")
-        return card
+        return card.copy(photoUpdatedAt = cards.snapshotPhoto(id, ownerId, includePhoto))
     }
 
     // POST·PUT 공통 검증과 스냅샷 만들기. 프로필의 공개 선택분을 복사하고, 본문(introduction)은 프로필 자기소개 그대로다
@@ -79,6 +79,13 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
         val holder = viewer != null && (card.ownerId == viewer || wallet.findReceipt(viewer, id) != null)
         if (!holder && !guestHolds) codes.require(id, code)
         return card
+    }
+
+    // 명함 사진(native-v1.md "프로필 사진"): 명함 조회와 같은 근거로 본다. 사진 없는 명함은 404
+    @Transactional(readOnly = true)
+    fun photo(id: UUID, viewer: UserId?, guestHolds: Boolean, code: String?): ByteArray {
+        view(id, viewer, guestHolds, code)
+        return cards.photo(id) ?: throw NotFoundException("명함 사진이 없습니다", "Card photo not found: $id")
     }
 
     @Transactional

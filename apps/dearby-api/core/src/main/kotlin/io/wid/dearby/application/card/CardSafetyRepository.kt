@@ -13,6 +13,11 @@ interface CardSafetyRepository {
 
     fun createReport(report: CardReport)
 
+    // 신고 시점 명함 사진을 신고 쪽에 복사한다(사진 없는 명함이면 아무것도 하지 않는다). 신고 행과 함께 지워진다
+    fun copyCardPhoto(reportId: UUID, cardId: UUID)
+
+    fun reportPhoto(reportId: UUID): ByteArray?
+
     // 같은 신고자(계정 또는 게스트)가 since 뒤에 같은 명함을 신고한 것. 신고자가 없으면(코드로만 본 사람) 찾지 않는다
     fun recentReport(cardId: UUID, reporterUserId: UserId?, reporterGuestDigest: String?, since: OffsetDateTime): CardReport?
 

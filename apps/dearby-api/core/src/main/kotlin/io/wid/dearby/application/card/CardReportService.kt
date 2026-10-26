@@ -32,6 +32,7 @@ class CardReportService(private val cards: CardService, private val safety: Card
         safety.recentReport(cardId, viewer, reporterGuest, now.minus(DEDUPE))?.let { return Filed(it, created = false) }
         val report = CardReport(UUID.randomUUID(), cardId, viewer, reporterGuest, parsed, text, CardSnapshot.of(card), ReportStatus.OPEN, now, null)
         safety.createReport(report)
+        safety.copyCardPhoto(report.id, cardId)
         return Filed(report, created = true)
     }
 

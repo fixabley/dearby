@@ -97,6 +97,23 @@ function logoQuery(url: URL): URLSearchParams | undefined {
 }
 // Stored logo kinds (admin-v1.md "프로그램 로고"); any other upstream type is not served under this origin.
 const LOGO_TYPE = /^image\/(png|jpeg|webp)$/;
+// The API re-encodes card photos to a 512px JPEG (contract "프로필 사진"), far under this.
+const MAX_PHOTO_BYTES = 1024 * 1024;
+/**
+ * 명함 사진 as a data URI, asked with the card view's own right (QR code or guest token). The photo is decoration:
+ * any failure leaves the initial avatar.
+ */
+async function cardPhoto(id: string, query: URLSearchParams | undefined, token: string | undefined) {
+  try {
+    const result = await upstreamFetch(`cards/${id}/photo`, { guest: token !== undefined, token, query, accept: "image/jpeg" });
+    if (!result.ok || result.headers.get("content-type") !== "image/jpeg") return;
+    const bytes = await result.arrayBuffer();
+    if (bytes.byteLength > MAX_PHOTO_BYTES) return;
+    return `data:image/jpeg;base64,${Buffer.from(bytes).toString("base64")}`;
+  } catch {
+    return;
+  }
+}
 
 export async function proxy(
   request: Request,
@@ -272,6 +289,10 @@ export async function proxy(
           : guest
           ? guestListSchema.parse(json)
           : cardSchema.parse(json);
+    if (cardRoute && typeof (json as { photoUrl?: unknown }).photoUrl === "string") {
+      const photo = await cardPhoto(id, query, cardAsGuest ? token : undefined);
+      return Response.json({ ...output, ...(photo && { photo }) }, { headers: outputHeaders });
+    }
     return Response.json(output, { headers: outputHeaders });
   } catch {
     return failure(502, "UPSTREAM_UNAVAILABLE");

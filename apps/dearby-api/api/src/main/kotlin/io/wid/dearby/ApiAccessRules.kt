@@ -24,6 +24,8 @@ class ApiAccessRules : AccessRules {
         authorize(HttpMethod.GET, "/v1/tags", permitAll)
         // 공개 명함(native-v1.md "프로필·명함 v2")
         authorize(HttpMethod.GET, "/v1/cards/*", permitAll)
+        // 명함 사진: 볼 근거는 명함 조회와 같다(CardService.photo, native-v1.md "프로필 사진")
+        authorize(HttpMethod.GET, "/v1/cards/*/photo", permitAll)
         // 명함 신고: 게스트·QR 코드로 본 사람도 한다. 볼 권한은 CardReportService가 확인한다(native-v1.md "명함 신고·차단")
         authorize(HttpMethod.POST, "/v1/cards/*/reports", permitAll)
         // 웹 비로그인 저장: 로그인 대신 프록시 키·세션 토큰 헤더를 본다(adaptor/web/v1/guest)

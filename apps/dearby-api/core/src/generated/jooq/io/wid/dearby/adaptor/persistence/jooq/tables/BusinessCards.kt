@@ -7,7 +7,9 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.BUSINESS_CARDS_USER_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARDS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARD_PHOTOS__BUSINESS_CARD_PHOTOS_CARD_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.CARD_QR_CODES__CARD_QR_CODES_CARD_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos.BusinessCardPhotosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes.CardQrCodesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
 
@@ -150,6 +152,11 @@ open class BusinessCards(
      */
     val UPDATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.business_cards.photo_updated_at</code>.
+     */
+    val PHOTO_UPDATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("photo_updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -185,6 +192,22 @@ open class BusinessCards(
     override fun getIndexes(): List<Index> = listOf(BUSINESS_CARDS_USER_ID_IDX)
     override fun getIdentity(): Identity<BusinessCardsRecord, Long?> = super.getIdentity() as Identity<BusinessCardsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<BusinessCardsRecord> = BUSINESS_CARDS_PKEY
+
+    private lateinit var _businessCardPhotos: BusinessCardPhotosPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.business_card_photos</code> table
+     */
+    fun businessCardPhotos(): BusinessCardPhotosPath {
+        if (!this::_businessCardPhotos.isInitialized)
+            _businessCardPhotos = BusinessCardPhotosPath(this, null, BUSINESS_CARD_PHOTOS__BUSINESS_CARD_PHOTOS_CARD_ID_FKEY.inverseKey)
+
+        return _businessCardPhotos;
+    }
+
+    val businessCardPhotos: BusinessCardPhotosPath
+        get(): BusinessCardPhotosPath = businessCardPhotos()
 
     private lateinit var _cardQrCodes: CardQrCodesPath
 

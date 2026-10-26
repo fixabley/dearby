@@ -9,4 +9,6 @@ data class CardPublishRequest(
     @Suppress("unused") val template: String? = null,
     val contactIds: List<UUID> = emptyList(),
     val historyIds: List<UUID> = emptyList(),
+    // 사진 넣기(native-v1.md "프로필 사진"). 생략하면 넣는다. 프로필 사진이 없으면 사진 없는 명함
+    val includePhoto: Boolean = true,
 )

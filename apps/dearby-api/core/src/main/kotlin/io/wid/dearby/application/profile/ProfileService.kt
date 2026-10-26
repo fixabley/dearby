@@ -27,6 +27,7 @@ class ProfileService(
     private val profiles: ProfileRepository,
     private val versions: ProfileVersionRepository,
     private val evidence: EvidenceRepository,
+    private val photos: ProfilePhotoRepository,
     private val reviews: HistoryReviewRepository,
     private val organizations: OrganizationRepository,
     private val programs: ProgramRepository,
@@ -114,6 +115,32 @@ class ProfileService(
         if (history.verification != VerificationStatus.VERIFIED && evidence.count(historyId) == 0) {
             reviews.updateVerification(historyId, VerificationStatus.UNVERIFIED)
         }
+    }
+
+    // 프로필 사진(native-v1.md "프로필 사진"): 앱이 정사각형으로 자른 JPEG·PNG를 서버가 다시 인코딩해 둔다. 버전 스냅샷과 무관하다
+    @Transactional
+    fun putPhoto(userId: UserId, contentType: String, data: ByteArray): OffsetDateTime {
+        requireConsent(userId)
+        if (contentType !in PHOTO_TYPES) throw InvalidInputException("사진은 JPEG·PNG만 올릴 수 있습니다")
+        if (data.isEmpty() || data.size > MAX_PHOTO_BYTES) throw InvalidInputException("사진은 5MB까지입니다")
+        val encoded = ProfilePhotoImage.reencode(data)
+        // DB(timestamptz)는 마이크로초까지라 photoUrl의 버전도 저장값과 같게 자른다
+        val now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)
+        photos.save(userId, encoded, now)
+        return now
+    }
+
+    @Transactional(readOnly = true)
+    fun photo(userId: UserId): ByteArray = photos.find(userId) ?: throw NotFoundException("프로필 사진이 없습니다", "Profile photo not found: $userId")
+
+    @Transactional(readOnly = true)
+    fun photoUpdatedAt(userId: UserId): OffsetDateTime? = photos.updatedAt(userId)
+
+    // 없어도 204(한 칸짜리라 지운 상태가 목표)
+    @Transactional
+    fun deletePhoto(userId: UserId) {
+        requireConsent(userId)
+        photos.delete(userId)
     }
 
     // 개인정보 동의(native-v1.md "개인정보 동의"): 기록이 없거나 버전이 다르면 프로필 쓰기를 막는다
@@ -292,7 +319,9 @@ class ProfileService(
         const val MAX_EVIDENCE_PER_HISTORY = 3
         const val MAX_JOBS = 10
         const val MAX_EVIDENCE_BYTES = 5 * 1024 * 1024
+        const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
         val EVIDENCE_TYPES = setOf("image/jpeg", "image/png", "image/webp", "application/pdf")
+        val PHOTO_TYPES = setOf("image/jpeg", "image/png")
         private const val MAX_NAME = 100
         private const val MAX_VALUE = 500
         private const val MAX_ACTIVITY_INFO_NAME = 200
