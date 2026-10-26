@@ -150,9 +150,13 @@ private struct FavoriteMonthCalendar: UIViewRepresentable {
                 parent.monthChanged(SeoulDay(year: year, month: month, day: 1))
             }
         }
-        /// 마감 filled teal, 모집 시작 hollow mint, 행사 filled grey, then a pink 내 시간표 (찜한 세션) dot, side by side.
+        /// 마감 filled teal, 모집 시작 hollow mint, 행사 filled grey, then a pink 내 시간표 (찜한 세션) dot, side by side. VoiceOver reads the
+        /// dots as one label (`마감, 내 시간표 세션 있음`).
         private static func dots(_ kinds: Set<FavoriteDate.Kind>, session: Bool) -> UIView {
             let stack = UIStackView()
+            stack.isAccessibilityElement = true
+            stack.accessibilityLabel = ([FavoriteDate.Kind.deadline, .start, .event].filter(kinds.contains).map(\.label)
+                                        + (session ? ["내 시간표 세션 있음"] : [])).joined(separator: ", ")
             stack.axis = .horizontal
             stack.spacing = 2
             for kind in [FavoriteDate.Kind.deadline, .start, .event] where kinds.contains(kind) {

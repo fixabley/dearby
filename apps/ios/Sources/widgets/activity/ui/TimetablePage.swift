@@ -87,7 +87,7 @@ struct TimetablePage: View {
             CenteredMessage(symbol: "heart", title: "내 시간표는 계정에 모여요", message: "로그인하면 듣고 싶은 세션을 찜해 내 시간표로 볼 수 있어요.",
                             primary: MessageAction("로그인") { favorites.signInRequested = true })
         } else if mine.isEmpty {
-            CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요")
+            CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요.")
         } else {
             ScrollView {
                 MyTimetableList(items: mine.map { MyTimetable.Item(session: $0, track: timetable.track($0.trackID)) }, zone: timetable.zone) { opened = $0 }
@@ -212,7 +212,7 @@ struct TimetableTable: View {
 }
 
 /// 내 시간표 (contract "트랙·세션 시간표" 2026-10-26 `내 시간표(찜한 세션)`): the favorited sessions in time order, one per line with its time and a large
-/// track·room badge (where to go), the free time and the move between them, and a warning band before sessions favorited at the same time.
+/// track·room badge (where to go), the free time and the move between them, and a warning band (`같은 시간대에 세션이 겹쳐요`) before sessions favorited at the same time.
 struct MyTimetableList: View {
     let items: [MyTimetable.Item]
     let zone: String
@@ -224,7 +224,7 @@ struct MyTimetableList: View {
                 case .session(let item):
                     TimetableSessionCard(session: item.session, track: item.track, zone: zone, showsTime: true, largeTrack: true) { open(item.session) }
                 case .overlap(let count):
-                    Label("같은 시간에 찜한 세션 \(count)개 · 하나만 들을 수 있어요", systemImage: "exclamationmark.triangle.fill")
+                    Label("같은 시간대에 세션이 겹쳐요", systemImage: "exclamationmark.triangle.fill")
                         .font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.danger)
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(DearbyStyle.danger.opacity(0.12), in: .rect(cornerRadius: 10, style: .continuous))

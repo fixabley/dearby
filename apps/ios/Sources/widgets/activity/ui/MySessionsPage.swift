@@ -11,7 +11,7 @@ struct MySessionsPage: View {
     var body: some View {
         Group {
             if favorites.items.isEmpty {
-                CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요")
+                CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요.")
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {

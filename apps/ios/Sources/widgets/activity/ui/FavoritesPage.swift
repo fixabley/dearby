@@ -40,8 +40,10 @@ struct FavoritesPage: View {
                 Button { path.append(MySessionsRoute()) } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "heart.text.square").foregroundStyle(.pink)
-                        Text("내 시간표").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
-                        Text("· 세션 \(sessions.items.count)개").font(.dearby(.subheadline)).foregroundStyle(.secondary).monospacedDigit()
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("내 시간표 · 세션 \(sessions.items.count)개").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary).monospacedDigit()
+                            Text("시간순으로 모아 보기").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                        }
                         Spacer(minLength: 8)
                         Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
                     }
@@ -50,7 +52,7 @@ struct FavoritesPage: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).padding(.horizontal, 20).padding(.vertical, 8)
-                .accessibilityLabel("내 시간표 · 세션 \(sessions.items.count)개").accessibilityHint("누르면 내 시간표를 보여요")
+                .accessibilityLabel("내 시간표 · 세션 \(sessions.items.count)개, 시간순으로 모아 보기").accessibilityHint("누르면 내 시간표를 보여요")
                 .accessibilityIdentifier("favorite-sessions")
             }
         }
