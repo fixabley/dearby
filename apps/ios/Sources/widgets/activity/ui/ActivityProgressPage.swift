@@ -139,7 +139,6 @@ struct ActivityProgressPage: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(stage.name) 시간표, \(stage.dateText(now: Date()))").accessibilityHint("누르면 시간표를 보여요")
-        .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("timetable-\(stage.source.id)")
     }
     private func iconColor(_ stage: ActivityStage) -> Color {
