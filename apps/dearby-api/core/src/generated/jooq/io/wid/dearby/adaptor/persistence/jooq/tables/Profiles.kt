@@ -102,6 +102,11 @@ open class Profiles(
      */
     val UPDATED_AT: TableField<ProfilesRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.profiles.intro_link</code>.
+     */
+    val INTRO_LINK: TableField<ProfilesRecord, String?> = createField(DSL.name("intro_link"), SQLDataType.VARCHAR(500), this, "")
+
     private constructor(alias: Name, aliased: Table<ProfilesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProfilesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ProfilesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

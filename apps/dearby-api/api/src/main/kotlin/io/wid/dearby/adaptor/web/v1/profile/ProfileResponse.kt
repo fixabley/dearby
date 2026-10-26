@@ -11,7 +11,9 @@ data class ProfileResponse(
     val name: String,
     val jobs: List<ProfileJobResponse>,
     val job: String,
+    // 2026-10-26 폐지 예정(소개 글 폐지): 옛 앱 호환으로 늘 빈 문자열
     val introduction: String,
+    val introLink: String?,
     val contacts: List<ContactResponse>,
     val histories: List<HistoryResponse>,
     val version: Int,
@@ -25,7 +27,7 @@ data class ProfileResponse(
     companion object {
         // 버전 이력의 스냅샷(VersionResponse)은 동의 상태를 싣지 않는다(status = null)
         fun from(p: Profile, consent: ConsentStatus? = null, photoUrl: String? = null) = ProfileResponse(
-            p.userId, p.name, p.jobs.map(ProfileJobResponse::from), p.jobTitle, p.introduction,
+            p.userId, p.name, p.jobs.map(ProfileJobResponse::from), p.jobTitle, "", p.introLink,
             p.contacts.map(ContactResponse::from), p.histories.map(HistoryResponse::from), p.version, p.updatedAt,
             consent?.consent?.let(ConsentResponse::from), consent?.required ?: false, photoUrl,
         )

@@ -157,6 +157,11 @@ open class BusinessCards(
      */
     val PHOTO_UPDATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("photo_updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
 
+    /**
+     * The column <code>public.business_cards.intro_link</code>.
+     */
+    val INTRO_LINK: TableField<BusinessCardsRecord, String?> = createField(DSL.name("intro_link"), SQLDataType.VARCHAR(500), this, "")
+
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

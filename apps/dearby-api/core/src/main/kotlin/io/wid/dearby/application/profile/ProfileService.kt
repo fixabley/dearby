@@ -75,7 +75,7 @@ class ProfileService(
         val input = ProfileInput(
             name = snapshot.name,
             jobs = snapshot.jobs.map { JobInput(it.id, it.job?.id, it.jobName) },
-            introduction = snapshot.introduction,
+            introLink = snapshot.introLink,
             contacts = snapshot.contacts.map { ContactInput(it.id, it.kind.name.lowercase(), it.label, it.value) },
             histories = snapshot.histories.map {
                 HistoryInput(
@@ -196,7 +196,7 @@ class ProfileService(
         val foundJobs = jobs.findAllById(jobIds).associateBy { it.id }
         val existingJobs = current.jobs.associateBy { it.id }
         val jobEntries = input.jobs.map { job(it, foundJobs, existingJobs[it.id]) }
-        val introduction = multiline(input.introduction, "자기소개", MAX_INTRODUCTION)
+        val introLink = introLink(input.introLink)
         val existingContacts = current.contacts.associateBy { it.id }
         val contacts = input.contacts.map { contact(it, existingContacts[it.id]) }
         if (contacts.map { it.id }.toSet().size != contacts.size) throw InvalidInputException("연락처 id가 겹칩니다")
@@ -206,7 +206,7 @@ class ProfileService(
         if (input.histories.map { it.id }.toSet().size != input.histories.size) throw InvalidInputException("이력 id가 겹칩니다")
         val existing = current.histories.associateBy { it.id }
         val histories = input.histories.map { history(it, existing[it.id]) }
-        return Profile(userId, name, jobEntries, introduction, contacts, histories, current.version, current.updatedAt)
+        return Profile(userId, name, jobEntries, introLink, contacts, histories, current.version, current.updatedAt)
     }
 
     // 직무 id가 있으면 이름을 직무에서 가져오고, 없으면 직접 입력(승인 대기). 직접 입력이 그대로면 승인·거절 결과를 지킨다
@@ -253,6 +253,19 @@ class ProfileService(
     }
 
     private class UsernameRule(val host: String?, val max: Int)
+
+    // 소개 링크(native-v1.md "소개 링크·소개 글 폐지"): 비면 null, 스킴이 없으면 https://를 붙이고 https 주소(호스트에 점, 공백 없음)만 받는다
+    private fun introLink(value: String?): String? {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return null
+        val url = if (text.contains("://")) text else "https://$text"
+        val uri = runCatching { java.net.URI(url) }.getOrNull()
+        if (uri == null || !uri.scheme.equals("https", ignoreCase = true) || uri.host?.contains('.') != true || url.any { it.isWhitespace() }) {
+            throw InvalidInputException("소개 링크는 https 주소만 쓸 수 있습니다")
+        }
+        if (url.length > MAX_INTRO_LINK) throw InvalidInputException("소개 링크는 ${MAX_INTRO_LINK}자까지입니다")
+        return url
+    }
 
     // 활동 정보 id가 있으면 이름을 활동 정보에서 가져오고 직접 입력 이름은 버린다. 상태는 기존 이력과 비교해 정한다
     private fun history(input: HistoryInput, existing: History?): History {
@@ -345,7 +358,7 @@ class ProfileService(
         private const val MAX_NAME = 100
         private const val MAX_VALUE = 500
         private const val MAX_ACTIVITY_INFO_NAME = 200
-        private const val MAX_INTRODUCTION = 10_000
+        private const val MAX_INTRO_LINK = 500
         private const val MAX_DESCRIPTION = 10_000
         private val PHONE = Regex("^[0-9+\\- ]+$")
         private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")

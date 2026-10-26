@@ -77,7 +77,7 @@ class ProfileController(private val profiles: ProfileService) {
     private fun toInput(r: ProfileRequest) = ProfileInput(
         name = r.name,
         jobs = r.jobs.map { JobInput(it.id, it.jobId, it.jobName) },
-        introduction = r.introduction,
+        introLink = r.introLink,
         contacts = r.contacts.map { ContactInput(it.id, it.kind, it.label, it.value) },
         histories = r.histories.map {
             HistoryInput(

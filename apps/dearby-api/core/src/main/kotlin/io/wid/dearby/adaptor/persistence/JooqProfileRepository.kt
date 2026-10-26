@@ -30,7 +30,7 @@ class JooqProfileRepository(private val dsl: DSLContext) : ProfileRepository {
             .map { Contact(it.id!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!) }
         val historyRows = dsl.selectFrom(PROFILE_HISTORIES).where(PROFILE_HISTORIES.USER_ID.eq(userId)).orderBy(PROFILE_HISTORIES.POSITION).fetch()
         val jobRows = dsl.selectFrom(PROFILE_JOBS).where(PROFILE_JOBS.USER_ID.eq(userId)).orderBy(PROFILE_JOBS.POSITION).fetch()
-        return Profile(userId, row.name!!, jobs.load(jobRows), row.introduction!!, contacts, histories.load(historyRows), row.version!!, row.updatedAt!!)
+        return Profile(userId, row.name!!, jobs.load(jobRows), row.introLink, contacts, histories.load(historyRows), row.version!!, row.updatedAt!!)
     }
 
     // 연락처는 전부 다시 넣는다(명함은 복사본이라 영향 없음). 이력은 id가 같으면 고쳐서 인증자료(FK)와 상태를 지키고, 빠진 것은 지운다
@@ -41,13 +41,14 @@ class JooqProfileRepository(private val dsl: DSLContext) : ProfileRepository {
         dsl.insertInto(PROFILES)
             .set(PROFILES.USER_ID, userId)
             .set(PROFILES.NAME, profile.name)
-            .set(PROFILES.INTRODUCTION, profile.introduction)
+            .set(PROFILES.INTRODUCTION, "") // 소개 글 폐지(2026-10-26): 새 행만 빈 값, 기존 값은 건드리지 않는다
+            .set(PROFILES.INTRO_LINK, profile.introLink)
             .set(PROFILES.VERSION, profile.version)
             .set(PROFILES.CREATED_AT, now)
             .set(PROFILES.UPDATED_AT, profile.updatedAt)
             .onConflict(PROFILES.USER_ID).doUpdate()
             .set(PROFILES.NAME, profile.name)
-            .set(PROFILES.INTRODUCTION, profile.introduction)
+            .set(PROFILES.INTRO_LINK, profile.introLink)
             .set(PROFILES.VERSION, profile.version)
             .set(PROFILES.UPDATED_AT, profile.updatedAt)
             .execute()

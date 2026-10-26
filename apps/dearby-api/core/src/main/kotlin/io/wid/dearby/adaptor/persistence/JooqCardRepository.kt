@@ -24,7 +24,8 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
             .set(BUSINESS_CARDS.NAME, card.name)
             .set(BUSINESS_CARDS.DESCRIPTION, card.description)
             .set(BUSINESS_CARDS.TEMPLATE, card.template)
-            .set(BUSINESS_CARDS.INTRODUCTION, card.introduction)
+            .set(BUSINESS_CARDS.INTRODUCTION, "") // 소개 글 폐지(2026-10-26): 새 명함·고친 명함은 본문이 비어 있다
+            .set(BUSINESS_CARDS.INTRO_LINK, card.introLink)
             .set(BUSINESS_CARDS.PROFILE_NAME, card.profileName)
             .set(BUSINESS_CARDS.JOB, card.job)
             .set(BUSINESS_CARDS.CONTACTS, JSONB.valueOf(ProfileJson.contacts(card.contacts)))
@@ -40,7 +41,8 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
             .set(BUSINESS_CARDS.NAME, card.name)
             .set(BUSINESS_CARDS.DESCRIPTION, card.description)
             .set(BUSINESS_CARDS.TEMPLATE, card.template)
-            .set(BUSINESS_CARDS.INTRODUCTION, card.introduction)
+            .set(BUSINESS_CARDS.INTRODUCTION, "") // 소개 글 폐지(2026-10-26): 새 명함·고친 명함은 본문이 비어 있다
+            .set(BUSINESS_CARDS.INTRO_LINK, card.introLink)
             .set(BUSINESS_CARDS.PROFILE_NAME, card.profileName)
             .set(BUSINESS_CARDS.JOB, card.job)
             .set(BUSINESS_CARDS.CONTACTS, JSONB.valueOf(ProfileJson.contacts(card.contacts)))
@@ -71,6 +73,7 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
             .set(BUSINESS_CARDS.DESCRIPTION, "")
             .set(BUSINESS_CARDS.TEMPLATE, "")
             .set(BUSINESS_CARDS.INTRODUCTION, "")
+            .setNull(BUSINESS_CARDS.INTRO_LINK)
             .set(BUSINESS_CARDS.PROFILE_NAME, "")
             .set(BUSINESS_CARDS.JOB, "")
             .set(BUSINESS_CARDS.CONTACTS, JSONB.valueOf("[]"))
@@ -102,7 +105,7 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
         name = it.name!!,
         description = it.description!!,
         template = it.template!!,
-        introduction = it.introduction!!,
+        introLink = it.introLink,
         profileName = it.profileName!!,
         job = it.job!!,
         contacts = ProfileJson.readContacts(it.contacts!!.data()),
