@@ -1,5 +1,5 @@
 -- 2026-10-26 사용자 결정(native-v1.md "선발 과정·활동 일정 분리"): 일정이 선발 과정(SELECTION)인지 활동 일정(ACTIVITY)인지.
--- null이면 서버가 읽을 때 같은 규칙(SchedulePhase.infer)으로 채운다. 모집 슬롯은 늘 SELECTION, 활동 기간 슬롯은 늘 ACTIVITY
+-- null이면 서버가 읽을 때 같은 규칙(SchedulePhase.resolve)으로 채운다. 모집 슬롯은 늘 SELECTION, 활동 기간 슬롯은 늘 ACTIVITY
 alter table schedules
     add column phase varchar(20) check (phase in ('SELECTION', 'ACTIVITY')),
     add constraint schedules_slot_phase_check check (
