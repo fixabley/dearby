@@ -1,41 +1,11 @@
 // Browser side of the web sign-in (contract native-v1.md "웹 로그인"): same-origin `/api/auth/*` and the account routes of `/api/*`.
 // Tokens never arrive here; the server keeps them in HttpOnly cookies.
-import { mutateGuest, request, RequestError } from "@/lib/client";
+// The refresh-once wrapper (`accountRequest`·`accountSend`) lives in `lib/client.ts` since 내 활동 (2단계 B) shares it.
+import { accountRequest as account, accountSend, JSON_HEADERS as json, mutateGuest, request, RequestError } from "@/lib/client";
 import type { ProfileConsent } from "@/lib/models";
 
-const json = { "Content-Type": "application/json", "X-Dearby-Request": "1" };
 function send<T>(path: string, method: "POST" | "PATCH" | "DELETE", body: unknown = {}) {
   return request<T>(path, { method, headers: json, body: JSON.stringify(body) });
-}
-
-/**
- * Refreshes the session once (contract "refresh 회전"): `POST /api/auth/refresh` under a Web Lock so tabs take turns, and the route
- * itself skips the rotation when another caller just did it. `false` means the refresh token was refused — signed out.
- */
-async function refreshOnce(): Promise<boolean> {
-  const work = async () => {
-    try {
-      await send<unknown>("/auth/refresh", "POST");
-      return true;
-    } catch (error) {
-      if (error instanceof RequestError && error.status === 401) return false;
-      throw error;
-    }
-  };
-  return navigator.locks ? navigator.locks.request("dearby-auth-refresh", work) : work();
-}
-/** An account request: on 401 (expired access token) refresh once and retry; a second 401 means the session is over. */
-async function account<T>(path: string, init?: RequestInit): Promise<T> {
-  try {
-    return await request<T>(path, init);
-  } catch (error) {
-    if (!(error instanceof RequestError && error.status === 401)) throw error;
-    if (!(await refreshOnce())) throw error;
-    return request<T>(path, init);
-  }
-}
-function accountSend<T>(path: string, method: "POST" | "PATCH" | "DELETE", body: unknown = {}) {
-  return account<T>(path, { method, headers: json, body: JSON.stringify(body) });
 }
 
 export type Session = { signedIn: boolean; consent?: ProfileConsent | null };

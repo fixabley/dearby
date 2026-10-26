@@ -63,6 +63,7 @@ export function upstreamFetch(
     query,
     accept = "application/json",
     acceptLanguage,
+    ifMatch,
     revalidate,
   }: {
     method?: string;
@@ -76,6 +77,8 @@ export function upstreamFetch(
     accept?: string;
     /** Already validated; the API answers activity text in ko or en from it. */
     acceptLanguage?: string;
+    /** Already validated `If-Match` of an account mutation (the profile version check). */
+    ifMatch?: string;
     /** Seconds to keep the response in the data cache (public, cookie-free reads such as Open Graph); otherwise never cached. */
     revalidate?: number;
   },
@@ -89,6 +92,7 @@ export function upstreamFetch(
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (acceptLanguage) headers["Accept-Language"] = acceptLanguage;
+  if (ifMatch) headers["If-Match"] = ifMatch;
   const url = new URL(`/v1/${path}`, origin);
   if (query) url.search = query.toString();
   return fetch(url, {
