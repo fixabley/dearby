@@ -24,7 +24,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmbeddingSettings
+import io.wid.dearby.adaptor.persistence.jooq.tables.GithubContactLinks
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
@@ -202,9 +204,19 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources get() = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
 
     /**
+     * The table <code>public.email_contact_challenges</code>.
+     */
+    val EMAIL_CONTACT_CHALLENGES: EmailContactChallenges get() = EmailContactChallenges.EMAIL_CONTACT_CHALLENGES
+
+    /**
      * The table <code>public.embedding_settings</code>.
      */
     val EMBEDDING_SETTINGS: EmbeddingSettings get() = EmbeddingSettings.EMBEDDING_SETTINGS
+
+    /**
+     * The table <code>public.github_contact_links</code>.
+     */
+    val GITHUB_CONTACT_LINKS: GithubContactLinks get() = GithubContactLinks.GITHUB_CONTACT_LINKS
 
     /**
      * The table <code>public.guest_cards</code>.
@@ -499,7 +511,9 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         Contacts.CONTACTS,
         DiscoveryQueue.DISCOVERY_QUEUE,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
+        EmailContactChallenges.EMAIL_CONTACT_CHALLENGES,
         EmbeddingSettings.EMBEDDING_SETTINGS,
+        GithubContactLinks.GITHUB_CONTACT_LINKS,
         GuestCards.GUEST_CARDS,
         GuestHandoffs.GUEST_HANDOFFS,
         GuestSessions.GUEST_SESSIONS,

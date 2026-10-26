@@ -48,13 +48,17 @@ export function apiOrigin() {
   }
 }
 
-/** One upstream call with an already validated query; guest calls carry the server-held proxy key and, if given, the cookie token. */
+/**
+ * One upstream call with an already validated query; guest calls carry the server-held proxy key and, if given, the cookie token;
+ * account calls carry the access token from the session cookie as `Authorization: Bearer` (contract "웹 로그인").
+ */
 export function upstreamFetch(
   path: string,
   {
     method = "GET",
     guest = false,
     token,
+    bearer,
     body,
     query,
     accept = "application/json",
@@ -64,6 +68,8 @@ export function upstreamFetch(
     method?: string;
     guest?: boolean;
     token?: string;
+    /** Access token of the signed-in account; never a browser-supplied header. */
+    bearer?: string;
     body?: unknown;
     query?: URLSearchParams;
     /** Response kind asked of the API; JSON everywhere except the program logo image. */
@@ -80,6 +86,7 @@ export function upstreamFetch(
   const headers: Record<string, string> = { Accept: accept };
   if (guest) headers["X-Guest-Proxy-Key"] = key!;
   if (guest && token) headers["X-Guest-Token"] = token;
+  if (bearer) headers.Authorization = `Bearer ${bearer}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (acceptLanguage) headers["Accept-Language"] = acceptLanguage;
   const url = new URL(`/v1/${path}`, origin);

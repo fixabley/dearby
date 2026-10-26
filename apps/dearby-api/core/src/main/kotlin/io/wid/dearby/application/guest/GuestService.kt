@@ -3,8 +3,10 @@ package io.wid.dearby.application.guest
 import io.wid.dearby.application.card.CardQrCodes
 import io.wid.dearby.application.card.CardRepository
 import io.wid.dearby.application.card.CardSafetyRepository
+import io.wid.dearby.application.card.ExchangeContextRepository
 import io.wid.dearby.application.card.WalletService
 import io.wid.dearby.domain.card.CardBlock
+import io.wid.dearby.domain.card.ExchangeRef
 import io.wid.dearby.domain.*
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,7 +26,10 @@ import javax.crypto.spec.SecretKeySpec
 // 웹 비로그인 저장(native-v1.md "웹 비로그인 명함 저장"·"홈 화면 세션 잇기").
 // 세션은 토큰 digest만 저장하고 자동 만료가 없다. 요청 제한은 프로세스 메모리의 1분 창이다
 @Service
-class GuestService(private val guests: GuestRepository, private val cards: CardRepository, private val codes: CardQrCodes, private val safety: CardSafetyRepository) {
+class GuestService(
+    private val guests: GuestRepository, private val cards: CardRepository, private val codes: CardQrCodes, private val safety: CardSafetyRepository,
+    private val contexts: ExchangeContextRepository,
+) {
 
     // 1분 창 카운터(재시작 때 초기화). forwarded IP는 믿지 않는다
     private var windowStart = 0L
@@ -54,8 +59,8 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
         if (existing != null && safety.isBlocked(null, existing, card.ownerId)) throw ConflictException(WalletService.BLOCKED_DETAIL, "guest saved blocked owner's card: $cardId", code = WalletService.BLOCKED)
         if (existing == null || !guests.hasCard(existing, cardId)) codes.require(cardId, code)
         val (digest, newToken) = if (existing != null) existing to null else sessionOrNew(null)
-        // 활동은 처음 저장할 때만 기록하고, 모르는 id는 null로 둔다(native-v1.md "명함 교환")
-        val saved = addCard(digest, cardId, activityId?.takeIf(guests::activityExists))
+        // 맥락은 처음 저장할 때만 기록한다. 활동이 있으면 지금 진행 중인 블록까지 판정하고(비로그인은 찜이 없어 세션은 없다), 모르는 id는 맥락 없음(native-v1.md "명함 교환")
+        val saved = addCard(digest, cardId, activityId?.let { contexts.locate(it, null, now()) } ?: ExchangeRef.NONE)
         return GuestSaveResult(cardId, if (saved) "saved" else "alreadySaved", newToken)
     }
 
@@ -139,11 +144,11 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
         return digest to newToken
     }
 
-    private fun addCard(digest: String, cardId: UUID, activityId: Id?): Boolean {
+    private fun addCard(digest: String, cardId: UUID, context: ExchangeRef): Boolean {
         guests.pruneRevoked(digest)
         if (guests.hasCard(digest, cardId)) return false
         if (guests.cardCount(digest) >= MAX_CARDS) throw ConflictException("저장할 수 있는 명함 수를 넘었습니다")
-        guests.addCard(digest, cardId, activityId)
+        guests.addCard(digest, cardId, context)
         return true
     }
 

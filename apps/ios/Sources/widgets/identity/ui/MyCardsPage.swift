@@ -13,8 +13,9 @@ struct MyCardsPage: View {
     /// 이 명함 지우기: the card awaiting confirmation; the server removes it and its public link.
     @State private var deletingCard: PublishedCard?
     @State private var deleteFailed = false
-    /// QR 보이기 for the selected card (contract "명함 교환").
+    /// QR 보이기 for the selected card (contract "명함 교환"), with the activity the 오늘 내 행사 card asked for (`MyCardsModel.qrActivityID`), if any.
     @State private var showingQR: PublishedCard?
+    @State private var qrActivity: String?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
         Group {
@@ -48,15 +49,29 @@ struct MyCardsPage: View {
             .sheet(isPresented: $signingIn) {
                 NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
             }
-            .sheet(item: $showingQR) { card in
-                NavigationStack { CardQRSheet(cardName: card.name, cardID: card.id, cards: state, activities: state.appliedActivities()) }
+            .sheet(item: $showingQR, onDismiss: { qrActivity = nil }) { card in
+                NavigationStack {
+                    CardQRSheet(cardName: card.name, cardID: card.id, cards: state, activities: state.appliedActivities(), preselected: qrActivity)
+                }
             }
+            // The 오늘 내 행사 card's `명함 QR`: once the cards are loaded, the selected card's QR with that activity; no card to show drops the ask.
+            .onChange(of: state.qrActivityID, initial: true) { _, _ in openRequestedQR() }
+            .onChange(of: state.phase) { _, _ in openRequestedQR() }
             .confirmationDialog("이 명함을 지울까요?", isPresented: Binding(get: { deletingCard != nil }, set: { if !$0 { deletingCard = nil } }),
                                 titleVisibility: .visible, presenting: deletingCard) { card in
                 Button("지우기", role: .destructive) { Task { deleteFailed = !(await state.delete(card.id)) } }
                 Button("취소", role: .cancel) {}
             } message: { _ in Text("공개 링크도 더 열리지 않아요. 되돌릴 수 없어요.") }
             .alert("명함을 지우지 못했어요", isPresented: $deleteFailed) { Button("확인") {} } message: { Text("연결을 확인하고 다시 시도해 주세요.") }
+    }
+    /// `qrActivityID` while the list is loading waits; loaded with a card opens the QR on that activity; signed out, no card or failed drops it
+    /// (the page already shows what to do instead).
+    private func openRequestedQR() {
+        guard let activityID = state.qrActivityID, state.phase != .loading else { return }
+        state.qrActivityID = nil
+        guard state.phase == .loaded, let card = state.card else { return }
+        qrActivity = activityID
+        showingQR = card
     }
     /// 2-column grid of the account's cards, newest first, behind a "+ 새 명함" tile; the chosen card renders below.
     @ViewBuilder private var cards: some View {

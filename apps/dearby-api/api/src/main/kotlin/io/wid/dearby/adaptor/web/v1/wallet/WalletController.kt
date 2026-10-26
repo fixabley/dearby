@@ -31,6 +31,10 @@ class WalletController(private val wallet: WalletService) {
         return ReciprocateResponse(true)
     }
 
+    // 비로그인 저장 → 계정 합치기(native-v1.md "웹 로그인"). 웹 Next 서버가 게스트 쿠키의 토큰을 본문에 넣어 부른다. 토큰 형식·모르는 세션은 400 GUEST_SESSION_INVALID
+    @PostMapping("/import-guest")
+    fun importGuest(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: GuestImportRequest) = GuestImportResponse(wallet.importGuest(userId(jwt), request.guestToken))
+
     // 차단(native-v1.md "명함 신고·차단"): 그 명함 주인의 명함을 내 지갑에서 모두 빼고 기록한다. 이미 차단했으면 그 기록(201)
     @PostMapping("/blocks")
     @ResponseStatus(HttpStatus.CREATED)

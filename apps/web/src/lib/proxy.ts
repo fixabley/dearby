@@ -10,6 +10,7 @@ import {
   timetableSchema,
   uuid,
 } from "./models";
+import { accountProxy, isAccountRoute } from "./account-proxy";
 import {
   apiOrigin,
   guestCookie,
@@ -129,6 +130,8 @@ export async function proxy(
   segments: string[],
 ): Promise<Response> {
   const path = segments.join("/");
+  // Signed-in account routes (contract "웹 로그인"): Bearer from the session cookie, handled apart from the public and guest rules.
+  if (isAccountRoute(request.method, segments)) return accountProxy(request, segments);
   const guest = segments[0] === "guest";
   // `discovery/*` has no id segment; treating "programs" as one failed the uuid check and 422-ed every discovery list.
   const id = segments[0] === "discovery" ? "" : segments[guest ? 2 : 1];

@@ -37,7 +37,7 @@
 | `queue_exit` | 끝 전 닫음 | `position`(마지막으로 본 카드) |
 | `queue_ad_shown` | 대기열 끝 광고 카드가 화면에 보임(열람당 최대 1번, 2026-10-25) | `viewed`(그때까지 본 활동 카드 수) |
 | `att_prompt_result` (선택, iOS만) | 대기열 첫 광고 요청 전 ATT 창에 답함(창을 띄운 경우만) | `status` = `authorized`·`denied`·`restricted` |
-| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없어 광고를 끈 빌드는 보내지 않는다. 광고 미동의 계정에게 그 자리에서 광고 동의 시트를 띄운 열람도 광고를 요청하지 않았으므로 보내지 않는다, 2026-10-26) |
+| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없거나 `DEARBY_ADS_ENABLED`가 꺼져(2026-10-26부터 기본, native-v1.md "광고 끄기") 광고를 끈 빌드는 보내지 않는다. 광고 미동의 계정에게 그 자리에서 광고 동의 시트를 띄운 열람도 광고를 요청하지 않았으므로 보내지 않는다, 2026-10-26) |
 
 도달률 = `queue_card_view(position=n)` 사용자 수 ÷ `queue_open` 사용자 수(n=1…10), 완주율 = `queue_end` ÷ `queue_open`. 광고 카드는 끝 화면 전이므로 광고 카드에서 닫으면 `queue_exit`(`position` = 마지막 활동 카드 번호)를 보내고 완주로 세지 않는다. 광고 노출률 = `queue_ad_shown` ÷ (`queue_ad_shown` + `queue_ad_skipped_unloaded`). 클릭·수익은 AdMob 보고서로 본다([native-v1.md](native-v1.md) "맞춤 대기열 끝 광고").
 
@@ -50,6 +50,7 @@
 | `myactivity_add` | `activity_id`, `field`, `category`, `source` |
 | `apply_click`(공식 신청 링크) | `activity_id`, `field`, `category`, `source` |
 | `push_open`(알림을 눌러 앱 열림) | `kind` = `new`·`application`·`schedule`·`summary` |
+| `session_reminder_scheduled`(찜한 세션 이동 알림을 기기에 예약함, 2026-10-26, [native-v1.md](native-v1.md) "찜한 세션 이동 알림") | `count`(이번에 예약한 알림 수; 찜 변경·스위치·포그라운드 복귀로 다시 예약해 실제로 넣을 때마다. 로컬 알림이라 눌러도 `push_open`은 보내지 않는다) |
 
 유입경로 예: `activity_view` → `favorite_add` 또는 `myactivity_add` → `apply_click`.
 
@@ -59,8 +60,9 @@
 | `tab_select` | 하단 탭을 누름(앱 시작 때 첫 탭은 보내지 않음) | `tab` = `discovery`·`my_activity`·`cards`·`profile` |
 | `menu_open` | 탭 안의 주요 메뉴·행을 엶 | `menu` = `my_activity_list`·`favorites`·`queue`·`funnel`·`eligibility`·`interests`·`notifications`·`my_cards`·`received_cards`·`card_create`·`profile_edit`·`history`·`settings`·`notifications_inbox`(알림 목록, 종 버튼)(새 메뉴는 이 목록에 먼저 더한다) |
 | `discovery_mode` | 발견 맨 위 `프로그램 \| 이벤트` 전환을 사용자가 바꿈(앱 시작 때 기억된 값은 보내지 않음, 2026-10-26) | `mode` = `program`·`event` |
-| `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`) |
-| `discovery_category_filter` | 발견 `종류` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
+| `discovery_status_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `활동 상태` 묶음이 실제로 바뀜(기억된 값 복원·시트 안 체크만은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태"·"필터 시트") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`; `in_progress`는 2026-10-26 재정의 뒤 `진행·예정`) |
+| `discovery_category_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `종류`가 실제로 바뀜(기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음; 이벤트 모드에는 종류 필터가 없다, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터"·"필터 시트") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
+| `today_card_tap` | 발견 맨 위 `오늘 내 행사` 카드를 누름(2026-10-26, [native-v1.md](native-v1.md) "오늘 내 행사 카드") | `target` = `timetable`(오늘, 블록 시간표 시트)·`progress`(진행 단계)·`qr`(`명함 QR`), `activity_id`, `field`, `category` |
 
 접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
 
@@ -74,12 +76,13 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 - 화면 이름: `discovery`, `activity_detail`, `program_detail`, `queue`, `funnel`, `my_activity`, `activity_progress`, `favorites`, `my_cards`, `received_cards`, `profile`, `settings`, `notifications_inbox`, `timetable`(시간표 모달 시트 — 활동 상세의 일정 행을 눌러 열 때마다, 2026-10-26), `session_favorites`(즐겨찾기 › 찜한 세션), `card_qr`(내 명함 QR 시트 — 앱 구현 시, 2026-10-26 "비공개 테스트 성공 지표"). (`favorites_calendar` 화면·메뉴 값은 2026-10-26 즐겨찾기 목록 보기를 없애며 지웠다. 즐겨찾기는 `favorites` 하나다.)
 - `menu_open(history)`는 프로필 이력 입력, `menu_open(notifications)`는 프로필의 `기기 알림이 꺼져 있어요` 행(iOS는 알림 묶음이 프로필 안에 펼쳐져 있다).
 - `push_open`의 `kind`: 지금 푸시 페이로드에 종류가 없어 묶음 알림(`activityId` 없음)만 `summary`로 보내고 나머지는 `kind` 없이 보낸다. 서버가 페이로드에 종류를 넣으면 채운다.
+- `session_reminder_scheduled`(2026-10-26): 찜한 세션 이동 알림은 기기 로컬 알림이라 예약 때만 보내고, 눌러 열릴 때는 `push_open`을 보내지 않는다(상세의 `activity_view`는 source `push`로 간다).
 
 ## 웹 (2026-10-26)
 
 사용자 요청 "웹에도 Google Analytics". 같은 GA4 속성에 웹 데이터 스트림을 더한다(`apps/web` `shared/ui/google-analytics.tsx`, 의존성 없이 `next/script` + gtag; GA 웹 측정 ID `G-C8238MCXS6`은 코드에 두지 않고 Vercel 환경 변수로만 넣는다).
 - 켜는 조건: Vercel 프로덕션 배포(`VERCEL_ENV=production`)이고 `NEXT_PUBLIC_GA_MEASUREMENT_ID`(`G-…`)가 있을 때만 스크립트를 넣는다. 로컬·프리뷰·빈 값은 아무것도 넣지 않는다. 웹에는 끄는 설정이 없다(처리방침에 브라우저 쿠키 차단으로 거부하는 방법을 적는다).
-- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID·사용자 속성 없음. 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 개별 경로를 `/cards/[id]`·`/activities/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다; 활동별 수는 `activity_view`의 `activity_id`로 본다). 규칙은 `shared/lib/analytics.ts` `analyticsUrl` 하나다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
+- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID 없음. 사용자 속성은 2026-10-26 웹 로그인부터 `signed_in` 하나만(`shared/lib/analytics.ts` `setSignedIn`; 앱과 같은 규칙으로 로그인 + 현재 동의가 있을 때만 `yes`, 그 외 `no`). 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 개별 경로를 `/cards/[id]`·`/activities/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다; 활동별 수는 `activity_view`의 `activity_id`로 본다). 규칙은 `shared/lib/analytics.ts` `analyticsUrl` 하나다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
 
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
@@ -91,8 +94,8 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `home_shortcut_install` | 안내의 `홈 화면에 추가`(`prompt()`)에 사용자가 답함 | `outcome`(`accepted`·`dismissed`) |
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
-| `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 바꿈(앱과 같음) | `groups` |
-| `discovery_category_filter` | 발견 `종류` 다중 선택을 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
+| `discovery_status_filter` | 발견 필터 시트 `적용`·칩 ×·`지난 활동도 보기`로 `활동 상태`를 바꿈(앱과 같음) | `groups` |
+| `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
@@ -106,7 +109,7 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 ### 지표 1 — 추가한 활동이 참석까지
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
-| `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자) |
+| `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄). 지난 선발 단계 통과 제안(native-v1.md "지난 선발 단계 통과 제안" 2026-10-26)의 `통과로 표시`도 표시한 단계마다 보내며 `via=autopass_prompt`를 더한다(진행 단계 화면에서 고른 것은 `via` 없음) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자), `via`(제안에서만) = `autopass_prompt` |
 | `participation_reached` | 내 활동의 활동이 처음 **참여 중**이 됨 — `via=selection_passed`: 선발 단계가 모두 `통과`로 표시되고 뒤에 활동 단계가 남음(진행 트랙의 `참여 중` 배지와 같은 조건, 표시를 바꾼 직후 판정). `via=no_selection`: 선발 단계가 하나도 없는 활동(모집 슬롯도 `SELECTION` 세부 일정도 없음)을 내 활동에 추가함(`myactivity_add`와 함께; 모집 슬롯이 있는 활동은 컨퍼런스라도 해당하지 않는다 — 운영의 우아콘 2026(id 156)은 `신청 기간`·`입장권 추첨 결과 발송`이 `SELECTION`이다, 2026-10-26 확인). 활동마다 기기에 보냈음을 기록해 한 번만 보낸다(표시를 되돌렸다 다시 통과해도 다시 보내지 않음) | `activity_id`, `via` = `selection_passed`·`no_selection` |
 | `activity_day_action` | 내 활동에 있는 활동의 `ACTIVITY` 일정 블록(활동 기간·`ACTIVITY` 세부 일정)이 진행 중인 날(서울 날짜, 블록 시작일~끝일)에 그 활동에서 한 행동. 탈락 표시한 활동은 보내지 않음. 같은 날 반복해도 매번 보내고, 지표는 사용자 수로 센다 | `activity_id`, `action` = `progress`(진행 단계 화면 열기)·`detail`(활동 상세 열기)·`timetable`(시간표 시트 열기)·`session_favorite`(세션 찜) |
 | `favorite_add` · `favorite_remove`(확장) | `type` = `session`을 더한다: 시간표·찜한 세션에서 세션 하트 | `type` = `session`, `id` = 세션 id, `activity_id`(세션이 속한 활동), `field`·`category`는 그 활동 것 |

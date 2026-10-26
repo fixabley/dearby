@@ -53,6 +53,9 @@ admob_test_app = 'ca-app-pub-3940256099942544~1458002511'
 admob_release = [ENV.fetch('ADMOB_IOS_APP_ID', ''), ENV.fetch('ADMOB_IOS_QUEUE_NATIVE_UNIT_ID', '')]
 admob_release = [admob_test_app, ''] if admob_release.any?(&:empty?)
 admob = { 'Debug' => [admob_test_app, 'ca-app-pub-3940256099942544/3986624511'], 'Release' => admob_release }
+# 광고 끄기 (native-v1.md "맞춤 대기열 끝 광고" 2026-10-26): the queue ad, its consent sheet and the ATT prompt are off unless DEARBY_ADS_ENABLED=true
+# (Info.plist `DearbyAdsEnabled`); the code, consent flow and SDK stay in the build. Off by default for the initial test period, in every configuration.
+ads_enabled = (ENV['DEARBY_ADS_ENABLED'] == 'true').to_s
 project.targets.each do |target|
   target.build_configurations.each do |config|
     config.build_settings.merge!({
@@ -84,7 +87,7 @@ project.targets.each do |target|
         # environment; empty hides the button. Local device builds read them from ~/.dearby-deploy/mobile.env (README).
         'GOOGLE_IOS_CLIENT_ID' => ENV.fetch('GOOGLE_IOS_CLIENT_ID', ''),
         'GOOGLE_IOS_URL_SCHEME' => ENV.fetch('GOOGLE_IOS_URL_SCHEME', ''),
-        'ADMOB_APP_ID' => admob[config.name][0], 'ADMOB_NATIVE_UNIT_ID' => admob[config.name][1]
+        'ADMOB_APP_ID' => admob[config.name][0], 'ADMOB_NATIVE_UNIT_ID' => admob[config.name][1], 'DEARBY_ADS_ENABLED' => ads_enabled
       })
       # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds; aps-environment is development in Debug and
       # production in Release (contract "즐겨찾기(하트)·새 모집 푸시 알림": the App ID and the store profile need Push Notifications).

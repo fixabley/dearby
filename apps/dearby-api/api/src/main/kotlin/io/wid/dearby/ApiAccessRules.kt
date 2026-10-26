@@ -31,6 +31,8 @@ class ApiAccessRules : AccessRules {
         authorize(HttpMethod.POST, "/v1/cards/*/reports", permitAll)
         // 웹 비로그인 저장: 로그인 대신 프록시 키·세션 토큰 헤더를 본다(adaptor/web/v1/guest)
         authorize("/v1/guest/**", permitAll)
+        // GitHub 연락처 연결 콜백: GitHub이 사용자 브라우저를 돌려보내는 요청이라 Bearer가 없다. 결과는 1회용 code로 앱이 complete에서 가져간다(native-v1.md "연락처 인증")
+        authorize(HttpMethod.GET, "/v1/me/contacts/github/callback", permitAll)
         authorize(anyRequest, authenticated)
     }
 }

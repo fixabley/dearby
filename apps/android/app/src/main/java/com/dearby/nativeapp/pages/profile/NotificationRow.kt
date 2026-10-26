@@ -26,6 +26,20 @@ import androidx.compose.ui.unit.dp
     }
 }
 
+/**
+ * 설정 `알림` `세션 이동 알림` (2026-10-26 "찜한 세션 이동 알림"): the device-local switch ([on]); when exact alarms are not allowed ([inexact], Android 14+
+ * until the user allows them) a line says the reminder may come a few minutes late, with a link to that system setting ([openSettings]).
+ */
+@Composable fun SessionReminderRow(on: Boolean, inexact: Boolean, toggle: (Boolean) -> Unit, openSettings: () -> Unit) {
+    Column {
+        ListItem({ Text("세션 이동 알림") }, Modifier.toggleable(on, role = Role.Switch, onValueChange = toggle),
+            supportingContent = { Text("찜한 세션 10분 전에 이 기기에서 알려요") }, trailingContent = { Switch(on, null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+        if (on && inexact) ListItem({ Text("알람 권한이 없어 몇 분 늦을 수 있어요") }, supportingContent = { Text("정확한 시간에 받으려면 알람 및 리마인더를 허용해 주세요") },
+            trailingContent = { TextButton(openSettings) { Text("설정 열기") } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+    }
+}
+
 /** 설정 `개인정보` `사용 통계 보내기` (2026-10-25): screens and a few actions, never name or contacts; on until turned off, signed in or not. */
 /** 설정 › 개인정보 `광고 목적 정보 제공` (contract "광고 목적 개인정보 제3자 제공 동의(선택)"): [toggle] true opens the consent sheet first. */
 @Composable fun AdConsentRow(on: Boolean, enabled: Boolean, toggle: (Boolean) -> Unit) {

@@ -21,3 +21,11 @@ export function analyticsUrl(url: string): string {
   const { origin, pathname } = new URL(url);
   return origin + pathname.replace(/^\/(cards|activities)\/[^/]+/, "/$1/[id]");
 }
+
+/**
+ * The one user property the web sends (contract analytics-v1.md "웹", 2026-10-26): `signed_in` is `yes` only for a signed-in
+ * account that has given the current consent, `no` otherwise; set before the next event or page view.
+ */
+export function setSignedIn(signedIn: boolean) {
+  window.gtag?.("set", "user_properties", { signed_in: signedIn ? "yes" : "no" });
+}

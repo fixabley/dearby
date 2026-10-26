@@ -6,7 +6,7 @@ import io.wid.dearby.application.guest.GuestHandoff
 import io.wid.dearby.application.guest.GuestItem
 import io.wid.dearby.application.guest.GuestRepository
 import io.wid.dearby.application.guest.GuestWallet
-import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.card.ExchangeRef
 import io.wid.dearby.domain.card.Receipt
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
@@ -41,29 +41,28 @@ class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRe
 
     override fun cardCount(digest: String) = dsl.fetchCount(GUEST_CARDS, GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull)
 
-    override fun addCard(digest: String, cardId: UUID, activityId: Id?) {
+    override fun addCard(digest: String, cardId: UUID, context: ExchangeRef) {
         val now = OffsetDateTime.now(ZoneOffset.UTC)
         dsl.insertInto(GUEST_CARDS)
-            .set(GUEST_CARDS.SESSION_DIGEST, digest).set(GUEST_CARDS.CARD_ID, cardId).set(GUEST_CARDS.ACTIVITY_ID, activityId).set(GUEST_CARDS.SAVED_AT, now)
+            .set(GUEST_CARDS.SESSION_DIGEST, digest).set(GUEST_CARDS.CARD_ID, cardId).set(GUEST_CARDS.SAVED_AT, now)
+            .set(GUEST_CARDS.ACTIVITY_ID, context.activityId).set(GUEST_CARDS.SCHEDULE_ID, context.scheduleId).set(GUEST_CARDS.SESSION_ID, context.sessionId)
             .onConflict(GUEST_CARDS.SESSION_DIGEST, GUEST_CARDS.CARD_ID).doUpdate()
-            .set(GUEST_CARDS.ACTIVITY_ID, activityId).set(GUEST_CARDS.SAVED_AT, now).setNull(GUEST_CARDS.RECALLED_AT)
+            .set(GUEST_CARDS.SAVED_AT, now).setNull(GUEST_CARDS.RECALLED_AT)
+            .set(GUEST_CARDS.ACTIVITY_ID, context.activityId).set(GUEST_CARDS.SCHEDULE_ID, context.scheduleId).set(GUEST_CARDS.SESSION_ID, context.sessionId)
             .execute()
     }
-
-    override fun activityExists(activityId: Id) = dsl.fetchExists(ACTIVITIES, ACTIVITIES.ID.eq(activityId))
 
     override fun removeCard(digest: String, cardId: UUID) {
         dsl.deleteFrom(GUEST_CARDS).where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.CARD_ID.eq(cardId)).execute()
     }
 
     override fun wallet(digest: String): GuestWallet {
-        val rows = dsl.select(GUEST_CARDS.CARD_ID, GUEST_CARDS.ACTIVITY_ID, GUEST_CARDS.SAVED_AT).from(GUEST_CARDS)
-            .where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull).orderBy(GUEST_CARDS.SEQ).fetch()
-        val byId = cards.findAllById(rows.map { it.value1()!! }).associateBy { it.id }
-        val contexts = dsl.exchangeContexts(rows.map { it.value2() })
+        val rows = dsl.selectFrom(GUEST_CARDS).where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull).orderBy(GUEST_CARDS.SEQ).fetch()
+        val byId = cards.findAllById(rows.map { it.cardId!! }).associateBy { it.id }
+        val contexts = dsl.exchangeContexts(rows.map { ExchangeRef(it.activityId, it.scheduleId, it.sessionId) })
         return GuestWallet(rows.mapNotNull { row ->
-            val savedAt = row.value3()!!
-            byId[row.value1()]?.let { GuestItem(it, contexts.contextOf(row.value2()), savedAt, savedAt.plus(Receipt.RECALL_AFTER)) }
+            val savedAt = row.savedAt!!
+            byId[row.cardId]?.let { GuestItem(it, contexts.of(ExchangeRef(row.activityId, row.scheduleId, row.sessionId)), savedAt, savedAt.plus(Receipt.RECALL_AFTER)) }
         })
     }
 
@@ -72,6 +71,9 @@ class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRe
             .where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull, GUEST_CARDS.CARD_ID.`in`(dsl.select(BUSINESS_CARDS.ID).from(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(ownerId))))
             .execute()
     }
+
+    override fun recallAll(digest: String, now: OffsetDateTime): Int =
+        dsl.update(GUEST_CARDS).set(GUEST_CARDS.RECALLED_AT, now).where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull).execute()
 
     override fun recallExpired(savedBefore: OffsetDateTime, now: OffsetDateTime): Int =
         dsl.update(GUEST_CARDS).set(GUEST_CARDS.RECALLED_AT, now).where(GUEST_CARDS.RECALLED_AT.isNull, GUEST_CARDS.SAVED_AT.lt(savedBefore)).execute()
