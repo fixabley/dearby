@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). `마감 숨기기`가 켜지면 모집 중·모집 예정 활동이 있는
-/// 프로그램만, 꺼지면 최근 3년 안에 활동이 있었던 프로그램까지 보인다. 카드를 펼치면 모집 중·모집 예정 활동이 항상, 지난 활동은 토글을 껐을 때만 보인다.
+/// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). 첫 행의 `활동 상태`
+/// 메뉴(contract "활동 상태" 2026-10-26)에서 고른 묶음(`지원 가능` 기본·`진행 중`·`지난 활동`)의 활동이 있는 프로그램만 보이고, 카드를 펼치면 그 상태의 활동만 보인다.
 /// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 우상단 설정·알림, 검색은 `.searchable`의 내비게이션 바 서랍(맨 위에서는 펼침, 스크롤하면 접힘)
-/// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `마감 숨기기`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
+/// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `활동 상태`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
-    /// `오늘의 맞춤 대기열` (user 2026-10-25 "추천은 없애고 맞춤대기열 진입만 남겨줘"): the one row above `마감 숨기기`, hidden only while
+    /// `오늘의 맞춤 대기열` (user 2026-10-25 "추천은 없애고 맞춤대기열 진입만 남겨줘"): the one row above `활동 상태`, hidden only while
     /// searching (the queue screen shows its own empty and retry states); the app opens the queue (the funnel first when it was never
     /// finished). Its `설정` reopens the funnel. Signed out the row stays and the app opens sign-in instead (contract "비로그인에서 만들기·추천을 막음").
     let queueSignedIn: Bool
@@ -35,7 +35,7 @@ struct ActivityListPage: View {
             LazyVStack(alignment: .leading, spacing: 10) {
                 if state.phase != .loading {
                     if (state.query ?? "").isEmpty { queueEntry }
-                    openOnlyRow
+                    statusFilterRow
                 }
                 switch state.phase {
                 case .loading:
@@ -49,10 +49,12 @@ struct ActivityListPage: View {
                     if let query = state.query, !query.isEmpty {
                         CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
                             .frame(minHeight: viewport)
-                    } else if state.openOnly {
-                        CenteredMessage(symbol: "calendar", title: state.kind == .event ? "지금 열리는 이벤트가 없어요" : "지금 모집 중인 프로그램이 없어요",
-                                        message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요.", embedded: true,
-                                        primary: MessageAction("마감 숨기기 끄기", identifier: "activity-show-closed") { state.openOnly = false })
+                    } else if !state.statusGroups.contains(.past) {
+                        CenteredMessage(symbol: "calendar", title: emptyTitle,
+                                        message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘지난 활동’도 고르면 최근 활동한 프로그램도 보여요.", embedded: true,
+                                        primary: MessageAction("지난 활동도 보기", identifier: "activity-show-closed") {
+                                            choose(state.statusGroups.union([.past]))
+                                        })
                             .frame(minHeight: viewport)
                     } else {
                         CenteredMessage(symbol: "calendar", title: state.kind == .event ? "최근 열린 이벤트가 없어요" : "최근 활동한 프로그램이 없어요", message: "활동이 수집되면 여기에서 볼 수 있어요.", embedded: true)
@@ -141,21 +143,42 @@ struct ActivityListPage: View {
         DiscoveryQueueEntry(signedIn: queueSignedIn, needsConsent: queueNeedsConsent, action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
     }
-    /// `마감 숨기기` as the first list row: the whole row toggles (one control; the switch is the row's indicator), label beside the switch.
-    private var openOnlyRow: some View {
-        Button { state.openOnly.toggle() } label: {
-            HStack {
-                Text("마감 숨기기").font(.dearby(.body)).foregroundStyle(.primary)
+    /// 활동 상태 (contract "활동 상태" 2026-10-26, replacing `마감 숨기기`) as the first list row: a system `Menu` with one checkmark `Toggle` per
+    /// 묶음 that stays open while choosing, the chosen ones summarised beside the label. Unchecking the last one falls back to `지원 가능`.
+    private var statusFilterRow: some View {
+        let summary = StatusGroup.summary(state.statusGroups)
+        return Menu {
+            ForEach(StatusGroup.allCases, id: \.self) { group in
+                Toggle(group.title, isOn: Binding(get: { state.statusGroups.contains(group) }) { isOn in
+                    choose(isOn ? state.statusGroups.union([group]) : state.statusGroups.subtracting([group]))
+                })
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text("활동 상태").font(.dearby(.body)).foregroundStyle(.primary)
                 Spacer(minLength: 12)
-                Toggle("마감 숨기기", isOn: .constant(state.openOnly)).labelsHidden().tint(DearbyStyle.teal).allowsHitTesting(false)
+                Text(summary).font(.dearby(.body)).foregroundStyle(.secondary).lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16).frame(minHeight: 44)
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore).accessibilityLabel("마감 숨기기").accessibilityValue(state.openOnly ? "켬" : "끔")
-        .accessibilityAddTraits(.isToggle).accessibilityIdentifier("activity-open-only")
+        .menuActionDismissBehavior(.disabled)
+        .accessibilityLabel("활동 상태").accessibilityValue(summary).accessibilityIdentifier("discovery-status-filter")
+    }
+    /// The user changed the filter: applies it and reports the chosen groups (사용 통계 `discovery_status_filter`).
+    private func choose(_ groups: Set<StatusGroup>) {
+        let before = state.statusGroups
+        state.setStatusGroups(groups)
+        guard state.statusGroups != before else { return }
+        AppAnalytics.event("discovery_status_filter", ["groups": StatusGroup.allCases.filter(state.statusGroups.contains).map(\.rawValue).joined(separator: ",")])
+    }
+    /// The empty list's title without 지난 활동: the old wording for `지원 가능` alone, else the chosen states.
+    private var emptyTitle: String {
+        let noun = state.kind == .event ? "이벤트가" : "프로그램이"
+        guard state.statusGroups == [.available] else { return "고른 상태의 \(noun) 없어요" }
+        return state.kind == .event ? "지금 열리는 이벤트가 없어요" : "지금 모집 중인 프로그램이 없어요"
     }
     #if DEBUG
     /// Store screenshots (`ScreenshotScene`): the scenes on the discovery stack, once.
@@ -181,7 +204,7 @@ struct ActivityListPage: View {
         VStack(alignment: .leading, spacing: 0) {
             ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
                           nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
-                          nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
+                          nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity, statusCounts: program.statusCounts,
                           fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable,
                           matchedCount: program.matchedActivityIDs.count, eventDates: state.kind == .event, expanded: open) {
                 FavoriteControls(target: .program(program.id))
@@ -189,7 +212,7 @@ struct ActivityListPage: View {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) { state.toggle(program.id) }
             }
             if open {
-                VStack(alignment: .leading, spacing: 8) { ProgramActivityGroups(state: state, programID: program.id, path: $path, showsPast: !state.openOnly) }
+                VStack(alignment: .leading, spacing: 8) { ProgramActivityGroups(state: state, programID: program.id, path: $path, groups: state.statusGroups) }
                     .padding(EdgeInsets(top: 0, leading: 10, bottom: 12, trailing: 10))
                     .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }

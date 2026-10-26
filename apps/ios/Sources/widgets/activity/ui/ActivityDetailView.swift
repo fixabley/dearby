@@ -66,7 +66,8 @@ struct ActivityDetailView: View {
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
-                DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
+                // 활동 상태 (contract "활동 상태" 2026-10-26); 모집 정보 없음 has no badge.
+                if let badge = activity.status(at: state.loadedAt)?.badge { DearbyBadge(title: badge) }
                 if let category = activity.category { DearbyBadge(title: category.label, quiet: true) }
             }
             // 분야·얻을 수 있는 것 (contract "분야·성격 태그와 아이콘" 2026-10-24): every tag as icon and text, empty groups omitted.
@@ -79,12 +80,17 @@ struct ActivityDetailView: View {
             }
             Text(activity.organization).font(.headline).foregroundStyle(.secondary)
             Divider()
-            DearbyInfoRow(title: "모집 상태", value: activity.statusLabel(at: state.loadedAt), symbol: "calendar")
+            DearbyInfoRow(title: "모집 상태", value: statusText(activity), symbol: "calendar")
             DearbyInfoRow(title: "개최 일시", value: activity.scheduleText(at: state.loadedAt) ?? "미확인", symbol: "clock")
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)
         }
+    }
+    /// The 모집 상태 row: the status, `모집 일정 미정` for 모집 정보 없음, `모집 여부 확인 필요` without one (an unreadable window, older server).
+    private func statusText(_ activity: ActivityModel) -> String {
+        guard let status = activity.status(at: state.loadedAt) else { return "모집 여부 확인 필요" }
+        return status.badge ?? "모집 일정 미정"
     }
     @ViewBuilder private func tagGroup(_ title: String, _ tags: [Tag]) -> some View {
         if !tags.isEmpty {

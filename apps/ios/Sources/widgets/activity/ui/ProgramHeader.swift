@@ -3,7 +3,7 @@ import SwiftUI
 /// 발견 프로그램 카드의 머리(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구 — AGENTS.md 2026-10-19 "플랫폼별 네이티브 디자인"):
 /// 왼쪽 로고 자리(44, 모서리 14: `logoURL`을 `AsyncImage`로 꽉 채워 보이고 로딩 중·실패·없음은 이름 첫 글자 아바타 — contract "프로그램 로고"),
 /// 가운데 이름·조직과 그 아래 태그 칩 한 줄(분야 1개 + 성격, contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음" 2026-10-24), 검색이 활동 이름에 맞으면
-/// 그 아래 줄 `맞는 활동 n개`, 오른쪽 모집 중 + 모집 예정 활동 수(`.borderedProminent` 캡슐 배지)와
+/// 그 아래 줄 `맞는 활동 n개`, 오른쪽 고른 상태의 활동 수(`statusCounts` 합, 옛 응답은 모집 중 + 모집 예정; `.borderedProminent` 캡슐 배지)와
 /// 보조 글자(`M월 d일 마감` / `M월 d일 시작` / `최근 yyyy.M`). 펼치면 배지가 `.bordered` 원형 버튼 안의 SF Symbol `chevron.down`(180° 회전, `접기`)으로 바뀐다.
 /// 머리 어디를 눌러도 `toggle`. 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 동작 줄이기에서는 배지↔화살표가 즉시 바뀐다.
 struct ProgramHeader<Accessory: View>: View {
@@ -18,6 +18,9 @@ struct ProgramHeader<Accessory: View>: View {
     var nearestStart: Date?
     /// The program's most recent activity start; `최근 yyyy.M` when nothing is recruiting or upcoming.
     var latestActivity: Date?
+    /// Activities per 활동 상태 in the list's scope (`ProgramSummary.statusCounts`, contract "활동 상태"): the badge counts them all and
+    /// VoiceOver reads them by state. Empty (older responses, favorites) falls back to the open and upcoming counts.
+    var statusCounts: [ActivityStatus: Int] = [:]
     /// The chip line under the organization: the first 분야 tag, then the 성격 tags.
     var fieldTags: [Tag] = []
     var traitTags: [Tag] = []
@@ -116,7 +119,7 @@ struct ProgramHeader<Accessory: View>: View {
                 .accessibilityIdentifier("program-toggle-\(name)")
                 .transition(reduceMotion ? .identity : .scale(scale: 0.6).combined(with: .opacity))
         } else {
-            Button(action: toggle) { countText(unreadCount ?? openCount + upcomingCount) }
+            Button(action: toggle) { countText(unreadCount ?? total) }
             .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(DearbyStyle.tealFill)
             .accessibilityLabel(countLabel ?? "활동 없음").accessibilityHint(unreadCount != nil ? "누르면 알림을 보여요" : "누르면 활동을 보여요")
             .accessibilityIdentifier("program-toggle-\(name)")
@@ -130,11 +133,16 @@ struct ProgramHeader<Accessory: View>: View {
     /// Spoken count: the badge's number with its meaning.
     private var countLabel: String? {
         if let unreadCount { return unreadCount > 0 ? "읽지 않은 알림 \(unreadCount)개" : nil }
-        let total = openCount + upcomingCount
         guard total > 0 else { return nil }
+        if !statusCounts.isEmpty {
+            return ActivityStatus.allCases.compactMap { status in
+                statusCounts[status].map { "\(status.badge ?? "모집 정보 없음") \($0)개" }
+            }.joined(separator: ", ")
+        }
         if openCount > 0 && upcomingCount > 0 { return "모집 중 \(openCount)개, 모집 예정 \(upcomingCount)개" }
         return openCount > 0 ? "모집 중 \(openCount)개" : "모집 예정 \(upcomingCount)개"
     }
+    private var total: Int { statusCounts.isEmpty ? openCount + upcomingCount : statusCounts.values.reduce(0, +) }
     /// The meta line under the badge (contract): nearest deadline while recruiting, nearest start when only upcoming, else the latest activity month.
     private var meta: String? {
         if unreadCount != nil { return nil }
@@ -143,6 +151,8 @@ struct ProgramHeader<Accessory: View>: View {
         }
         if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + " 마감" }
         if openCount == 0, upcomingCount > 0, let nearestStart { return Self.format(nearestStart, "M월 d일") + " 시작" }
+        // 모집 중·예정 없이 진행 중만 있으면 그 수 (contract "활동 상태" 접힌 카드).
+        if openCount == 0, upcomingCount == 0, let running = statusCounts[.inProgress], running > 0 { return "진행 중 \(running)개" }
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }
         return nil
     }
