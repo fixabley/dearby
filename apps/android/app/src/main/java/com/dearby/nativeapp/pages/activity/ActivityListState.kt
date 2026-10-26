@@ -80,7 +80,7 @@ data class ActivityState(
     /**
      * 모집 날짜 표기 (user 2026-10-26), set only for a window with both ends, whose [period] is then `10.1 – 10.20`: [periodDetail] adds the
      * deadline time for the detail, [deadlineCount] is the `D-3`/`D-DAY` badge while 모집 중, and [deadlineDraft] is the deadline's
-     * `캘린더에 추가` (its own `모집 마감` row leaves 행사 일정, as the range already says it).
+     * `캘린더에 추가` (its own `모집 마감` row leaves the schedule rows, as the range already says it).
      */
     val periodDetail: String? = null, val deadlineCount: String? = null, val deadlineDraft: CalendarDraft? = null,
     /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no badge; [status] stands where the recruitment dates go. */
@@ -90,12 +90,13 @@ data class ActivityState(
     val recruiting get() = status == "모집 중" || status == "모집 예정"
 }
 /**
- * One row of the detail's `행사 일정`: 모집 마감, each schedule, then the activity period (the progress stages, contract "내 캘린더에 추가");
- * [draft] is null for an undated one, which gets no `캘린더에 추가` button.
+ * One row of the detail's schedules: 모집 마감, each schedule, then the activity period (the progress stages, contract "내 캘린더에 추가");
+ * [draft] is null for an undated one, which gets no `캘린더에 추가` button. [selection] puts the row under `선발 과정`, else `활동 일정`
+ * (contract "선발 과정·활동 일정 분리"; a block with a timetable is always 활동 일정).
  */
 data class ScheduleItemState(val name: String, val dateText: String, val draft: CalendarDraft?,
     /** The block's id and whether it has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): then the row offers `{name} 시간표`. */
-    val scheduleId: String? = null, val hasTimetable: Boolean = false)
+    val scheduleId: String? = null, val hasTimetable: Boolean = false, val selection: Boolean = false)
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matchedCount] is how many open activities' names the search hit (shown as `맞는 활동 n개`).
  * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정
