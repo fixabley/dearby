@@ -335,7 +335,6 @@ export default function PrivacyPage() {
         <li>
           2026년 10월 27일 고지, 2026년 10월 28일 시행: 프로필 연락처 인증(GitHub 연결로 받는 GitHub 사용자명, 이메일 인증번호와 그 요청 기록, 인증 상태)을 더하고, 인증번호 메일 발송을 처리 위탁·국외 이전(Google LLC, Gmail SMTP)에 적었습니다. 받은 명함과 비로그인 저장에 교환 시점의 일정 블록·세션이 함께 남는 것, 찜한 세션 이동 알림이 기기 안에서만 만들어지는 것, 웹사이트 로그인과 로그인 세션 쿠키(필수 쿠키)를 명시했습니다.
         </li>
-        <li>2026년 10월 26일 시행: 프로필 사진(선택), 소개 링크(선택)와 자기소개 글 폐지, 웹 사용 통계(Google Analytics·Vercel Web Analytics)와 쿠키 거부 방법, 세션 찜을 더했습니다.</li>
       </ul>
       <p className="mt-8 px-1 text-footnote text-secondary-label">
         관련 문서: <Link href="/terms">이용약관</Link>
