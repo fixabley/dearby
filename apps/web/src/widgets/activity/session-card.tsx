@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Session, Track } from "@/lib/models";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
+import { Icon } from "@/shared/ui/icon";
 import { TagIcon } from "@/shared/ui/tag-icon";
 
 /** Track colours by `position` (contract "트랙·세션 시간표": the server sends only the order); light and dark pairs keep the badge text readable. */
@@ -15,8 +16,14 @@ const TRACK_COLORS = [
 ];
 export const trackColor = (position: number) => TRACK_COLORS[position % TRACK_COLORS.length];
 
-/** 쉬는시간·점심 carry no heart (contract "트랙·세션 시간표" › 찜한 세션). */
-export const isBreak = (session: Session) => session.kind === "BREAK" || session.kind === "MEAL";
+/**
+ * One cell's worth of the table: a real session, or in the day timetable a whole block without a timetable (`block: "plain"`,
+ * the block title as a muted band) or one whose timetable failed to load (`block: "failed"`).
+ */
+export type Entry = Session & { block?: "plain" | "failed" };
+
+/** 쉬는시간·점심 and whole-block bands carry no heart (contract "트랙·세션 시간표" › 내 시간표). */
+export const isBreak = (session: Entry) => !!session.block || session.kind === "BREAK" || session.kind === "MEAL";
 
 /** The column heading of a track: name over room. */
 export function TrackBadge({ track }: { track: Track }) {
@@ -29,9 +36,10 @@ export function TrackBadge({ track }: { track: Track }) {
 }
 
 /**
- * 쉬는시간·점심 are a muted band; other sessions a card with the track badge, up to two 분야 tags, the title, the speakers and the heart
- * (`favorite` slot). A card over several rows shows its own range, since each time cell shows only its row; `showTime` always shows
- * it and `largeTrack` enlarges the track·room (내 시간표: where to walk to).
+ * 쉬는시간·점심 and whole blocks without a timetable are a muted band (a failed block adds `불러오지 못했어요`); other sessions a card
+ * with the track badge, up to two 분야 tags, the title, the speakers and the heart (`favorite` slot). A card over several rows shows
+ * its own range, since each time cell shows only its row; `showTime` always shows it and `largeTrack` enlarges the track·room
+ * (내 시간표: where to walk to).
  */
 export function SessionCard({
   session,
@@ -42,7 +50,7 @@ export function SessionCard({
   largeTrack = false,
   favorite,
 }: {
-  session: Session;
+  session: Entry;
   track?: Track | null;
   time: (value: number) => string;
   spansRows?: boolean;
@@ -53,9 +61,15 @@ export function SessionCard({
   const range = `${time(Date.parse(session.startAt))} – ${time(Date.parse(session.endAt))}`;
   if (isBreak(session))
     return (
-      <div className="flex h-full min-h-11 items-center justify-center gap-2 rounded-[14px] bg-fill px-3 py-2 text-subheadline text-secondary-label">
-        <span className="font-semibold">{session.title || (session.kind === "MEAL" ? "점심" : "쉬는시간")}</span>
+      <div className="flex h-full min-h-11 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-[14px] bg-fill px-3 py-2 text-subheadline text-secondary-label">
+        <span className="font-semibold break-keep">{session.title || (session.kind === "MEAL" ? "점심" : "쉬는시간")}</span>
         <span className="text-caption tabular-nums">{range}</span>
+        {session.block === "failed" && (
+          <span className="flex items-center gap-1 text-caption text-danger">
+            <Icon name="warning" size="inline" />
+            불러오지 못했어요
+          </span>
+        )}
       </div>
     );
   return (

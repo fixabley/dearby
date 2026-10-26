@@ -228,6 +228,51 @@ export type Timetable = z.infer<typeof timetableSchema>;
 export function clockTime(time: number, timeZone: string): string {
   return koreanParts(time, timeZone, true).time;
 }
+/** `M월 d일 (요일)` of an instant in a zone, with its year when outside the current Seoul year (the `scheduleLabel` rule). */
+export function dayLabel(time: number, timeZone: string, now = Date.now()): string {
+  const parts = koreanParts(time, timeZone, false);
+  return `${parts.year === koreanParts(now, "Asia/Seoul", false).year ? "" : `${parts.year}년 `}${parts.day}`;
+}
+/**
+ * 하루 시간표 (2026-10-26 사용자 "10/28일 누르면 시간표보기 일정추가 이런식으로"): the timed blocks of one Seoul day, folded into
+ * one day row on the activity detail and shown together in the day timetable. `day` is the Seoul `yyyy-MM-dd`, `start`/`end`
+ * the earliest start and latest end, `timeZone` the first block's (they share one in practice).
+ */
+export type ScheduleDay = { day: string; label: string; schedules: Schedule[]; start: number; end: number; timeZone: string };
+/**
+ * Detail schedules with same-day timed blocks folded: a block with both `startAt` and `endAt` on one Seoul day joins that day's
+ * group, which replaces the first such block in server order; a day with a single block stays a plain row, as do all-day,
+ * one-bound, multi-day and undated blocks. Data is untouched — this is display grouping only.
+ */
+export function foldScheduleDays(schedules: Schedule[], now = Date.now()): (Schedule | ScheduleDay)[] {
+  const days = new Map<string, ScheduleDay>();
+  const items: (Schedule | ScheduleDay)[] = [];
+  for (const schedule of schedules) {
+    const start = parseTime(schedule.startAt);
+    const end = parseTime(schedule.endAt);
+    const day = start === undefined || end === undefined ? undefined : calendarDay(start, "Asia/Seoul");
+    if (day === undefined || day !== calendarDay(end!, "Asia/Seoul")) {
+      items.push(schedule);
+      continue;
+    }
+    const group = days.get(day);
+    if (group) {
+      group.schedules.push(schedule);
+      group.start = Math.min(group.start, start!);
+      group.end = Math.max(group.end, end!);
+      continue;
+    }
+    const timeZone = schedule.timeZone ?? "Asia/Seoul";
+    const made: ScheduleDay = { day, label: dayLabel(start!, timeZone, now), schedules: [schedule], start: start!, end: end!, timeZone };
+    days.set(day, made);
+    items.push(made);
+  }
+  return items.map((item) => ("schedules" in item && item.schedules.length === 1 ? item.schedules[0] : item));
+}
+/** `10:00 ~ 17:30 · 블록 4개`: the day row's second line and the day timetable's subtitle. */
+export function scheduleDayRange(day: ScheduleDay): string {
+  return `${clockTime(day.start, day.timeZone)} ~ ${clockTime(day.end, day.timeZone)} · 블록 ${day.schedules.length}개`;
+}
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;
 export const activitySchema = z.object({
@@ -476,10 +521,6 @@ export function upcomingStartDday(activity: Activity, now = Date.now()): string 
   if (!startDay) return undefined;
   const days = Math.round((Date.parse(startDay) - Date.parse(seoulDay(now))) / DAY);
   return days <= 0 ? "오늘 시작" : `시작 D-${days}`;
-}
-/** `10월 28일 (수)` of an instant in a zone (내 시간표 day headings). */
-export function dayLabel(time: number, timeZone: string): string {
-  return koreanParts(time, timeZone, false).day;
 }
 /** `yyyy-MM-dd` of an instant in a zone. */
 export function calendarDay(time: number, timeZone: string): string {
