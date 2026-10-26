@@ -41,13 +41,13 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
     }
 
     override fun openActivities(condition: ProgramSummarySearch, now: OffsetDateTime): List<OpenActivity> =
-        dsl.select(ACTIVITIES.ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, deadline, ACTIVITIES.ELIGIBILITY, OpenActivityConditions.recruitmentEnd)
+        dsl.select(ACTIVITIES.ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, deadline, ACTIVITIES.ELIGIBILITY, OpenActivityConditions.recruitmentEnd, DSL.field(TimetableRows.activityHasTimetable))
             .from(ACTIVITIES)
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
             .where(openConditions(condition, now))
             .orderBy(ACTIVITIES.ID)
-            .fetch { row -> OpenActivity(row.value1()!!, row.value2()!!, row.value3()!!, row.value4(), row.value5(), EligibilityRows.read(row.value6()), row.value7() != null) }
+            .fetch { row -> OpenActivity(row.value1()!!, row.value2()!!, row.value3()!!, row.value4(), row.value5(), EligibilityRows.read(row.value6()), row.value7() != null, row.value8() == true) }
 
     override fun search(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary> {
         val q = condition.q?.trim()?.takeIf { it.isNotBlank() }
@@ -72,6 +72,8 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         val upcomingCount = DSL.count(DSL.`when`(isUpcoming, ACTIVITIES.ID))
         val nearestStart = DSL.min(DSL.`when`(isUpcoming, OpenActivityConditions.recruitmentStart))
         val latestStart = DSL.max(OpenActivityConditions.activityStart)
+        // 접힌 카드 "시간표" 배지: 모집 중·모집 예정 활동 중 시간표 있는 것이 있는지
+        val hasTimetable = DSL.boolOr(isOpenOrUpcoming.and(TimetableRows.activityHasTimetable))
         // 검색어가 활동 이름에 맞은 모집 중·모집 예정 활동 id. 활동 이름으로만 맞은 프로그램도 목록에 넣기 위해 HAVING에서도 쓴다
         val matchedIds = activityMatches?.let { DSL.arrayAggDistinct(DSL.`when`(it.and(isOpenOrUpcoming), ACTIVITIES.ID)) }
         val programMatches = q?.let {
@@ -84,7 +86,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN,
             ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN,
             openCount, nearestEnd, matchedIds ?: DSL.inline(null, Array<Long>::class.java), PROGRAMS.CATEGORY, latestStart,
-            upcomingCount, nearestStart, nearestRealEnd,
+            upcomingCount, nearestStart, nearestRealEnd, hasTimetable,
         )
             .from(PROGRAMS)
             .join(ORGANIZATIONS).on(ORGANIZATIONS.ID.eq(PROGRAMS.ORGANIZATION_ID))
@@ -125,6 +127,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
                     nearestRecruitmentStartAt = row.value13(),
                     // 가장 이른 정렬 키가 어느 모집 마감과도 같지 않으면 활동 시작으로 대체된 값이다
                     nearestIsActivityStart = row.value8() != null && row.value8() != row.value14(),
+                    hasTimetable = row.value15() == true,
                 )
             }
     }

@@ -34,6 +34,7 @@ data class ActivityResponse(
     val hook: String?, // 맞춤 대기열 장면 ① 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null(앱은 활동 이름)
     val highlights: List<HighlightResponse>, // 장면 ② 핵심 줄 [{icon, text}] 최대 3개. 비면 앱이 기간·장소로 만든다
     val favorited: Boolean, // 로그인 사용자가 즐겨찾기했는지(native-v1.md "즐겨찾기(하트)"). 비로그인은 false
+    val hasTimetable: Boolean, // activitySchedule·schedules 중 하나라도 hasTimetable이면 true(목록 행 "시간표" 배지, native-v1.md "트랙·세션 시간표")
 ) {
     companion object {
         fun from(listing: ActivityListing, language: ResponseLanguage, favorites: FavoriteIds = FavoriteIds.NONE): ActivityResponse {
@@ -63,6 +64,7 @@ data class ActivityResponse(
                 hook = activity.hook,
                 highlights = activity.highlights.map { HighlightResponse(it.icon.code, it.text) },
                 favorited = activity.id in favorites.activities,
+                hasTimetable = activity.activitySchedule.hasTimetable || activity.schedules.any { it.hasTimetable },
             )
         }
     }

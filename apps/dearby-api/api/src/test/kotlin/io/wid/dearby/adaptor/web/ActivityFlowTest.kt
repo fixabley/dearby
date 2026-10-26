@@ -68,7 +68,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "favorited"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "favorited", "hasTimetable"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -1032,6 +1032,14 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val talkA = session(trackA, "TALK", "트랙1 세션", "2026-11-20T11:40:00+09:00", "2026-11-20T12:20:00+09:00")
         val talkB = session(trackB, "TALK", "트랙2 세션", "2026-11-20T11:40:00+09:00", "2026-11-20T12:20:00+09:00")
         jdbc.sql("insert into schedule_session_tags (session_id, tag_id, position) select ?, id, 0 from tags order by id limit 1").param(talkA).update()
+        // 모집 중으로 만들어 발견 묶음에 나오게 한다(프로그램 hasTimetable)
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '7 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(activity).update()
+        val programId = jdbc.sql("select program_id from activities where id = ?").param(activity).query(Long::class.java).single()
         val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
         fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
         fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
@@ -1041,6 +1049,13 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             val detail = body(mvc.get("/v1/activities/$activity").andExpect { status { isOk() } })
             assertEquals(mapOf(block to true, plain to false), detail["schedules"].toList().associate { it["id"].asLong() to it["hasTimetable"].asBoolean() })
             assertEquals(false, detail["activitySchedule"]["hasTimetable"].asBoolean())
+            // 활동 목록 항목·발견 프로그램 묶음에도 hasTimetable(접힌 카드 "시간표" 배지). 묶음은 kind 필터 반영: 미분류 활동은 program 쪽
+            assertTrue(detail["hasTimetable"].asBoolean())
+            assertTrue(search("q=시간표 확인 컨퍼런스")["items"].single()["hasTimetable"].asBoolean())
+            fun programHasTimetable(query: String) = body(mvc.get("/v1/discovery/programs?size=100&$query").andExpect { status { isOk() } })["items"].toList()
+                .singleOrNull { it["id"].asLong() == programId }?.get("hasTimetable")?.asBoolean()
+            assertEquals(true, programHasTimetable("kind=program"))
+            assertTrue(programHasTimetable("kind=event") != true)
 
             // 공개 시간표: 트랙은 position 순, 세션은 시작 순, 전폭 세션은 trackId null, 시각은 블록 시간대
             val path = "/v1/activities/$activity/schedules/$block/timetable"
@@ -1063,24 +1078,33 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             mvc.put("/v1/me/session-favorites/$talkA") { asUser() }.andExpect { status { isNoContent() } }
             mvc.put("/v1/me/session-favorites/$talkA") { asUser() }.andExpect { status { isNoContent() } }
             mvc.put("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.put("/v1/me/session-favorites/$keynote") { asUser() }.andExpect { status { isNoContent() } }
             mvc.put("/v1/me/session-favorites/-1") { asUser() }.andExpect { status { isNotFound() } }
             assertEquals(0, jdbc.sql("select count(*) from user_favorites where user_id = ?").param(user).query(Int::class.java).single())
             val signedIn = mvc.get(path) { asUser() }.andExpect { status { isOk() } }.andReturn().response
             assertTrue(signedIn.getHeaders("Vary").joinToString().contains("Authorization"))
-            assertEquals(listOf(false, true, true), json.readTree(signedIn.contentAsString)["sessions"].toList().map { it["favorited"].asBoolean() })
+            assertEquals(listOf(true, true, true), json.readTree(signedIn.contentAsString)["sessions"].toList().map { it["favorited"].asBoolean() })
 
             // 내 시간표: 시작 순, 블록·활동 이름과 함께. 같은 시간 겹침은 앱이 계산한다
             val mine = favorites()["items"].toList()
-            assertEquals(listOf(talkA, talkB), mine.map { it["session"]["id"].asLong() })
-            assertEquals(listOf("시간표 확인 컨퍼런스", "오전 세션"), listOf(mine[0]["activityName"].asString(), mine[0]["scheduleTitle"].asString()))
+            assertEquals(listOf(keynote, talkA, talkB), mine.map { it["session"]["id"].asLong() })
+            assertEquals(listOf("시간표 확인 컨퍼런스", "오전 세션"), listOf(mine[1]["activityName"].asString(), mine[1]["scheduleTitle"].asString()))
+            // 앱이 다시 조회하지 않도록 블록 시각과 트랙(전폭 세션은 null)을 함께 싣는다
+            assertEquals(block, mine[1]["schedule"]["id"].asLong())
+            assertEquals("2026-11-20T10:50:00+09:00", mine[1]["schedule"]["startAt"].asString())
+            assertEquals("2026-11-20T12:30:00+09:00", mine[1]["schedule"]["endAt"].asString())
+            assertTrue(mine[0]["track"].isNull)
+            assertEquals(listOf(trackA, "Track 1", "Track 1 홀", 0), mine[1]["track"].let { listOf(it["id"].asLong(), it["name"].asString(), it["room"].asString(), it["position"].asInt()) })
+            assertEquals(trackB, mine[2]["track"]["id"].asLong())
             mvc.delete("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNoContent() } }
             mvc.delete("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNoContent() } }
-            assertEquals(1, favorites()["items"].size())
+            assertEquals(2, favorites()["items"].size())
 
             // 게시를 내리면 시간표는 404, 찜은 목록에서 빠지고(행은 남음) 새로 찜할 수 없다
             jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
             mvc.get(path).andExpect { status { isNotFound() } }
             assertEquals(0, favorites()["items"].size())
+            assertTrue(programHasTimetable("kind=program") != true)
             mvc.put("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNotFound() } }
 
             // 계정 삭제(users cascade)와 함께 세션 찜도 지워진다

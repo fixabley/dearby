@@ -84,6 +84,7 @@ class ProgramSummaryService(
                     ?.let { nearest -> activities.none { it.hasRecruitmentEnd && it.recruitmentEndAt == nearest.recruitmentEndAt } } ?: false,
                 matchedActivityIds = matchedIds,
                 category = program.category,
+                hasTimetable = activities.any { it.hasTimetable },
             )
         }.sortedWith(compareBy<ProgramSummary, OffsetDateTime?>(nullsLast()) { it.nearestRecruitmentEndAt }.thenBy { it.name }.thenBy { it.id })
     }
