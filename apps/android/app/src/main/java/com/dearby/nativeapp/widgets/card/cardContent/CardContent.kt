@@ -84,9 +84,10 @@ import com.dearby.nativeapp.shared.ui.*
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = opens || copies, onClickLabel = when { copies -> "ID를 복사해요"; contact.kind == "phone" -> "전화를 걸어요"; contact.kind == "email" -> "메일을 보내요"; else -> "링크를 열어요" }, role = Role.Button, onClick = open).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ContactKindIcon(contact.kind, contact.label.ifBlank { contactKindName(contact.kind) })
-        Text(contact.shown, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyLarge)
-        if (contact.verified) VerifiedMark()
-        Spacer(Modifier.weight(1f))
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(contact.shown, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyLarge)
+            if (contact.verified) VerifiedMark()
+        }
         if (opens) Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         else if (copies) Icon(Icons.Rounded.ContentCopy, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }

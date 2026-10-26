@@ -161,6 +161,8 @@ private sealed interface Route {
         activityListState.linkNotice?.let { notice = it; queueReturn = false; inboxReturn = false; sessions.dismissPending() }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
+    // GitHub 연결 came back (contract "연락처 인증"): the profile editor in front again — after process death the tab was 발견 — unless the consent screen is due.
+    LaunchedEffect(profileState.returned) { if (profileState.returned > 0) { if (route != Route.Consent) route = null; wallet.closeShared(); activityDetail = false; tab = Tab.Profile; profile.consumeReturned() } }
     // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first signed-in visit to 발견 (not in store screenshots).
     val reco by recommendation.state.collectAsStateWithLifecycle()
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()

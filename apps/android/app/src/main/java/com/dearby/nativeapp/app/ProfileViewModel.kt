@@ -1,5 +1,7 @@
 package com.dearby.nativeapp.app
 
+import android.content.ActivityNotFoundException
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountClient
@@ -9,6 +11,10 @@ import com.dearby.nativeapp.shared.config.ConsentVersions
 import com.dearby.nativeapp.entities.account.model.AccountContact
 import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
+import com.dearby.nativeapp.entities.account.model.ContactRules
+import com.dearby.nativeapp.features.oauth.OAuthBrowser
+import com.dearby.nativeapp.shared.config.ContactLinkRedirect
+import com.dearby.nativeapp.pages.profile.ContactVerifyState
 import com.dearby.nativeapp.pages.profile.FunnelState
 import com.dearby.nativeapp.pages.profile.HistoryDraft
 import com.dearby.nativeapp.pages.profile.PickerSearchState
@@ -20,6 +26,7 @@ import com.dearby.nativeapp.pages.profile.ProfileViewState
 import com.dearby.nativeapp.pages.profile.VersionsState
 import com.dearby.nativeapp.pages.profile.rowState
 import com.dearby.nativeapp.pages.profile.view
+import com.dearby.nativeapp.widgets.profile.profileFields.EmailCodeEntry
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactKinds
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
 import java.util.UUID
@@ -33,12 +40,17 @@ import kotlinx.coroutines.launch
 /** Account deletion in flight, and the one-time result to show. */
 data class DeletionState(val deleting: Boolean = false, val notice: String? = null)
 
+/** SavedStateHandle key: GitHub's page is another app, so "the editor started GitHub 연결" must outlive process death meanwhile (contract "연락처 인증"). */
+private const val GITHUB_STARTED = "github.started"
+
 /**
  * 내 프로필 (contract "프로필과 버전 이력"): the data profile edited in place with `If-Match`, saved versions, the history
- * funnel with picker searches, and evidence uploads. A failed save keeps what was typed.
+ * funnel with picker searches, and evidence uploads. A failed save keeps what was typed. 연락처 인증 (contract "연락처 인증") verifies the GitHub and
+ * email contacts in place; [saved] only remembers that GitHub 연결 is under way, so a recreated process reopens the editor.
  */
-class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
-    private val mutable = MutableStateFlow(ProfileViewState())
+class ProfileViewModel(private val account: AccountViewModel, private val saved: SavedStateHandle) : ViewModel() {
+    // Consumed once: after process death while GitHub's page was open the editor comes back; the redirect itself is handled whether or not this was set.
+    private val mutable = MutableStateFlow(ProfileViewState(editing = saved.remove<Boolean>(GITHUB_STARTED) == true))
     val state = mutable.asStateFlow()
     private val funnelState = MutableStateFlow<FunnelState?>(null)
     val funnel = funnelState.asStateFlow()
@@ -56,9 +68,12 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         if (mutable.value.profile == null) mutable.update { it.copy(phase = ProfilePhase.LOADING) }
         try {
             val stored = account.authorized { account.client.profile(it) }
-            // A reload resets the form unless an edit is pending.
-            mutable.update { it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null,
-                consentRequired = stored.consentRequired, consentError = null) }
+            // A reload resets the form unless an edit is pending. A read that started before a verification's write came back (an older version) is dropped.
+            mutable.update {
+                if (stored.version < (it.profile?.version ?: 0)) return@update it
+                it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null,
+                    consentRequired = stored.consentRequired, consentError = null)
+            }
             account.consentKnown(!stored.consentRequired)
         } catch (e: AccountException) {
             mutable.update { ProfileViewState(if (e.error == AccountError.UNAUTHORIZED) ProfilePhase.SIGNED_OUT else ProfilePhase.FAILED) }
@@ -113,6 +128,115 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
                 if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; account.consentKnown(false); return@launch }
                 mutable.update { it.copy(saving = false, error = message(e, "저장하지 못했어요. 잠시 후 다시 시도해 주세요.")) }
             }
+        }
+    }
+
+    // --- 연락처 인증 (contract "연락처 인증", 2026-10-26): GitHub 연결 (start → Custom Tab → dearby://contacts/github → complete) and 이메일 인증번호 (challenge → code → verify).
+    // Both answer the new Profile, merged into the form so other unsaved edits stay and the next PUT's If-Match is current. 503 hides that button for this session.
+    /** `GitHub으로 연결`: GitHub's authorize page in a Custom Tab; the result comes back through [githubReturned], or never if the person leaves the tab. */
+    fun linkGithub(browser: OAuthBrowser) {
+        if (mutable.value.verify.githubBusy) return
+        mutable.update { it.copy(verify = it.verify.copy(githubBusy = true)) }
+        viewModelScope.launch {
+            try {
+                val url = account.authorized { account.client.githubStart(it) }
+                if (!url.startsWith("https://")) throw AccountException(AccountError.UNAVAILABLE)
+                saved[GITHUB_STARTED] = true
+                try { browser.open(url) } catch (e: ActivityNotFoundException) {
+                    saved.remove<Boolean>(GITHUB_STARTED)
+                    Tracking.contactVerify("github", "failed")
+                    mutable.update { it.copy(notice = "브라우저를 열 수 없어요. 브라우저 앱을 확인해 주세요.") }
+                }
+            } catch (e: AccountException) {
+                verifyFailed("github", e, GITHUB_FAILED) { copy(githubAvailable = false) }
+            } finally { mutable.update { it.copy(verify = it.verify.copy(githubBusy = false)) } }
+        }
+    }
+    /** The `dearby://contacts/github` redirect: the editor comes back in front; a code is spent on `complete`, `cancelled` passes quietly, `failed` says so. */
+    fun githubReturned(redirect: ContactLinkRedirect) {
+        saved.remove<Boolean>(GITHUB_STARTED)
+        mutable.update { it.copy(editing = true, returned = it.returned + 1) }
+        when (redirect) {
+            ContactLinkRedirect.Cancelled -> Tracking.contactVerify("github", "cancelled")
+            ContactLinkRedirect.Failed -> { Tracking.contactVerify("github", "failed"); mutable.update { it.copy(notice = GITHUB_FAILED) } }
+            is ContactLinkRedirect.Code -> {
+                mutable.update { it.copy(verify = it.verify.copy(githubBusy = true)) }
+                viewModelScope.launch {
+                    try {
+                        verified("github", account.authorized { account.client.githubComplete(redirect.code, it) })
+                    } catch (e: AccountException) {
+                        verifyFailed("github", e, GITHUB_FAILED) { copy(githubAvailable = false) }
+                    } finally { mutable.update { it.copy(verify = it.verify.copy(githubBusy = false)) } }
+                }
+            }
+        }
+    }
+    /** `인증번호 받기`·`다시 받기`: mails a code to the typed address; the entry opens (or stays) with 다시 받기 asleep for a minute, also after a 429. */
+    fun requestEmailCode() {
+        val current = mutable.value
+        val email = current.form?.email?.trim()?.takeIf { ContactRules.validEmail(it) } ?: return
+        if (current.verify.emailBusy) return
+        mutable.update { it.copy(verify = it.verify.copy(emailBusy = true, entry = it.verify.entry.copy(error = null))) }
+        viewModelScope.launch {
+            try {
+                val challenge = account.authorized { account.client.emailChallenge(email, it) }
+                mutable.update { it.copy(verify = it.verify.copy(challengeId = challenge.id, entry = EmailCodeEntry(resendAt = System.currentTimeMillis() + RESEND_AFTER))) }
+            } catch (e: AccountException) {
+                // 429 (1분당 1회·하루 10회): the server's sentence, and the open entry waits another minute.
+                if (e.error == AccountError.RATE_LIMITED) mutable.update { it.copy(notice = e.detail ?: "인증번호는 1분에 한 번 받을 수 있어요.", verify = it.verify.copy(entry = it.verify.entry.copy(resendAt = System.currentTimeMillis() + RESEND_AFTER))) }
+                else verifyFailed("email", e, "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요.") { copy(emailAvailable = false) }
+            } finally { mutable.update { it.copy(verify = it.verify.copy(emailBusy = false)) } }
+        }
+    }
+    /** Digits only, six at most. */
+    fun changeEmailCode(text: String) = mutable.update { it.copy(verify = it.verify.copy(entry = it.verify.entry.copy(code = text.filter(Char::isDigit).take(EmailCodeEntry.LENGTH), error = null))) }
+    /** `확인`: a wrong code shows the tries left under the field; an expired or discarded challenge closes the entry for a new `인증번호 받기`. */
+    fun verifyEmail() {
+        val current = mutable.value.verify
+        val challengeId = current.challengeId ?: return
+        if (current.emailBusy || !current.entry.complete) return
+        mutable.update { it.copy(verify = it.verify.copy(emailBusy = true, entry = it.verify.entry.copy(error = null))) }
+        viewModelScope.launch {
+            try {
+                verified("email", account.authorized { account.client.emailVerify(challengeId, current.entry.code, it) })
+            } catch (e: AccountException) {
+                when {
+                    e.error == AccountError.BAD_REQUEST && e.code == "CODE_MISMATCH" -> { Tracking.contactVerify("email", "failed"); mutable.update { it.copy(verify = it.verify.copy(entry = it.verify.entry.copy(error = e.detail ?: "인증번호가 맞지 않아요."))) } }
+                    e.error == AccountError.BAD_REQUEST && e.code == "CHALLENGE_EXPIRED" -> { Tracking.contactVerify("email", "failed"); mutable.update { it.copy(notice = e.detail ?: "인증번호가 만료됐어요. 다시 받아 주세요.", verify = it.verify.copy(challengeId = null, entry = EmailCodeEntry())) } }
+                    else -> verifyFailed("email", e, "이메일을 인증하지 못했어요. 잠시 후 다시 시도해 주세요.") { copy(emailAvailable = false) }
+                }
+            } finally { mutable.update { it.copy(verify = it.verify.copy(emailBusy = false)) } }
+        }
+    }
+    fun dismissNotice() = mutable.update { it.copy(notice = null) }
+    /**
+     * The Profile a verification answered (a version up): kept as the loaded profile and merged into the form — only the verified [kind]'s contact takes the
+     * server's value, a row of that kind the server appended (a GitHub row that was not there) is added, every other typed, edited or removed row stays as it
+     * is (with its mark refreshed), and the email entry closes.
+     */
+    private fun verified(kind: String, profile: AccountProfile) {
+        Tracking.contactVerify(kind, "ok")
+        mutable.update { it.copy(profile = profile, form = it.form?.merged(kind, profile) ?: ProfileFormState.from(profile), verify = it.verify.copy(challengeId = null, entry = EmailCodeEntry())) }
+    }
+    private fun ProfileFormState.merged(kind: String, profile: AccountProfile): ProfileFormState {
+        val fresh = ProfileFormState.from(profile)
+        val email = profile.contacts.firstOrNull { it.kind == "email" }
+        val rows = extras.map { row ->
+            val contact = profile.contacts.firstOrNull { it.id == row.id } ?: return@map row
+            val value = if (contact.kind == kind && contact.verified) ContactRules.shown(contact.kind, contact.value) else row.value
+            row.copy(value = value, verifiedValue = contact.value.takeIf { contact.verified })
+        } + fresh.extras.filter { added -> added.kind == kind && extras.none { it.id == added.id } }
+        return copy(version = profile.version, email = if (kind == "email" && email?.verified == true) email.value else this.email, emailVerifiedValue = fresh.emailVerifiedValue, extras = rows)
+    }
+    /** The app brought the editor back after a GitHub return. */
+    fun consumeReturned() = mutable.update { it.copy(returned = 0) }
+    /** 403 CONSENT_REQUIRED brings the consent screen back; 503 switches that feature off for this session with a notice; the rest is a one-line notice. */
+    private fun verifyFailed(kind: String, e: AccountException, fallback: String, off: ContactVerifyState.() -> ContactVerifyState) {
+        Tracking.contactVerify(kind, "failed")
+        when {
+            e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED" -> { mutable.update { it.copy(consentRequired = true) }; account.consentKnown(false) }
+            e.error == AccountError.TURNED_OFF -> mutable.update { it.copy(verify = it.verify.off(), notice = "지금은 쓸 수 없어요. 연락처를 직접 입력해 주세요.") }
+            else -> mutable.update { it.copy(notice = message(e, fallback)) }
         }
     }
 
@@ -290,6 +414,11 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
                 mutable.update { it.copy(jobSearch = it.jobSearch.copy(loading = false, failed = true)) }
             }
         }
+    }
+    private companion object {
+        const val GITHUB_FAILED = "GitHub 연결에 실패했어요. 다시 시도해 주세요."
+        /** 다시 받기 sleeps this long after a mail (the server allows one a minute). */
+        const val RESEND_AFTER = 60_000L
     }
     private val HistoryDraft.Step.isPicker get() = this in setOf(HistoryDraft.Step.ORGANIZATION, HistoryDraft.Step.PROGRAM, HistoryDraft.Step.ACTIVITY, HistoryDraft.Step.ROLE)
 }
