@@ -13,14 +13,15 @@ enum class ActivityListPhase { LOADING, FAILED, LOADED }
 data class CategoryOption(val code: String, val label: String)
 /**
  * 발견 `프로그램 | 이벤트` (2026-10-26, contract "프로그램·이벤트 전환"): the API `kind` code. 이벤트 is 컨퍼런스·워크샵·밋업·강연; 프로그램 is every
- * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (contract "종류 필터", 2026-10-26), in the contract's category order.
+ * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (contract "종류 필터", 2026-10-26), in the contract's
+ * category order. 이벤트 has none (2026-10-26 user decision): its 종류 section is hidden and a 종류 choice kept on the device is not sent.
  */
 enum class DiscoveryKind(val code: String, val label: String, val categories: List<CategoryOption>) {
     PROGRAM("program", "프로그램", options(ActivityCategory.BOOTCAMP, ActivityCategory.STUDY, ActivityCategory.CLUB, ActivityCategory.HACKATHON, ActivityCategory.CONTEST, ActivityCategory.OTHER)),
-    EVENT("event", "이벤트", options(ActivityCategory.CONFERENCE, ActivityCategory.WORKSHOP, ActivityCategory.LECTURE, ActivityCategory.MEETUP));
-    /** The chosen [categories] in menu order; codes of the other kind (or unknown) are dropped. */
+    EVENT("event", "이벤트", emptyList());
+    /** The chosen [categories] in menu order; codes of the other kind (or unknown, or any code while 이벤트) are dropped. */
     fun chosen(codes: Set<String>) = categories.filter { it.code in codes }
-    /** The `category=` value, or null for 전체 (nothing chosen). */
+    /** The `category=` value, or null for 전체 (nothing chosen, or 이벤트). */
     fun categoryQuery(codes: Set<String>) = chosen(codes).joinToString(",") { it.code }.ifEmpty { null }
     companion object { fun of(code: String?) = entries.firstOrNull { it.code == code } ?: PROGRAM }
 }
@@ -152,7 +153,7 @@ data class ActivityListState(
     val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
     /** 발견 `프로그램 | 이벤트`, kept on the device. */
     val kind: DiscoveryKind = DiscoveryKind.PROGRAM,
-    /** The 종류 dropdown's chosen codes for [kind] (kept on the device per kind); empty = 전체. */
+    /** The 종류 filter's chosen codes for [kind] (kept on the device per kind); empty = 전체. Read through [DiscoveryKind.chosen]: 이벤트 ignores them. */
     val categories: Set<String> = emptySet(),
 ) {
     val asking get() = askingId?.let(known::get)

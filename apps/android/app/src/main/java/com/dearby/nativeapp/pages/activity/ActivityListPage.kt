@@ -110,7 +110,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
                 // 상태 above 종류 (contract "종류 필터": two rows, since both summaries clip side by side at narrow widths).
                 StatusFilter(state.statusGroups, setStatusGroups, Modifier.padding(start = 20.dp, end = 20.dp))
-                CategoryFilter(state.kind.categories, state.categories, setCategories, Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
+                // 이벤트 has no 종류 section (2026-10-26 user decision).
+                if (state.kind.categories.isNotEmpty()) CategoryFilter(state.kind.categories, state.categories, setCategories, Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
             PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {

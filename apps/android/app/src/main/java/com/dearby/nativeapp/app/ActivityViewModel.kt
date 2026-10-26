@@ -132,10 +132,10 @@ class ActivityViewModel(
         Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(groups))
         start(debounce = false)
     }
-    /** The 종류 dropdown (2026-10-26 사용자 요청): the list and expanded programs are read again with `category=`; nothing chosen is 전체. */
+    /** The 종류 dropdown (2026-10-26 사용자 요청): the list and expanded programs are read again with `category=`; nothing chosen is 전체. Not offered for 이벤트. */
     fun setCategories(value: Set<String>) {
-        if (value == state.value.categories) return
         val kind = state.value.kind
+        if (kind.categories.isEmpty() || value == state.value.categories) return
         mutable.update { it.copy(categories = value) }
         saveCategories(kind, value)
         Analytics.event("discovery_category_filter", "categories" to kind.chosen(value).joinToString(",") { it.code.lowercase() })
