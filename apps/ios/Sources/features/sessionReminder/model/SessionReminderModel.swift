@@ -15,7 +15,7 @@ import UserNotifications
     nonisolated static let identifierPrefix = "session-"
     nonisolated static let lead: TimeInterval = 10 * 60
     nonisolated static let limit = 60
-    /// `userInfo` of a reminder: the app opens that activity's timetable sheet on 찜한 세션.
+    /// `userInfo` of a reminder: the app opens that activity's timetable sheet on 내 시간표.
     enum Key { static let kind = "kind", activity = "activityId", schedule = "scheduleId", session = "sessionId" }
     nonisolated static let kind = "session_reminder"
     @ObservationIgnored private var running: Task<Void, Never>?
@@ -51,7 +51,7 @@ import UserNotifications
         for request in requests { try? await center.add(request) }
         AppAnalytics.event("session_reminder_scheduled", ["count": requests.count])
     }
-    /// The reminders in start order: sessions at the same instant share one (`session-<smallest id>`, `같은 시간에 찜한 세션 n개`).
+    /// The reminders in start order: sessions at the same instant share one (`session-<smallest id>`, `같은 시간에 내 시간표 세션 n개`).
     nonisolated static func requests(_ items: [FavoriteSession], now: Date) -> [UNNotificationRequest] {
         let future = items.filter { $0.session.start.addingTimeInterval(-lead) > now }.sorted { ($0.session.start, $0.id) < ($1.session.start, $1.id) }
         var groups: [[FavoriteSession]] = []
@@ -62,7 +62,7 @@ import UserNotifications
             let first = group[0]
             let content = UNMutableNotificationContent()
             content.title = (["10분 뒤", first.track?.name, first.track?.room] as [String?]).compactMap { $0 }.joined(separator: " · ")
-            content.body = group.count > 1 ? first.session.title + "\n같은 시간에 찜한 세션 \(group.count)개" : first.session.title
+            content.body = group.count > 1 ? first.session.title + "\n같은 시간에 내 시간표 세션 \(group.count)개" : first.session.title
             content.sound = .default
             content.userInfo = [Key.kind: kind, Key.activity: first.activityID, Key.schedule: first.scheduleID, Key.session: first.id]
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: first.session.start.addingTimeInterval(-lead).timeIntervalSince(now), repeats: false)

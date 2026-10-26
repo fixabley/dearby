@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// 즐겨찾기 › 찜한 세션, equal for every push.
+/// 즐겨찾기 › 내 시간표, equal for every push.
 struct MySessionsRoute: Hashable {}
 
-/// 찜한 세션 outside an activity (contract "트랙·세션 시간표" 2026-10-26): `GET /v1/me/session-favorites` grouped by activity, then by day, each
-/// day as 나만의 시간표 (`MyTimetableList`). Each item carries its track and block zone, so no timetable is read again.
+/// 내 시간표 outside an activity (contract "트랙·세션 시간표" 2026-10-26): `GET /v1/me/session-favorites` grouped by activity, then by day, each
+/// day as 내 시간표 (`MyTimetableList`). Each item carries its track and block zone, so no timetable is read again.
 struct MySessionsPage: View {
     @Environment(SessionFavoritesModel.self) private var favorites
     @State private var opened: FavoriteSession?
     var body: some View {
         Group {
             if favorites.items.isEmpty {
-                CenteredMessage(symbol: "heart", title: "찜한 세션이 없어요", message: "활동 상세의 시간표에서 하트를 누르면 여기에 모여요.")
+                CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요.")
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
@@ -32,7 +32,7 @@ struct MySessionsPage: View {
             }
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle("찜한 세션").navigationBarTitleDisplayMode(.inline).analyticsScreen("session_favorites")
+        .navigationTitle("내 시간표").navigationBarTitleDisplayMode(.inline).analyticsScreen("session_favorites")
         .sheet(item: $opened) { item in TimetableSessionSheet(session: item.session, track: item.track, zone: item.zone) }
     }
     private struct DayGroup: Identifiable {
