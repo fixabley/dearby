@@ -18,25 +18,34 @@ import SwiftUI
     /// `load()` ran (사용 통계 `queue_ad_skipped_unloaded` only counts openings that asked for an ad).
     @ObservationIgnored private(set) var requested = false
 
-    /// Call only once the account agreed (`AdConsentModel.allowsQueueAd`, contract "광고 목적 개인정보 제3자 제공 동의(선택)"): this starts the
+    /// Call only once the account agreed (`AdConsentModel.queueAnswer`, contract "광고 목적 개인정보 제3자 제공 동의(선택)"): this starts the
     /// SDK, which nothing else does (Info.plist `GADDelayAppMeasurementInit` keeps its measurement off until then).
     /// One request per loader; a failure leaves `nativeAd` nil. The first time (ATT `notDetermined`, app active so the system sheet shows) it
     /// asks for tracking and waits for the answer; the request goes ahead whatever it is.
     func load() async {
         guard Self.enabled, !requested else { return }
         requested = true
+        await Self.start()
+        request()
+    }
+    /// Agreed at the queue's end, after the ad's place had passed: ATT and the SDK start now, the ad waits for the next opening.
+    static func startAfterConsent() async {
+        guard enabled else { return }
+        await start()
+    }
+    /// The ATT prompt the first time (`notDetermined`, app active so the system sheet shows), then the SDK. Starting does not wait for it:
+    /// a request made meanwhile is queued by the SDK.
+    private static func start() async {
         if ATTrackingManager.trackingAuthorizationStatus == .notDetermined, UIApplication.shared.applicationState == .active {
             _ = await ATTrackingManager.requestTrackingAuthorization()
         }
-        request()
-    }
-    /// Starting the SDK does not wait for it: a request made meanwhile is queued by the SDK.
-    private func request() {
         let configuration = MobileAds.shared.requestConfiguration
         configuration.maxAdContentRating = .parentalGuidance
         configuration.setPublisherFirstPartyIDEnabled(false)
         // Later calls return at once; the first starts the SDK.
         MobileAds.shared.start(completionHandler: nil)
+    }
+    private func request() {
         let loader = AdLoader(adUnitID: Self.unitID, rootViewController: nil, adTypes: [.native], options: nil)
         loader.delegate = self
         let extras = Extras()

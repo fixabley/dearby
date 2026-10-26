@@ -36,13 +36,16 @@ struct AdConsentServer: Sendable {
         agreed = nil
         respond(false)
     }
-    /// The queue, after its response and before its ad: true once agreed, asking first unless this account refused on this device.
-    func allowsQueueAd() async -> Bool {
-        guard QueueAdLoader.enabled, let agreed = await refresh() else { return false }
-        if agreed { return true }
-        if declined { return false }
-        return await ask(.queue)
+    /// The queue after its response: `agreed` requests the ad now; `askAtEnd` (not agreed, no refusal on this device) waits until the last
+    /// activity is passed, where the ad would go (2026-10-26 user decision), and asks then; `none` neither (no ads in this build, a failed read
+    /// or a remembered refusal).
+    enum QueueAnswer { case agreed, askAtEnd, none }
+    func queueAnswer() async -> QueueAnswer {
+        guard QueueAdLoader.enabled, let agreed = await refresh() else { return .none }
+        return agreed ? .agreed : declined ? .none : .askAtEnd
     }
+    /// The sheet over the queue's end page; true once agreed and saved.
+    func askAtQueueEnd() async -> Bool { await ask(.queue) }
     /// Reads the answer; nil when it could not be read.
     @discardableResult func refresh() async -> Bool? {
         guard let server, let state = try? await server.load() else { return nil }

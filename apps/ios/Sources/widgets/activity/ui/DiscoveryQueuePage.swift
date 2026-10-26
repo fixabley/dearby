@@ -22,6 +22,8 @@ struct DiscoveryQueuePage: View {
     /// Closing on it logs `queue_exit` with the last activity card's number (`lastPosition`; the ad page does not count).
     @State private var ads = QueueAdLoader()
     @State private var adSlot = AdSlot.open
+    /// Not agreed to ads yet: the consent sheet comes when the last activity is passed (2026-10-26), not at opening.
+    @State private var askAdConsentAtEnd = false
     private enum AdSlot { case open, shown, closed }
     private var showsAd: Bool { adSlot != .closed && ads.nativeAd != nil && !model.items.isEmpty }
     private var afterCards: String { showsAd ? Self.adID : Self.endID }
@@ -62,7 +64,12 @@ struct DiscoveryQueuePage: View {
         .task {
             await model.load()
             AppAnalytics.event("queue_open", ["size": model.items.count, "seen": model.items.filter { favorites.isFavorite(.activity($0.id)) }.count])
-            if !model.items.isEmpty, await adConsent.allowsQueueAd() { await ads.load() }
+            guard !model.items.isEmpty else { return }
+            switch await adConsent.queueAnswer() {
+            case .agreed: await ads.load()
+            case .askAtEnd: askAdConsentAtEnd = adSlot == .open
+            case .none: break
+            }
         }
         .analyticsScreen("queue")
         .adConsentSheet(adConsent, at: .queue)
@@ -72,7 +79,11 @@ struct DiscoveryQueuePage: View {
                 AppAnalytics.event("queue_ad_shown")
             } else if position == Self.endID, adSlot == .open, !model.items.isEmpty {
                 adSlot = .closed
-                if ads.requested, ads.nativeAd == nil { AppAnalytics.event("queue_ad_skipped_unloaded", ["reason": ads.failed ? "failed" : "loading"]) }
+                if askAdConsentAtEnd {
+                    // Asking is not a skipped ad (no `queue_ad_skipped_unloaded`); agreeing shows the ad from the next opening.
+                    askAdConsentAtEnd = false
+                    Task { if await adConsent.askAtQueueEnd() { await QueueAdLoader.startAfterConsent() } }
+                } else if ads.requested, ads.nativeAd == nil { AppAnalytics.event("queue_ad_skipped_unloaded", ["reason": ads.failed ? "failed" : "loading"]) }
             }
             guard position == Self.endID, !model.items.isEmpty, !reachedEnd else { return }
             reachedEnd = true
