@@ -41,7 +41,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     items(cards, key = { "inbox-" + it.programId }) { card ->
                         val shown = card.programId in expanded
                         ProgramCard(card.title, card.organization, card.unread, 0, null, null, null, emptyList(), emptyList(), shown,
-                            { expanded = if (shown) expanded - card.programId else expanded + card.programId }, logoUrl = card.logoUrl) {
+                            { expanded = if (shown) expanded - card.programId else expanded + card.programId }, logoUrl = card.logoUrl, category = card.category, categoryCode = card.categoryCode) {
                             card.rows.forEach { row -> InboxRowItem(row, open) }
                         }
                     }

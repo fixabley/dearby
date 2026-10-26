@@ -55,7 +55,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
 
 /**
  * 발견 목록의 프로그램 카드(contract "발견 카드 리뉴얼", One UI 알림 카드 느낌을 Material 3로): `OutlinedCard`(모서리 20, 1dp 선, 그림자 없음). 왼쪽 44dp
- * 로고 자리는 [logoUrl]을 Coil `AsyncImage`로 꽉 채워(Crop, 모서리 14) 보이고 로딩 중·실패·null은 프로그램 이름 첫 글자 아바타다(contract "프로그램 로고"). 가운데 이름(굵게) → 조직 → 분야 1개([fieldTags]의 첫째)와 성격 [traitTags]의
+ * 로고 자리는 [logoUrl]을 Coil `AsyncImage`로 꽉 채워(Crop, 모서리 14) 보이고 로딩 중·실패·null은 프로그램 이름 첫 글자 아바타다(contract "프로그램 로고"). 가운데 종류 줄([category], 아이콘+이름, 없으면 생략) → 이름(굵게) → 조직 → 분야 1개([fieldTags]의 첫째)와 성격 [traitTags]의
  * 아이콘+글자 칩 한 줄(넘치면 `+n`, 없으면 생략) → 검색이 활동 이름에 맞으면 그 아래 줄에 `맞는 활동 n개`([matchedCount]; contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음"). 오른쪽 위 `Badge`는
  * 활동 수([statusCounts] 합, 없으면 [openCount] + [upcomingCount]), 그 아래 한 줄은 모집 중이 있으면 `M월 d일 마감`([deadline], 모집 마감이 없는 활동 날짜면 `M월 d일 행사`), 예정만 있으면 `M월 d일 시작`([nearestStart]),
  * 둘 다 없으면 진행 중이 있으면 `진행 중 n개`([statusCounts]), 아니면 `최근 yyyy.M`([latestActivityAt]). 머리를 누르면 [onToggle]; 펼쳐지면 배지 자리가 `IconButton`(위쪽 화살표, 44dp, `접기`)으로 바뀌고 [content]가
@@ -82,6 +82,8 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
      * past activities says `진행 중 n개` (else `최근 yyyy.M`). Empty (older API, 즐겨찾기) keeps 모집 중 + 모집 예정.
      */
     statusCounts: Map<String, Int> = emptyMap(),
+    /** 종류 label and API code ([CategoryMark], 2026-10-26 사용자 요청): a small icon + name line above the title, none when null. */
+    category: String? = null, categoryCode: String? = null,
     /** The program heart (and its bell) left of the count badge, with their own taps and names. */
     actions: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -111,6 +113,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
         ) {
             ProgramLogo(logoUrl, title)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (category != null) CategoryMark(category, categoryCode)
                 Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (newRecruitment) Badge(containerColor = TealFill, contentColor = Color.White) { Text("새 모집", Modifier.padding(horizontal = 4.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall) }
                 Text(organization, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

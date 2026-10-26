@@ -179,9 +179,14 @@ data class MenuAction(val label: String, val icon: ImageVector, val onClick: () 
 }
 
 /** [danger] reads in the danger colour on the quiet background (a 탈락 mark). */
-@Composable fun ExampleBadge(text: String = "예시", accent: Boolean = false, danger: Boolean = false) {
+/** [icon]: a decorative 16dp icon before the text (the detail's 종류 chip). */
+@Composable fun ExampleBadge(text: String = "예시", accent: Boolean = false, danger: Boolean = false, icon: ImageVector? = null) {
+    val color = if (danger) MaterialTheme.colorScheme.error else if (accent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(color = if (accent && !danger) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(10.dp)) {
-        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = if (danger) MaterialTheme.colorScheme.error else if (accent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+        Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon != null) Icon(icon, null, Modifier.size(16.dp), tint = color)
+            Text(text, color = color, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 

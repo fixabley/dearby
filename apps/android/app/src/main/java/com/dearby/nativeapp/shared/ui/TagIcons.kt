@@ -53,6 +53,27 @@ fun tagIcon(nameEn: String?): ImageVector = when (nameEn) {
     else -> Icons.Rounded.Sell
 }
 
+/** 활동 종류 icon by API code (contract "활동 종류(category)"); an unknown code is `Category`, like 기타. */
+fun categoryIcon(code: String?): ImageVector = when (code) {
+    "BOOTCAMP" -> Icons.Rounded.School
+    "CONFERENCE" -> Icons.Rounded.Groups
+    "WORKSHOP" -> Icons.Rounded.Build
+    "STUDY" -> Icons.AutoMirrored.Rounded.MenuBook
+    "CLUB" -> Icons.Rounded.Group
+    "LECTURE" -> Icons.Rounded.Mic
+    "HACKATHON" -> Icons.Rounded.Computer
+    "CONTEST" -> Icons.Rounded.EmojiEvents
+    "MEETUP" -> Icons.Rounded.LocalCafe
+    else -> Icons.Rounded.Category
+}
+
+/** The program card's 종류 line above the title: a 16dp icon and the [name] in `labelSmall`, both `onSurfaceVariant`. The icon is decorative. */
+@Composable fun CategoryMark(name: String, code: String?, modifier: Modifier = Modifier) =
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(categoryIcon(code), null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+    }
+
 /**
  * Discovery card and expanded activity rows (contract "태그 아이콘+라벨·분야 1개"): one line of icon + text chips, [field] first on mint
  * with teal text, then [traits] on the neutral container. Chips that do not fit are dropped from the end and counted in a trailing `+n`;
