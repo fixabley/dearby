@@ -135,6 +135,7 @@ import SwiftUI
                 switch tap {
                 case .link(let url): open(url, source: "push")
                 case .activity(let id): Task { await activityModel.openLinked(id, source: "push") }
+                case .timetable(let activityID, let scheduleID): Task { await activityModel.openLinkedTimetable(activityID, scheduleID: scheduleID) }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in if accountReady { notifications.timeZoneChanged() } }

@@ -43,6 +43,13 @@ struct ActivityDetailView: View {
             let from = state.takeLinkSource(activityID) ?? source
             openedFrom = from
             AppAnalytics.event("activity_view", parameters(["source": from]))
+            // A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): its block's timetable opens on 찜한 세션; a block gone from the activity
+            // leaves the detail alone.
+            if let scheduleID = state.takeLinkTimetable(activityID), let activity,
+               let row = scheduleRows(activity).first(where: { $0.id == scheduleID && $0.hasTimetable }) {
+                timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: row.id, scheduleTitle: row.title,
+                                           date: row.date, favoritesFirst: true)
+            }
         }
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
