@@ -1,14 +1,13 @@
 import SwiftUI
 
-/// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25), the second half of the 내 활동 tab: `프로그램` (logo, name, next recruitment,
-/// `새 모집` badge) then `활동` (the server's deadline order), each with its heart and bell (the level is spoken and shown by the bell symbol and
-/// its title). Swiping a row removes it with a `되돌리기` notice. The top-right `목록 | 캘린더` switch (remembered on the device) shows the
-/// activities by recruitment date instead (`FavoritesCalendarView`). Signed out: a sign-in prompt; nothing yet: `하트를 누르면 여기에 모여요`.
+/// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25), the second half of the 내 활동 tab: the activities by recruitment date
+/// (`FavoritesCalendarView`; the `목록` view went 2026-10-26), then `날짜 없는 즐겨찾기` — the programs (logo, name, next recruitment, `새 모집`
+/// badge) and the activities without any date — as the discovery rows with their heart and bell (the level is spoken and shown by the bell symbol
+/// and its title). Signed out: a sign-in prompt; nothing yet: `하트를 누르면 여기에 모여요`.
 struct FavoritesPage: View {
     let state: ActivityViewModel
     @Binding var path: NavigationPath
     @Environment(FavoritesModel.self) private var favorites
-    @AppStorage(FavoritesLayout.storageKey) private var layout = FavoritesLayout.list
     var body: some View {
         Group {
             switch favorites.phase {
@@ -23,51 +22,26 @@ struct FavoritesPage: View {
             case .loaded, .unavailable:
                 if favorites.programs.isEmpty && favorites.activities.isEmpty {
                     CenteredMessage(symbol: "heart", title: "하트를 누르면 여기에 모여요", message: "발견에서 마음에 드는 활동과 프로그램에 하트를 눌러 보세요.")
-                } else if layout == .calendar {
-                    FavoritesCalendarView(items: favorites.activities) { path.append($0) }
                 } else {
-                    list
-                }
-            }
-        }
-        .toolbar {
-            if favorites.phase != .signedOut {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("보기", selection: $layout.reporting { if $0 == .calendar { AppAnalytics.event("menu_open", ["menu": "favorites_calendar"]) } }) {
-                            Label("목록", systemImage: "list.bullet").tag(FavoritesLayout.list)
-                            Label("캘린더", systemImage: "calendar").tag(FavoritesLayout.calendar)
+                    FavoritesCalendarView(items: favorites.activities, open: { path.append($0) }) { undated in
+                        if !favorites.programs.isEmpty || !undated.isEmpty {
+                            undatedSection(undated)
                         }
-                    } label: {
-                        Image(systemName: layout == .calendar ? "calendar" : "list.bullet")
                     }
-                    .accessibilityLabel("보기 전환").accessibilityValue(layout == .calendar ? "캘린더" : "목록")
-                    .accessibilityIdentifier("favorites-layout")
+                    .refreshable { await favorites.load() }
                 }
             }
         }
-        .overlay(alignment: .bottom) { undoNotice }
-        .onDisappear { favorites.commitPending() }
-        .analyticsScreen(layout == .calendar ? "favorites_calendar" : "favorites")
+        .analyticsScreen("favorites")
     }
-    private var list: some View {
-        List {
-            if !favorites.programs.isEmpty {
-                heading("프로그램")
-                ForEach(favorites.programs) { favorite in
-                    row(programRow(favorite), target: .program(favorite.id))
-                }
-            }
-            if !favorites.activities.isEmpty {
-                heading("활동")
-                ForEach(favorites.activities) { favorite in
-                    row(activityRow(favorite), target: .activity(favorite.id))
-                }
-            }
+    /// 날짜 없는 즐겨찾기: the programs (never on the calendar) and the activities without any date.
+    private func undatedSection(_ activities: [FavoriteActivity]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("날짜 없는 즐겨찾기").font(.dearby(.headline)).accessibilityAddTraits(.isHeader).padding(.top, 20)
+            ForEach(favorites.programs) { programRow($0) }
+            ForEach(activities) { activityRow($0) }
         }
-        .listStyle(.plain).environment(\.defaultMinListRowHeight, 0)
-        .scrollContentBackground(.hidden)
-        .refreshable { await favorites.load() }
+        .padding(.horizontal, 20)
     }
     private func programRow(_ favorite: FavoriteProgram) -> some View {
         let program = favorite.program
@@ -97,45 +71,6 @@ struct FavoritesPage: View {
             path.append(activity.id)
         }
     }
-    private func heading(_ text: String) -> some View {
-        Text(text).font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
-    }
-    /// One card row: no list background or separator; a trailing swipe removes it (with the undo notice).
-    private func row(_ content: some View, target: FavoriteTarget) -> some View {
-        content
-            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button("해제", systemImage: "heart.slash", role: .destructive) { withAnimation { favorites.removeWithUndo(target) } }
-            }
-    }
-    @ViewBuilder private var undoNotice: some View {
-        if let pending = favorites.pending {
-            HStack(spacing: 12) {
-                Text("즐겨찾기에서 뺐어요").font(.dearby(.subheadline)).foregroundStyle(.primary)
-                Spacer(minLength: 8)
-                Button("되돌리기") { withAnimation { favorites.undo() } }.font(.dearby(.subheadline).weight(.semibold))
-            }
-            .padding(.horizontal, 16).frame(minHeight: 48)
-            .background(.regularMaterial, in: .capsule)
-            .padding(.horizontal, 16).padding(.bottom, 12)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-            .task(id: pending.target) {
-                AccessibilityNotification.Announcement("즐겨찾기에서 뺐어요").post()
-                try? await Task.sleep(for: .seconds(4))
-                if !Task.isCancelled { withAnimation { favorites.commitPending() } }
-            }
-        }
-    }
-}
-
-/// The favorites screen's `목록 | 캘린더` choice, kept on the device (a new key, 2026-10-25).
-enum FavoritesLayout: String {
-    case list, calendar
-    static let storageKey = "dearby.favorites.layout"
 }
 
 /// A program page pushed from 즐겨찾기; equal by program id.
