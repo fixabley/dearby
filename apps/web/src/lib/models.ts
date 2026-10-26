@@ -128,6 +128,8 @@ const scheduleSchema = z.object({
     .catch(null),
   // 이 블록에 세션이 하나라도 있음(contract "트랙·세션 시간표"); older responses omit it.
   hasTimetable: z.boolean().optional().catch(false),
+  // 선발 과정·활동 일정 (contract "선발 과정·활동 일정 분리" 2026-10-26); stays undefined on older responses so the detail keeps one list.
+  phase: z.enum(["SELECTION", "ACTIVITY"]).optional().catch(undefined),
 });
 export type Schedule = z.infer<typeof scheduleSchema>;
 const named = z.object({ id: z.number().int(), name: text });

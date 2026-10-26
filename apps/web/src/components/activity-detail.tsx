@@ -105,6 +105,15 @@ export function ActivityDetail({ id }: { id: number }) {
   const place = activity.place ?? null;
   // The 활동 기간 block can carry a timetable too; with 세부 일정 listed it gets its own row so the button does not disappear.
   const periodRow = activity.schedules.length && activity.activitySchedule.hasTimetable ? [activity.activitySchedule] : [];
+  // 선발 과정·활동 일정 (contract "선발 과정·활동 일정 분리" 2026-10-26): the list splits by `phase`; the timetable-bearing 활동 기간
+  // row always sits on the 활동 일정 side. An older server (no `phase`) keeps today's single `일정` list in server order.
+  const phased = activity.schedules.every((schedule) => schedule.phase);
+  const scheduleSections: [string, Schedule[]][] = phased
+    ? [
+        ["선발 과정", activity.schedules.filter((schedule) => schedule.phase === "SELECTION")],
+        ["활동 일정", [...periodRow, ...activity.schedules.filter((schedule) => schedule.phase === "ACTIVITY")]],
+      ]
+    : [["일정", [...periodRow, ...activity.schedules]]];
   const openTimetable = [activity.activitySchedule, ...activity.schedules].find((schedule) => schedule.id === timetableId);
   // A block with a timetable is one whole-row button that opens the modal; other blocks stay plain rows.
   const scheduleRow = (schedule: Schedule, body: React.ReactNode) =>
@@ -190,24 +199,32 @@ export function ActivityDetail({ id }: { id: number }) {
             </ul>
           </InsetGroup>
         )}
-        <InsetGroup title="일정">
-          {activity.schedules.length ? (
-            [...periodRow, ...activity.schedules].map((schedule) => (
-              <li key={schedule.id}>
-                {scheduleRow(
-                  schedule,
-                  <>
-                    <Icon name="calendar" tone="teal" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
-                      <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
-                      {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
-                    </div>
-                  </>,
-                )}
-              </li>
+        {activity.schedules.length ? (
+          // One inset group per non-empty section (a 선발 없는 컨퍼런스 shows 활동 일정 alone).
+          scheduleSections
+            .filter(([, rows]) => rows.length)
+            .map(([title, rows]) => (
+              <InsetGroup key={title} title={title}>
+                {rows.map((schedule) => (
+                  <li key={schedule.id}>
+                    {scheduleRow(
+                      schedule,
+                      <>
+                        <Icon name="calendar" tone="teal" />
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
+                          <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
+                          {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
+                        </div>
+                      </>,
+                    )}
+                  </li>
+                ))}
+              </InsetGroup>
             ))
-          ) : (
+        ) : (
+          // No 세부 일정: the 활동 기간 block alone, under the 활동 일정 heading once the server sends `phase`.
+          <InsetGroup title={activity.activitySchedule.phase ? "활동 일정" : "일정"}>
             <li className="text-subheadline">
               {scheduleRow(
                 activity.activitySchedule,
@@ -217,8 +234,8 @@ export function ActivityDetail({ id }: { id: number }) {
                 </>,
               )}
             </li>
-          )}
-        </InsetGroup>
+          </InsetGroup>
+        )}
         <TimetableSheet
           activityId={activity.id}
           activityName={activity.name}
