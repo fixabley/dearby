@@ -43,6 +43,13 @@ struct ActivityDetailView: View {
             let from = state.takeLinkSource(activityID) ?? source
             openedFrom = from
             AppAnalytics.event("activity_view", parameters(["source": from]))
+            // A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): its block's timetable opens on 찜한 세션; a block gone from the activity
+            // leaves the detail alone.
+            if let scheduleID = state.takeLinkTimetable(activityID), let activity,
+               let row = scheduleRows(activity).first(where: { $0.id == scheduleID && $0.hasTimetable }) {
+                timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: row.id, scheduleTitle: row.title,
+                                           date: row.date, favoritesFirst: true)
+            }
         }
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -69,6 +76,8 @@ struct ActivityDetailView: View {
             HStack(spacing: 8) {
                 // 활동 상태 (contract "활동 상태" 2026-10-26); 모집 정보 없음 has no badge.
                 if let badge = activity.status(at: state.loadedAt)?.badge { DearbyBadge(title: badge) }
+                // 모집 시작 D-day (contract "모집 예정 시작 D-day" 2026-10-26): the mini badge in the 모집 예정 colours beside the status.
+                if let startDDay = activity.upcomingStartDDay(at: state.loadedAt) { DearbyMiniBadge(title: startDDay) }
                 if let category = activity.category { DearbyBadge(title: category.label, quiet: true, systemImage: category.systemImage) }
             }
             // 분야·얻을 수 있는 것 (contract "분야·성격 태그와 아이콘" 2026-10-24): every tag as icon and text, empty groups omitted.
@@ -154,9 +163,10 @@ struct ActivityDetailView: View {
         .controlSize(.large).font(.dearby(.body).weight(.semibold)).tint(DearbyStyle.teal)
         .padding(.horizontal, 20).padding(.bottom, 12).background(Color(.systemBackground))
     }
-    /// The `행사 일정` rows in track order: the recruitment (`모집` with the period and a D-day while recruiting when both bounds are known,
+    /// The schedule rows in track order: the recruitment (`모집` with the period and a D-day while recruiting when both bounds are known,
     /// else `모집 마감` with the deadline — contract "모집 날짜 표기 — 2026-10-26"), `schedules[]`, the activity period; each dated one
-    /// can be added to the calendar (the recruitment row as its deadline).
+    /// can be added to the calendar (the recruitment row as its deadline). `selection` puts the row under `선발 과정` rather than `활동 일정`
+    /// (contract "선발 과정·활동 일정 분리" 2026-10-26; a timetable block always under `활동 일정`).
     private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
         let now = state.loadedAt
         let period = activity.applicationStage?.periodText(now: now) == nil ? nil : activity.recruitmentDate(at: now)
@@ -165,7 +175,8 @@ struct ActivityDetailView: View {
             return ActivityInformationView.Row(id: stage.id, title: application ? (period == nil ? "모집 마감" : "모집") : stage.name,
                                                date: application ? period?.text ?? stage.dateText(now: now) : stage.dateText(now: now),
                                                draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)),
-                                               hasTimetable: !application && stage.source.hasTimetable, badge: application ? period?.dday : nil)
+                                               hasTimetable: !application && stage.source.hasTimetable, badge: application ? period?.dday : nil,
+                                               selection: !stage.inActivitySection)
         }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.

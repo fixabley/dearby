@@ -30,13 +30,18 @@ struct ActivityStage: Identifiable, Equatable {
     /// The schedule behind the stage; for `지원` only the application window's end (README: 날짜는 모집 마감). Its `id` is the
     /// schedule id the marks are keyed by and the server stores them under.
     let source: ActivityStageModel
-    /// A 선발 단계 (contract "통과 여부는 선발 단계에만" 2026-10-26): only these take 통과·대기·탈락; any other stage keeps the date and
-    /// 예정/지남 by time, and its stored mark is not read (`.wait`).
+    /// A 선발 과정 stage (contract "선발 과정·활동 일정 분리" 2026-10-26): only these take 통과·대기·탈락; an 활동 일정 stage keeps the date
+    /// and 예정/지남 by time, and its stored mark is not read (`.wait`).
     let selection: Bool
+    /// The `활동 일정` section holds the activity stages and, whatever its phase, any block with a 트랙·세션 시간표 (contract: 시간표 블록은
+    /// `phase`와 상관없이 `활동 일정`); the rest is `선발 과정`.
+    var inActivitySection: Bool { !selection || source.hasTimetable }
     var mark: StageMark
     var state: State
     /// The marked status as the schedule names it (대기·통과·탈락 or the admin's names).
     var status: ScheduleStatus { mark.status(in: source.statuses) }
+    /// The schedule's 통과 option; nil when the admin's statuses have no `PASSED` kind.
+    var passedOption: ScheduleStatus? { source.statuses.first { $0.kind == .passed } }
     /// The day the stage counts from: its start, or its end when only that is known.
     var anchor: Date? { source.anchor }
     /// For the overlap check (timed, or date-only with an admin time window); empty when the stage cannot be compared.
@@ -72,6 +77,39 @@ struct ActivityProgress: Equatable {
         guard let currentIndex, let current else { return failed ? "\(stages.count)단계 중 탈락 표시" : "\(stages.count)단계 모두 지남" }
         if participating { return "선발 단계 모두 통과, 참여 중" }
         return "\(stages.count)단계 중 \(currentIndex + 1)단계 \(current.name) 진행 중"
+    }
+    /// 지난 선발 단계 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26): the 선발 단계 in track order up to the first dated one that is
+    /// not yet past — the past dated ones and the date-less ones between them; a date-less stage behind a future one is left out. "Past"
+    /// is the instant (end, or start with no end; an all-day stage's `end` is the Seoul midnight that closes it), not the track's Seoul-day
+    /// rule. Only unmarked stages with a 통과 option; empty when no dated stage is past.
+    func autopassCandidates(now: Date) -> [ActivityStage] {
+        var candidates: [ActivityStage] = []
+        var pastDated = false
+        for stage in stages where stage.selection {
+            if let bound = stage.source.end ?? stage.source.start {
+                guard stage.source.allDay ? bound <= now : bound < now else { break }
+                pastDated = true
+            }
+            if stage.mark == .wait, stage.passedOption != nil { candidates.append(stage) }
+        }
+        return pastDated ? candidates : []
+    }
+}
+
+/// 지난 선발 단계 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26): asked once per activity right after it joins 내 활동.
+struct AutopassSuggestion: Identifiable, Equatable {
+    let activity: ActivityModel
+    /// The stages `통과로 표시` marks (`ActivityProgress.autopassCandidates`).
+    let stages: [ActivityStage]
+    /// The 선발 단계 the suggestion leaves alone (not past, not passed): empty means the track reads 참여 중 at once.
+    let remaining: [ActivityStage]
+    var id: String { activity.id }
+    /// `{n}개 단계(지원, 입장권 추첨 결과 발송)가 이미 지났어요. …` with the track's stage names.
+    var message: String {
+        let names = stages.map(\.name).joined(separator: ", ")
+        let outcome = remaining.isEmpty ? "통과로 표시하면 바로 참여 중으로 보여요."
+            : "통과로 표시해요. 남은 단계(\(remaining.map(\.name).joined(separator: ", ")))는 그대로 둬요."
+        return "\(stages.count)개 단계(\(names))가 이미 지났어요. \(outcome)"
     }
 }
 
@@ -135,11 +173,11 @@ enum ActivityStages {
         ActivityStage(id: source.id, name: name, badgeName: badgeName, icon: icon, source: source, selection: selection,
                       mark: selection ? marks[source.id] ?? .wait : .wait, state: .upcoming)
     }
-    /// 선발 단계 (contract "통과 여부는 선발 단계에만" 2026-10-26): 마감·발표·면접 (`DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`), and an `EVENT`
-    /// whose statuses the admin set (an id: e.g. 코딩테스트, which collection files as EVENT like any 행사). The `지원` stage always is; the
-    /// activity period never.
+    /// 선발 과정 (contract "선발 과정·활동 일정 분리" 2026-10-26): the server's `phase`. An older server sends none, and then the superseded
+    /// "통과 여부는 선발 단계에만" rule decides: 마감·발표·면접 (`DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`), and an `EVENT` whose statuses the admin
+    /// set (an id: e.g. 코딩테스트, which collection files as EVENT like any 행사). The `지원` stage always is; the activity period never.
     private static func isSelection(_ source: ActivityStageModel) -> Bool {
-        source.kind != .event || source.statuses.contains { $0.id != nil }
+        source.phase.map { $0 == .selection } ?? (source.kind != .event || source.statuses.contains { $0.id != nil })
     }
     /// Timed: over once its end (its start, with no end) fell before today. All-day: over once the exclusive end reached today.
     /// Date-less: never by time.

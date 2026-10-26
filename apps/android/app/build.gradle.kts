@@ -23,6 +23,9 @@ val googleServerClientId = connection("GOOGLE_SERVER_CLIENT_ID") ?: ""
 val testAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
 val testAdMobNativeUnitId = "ca-app-pub-3940256099942544/2247696110"
 val adMob = listOf("ADMOB_ANDROID_APP_ID", "ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID").map(::connection).takeIf { ids -> ids.all { it != null } }?.map { it!! }
+// 광고 끄기 (2026-10-26 user decision): the queue ad and the consent sheet before it are off unless `DEARBY_ADS_ENABLED=true`. The code, SDK and
+// consent flow stay; only `QueueAd.enabled` reads this, so nothing is initialised, asked or requested while it is false.
+val adsEnabled = connection("DEARBY_ADS_ENABLED")?.toBoolean() ?: false
 // Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
 // Play upload key (2026-10-19): keystore and passwords live outside the repository (env or same-named Gradle properties).
@@ -41,6 +44,7 @@ android {
         versionCode = connection("ANDROID_VERSION_CODE")?.toInt() ?: 1
         versionName = "0.1.0"
         manifestPlaceholders["webHost"] = URI(webOrigin).host
+        buildConfigField("boolean", "ADS_ENABLED", "$adsEnabled")
     }
     uploadSigning?.let { keys ->
         signingConfigs.create("upload") {

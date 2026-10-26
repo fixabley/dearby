@@ -46,6 +46,8 @@
 	<true/>
 	<key>DearbyAdMobNativeUnitID</key>
 	<string>$(ADMOB_NATIVE_UNIT_ID)</string>
+	<key>DearbyAdsEnabled</key>
+	<string>$(DEARBY_ADS_ENABLED)</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

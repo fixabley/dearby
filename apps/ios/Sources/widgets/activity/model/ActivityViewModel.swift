@@ -4,7 +4,7 @@ import Observation
 /// Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): `GET /v1/discovery/programs` with server search (`q`)
 /// and cursor paging, both read with the chosen 활동 상태 (contract "활동 상태" 2026-10-26); an expanded program loads its activities in
 /// those states with `GET /v1/activities?programId=&status=` (the server judges the state) and shows them by state.
-/// Also 내 활동 — the applied activities and their stage marks — and the apply-confirmation prompt, shared with 내 활동 and the detail screen.
+/// Also 내 활동 — the applied activities and their stage marks — and the apply-confirmation and 통과 제안 prompts, shared with 내 활동 and the detail screen.
 /// 내 활동 storage (contract "내 활동 서버 저장" 2026-10-22): signed out, the marks live in this model's memory as before (the app has no
 /// device copy of them); signed in, `signedIn(_:)` uploads those once with `import`, then the server's list replaces them and every
 /// change is sent to `/v1/me/activities…` as it is made. A failed change shows `notice` and reloads the server's list.
@@ -26,12 +26,24 @@ import Observation
         let stored = (UserDefaults.standard.string(forKey: groupsKey) ?? "").split(separator: ",").compactMap { StatusGroup(rawValue: String($0)) }
         return stored.isEmpty ? [.available] : Set(stored)
     }
-    func setStatusGroups(_ groups: Set<StatusGroup>) {
+    /// The 필터 sheet's `적용` or a chip's × (contract "필터 시트" 2026-10-26): both filters at once, one reload. None chosen falls back to
+    /// `지원 가능`; 종류 outside this side's list are dropped (none on the 이벤트 side). Returns which of the two changed (사용 통계 reports only
+    /// those); nothing changed is no reload. Only a changed value is stored, so the 이벤트 side never overwrites the 프로그램 side's 종류.
+    @discardableResult func applyFilters(groups: Set<StatusGroup>, categories chosen: Set<ActivityCategory>) -> (groups: Bool, categories: Bool) {
         let groups = groups.isEmpty ? [.available] : groups
-        guard groups != statusGroups else { return }
-        statusGroups = groups
-        UserDefaults.standard.set(StatusGroup.allCases.filter(groups.contains).map(\.rawValue).joined(separator: ","), forKey: Self.groupsKey)
+        let chosen = chosen.intersection(kind.categories)
+        let changed = (groups: groups != statusGroups, categories: chosen != categories)
+        guard changed.groups || changed.categories else { return changed }
+        if changed.groups {
+            statusGroups = groups
+            UserDefaults.standard.set(StatusGroup.allCases.filter(groups.contains).map(\.rawValue).joined(separator: ","), forKey: Self.groupsKey)
+        }
+        if changed.categories {
+            categories = chosen
+            UserDefaults.standard.set(categoryList.map(\.rawValue).joined(separator: ","), forKey: Self.categoriesKey(kind))
+        }
         start(query ?? "")
+        return changed
     }
     private static func statuses(_ groups: Set<StatusGroup>) -> [ActivityStatus] { StatusGroup.allCases.filter(groups.contains).flatMap(\.statuses) }
     /// 발견 `프로그램 | 이벤트` (user 2026-10-26): 프로그램 by default; the choice stays on the device (`dearby.discovery.kind`, a new key).
@@ -48,21 +60,13 @@ import Observation
     private static let kindKey = "dearby.discovery.kind"
     private static func storedKind() -> DiscoveryKind { DiscoveryKind(rawValue: UserDefaults.standard.string(forKey: kindKey) ?? "") ?? .program }
     /// 종류 필터 (contract "종류 필터" 2026-10-26): none chosen is every 종류 (미분류 included). Kept per side on the device
-    /// (`dearby.discovery.categories.program|event`, comma-separated codes); switching sides brings back that side's choice.
+    /// (`dearby.discovery.categories.program|event`, comma-separated codes); switching sides brings back that side's choice. The 이벤트 side
+    /// offers no 종류 (`DiscoveryKind.categories`), so its stored choice is left alone and never read or sent.
     private(set) var categories = ActivityViewModel.storedCategories(ActivityViewModel.storedKind())
     private static func categoriesKey(_ kind: DiscoveryKind) -> String { "dearby.discovery.categories.\(kind.rawValue)" }
     private static func storedCategories(_ kind: DiscoveryKind) -> Set<ActivityCategory> {
         let codes = (UserDefaults.standard.string(forKey: categoriesKey(kind)) ?? "").split(separator: ",")
         return Set(codes.compactMap { ActivityCategory(rawValue: String($0)) }.filter(kind.categories.contains))
-    }
-    /// Applies a 종류 choice (this side's 종류 only) and reloads the list; true when it changed.
-    @discardableResult func setCategories(_ chosen: Set<ActivityCategory>) -> Bool {
-        let chosen = chosen.intersection(kind.categories)
-        guard chosen != categories else { return false }
-        categories = chosen
-        UserDefaults.standard.set(categoryList.map(\.rawValue).joined(separator: ","), forKey: Self.categoriesKey(kind))
-        start(query ?? "")
-        return true
     }
     /// The chosen 종류 in contract order, as the requests send them.
     var categoryList: [ActivityCategory] { ActivityCategory.allCases.filter(categories.contains) }
@@ -98,12 +102,21 @@ import Observation
     private var opened: String?
     private var leftApp = false
     private var neverAsk: Set<String> = []
+    /// 지난 선발 단계 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26): the sheet up right after an activity joined 내 활동.
+    private(set) var autopass: AutopassSuggestion?
+    /// The suggestion for the activity `신청했어요` added, shown once the `신청하셨나요?` sheet is gone (`applySheetDismissed`): the two
+    /// sheets cannot swap in one transaction.
+    private var pendingAutopass: AutopassSuggestion?
+    /// Activities asked already (device memory): the question comes once per activity, whatever the answer.
+    private static let autopassAskedKey = "dearby.mine.autopassAsked"
     /// `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): the activity the 내 활동 tab should open next; the tab clears it once pushed.
     var showInMine: String?
     /// An `/activities/<id>` universal link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the activity the 발견 tab should push
     /// next; the tab clears it once pushed.
     var showInDiscovery: String?
     @ObservationIgnored private var linkSources: [String: String] = [:]
+    /// A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): the block whose timetable the opened detail shows on 찜한 세션, taken once.
+    @ObservationIgnored private var linkTimetables: [String: String] = [:]
     /// Every activity seen this session, so details and applied marks outlive a new search.
     private var seen: [String: ActivityModel] = [:]
     private var cursor: Int64?
@@ -150,6 +163,13 @@ import Observation
         }
     }
     func takeLinkSource(_ id: String) -> String? { linkSources.removeValue(forKey: id) }
+    /// Opens a linked activity with its block's timetable sheet on 찜한 세션 (a tapped 세션 이동 알림).
+    func openLinkedTimetable(_ id: String, scheduleID: String) async {
+        guard await prepare(id) else { return }
+        linkTimetables[id] = scheduleID
+        await openLinked(id, source: "push")
+    }
+    func takeLinkTimetable(_ id: String) -> String? { linkTimetables.removeValue(forKey: id) }
     /// Loads an activity discovery has not shown so its detail can open (알림 목록 rows); false, with `notice`, when it could not be loaded.
     /// A 404 is still true: the detail says the activity is gone.
     func prepare(_ id: String) async -> Bool {
@@ -174,10 +194,56 @@ import Observation
         ActivityStages.build(activity, marks: stageMarks[activity.id] ?? [:], now: now)
     }
     func markStage(_ activityID: String, _ scheduleID: String, _ mark: StageMark) {
-        stageMarks[activityID, default: [:]][scheduleID] = mark
+        record(activityID, scheduleID, mark, via: nil)
         guard let server, synced, let activity = Int64(activityID), let schedule = Int64(scheduleID) else { return }
         save { _ = try await server.putStatus(activity, schedule, mark.statusID, mark.kind.rawValue) }
     }
+    /// Keeps a mark and sends 사용 통계 `stage_mark` (analytics-v1.md: `activity_id`, `kind`; `via` only from the 통과 제안).
+    private func record(_ activityID: String, _ scheduleID: String, _ mark: StageMark, via: String?) {
+        var parameters = AppAnalytics.activity(activityID, seen[activityID]).merging(["kind": mark.kind.rawValue.lowercased()]) { $1 }
+        if let via { parameters["via"] = via }
+        AppAnalytics.event("stage_mark", parameters)
+        stageMarks[activityID, default: [:]][scheduleID] = mark
+    }
+    /// The 통과 제안 for an activity that just joined 내 활동 (contract "지난 선발 단계 통과 제안" 2026-10-26), remembered as asked; nil
+    /// when it was asked before, the activity is 종료 or its track is over (`끝난 활동`), or no 선발 단계 is past.
+    private func autopassSuggestion(_ id: String) -> AutopassSuggestion? {
+        let now = Date()
+        let asked = UserDefaults.standard.stringArray(forKey: Self.autopassAskedKey) ?? []
+        guard !asked.contains(id), let activity = seen[id], activity.status(at: now) != .ended,
+              let progress = progress(activity, now: now), !progress.ended else { return nil }
+        let stages = progress.autopassCandidates(now: now)
+        guard !stages.isEmpty else { return nil }
+        UserDefaults.standard.set(asked + [id], forKey: Self.autopassAskedKey)
+        let ids = Set(stages.map(\.id))
+        let remaining = progress.stages.filter { $0.selection && !ids.contains($0.id) && $0.mark.kind != .passed }
+        return AutopassSuggestion(activity: activity, stages: stages, remaining: remaining)
+    }
+    /// The `신청하셨나요?` sheet closed: a suggestion `신청했어요` prepared comes up now.
+    func applySheetDismissed() {
+        autopass = pendingAutopass
+        pendingAutopass = nil
+    }
+    /// `통과로 표시`: every suggested stage takes its schedule's 통과 status. Signed in, the add is confirmed first (`PUT` is idempotent) and
+    /// the statuses go one by one; a failed one is left as it was (the usual notice and reload keep the ones that landed).
+    func acceptAutopass() {
+        guard let autopass else { return }
+        self.autopass = nil
+        let marks = autopass.stages.compactMap { stage in stage.passedOption.map { (stage.source.id, StageMark($0)) } }
+        for (scheduleID, mark) in marks { record(autopass.id, scheduleID, mark, via: "autopass_prompt") }
+        guard let server, synced, let activity = Int64(autopass.id) else { return }
+        save {
+            _ = try await server.put(activity)
+            var failure: Error?
+            for (scheduleID, mark) in marks {
+                guard let schedule = Int64(scheduleID) else { continue }
+                do { _ = try await server.putStatus(activity, schedule, mark.statusID, mark.kind.rawValue) } catch { failure = error }
+            }
+            if let failure { throw failure }
+        }
+    }
+    /// `그대로 두기` or the sheet pulled down.
+    func skipAutopass() { autopass = nil }
     /// Shows `text`'s programs from the first page, unless they are already shown or loading.
     func search(_ text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -265,6 +331,7 @@ import Observation
         if appliedIDs.contains(id) { showInMine = id } else {
             AppAnalytics.event("myactivity_add", AppAnalytics.activity(id, seen[id]).merging(["source": source]) { $1 })
             apply(id, true)
+            autopass = autopassSuggestion(id)
         }
     }
     private func start(_ query: String) {
@@ -348,7 +415,7 @@ import Observation
         guard let id = asking?.id else { return }
         asking = nil
         switch answer {
-        case .applied: apply(id, true)
+        case .applied: apply(id, true); pendingAutopass = autopassSuggestion(id)
         case .notYet: break
         case .neverAsk: neverAsk.insert(id)
         }
@@ -455,9 +522,10 @@ struct MineServer: Sendable {
 }
 
 /// One program's activities by 활동 상태 (contract "활동 상태" 2026-10-26), each list in display order: 모집 중 (the page groups them by
-/// 활동 종류), 모집 예정 (nearest recruitment start first), 진행 중 and 지난 활동 (모집 마감·모집 정보 없음·종료 whose activity falls within the
-/// last three years — the server's `status` has no window here; an undated one stays), both latest activity start first. `groups` are the ones it was loaded for; an
-/// activity outside them (an older server ignores `status`) is left out.
+/// 활동 종류), 모집 예정 (nearest recruitment start first), 진행·예정 (진행 중·모집 마감·모집 정보 없음, the running ones first, then the nearest
+/// activity start, undated last) and 지난 활동 (종료 whose activity falls within the last three years — the server's `status` has no window
+/// here; an undated one stays, latest activity start first). `groups` are the ones it was loaded for; an activity outside them (an older
+/// server ignores `status`) is left out.
 struct ProgramActivities {
     let groups: Set<StatusGroup>
     /// The 종류 they were read with; empty is every 종류.
@@ -481,7 +549,8 @@ struct ProgramActivities {
         recruiting = byStatus[.recruiting] ?? []
         upcoming = (byStatus[.recruitingUpcoming] ?? [])
             .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
-        inProgress = latestFirst(byStatus[.inProgress] ?? [])
+        inProgress = StatusGroup.inProgress.statuses.flatMap { byStatus[$0] ?? [] }
+            .sorted { ($0.activityStage?.anchor ?? .distantFuture, $0.title) < ($1.activityStage?.anchor ?? .distantFuture, $1.title) }
         past = latestFirst(StatusGroup.past.statuses.flatMap { byStatus[$0] ?? [] }.filter { $0.activityStage?.anchor.map { $0 >= since } ?? true })
     }
 }

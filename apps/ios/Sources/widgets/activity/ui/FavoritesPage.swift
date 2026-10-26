@@ -82,7 +82,8 @@ struct FavoritesPage: View {
     private func activityRow(_ favorite: FavoriteActivity) -> some View {
         let activity = favorite.activity, now = Date(), recruitmentDate = activity.recruitmentDate(at: now)
         return ActivityCard(activityID: activity.id, title: activity.title, status: activity.status(at: now),
-                            recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday, scheduleText: activity.scheduleText(at: now),
+                            recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday,
+                            startDDay: activity.upcomingStartDDay(at: now), scheduleText: activity.scheduleText(at: now),
                             place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
                             surface: Color(.secondarySystemGroupedBackground), hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), {

@@ -62,15 +62,10 @@ enum ActivityCategory: String, CaseIterable, Sendable {
 enum DiscoveryKind: String, CaseIterable, Sendable {
     case program, event
     var title: String { self == .program ? "프로그램" : "이벤트" }
-    /// 종류 필터의 항목 (contract "종류 필터" 2026-10-26): this side's 종류 in contract order (the server's 이벤트 set is
-    /// 컨퍼런스·워크샵·강연·밋업, everything else is 프로그램).
+    /// 종류 필터의 항목 (contract "종류 필터" 2026-10-26): the 프로그램 side's 종류 in contract order (everything but the server's 이벤트 set
+    /// 컨퍼런스·워크샵·강연·밋업). The 이벤트 side offers none (user 2026-10-26: every 운영 이벤트 is a 컨퍼런스, so the filter would be
+    /// meaningless; the contract brings it back once a second 이벤트 종류 arrives).
     var categories: [ActivityCategory] {
-        ActivityCategory.allCases.filter { [.conference, .workshop, .lecture, .meetup].contains($0) == (self == .event) }
-    }
-    /// The 종류 button's summary: `전체` for none, up to two names joined, else `부트캠프 외 2`.
-    func summary(_ chosen: Set<ActivityCategory>) -> String {
-        let names = categories.filter(chosen.contains).map(\.label)
-        if names.isEmpty { return "전체" }
-        return names.count <= 2 ? names.joined(separator: "·") : "\(names[0]) 외 \(names.count - 1)"
+        self == .program ? ActivityCategory.allCases.filter { ![.conference, .workshop, .lecture, .meetup].contains($0) } : []
     }
 }

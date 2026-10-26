@@ -15,9 +15,11 @@ import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.entities.activity.model.scheduleText
 import com.dearby.nativeapp.entities.activity.model.rangeText
 import com.dearby.nativeapp.entities.activity.model.deadlineCount
+import com.dearby.nativeapp.entities.activity.model.startCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
+import com.dearby.nativeapp.pages.activity.AutopassPrompt
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
 import com.dearby.nativeapp.pages.activity.DiscoveryKind
@@ -31,6 +33,7 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressStatus
 import com.dearby.nativeapp.widgets.activity.progress.StatusOption
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.pages.activity.ScheduleItemState
+import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.Stage
 import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.shared.ui.TagLabel
@@ -81,6 +84,8 @@ class ActivityViewModel(
     statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, private val saveStatusGroups: (Set<StatusGroup>) -> Unit = {},
     /** The 종류 dropdown remembered on the device per kind (2026-10-26): read when the kind changes, saved on each change. */
     private val loadCategories: (DiscoveryKind) -> Set<String> = { emptySet() }, private val saveCategories: (DiscoveryKind, Set<String>) -> Unit = { _, _ -> },
+    /** 지난 선발 단계 자동 통과 제안 (2026-10-26): whether an activity was asked already (once each, kept on the device) and where to record it. */
+    private val autopassAsked: (String) -> Boolean = { false }, private val rememberAutopassAsked: (String) -> Unit = {},
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState(kind = kind, statusGroups = statusGroups, categories = loadCategories(kind)))
     val state = mutable.asStateFlow()
@@ -121,24 +126,20 @@ class ActivityViewModel(
     }
     fun reload() = start(debounce = false)
     /**
-     * The 상태 dropdown (contract "활동 상태", 2026-10-26): the list and expanded programs are read again with those states. Unchecking the
-     * last group falls back to 지원 가능.
+     * The 필터 sheet's `적용` (2026-10-26 user decision; contract "활동 상태" · "종류 필터"): both sections at once, so the list and expanded programs
+     * are read again once. No group chosen falls back to 지원 가능; 종류 is ignored for 이벤트 (no section). Each analytics event goes only when its
+     * section actually changed (analytics-v1: 기억된 값 복원은 보내지 않음). Also the applied chips' × and the empty state's `종류 필터 지우기`.
      */
-    fun setStatusGroups(value: Set<StatusGroup>) {
-        val groups = value.ifEmpty { StatusGroup.DEFAULT }
-        if (groups == state.value.statusGroups) return
-        mutable.update { it.copy(statusGroups = groups) }
-        saveStatusGroups(groups)
-        Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(groups))
-        start(debounce = false)
-    }
-    /** The 종류 dropdown (2026-10-26 사용자 요청): the list and expanded programs are read again with `category=`; nothing chosen is 전체. */
-    fun setCategories(value: Set<String>) {
-        if (value == state.value.categories) return
-        val kind = state.value.kind
-        mutable.update { it.copy(categories = value) }
-        saveCategories(kind, value)
-        Analytics.event("discovery_category_filter", "categories" to kind.chosen(value).joinToString(",") { it.code.lowercase() })
+    fun applyFilters(groups: Set<StatusGroup>, categories: Set<String>) {
+        val current = state.value
+        val kind = current.kind
+        val newGroups = groups.ifEmpty { StatusGroup.DEFAULT }
+        val groupsChanged = newGroups != current.statusGroups
+        val categoriesChanged = kind.categories.isNotEmpty() && categories != current.categories
+        if (!groupsChanged && !categoriesChanged) return
+        mutable.update { it.copy(statusGroups = newGroups, categories = if (categoriesChanged) categories else it.categories) }
+        if (groupsChanged) { saveStatusGroups(newGroups); Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(newGroups)) }
+        if (categoriesChanged) { saveCategories(kind, categories); Analytics.event("discovery_category_filter", "categories" to kind.chosen(categories).joinToString(",") { it.code.lowercase() }) }
         start(debounce = false)
     }
     /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind and its kept 종류. */
@@ -241,12 +242,12 @@ class ActivityViewModel(
                 return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
             val now = Instant.now()
-            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행 중, and the rest as 지난 활동 within
-            // three years (an undated one stays), most recent start first.
+            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행·예정 (started ones first, then the
+            // ones still ahead; undated last), and 종료 as 지난 활동 within three years (an undated one stays), most recent start first.
             val byStatus = items.groupBy { it.status }
             val open = byStatus["RECRUITING"].orEmpty()
             val upcoming = byStatus["RECRUITING_UPCOMING"].orEmpty().sortedWith(compareBy(nullsLast()) { it.upcomingKey })
-            val inProgress = byStatus["IN_PROGRESS"].orEmpty().sortedWith(compareByDescending(nullsFirst()) { it.activityStart })
+            val inProgress = items.filter { it.status in StatusGroup.IN_PROGRESS.statuses }.sortedWith(compareBy(nullsLast()) { it.activityStart })
             val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
             val past = items.filter { it.status in StatusGroup.PAST.statuses && it.activityStart?.let { start -> start >= since } != false }.sortedByDescending { it.activityStart }
             val shown = open + upcoming + inProgress + past
@@ -281,9 +282,43 @@ class ActivityViewModel(
         if (value) Analytics.event("myactivity_add", *track(id), "source" to source)
         if (value) write { account, session -> account.client.saveMyActivity(id, session) }
         else write { account, session -> account.client.deleteMyActivity(id, session) }
-        if (value || id !in marks) return
+        if (value) return offerAutopass(id)
+        if (id !in marks) return
         marks = marks - id
         models[id]?.let { model -> mutable.update { it.copy(progress = it.progress + (id to model.toProgress(emptyMap(), today()))) } }
+    }
+    /**
+     * 지난 선발 단계 자동 통과 제안 (user 2026-10-26): someone adding an activity whose 선발 is over is almost always through it, yet those stages
+     * stay 대기 and the track never says 참여 중. Right after any add, once per activity on this device and never for an ENDED activity, the
+     * 선발 단계 before the first one still ahead (end, or start without one, not yet passed; a date-only day ends at the next Seoul midnight) —
+     * the passed ones and the undated ones between them — that have no mark yet are offered as [ActivityListState.autopass]. Undated stages after
+     * a stage still ahead stay out (coordinator 2026-10-26). Nothing is offered when no dated stage has passed.
+     */
+    private fun offerAutopass(id: String) {
+        val model = models[id]?.takeIf { it.status != "ENDED" } ?: return
+        if (autopassAsked(id)) return
+        val now = Instant.now()
+        val own = marks[id].orEmpty()
+        val selection = model.stages().withIndex().filter { it.value.selection }
+        val ahead = selection.indexOfFirst { (_, stage) -> stage.end()?.let { it >= now } == true }
+        val offered = (if (ahead < 0) selection else selection.take(ahead))
+            .filter { (_, stage) -> stage.scheduleId != null && stage.scheduleId !in own && stage.statuses.any { it.kind == ScheduleStatus.PASSED } }
+        if (offered.none { it.value.end() != null }) return
+        rememberAutopassAsked(id)
+        val remaining = if (ahead < 0) emptyList() else selection.drop(ahead).map { it.value.name }
+        mutable.update { it.copy(autopass = AutopassPrompt(id, offered.map { it.index }, offered.map { it.value.name }, remaining)) }
+    }
+    /** `통과로 표시` ([confirm]) marks each offered stage PASSED as the progress page would; `그대로 두기` leaves them. A failed write undoes only its stage. */
+    fun autopass(confirm: Boolean) {
+        val prompt = state.value.autopass ?: return
+        mutable.update { it.copy(autopass = null) }
+        if (!confirm) return
+        val stages = models[prompt.id]?.stages() ?: return
+        prompt.stages.forEach { index ->
+            val passed = stages.getOrNull(index)?.statuses?.firstOrNull { it.kind == ScheduleStatus.PASSED } ?: return@forEach
+            Analytics.event("stage_mark", *track(prompt.id), "kind" to "passed", "via" to "autopass_prompt")
+            mark(prompt.id, index, StatusOption(passed.id, passed.name, passed.kind))
+        }
     }
     /**
      * An App Link `/activities/<id>` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): an activity discovery has not loaded is read
@@ -440,6 +475,8 @@ private const val MAX_PROGRAM_PAGES = 5
 /** 지난 활동 window: the last three years (2026-10-19 저녁, 2년 → 3년). */
 private const val PAST_DAYS = 1095L
 private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
+/** When a stage is over for the 자동 통과 제안: its end, else its start (date-only steps end at the next Seoul midnight); null when undated. */
+private fun Stage.end(): Instant? = eventEnd ?: eventStart
 /** The system "add event" prefill for one stage (contract "내 캘린더에 추가"): "활동명 · 일정 제목"; null for an undated stage. */
 private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
     val start = stage.eventStart ?: return null
@@ -474,6 +511,8 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
         periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
         deadlineDraft = deadline?.let { draft(it) },
         noRecruitment = this.status == "NO_RECRUITMENT",
+        // 시작 D-n (user 2026-10-26): by the label, so an older API without `status` gets it from the same date judgment.
+        startCount = application?.takeIf { status == "모집 예정" }?.startCount(),
     )
 }
 /**

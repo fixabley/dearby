@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One program's activity cards (contract "발견 카드 리뉴얼"·"펼침"·"활동 상태"): for the chosen `groups`, 모집 중 grouped by 활동 종류, then
-/// `모집 예정` (both 지원 가능), `진행 중` and `지난 활동`. Shared by the expanded discovery card and the program page (every group). Each card carries the heart, bell and `+` (contract "즐겨찾기(하트)"·
+/// `모집 예정` (both 지원 가능), `진행·예정` and `지난 활동`. Shared by the expanded discovery card and the program page (every group). Each card carries the heart, bell and `+` (contract "즐겨찾기(하트)"·
 /// "`+` 내 활동에 추가" 2026-10-25); a card opens the activity detail on `path`.
 struct ProgramActivityGroups: View {
     let state: ActivityViewModel
@@ -30,7 +30,7 @@ struct ProgramActivityGroups: View {
             }
             // Empty groups omitted.
             group("모집 예정", upcoming)
-            group("진행 중", inProgress)
+            group(StatusGroup.inProgress.title, inProgress)
             group("지난 활동", past)
         } else if state.failedPrograms.contains(programID) {
             Button("활동 다시 불러오기") { state.retryActivities(programID, groups: groups, categories: categories) }.frame(maxWidth: .infinity, minHeight: 44)
@@ -57,7 +57,8 @@ struct ProgramActivityGroups: View {
     private func card(_ activity: ActivityModel) -> some View {
         let recruitmentDate = activity.recruitmentDate(at: state.loadedAt)
         return ActivityCard(activityID: activity.id, title: activity.title, status: activity.status(at: state.loadedAt),
-                     recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday, scheduleText: activity.scheduleText(at: state.loadedAt),
+                     recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday,
+                     startDDay: activity.upcomingStartDDay(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
                      place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
                      hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id, source: source) }))
