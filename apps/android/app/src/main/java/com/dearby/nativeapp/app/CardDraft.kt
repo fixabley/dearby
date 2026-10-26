@@ -16,9 +16,8 @@ data class CardDraft(
     data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>, val includePhoto: Boolean)
     val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds, includePhoto) != initial
     fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories, includePhoto = initial.includePhoto)
-    /** 사진 넣기 (contract "프로필 사진"): the switch shows only when the profile has a photo; without one the card has none either way. */
+    /** 사진 넣기 (contract "프로필 사진"): the switch shows only when the profile has a photo; without one the server makes the card without, whatever is sent. */
     val hasPhoto get() = profile.photoUrl != null
-    val sendsPhoto get() = includePhoto && hasPhoto
     val preview get() = profile.introduction
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
     val contactIds get() = profile.contacts.map { it.id }.filter { it in publicContactIds }
