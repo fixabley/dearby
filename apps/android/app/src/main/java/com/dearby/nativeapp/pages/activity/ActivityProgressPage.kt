@@ -35,7 +35,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
 
 /**
  * One applied activity's stages (contract "내 활동 진행 트랙"), compact (2026-10-26 사용자 "활동탐색 카드처럼 깔끔하게", "마진이 너무 크고 경계가
- * 뚜렷하지 않아"): the discovery [ActivityCard] as the head (tap → [openDetail]), then small headed sections, each one card of
+ * 뚜렷하지 않아"): the discovery [ActivityCard] without its tag chips as the head (tap → [openDetail]), then small headed sections, each one card of
  * divider-separated rows — `선발 과정` (SELECTION steps) and `활동 일정` (ACTIVITY steps; contract "선발 과정·활동 일정 분리"), an empty one left
  * out. The track's badge (e.g. `D-3 · 면접`) sits beside the first heading; once every 선발 단계 is 통과 the `활동 일정` heading carries `참여 중`
  * instead (the badge would say the same, so it is shown once, where it applies).
@@ -54,9 +54,9 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("진행 단계", back)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // No tag chips on this head card (user 2026-10-26); the card draws none when given none. Discovery and 즐겨찾기 keep theirs.
             ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, openDetail,
-                fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, deadlineCount = activity.deadlineCount, undated = activity.noRecruitment,
-                subtitle = progress.subtitle)
+                deadlineCount = activity.deadlineCount, undated = activity.noRecruitment, subtitle = progress.subtitle)
             // Stages keep their track index (the key of [mark]/[checkCalendar]) whichever section they land in.
             val selection = progress.stages.withIndex().filter { it.value.selection }
             val activityStages = progress.stages.withIndex().filterNot { it.value.selection }
