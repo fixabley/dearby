@@ -49,8 +49,8 @@ services:
       APPLE_PRIVATE_KEY_PATH: ${APPLE_PRIVATE_KEY_PATH:-}
       # 구글 로그인(선택, 웹 방식). 셋 중 하나라도 비어 있으면 구글 로그인만 503
       GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
-      # 개인정보 동의 문서 버전(선택, 기본 2026-10-22). 웹 /privacy·/terms를 바꾸면 올린다
-      CONSENT_PRIVACY_VERSION: ${CONSENT_PRIVACY_VERSION:-2026-10-22} # 비우면 빈 문자열이 application.yaml 기본값을 덮어써 동의가 항상 400이 된다
+      # 개인정보 동의 문서 버전(선택, 기본 처리방침 2026-10-26·약관 2026-10-22). 웹 /privacy·/terms를 바꾸면 올린다
+      CONSENT_PRIVACY_VERSION: ${CONSENT_PRIVACY_VERSION:-2026-10-26} # 비우면 빈 문자열이 application.yaml 기본값을 덮어써 동의가 항상 400이 된다
       CONSENT_TERMS_VERSION: ${CONSENT_TERMS_VERSION:-2026-10-22}
       # 웹 비로그인 저장 프록시 키(Vercel의 GUEST_PROXY_SECRET과 같은 값). 비어 있으면 /v1/guest/*만 503
       GUEST_PROXY_SECRET: ${GUEST_PROXY_SECRET:-}

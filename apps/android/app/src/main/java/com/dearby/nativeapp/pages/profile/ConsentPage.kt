@@ -42,7 +42,7 @@ import com.dearby.nativeapp.shared.ui.MessageAction
     // Closable (contract "동의 시트 닫기", 2026-10-20): the back arrow leaves without consenting; saving stays blocked until agreed.
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("동의", close)
-        CenteredMessage(Icons.Rounded.Lock, "시작하기 전에 동의가 필요해요", "프로필(이름·연락처·활동 이력)을 저장하려면 아래 두 가지에 동의해 주세요.", Modifier.weight(1f).fillMaxWidth(),
+        CenteredMessage(Icons.Rounded.Lock, "시작하기 전에 동의가 필요해요", "프로필(이름·연락처·활동 이력, 고른 경우 사진·소개 링크)과 내 활동·즐겨찾기 같은 계정 기록을 저장하려면 아래 두 가지에 동의해 주세요. 광고 목적 정보 제공은 여기 포함되지 않고 따로 묻는 선택 항목이에요.", Modifier.weight(1f).fillMaxWidth(),
         content = {
             ConsentRow("개인정보 수집·이용에 동의합니다 (필수)", privacy, { privacy = it }, openPrivacy)
             ConsentRow("이용약관에 동의합니다 (필수)", terms, { terms = it }, openTerms)
