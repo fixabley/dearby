@@ -42,9 +42,11 @@ import kotlinx.coroutines.launch
  * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. The ♥ and `+` belong to 즐겨찾기 and 내 활동 (QueueRoute).
  * 맞춤 대기열 끝 광고 (contract "맞춤 대기열 끝 광고(AdMob, 비개인화)", 2026-10-25): [ads] is requested once the queue has loaded and its page
  * follows the last activity as soon as it arrives; leaving the last activity before that ends the chance for this view (no wait, no retry).
- * 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25) comes first, after the queue is shown: `GET …/consents/ad-third-party`; agreed
- * loads the ad, otherwise [adConsentAsk] holds the account id while the sheet asks — unless this device already remembers a decline for this
- * account and version. A failed read or `PUT` means no ad for this view.
+ * 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25) comes first, read after the queue is shown: `GET …/consents/ad-third-party`;
+ * agreed loads the ad. Otherwise (2026-10-26 사용자 결정) nothing is asked or requested until the last activity card is swiped past, where the ad
+ * would go: then [adConsentAsk] holds the account id while the sheet asks over the end page — unless this device already remembers a decline for
+ * this account and version. Agreeing saves it and starts the SDK only; this view goes on without an ad, the next one shows it. A failed read or
+ * `PUT` means no ad.
  */
 class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd, private val device: DevicePreferences) : ViewModel() {
     private val mutable = MutableStateFlow(QueueViewState())
@@ -57,6 +59,8 @@ class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd, pr
     private var job: Job? = null
     private var consentJob: Job? = null
     private val asking = MutableStateFlow<String?>(null)
+    /** The account to ask once the last activity is passed (not agreed, no remembered decline). */
+    private var askAtEnd: String? = null
     val adConsentAsk: StateFlow<String?> = asking.asStateFlow()
     private val signedIn get() = account.ready.value
     private val client get() = account.client
@@ -115,7 +119,11 @@ class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd, pr
         mutable.update { it.copy(index = index) }
         if (index >= items.size && items.isNotEmpty() && !adDecided) {
             adDecided = true
-            if (state.value.ad) Analytics.event("queue_ad_shown")
+            val ask = askAtEnd
+            askAtEnd = null
+            // Asking for the consent here is not a skipped ad: no `queue_ad_skipped_unloaded` (analytics-v1).
+            if (ask != null) asking.value = ask
+            else if (state.value.ad) Analytics.event("queue_ad_shown")
             else if (ads.requested) Analytics.event("queue_ad_skipped_unloaded", "reason" to if (ads.failed) "failed" else "loading")
         }
         if (index == state.value.end && items.isNotEmpty() && !ended) { ended = true; Analytics.event("queue_end", "viewed" to viewed.size.toString()) }
@@ -129,19 +137,17 @@ class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd, pr
             try {
                 if (account.authorized { client.adConsent(it) }) return@launch loadAd()
                 val id = account.authorized { client.me(it) }.id
-                if (!device.adConsentDeclined(id, ConsentVersions.AD)) asking.value = id
+                if (!device.adConsentDeclined(id, ConsentVersions.AD) && !adDecided) askAtEnd = id
             } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w("Dearby", "Ad consent read failed: ${e.javaClass.simpleName}") }
         }
     }
     private fun loadAd() { if (!adDecided) ads.load { if (!adDecided) mutable.update { it.copy(ad = true) } } }
-    /** `동의하고 계속`: the SDK starts only after the server has the consent. */
+    /** `동의하고 계속`: the SDK starts only after the server has the consent; this view has passed the ad's place, so the next one shows it. */
     fun agreeAd() {
         asking.value ?: return
         asking.value = null
-        // Leaving the queue meanwhile keeps the consent but drops this view's ad.
-        val view = adView
         viewModelScope.launch {
-            try { account.authorized { client.agreeAdConsent(ConsentVersions.AD, it) }; if (view == adView) loadAd() }
+            try { account.authorized { client.agreeAdConsent(ConsentVersions.AD, it) }; ads.start() }
             catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w("Dearby", "Ad consent save failed: ${e.javaClass.simpleName}") }
         }
     }
@@ -151,8 +157,7 @@ class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd, pr
         asking.value = null
         device.declineAdConsent(id, ConsentVersions.AD)
     }
-    private var adView = 0
-    private fun stopAd() { consentJob?.cancel(); asking.value = null; adView++ }
+    private fun stopAd() { consentJob?.cancel(); asking.value = null; askAtEnd = null }
 
     // analytics-v1 "맞춤 대기열 도달": positions count from 1 in today's queue.
     private var ended = false

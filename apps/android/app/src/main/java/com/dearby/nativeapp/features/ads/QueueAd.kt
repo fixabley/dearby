@@ -73,6 +73,9 @@ class QueueAd(private val context: Context) {
             .loadAd(AdRequest.Builder().addNetworkExtrasBundle(AdMobAdapter::class.java, Bundle().apply { putString("npa", "1") }).build())
     }
 
+    /** Starts the SDK without requesting an ad (consent given after this view's ad place had passed). */
+    fun start() { if (enabled) whenReady(context) {} }
+
     /** A late answer to an earlier [load] is destroyed on arrival. */
     fun clear() {
         serial++
