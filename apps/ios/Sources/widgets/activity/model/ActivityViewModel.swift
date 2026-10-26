@@ -115,7 +115,7 @@ import Observation
     /// next; the tab clears it once pushed.
     var showInDiscovery: String?
     @ObservationIgnored private var linkSources: [String: String] = [:]
-    /// A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): the block whose timetable the opened detail shows on 찜한 세션, taken once.
+    /// A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): the block whose timetable the opened detail shows on 내 시간표, taken once.
     @ObservationIgnored private var linkTimetables: [String: String] = [:]
     /// Every activity seen this session, so details and applied marks outlive a new search.
     private var seen: [String: ActivityModel] = [:]
@@ -163,7 +163,7 @@ import Observation
         }
     }
     func takeLinkSource(_ id: String) -> String? { linkSources.removeValue(forKey: id) }
-    /// Opens a linked activity with its block's timetable sheet on 찜한 세션 (a tapped 세션 이동 알림).
+    /// Opens a linked activity with its block's timetable sheet on 내 시간표 (a tapped 세션 이동 알림).
     func openLinkedTimetable(_ id: String, scheduleID: String) async {
         guard await prepare(id) else { return }
         linkTimetables[id] = scheduleID

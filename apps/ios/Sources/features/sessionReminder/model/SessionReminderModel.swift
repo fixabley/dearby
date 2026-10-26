@@ -15,7 +15,7 @@ import UserNotifications
     nonisolated static let identifierPrefix = "session-"
     nonisolated static let lead: TimeInterval = 10 * 60
     nonisolated static let limit = 60
-    /// `userInfo` of a reminder: the app opens that activity's timetable sheet on 찜한 세션.
+    /// `userInfo` of a reminder: the app opens that activity's timetable sheet on 내 시간표.
     enum Key { static let kind = "kind", activity = "activityId", schedule = "scheduleId", session = "sessionId" }
     nonisolated static let kind = "session_reminder"
     @ObservationIgnored private var running: Task<Void, Never>?

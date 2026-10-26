@@ -150,7 +150,7 @@ private struct FavoriteMonthCalendar: UIViewRepresentable {
                 parent.monthChanged(SeoulDay(year: year, month: month, day: 1))
             }
         }
-        /// 마감 filled teal, 모집 시작 hollow mint, 행사 filled grey, then a pink 찜한 세션 dot, side by side.
+        /// 마감 filled teal, 모집 시작 hollow mint, 행사 filled grey, then a pink 내 시간표 (찜한 세션) dot, side by side.
         private static func dots(_ kinds: Set<FavoriteDate.Kind>, session: Bool) -> UIView {
             let stack = UIStackView()
             stack.axis = .horizontal

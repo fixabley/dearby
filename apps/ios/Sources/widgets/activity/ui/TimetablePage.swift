@@ -8,13 +8,14 @@ struct TimetableRoute: Identifiable {
     let scheduleTitle: String
     /// The block's date and time, as on the schedule row.
     let date: String
-    /// `찜한 세션` first: a tapped 세션 이동 알림 (contract "찜한 세션 이동 알림").
+    /// `내 시간표` first: a tapped 세션 이동 알림 (contract "찜한 세션 이동 알림").
     var favoritesFirst = false
     var id: String { activityID + "/" + scheduleID }
 }
 
 /// 시간표 (contract "트랙·세션 시간표" 2026-10-26 모달 시트): the sheet's content, titled `{활동 이름} · {블록 제목}` over the block's time, with
-/// `닫기` and `전체 | 찜한 세션` at the top. 전체 is the table (`TimetableTable`); 찜한 세션 is 나만의 시간표 (`MyTimetableList`). Loads when the
+/// `닫기` and `전체 | 내 시간표` at the top. 전체 is the table (`TimetableTable`); 내 시간표 (찜한 세션, 2026-10-26 사용자 결정) is
+/// `MyTimetableList`. Loads when the
 /// sheet opens; a session opens its own sheet. Read without a token; the hearts follow `SessionFavoritesModel`.
 struct TimetablePage: View {
     let state: ActivityViewModel
@@ -36,7 +37,7 @@ struct TimetablePage: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 Picker("보기", selection: $mode) {
                     Text("전체").tag(Mode.all)
-                    Text("찜한 세션").tag(Mode.favorites)
+                    Text("내 시간표").tag(Mode.favorites)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
                 .accessibilityIdentifier("timetable-mode")
@@ -83,10 +84,10 @@ struct TimetablePage: View {
     @ViewBuilder private func favoritesView(_ timetable: Timetable) -> some View {
         let mine = timetable.sessions.filter { favorites.ids.contains($0.id) }
         if favorites.phase == .signedOut {
-            CenteredMessage(symbol: "heart", title: "찜한 세션은 계정에 모여요", message: "로그인하면 듣고 싶은 세션을 찜해 나만의 시간표로 볼 수 있어요.",
+            CenteredMessage(symbol: "heart", title: "내 시간표는 계정에 모여요", message: "로그인하면 듣고 싶은 세션을 찜해 내 시간표로 볼 수 있어요.",
                             primary: MessageAction("로그인") { favorites.signInRequested = true })
         } else if mine.isEmpty {
-            CenteredMessage(symbol: "heart", title: "찜한 세션이 없어요", message: "전체 시간표에서 하트를 누르면 여기에 나만의 시간표로 모여요.")
+            CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요")
         } else {
             ScrollView {
                 MyTimetableList(items: mine.map { MyTimetable.Item(session: $0, track: timetable.track($0.trackID)) }, zone: timetable.zone) { opened = $0 }
@@ -210,7 +211,7 @@ struct TimetableTable: View {
     }
 }
 
-/// 나만의 시간표 (contract "트랙·세션 시간표" 2026-10-26 `찜한 세션`): the favorited sessions in time order, one per line with its time and a large
+/// 내 시간표 (contract "트랙·세션 시간표" 2026-10-26 `내 시간표(찜한 세션)`): the favorited sessions in time order, one per line with its time and a large
 /// track·room badge (where to go), the free time and the move between them, and a warning band before sessions favorited at the same time.
 struct MyTimetableList: View {
     let items: [MyTimetable.Item]
