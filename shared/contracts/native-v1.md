@@ -30,7 +30,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
 | POST /cards | `{name,description,contactIds,historyIds}` | 201 Card |
 | GET /cards/:id | 없음·비로그인 가능 | 200 Card |
-| PUT /cards/:id | `{name,description,template?,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. `template`을 비우거나 빼면 기존 템플릿 유지 |
+| PUT /cards/:id | `{name,description,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. 본문은 현재 프로필 자기소개로 다시 만든다(아래 "템플릿") |
 | DELETE /cards/:id | 없음·소유자만 | 204 |
 | GET /wallet | 없음 | 200 `{items: Receipt[]}` |
 | POST /wallet/import | `{items:[{cardId,context,savedAt}]}` | 200 `{items:[{cardId,status:"imported"|"alreadySaved"|"failed",receiptId:string|null}]}` |
@@ -212,7 +212,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 
 - Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`. `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
 - 직무(2026-10-17 사용자 결정, 이전 "직함" 문자열을 대체): 직무는 조직처럼 계층을 가진 활동 정보이고 프로필은 여러 개를 태그로 둔다. ProfileJob: `{id(클라이언트 UUID), job: {id, name} | null, jobName, approval: approved|pending|rejected, approvalReason}`. PUT에는 `{id, jobId?, jobName?}`를 보낸다(둘 다 보내면 `jobId`). 검색에 없으면 `jobName`만 적는 직접 입력이고 이력과 같은 규칙으로 관리자 승인 전(`pending`)에는 명함 `job`에 들어가지 않는다. 직접 입력 값이 그대로면 승인·거절 결과가 유지되고 바뀌면 다시 `pending`. 최대 10개, 같은 직무 중복 400. 검색은 `GET /v1/jobs`(아래 "이력"의 선택 창 검색과 같은 형식, `q?`, `parentId?`, `rootsOnly?`, `cursor?`, `size?`; 항목에 바로 위 직무 `parent: {id, name}`). V18 이전 버전 스냅샷의 `job` 문자열은 승인된 직접 입력 직무로 읽힌다.
-- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 꾸미기(마크다운 템플릿)는 명함 제작에서 한다(아래 "템플릿").
+- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 명함 본문은 이 글을 그대로 복사한다(아래 "템플릿", 2026-10-26 템플릿 폐지).
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
 
@@ -244,12 +244,12 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `template`은 앱 내장 기본 템플릿(아래 "템플릿") |
+| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introduction`은 발행(고치기) 시점 프로필 자기소개를 **그대로 복사한** 공개 본문(마크다운)이다. `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
 - **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
@@ -257,13 +257,13 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 
 ### 템플릿
 
-명함 본문(`introduction`)은 발행할 때 서버가 `template`을 채운 결과다. 사용자가 템플릿을 고치는 UI는 없다.
+**2026-10-26 폐지(사용자 결정).** 명함 본문(`introduction`)은 발행·고치기 시점 프로필 자기소개(`profile.introduction`)를 서버가 그대로 복사한 것이다. 템플릿·토큰 채우기는 없다.
 
-- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고, `template`에는 **앱 내장 기본 템플릿** `{{profile.introduction}}` 하나를 그대로 보낸다. 제작 화면은 채운 결과를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그리므로 본문에 다시 넣지 않는다.
-- 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 서버는 발행할 때 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다.
-- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
-- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)과 10,000자·제어 문자 규칙. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
-- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다.
+- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고 `template`을 보내지 않는다. 제작 화면은 자기소개를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그린다.
+- 서버는 `POST`·`PUT /v1/cards`의 `template`을 선택값으로 받고 **무시**한다(이미 배포된 옛 앱이 보내므로 400을 내지 않는다). 응답 Card의 `template`(주인 조회만)은 옛 앱 호환으로 당분간 남기며 새 스냅샷은 빈 문자열이다. DB 열 `business_cards.template`은 이번에 지우지 않는다.
+- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지). 고치면 본문도 그때의 자기소개로 바뀐다.
+- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)으로 렌더한다. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
+- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다. · 2026-10-26 템플릿 폐지(사용자 결정): 앱 내장 템플릿 `{{profile.introduction}}` 하나뿐이라 본문을 자기소개 복사로 바꾸고 앱·서버의 템플릿 코드를 지움. 계기는 Android 앱 템플릿 정규식(`}}` 미이스케이프)이 Android 17 ICU에서 `PatternSyntaxException`으로 명함 만들기를 열자마자 앱을 끝낸 일. 폐지 전 토큰 규칙은 [`2c01befa`](https://github.com/fixabley/dearby/blob/2c01befa/shared/contracts/native-v1.md#템플릿).
 
 ## 애플 로그인 — 2026-10-16 사용자 결정
 
@@ -1131,7 +1131,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - **카드 면**: 흰 바탕, 모서리 20, 1px 구분선 색 테두리, 안쪽 여백 20. 웹은 최대 너비 480px 가운데 정렬. 명함은 "한 장의 카드"로 보이고 행동 버튼(고치기·저장)은 카드 바깥 아래에 둔다.
 - **머리**: 가운데 정렬. 이니셜 아바타 56(민트 바탕·청록 글자) → 이름(title 굵게) → 직무 칩(`job`을 ` · `로 나눈 각 항목을 옅은 배경 칩으로, 없으면 생략) → 소속(가장 최근 승인 이력의 조직 이름, 보조색 작은 글자, 없으면 생략).
-- **소개**: `introduction`(기본 템플릿을 채운 결과 = 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
+- **소개**: `introduction`(발행 시점 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
 - **연락처**: 절 제목 `연락처`. 행마다 왼쪽 종류 아이콘(전화·메일·카카오톡·Instagram·GitHub·Behance), 라벨(보조색 작은 글자: `label`이 있으면 그것, 없으면 종류 이름), 값(본문색), 열 수 있으면 오른쪽 외부 링크 아이콘. 행 전체가 눌려 기존 동작(전화·메일·링크 열기)을 한다. 연락처가 없으면 `공개된 연락처가 없어요`.
 - **활동 이력**: 절 제목 `활동 이력`. 행마다 기간(보조색 작은 글자, `2026.03 – 진행 중`), 제목(굵게, 조직 · 프로그램 · 활동), 역할과 인증 배지(`확인됨`/`미확인`, 기존 배지). 설명이 있으면 아래 한 줄. 이력이 없으면 `공개된 활동 이력이 없어요`.
 - **내 명함 탭**: 가로 스크롤 타일 대신 2열 격자. 첫 칸 `+ 새 명함`, 각 칸은 명함 이름(굵게)·프로필 이름·직무 한 줄. 선택한 칸은 민트 바탕·청록 테두리. 격자 아래에 선택한 명함의 카드(위 규칙)와 `이 명함 고치기` 버튼, 그 아래 위험 색 `이 명함 지우기`(확인 대화상자 "공개 링크도 더 열리지 않아요. 되돌릴 수 없어요." → `DELETE /v1/cards/:id`, 2026-10-18 사용자 요청 "내 명함 삭제가 없어"), 그리고 `QR 보이기`("명함 교환"). 지운 뒤 다음 명함(가장 새 것)을 고르고, 마지막 명함이면 첫 명함 안내로 돌아간다. 명함이 없을 때의 안내 카드는 유지.

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 명함 제작 form: name the card and choose which contacts and histories it shows; the body is the built-in template
-/// filled from the profile (contract "템플릿 — 2026-10-18 앱 안 꾸미기 삭제"). Sign-in, publishing and errors are the page's job.
+/// 명함 제작 form: name the card and choose which contacts and histories it shows; the body is the profile's introduction
+/// (contract "템플릿" 폐지, 2026-10-26). Sign-in, publishing and errors are the page's job.
 /// The name row stacks its label over a `.title3` input (`DearbyFormRow`); contact and history choices are checkbox rows (`DearbyCheckRow`)
 /// because their labels run to several lines (contract "토글 라벨은 바로 옆" 2026-10-20).
 struct CardComposer: View {
@@ -24,19 +24,15 @@ struct CardComposer: View {
             } header: {
                 Text("미리보기").font(.dearby(.subheadline))
             } footer: {
-                Text("프로필의 이름·직무·소개와 아래에서 고른 연락처가 명함 본문이 돼요.").font(.dearby(.subheadline))
+                Text("프로필의 자기소개가 명함 본문이 돼요.").font(.dearby(.subheadline))
             }
             Section {
                 if draft.profile.contacts.isEmpty { Text("프로필에 연락처가 없어요.").foregroundStyle(.secondary) }
                 ForEach(draft.profile.contacts) { contact in
-                    let locked = draft.tokenContactIDs.contains(contact.id)
-                    DearbyCheckRow(isOn: Binding(get: { draft.effectiveContactIDs.contains(contact.id) },
+                    DearbyCheckRow(isOn: Binding(get: { draft.publicContactIDs.contains(contact.id) },
                                                  set: { on in if on { draft.publicContactIDs.insert(contact.id) } else { draft.publicContactIDs.remove(contact.id) } })) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(contact.label) · \(contact.value)")
-                            if locked { Text("본문에 넣어서 공개돼요").font(.dearby(.footnote)).foregroundStyle(.secondary) }
-                        }
-                    }.disabled(locked)
+                        Text("\(contact.label) · \(contact.value)")
+                    }
                 }
             } header: {
                 Text("공개할 연락처").font(.dearby(.subheadline))

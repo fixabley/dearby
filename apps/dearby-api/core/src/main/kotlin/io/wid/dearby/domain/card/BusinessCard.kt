@@ -6,7 +6,7 @@ import io.wid.dearby.domain.profile.History
 import java.time.OffsetDateTime
 import java.util.*
 
-// 발행(또는 고치기) 시점 스냅샷. 프로필을 고쳐도 바뀌지 않는다. 고치기(PUT)는 같은 id로 다시 만들고 updatedAt만 바뀐다. template은 보낸 마크다운 템플릿, introduction은 그것을 채운 공개 본문. 이력의 evidence는 비어 있다
+// 발행(또는 고치기) 시점 스냅샷. 프로필을 고쳐도 바뀌지 않는다. 고치기(PUT)는 같은 id로 다시 만들고 updatedAt만 바뀐다. introduction은 프로필 자기소개를 복사한 공개 본문(마크다운), template은 폐지 예정(2026-10-26 뒤 새 스냅샷은 빈 문자열). 이력의 evidence는 비어 있다
 data class BusinessCard(
     val id: UUID,
     val ownerId: UserId,

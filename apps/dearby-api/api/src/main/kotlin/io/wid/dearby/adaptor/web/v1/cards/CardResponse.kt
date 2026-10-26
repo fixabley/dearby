@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import java.time.OffsetDateTime
 import java.util.*
 
-// 발행 스냅샷(native-v1.md "명함·지갑"). template은 주인만(공개 조회·지갑에는 싣지 않는다)
+// 발행 스냅샷(native-v1.md "명함·지갑"). template은 주인만(공개 조회·지갑에는 싣지 않는다). 2026-10-26 폐지 예정: 옛 앱 호환으로 남기며 새 명함은 빈 문자열
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class CardResponse(
     val id: UUID,
