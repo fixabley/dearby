@@ -6,7 +6,8 @@ struct ActivityProgressRoute: Hashable {
 }
 
 /// Vertical timeline of one applied activity's stages with the user's marks (contract "내 활동 진행 트랙 — 2026-10-18"); each stage offers
-/// its schedule's statuses (default 대기·통과·탈락, or the admin's, contract "진행 단계 상태" 2026-10-22). A FAILED kind ends the track.
+/// its schedule's statuses (default 대기·통과·탈락, or the admin's, contract "진행 단계 상태" 2026-10-22) — 선발 단계 only (2026-10-26); other
+/// stages show the date and 예정/지남. A FAILED kind ends the track.
 struct ActivityProgressPage: View {
     let state: ActivityViewModel
     let activityID: String
@@ -74,7 +75,7 @@ struct ActivityProgressPage: View {
                     chip(stage)
                 }
                 Text(stage.dateText(now: Date())).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-                statusPicker(stage)
+                if stage.selection { statusPicker(stage) }
                 let draft = activity.flatMap { stage.calendarDraft($0, link: state.calendarLink($0.id)) }
                 if !stage.overlapSchedules.isEmpty || draft != nil {
                     HStack(spacing: 20) {
@@ -98,11 +99,14 @@ struct ActivityProgressPage: View {
         }
         if options.count <= 3 { picker.pickerStyle(.segmented) } else { picker.pickerStyle(.menu).frame(minHeight: 44) }
     }
-    /// A marked status other than waiting shows its name (탈락 in the danger colour); otherwise the time judgment.
+    /// A marked status other than waiting shows its name (탈락 in the danger colour); otherwise the time judgment. A stage that is not a
+    /// 선발 단계 reads only 지남 or 예정.
     private func chip(_ stage: ActivityStage) -> some View {
         let text: String
         let strong: Bool
         switch (stage.mark.kind, stage.state) {
+        case (_, .past) where !stage.selection: (text, strong) = ("지남", false)
+        case _ where !stage.selection: (text, strong) = ("예정", false)
         case (.failed, _), (.other, _): (text, strong) = (stage.status.name, false)
         case (.passed, _): (text, strong) = (stage.status.name, true)
         case (_, .past): (text, strong) = ("지남", false)

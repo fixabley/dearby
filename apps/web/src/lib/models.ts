@@ -228,9 +228,9 @@ export const programPageSchema = z.object({
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 export type ProgramPage = z.infer<typeof programPageSchema>;
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
-export function deadlineLabel(endAt: string | null, event = false): string | undefined {
+export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);
-  return day && `${day} ${event ? "행사" : "마감"}`;
+  return day && `${day} 마감`;
 }
 /** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
@@ -253,12 +253,12 @@ export function recruitment(
   application: Schedule | null,
   now = Date.now(),
 ): { open: boolean; label: string } {
-  if (!application) return { open: false, label: "모집 여부 확인 필요" };
+  // 모집 일정이 없는 활동은 종류와 상관없이 마감 (user 2026-10-26, contract "모집 일정 없는 활동은 마감").
+  if (!application) return { open: false, label: "모집 마감" };
   // Date-only windows compare Seoul days: before the start → 예정, before the exclusive end → 중, otherwise 마감
   // (contract "열린 활동 판정 일원화"). Timed windows compare instants; a missing end or start is open on that side.
   if (!application.startAt && !application.endAt) {
-    if (!application.startDate && !application.endDateExclusive)
-      return { open: false, label: "모집 여부 확인 필요" };
+    if (!application.startDate && !application.endDateExclusive) return { open: false, label: "모집 마감" };
     const today = seoulDay(now);
     if (application.startDate && today < application.startDate) return { open: false, label: "모집 예정" };
     if (application.endDateExclusive && today >= application.endDateExclusive) return { open: false, label: "모집 마감" };
@@ -285,7 +285,7 @@ export function recruitmentPhrase(application: Schedule | null, now = Date.now()
 }
 /** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
 function seoulDay(now: number): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
+  return calendarDay(now, "Asia/Seoul");
 }
 /** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
 function koreanParts(time: number, timeZone: string, withTime: boolean) {
@@ -333,6 +333,38 @@ export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now
   if (!to || end === start) return text(from);
   if (timed && from.year === to.year && from.day === to.day) return `${text(from)} ~ ${to.time}`;
   return `${text(from)} ~ ${text(to)}`;
+}
+/**
+ * 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): with both bounds of the recruitment window, the period as `M.d – M.d` (no
+ * times; one day alone when both fall on it; a bound outside the current Seoul year as `yyyy.M.d`) and, while 모집 중, a `D-n`/`D-DAY`
+ * badge counted in Seoul days to the last day (a date-only end is exclusive). Otherwise the `scheduleLabel` text without a badge
+ * (an end alone stays `~ M월 d일 (요일) 마감`).
+ */
+export function recruitmentDate(application: Schedule | null, now = Date.now()): { text: string; dday?: string } {
+  if (!application) return { text: "" };
+  const startAt = parseTime(application.startAt);
+  const endAt = parseTime(application.endAt);
+  const timed = startAt !== undefined || endAt !== undefined;
+  const endDateExclusive = parseTime(application.endDateExclusive);
+  const [start, last] = timed
+    ? [startAt, endAt]
+    : [parseTime(application.startDate), endDateExclusive === undefined ? undefined : endDateExclusive - DAY];
+  if (start === undefined || last === undefined || last < start)
+    return { text: scheduleLabel(application, "recruitment", now) };
+  const timeZone = timed ? (application.timeZone ?? "Asia/Seoul") : "UTC";
+  const thisYear = seoulDay(now).slice(0, 4);
+  const short = (time: number) => {
+    const [year, month, day] = calendarDay(time, timeZone).split("-");
+    return `${year === thisYear ? "" : `${year}.`}${Number(month)}.${Number(day)}`;
+  };
+  const text = short(start) === short(last) ? short(start) : `${short(start)} – ${short(last)}`;
+  if (!recruitment(application, now).open) return { text };
+  const days = Math.round((Date.parse(calendarDay(last, timeZone)) - Date.parse(seoulDay(now))) / DAY);
+  return { text, dday: days <= 0 ? "D-DAY" : `D-${days}` };
+}
+/** `yyyy-MM-dd` of an instant in a zone. */
+function calendarDay(time: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
 }
 function parseTime(value: string | null): number | undefined {
   const time = value ? Date.parse(value) : NaN;

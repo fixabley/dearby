@@ -4,12 +4,9 @@ import SwiftUI
 struct MySessionsRoute: Hashable {}
 
 /// 찜한 세션 outside an activity (contract "트랙·세션 시간표" 2026-10-26): `GET /v1/me/session-favorites` grouped by activity, then by day, each
-/// day as 나만의 시간표 (`MyTimetableList`). The list carries no track names, so each block's timetable is read once for its tracks and
-/// zone; a block whose timetable cannot be read still lists its sessions, without the track badge.
+/// day as 나만의 시간표 (`MyTimetableList`). Each item carries its track and block zone, so no timetable is read again.
 struct MySessionsPage: View {
-    let state: ActivityViewModel
     @Environment(SessionFavoritesModel.self) private var favorites
-    @State private var timetables: [String: Timetable] = [:]
     @State private var opened: FavoriteSession?
     var body: some View {
         Group {
@@ -25,7 +22,7 @@ struct MySessionsPage: View {
                                     .font(.dearby(.subheadline)).foregroundStyle(.secondary)
                             }
                             .accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader).padding(.top, 12)
-                            MyTimetableList(items: group.items.map { MyTimetable.Item(session: $0.session, track: track($0)) }, zone: group.zone) { session in
+                            MyTimetableList(items: group.items.map { MyTimetable.Item(session: $0.session, track: $0.track) }, zone: group.zone) { session in
                                 opened = group.items.first { $0.session.id == session.id }
                             }
                         }
@@ -36,8 +33,7 @@ struct MySessionsPage: View {
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("찜한 세션").navigationBarTitleDisplayMode(.inline).analyticsScreen("session_favorites")
-        .task(id: blocks) { await loadTimetables() }
-        .sheet(item: $opened) { item in TimetableSessionSheet(session: item.session, track: track(item), zone: zone(item)) }
+        .sheet(item: $opened) { item in TimetableSessionSheet(session: item.session, track: item.track, zone: item.zone) }
     }
     private struct DayGroup: Identifiable {
         let id: String
@@ -58,24 +54,14 @@ struct MySessionsPage: View {
             var days: [String] = []
             var byDay: [String: [FavoriteSession]] = [:]
             for item in items {
-                let day = ActivityText.format(item.session.start, "yyyy-MM-dd", zone: zone(item))
+                let day = ActivityText.format(item.session.start, "yyyy-MM-dd", zone: item.zone)
                 if byDay[day] == nil { days.append(day) }
                 byDay[day, default: []].append(item)
             }
             return days.map { day in
                 let dayItems = byDay[day] ?? []
-                return DayGroup(id: activityID + "|" + day, activityName: dayItems[0].activityName, zone: zone(dayItems[0]), items: dayItems)
+                return DayGroup(id: activityID + "|" + day, activityName: dayItems[0].activityName, zone: dayItems[0].zone, items: dayItems)
             }
-        }
-    }
-    private var blocks: [String] { Array(Set(favorites.items.map { $0.activityID + "|" + $0.scheduleID })).sorted() }
-    private func track(_ item: FavoriteSession) -> TimetableTrack? { timetables[item.activityID + "|" + item.scheduleID]?.track(item.session.trackID) }
-    private func zone(_ item: FavoriteSession) -> String { timetables[item.activityID + "|" + item.scheduleID]?.zone ?? "Asia/Seoul" }
-    private func loadTimetables() async {
-        for key in blocks where timetables[key] == nil {
-            let parts = key.split(separator: "|").map(String.init)
-            guard parts.count == 2, let timetable = try? await state.timetable(parts[0], parts[1]) else { continue }
-            timetables[key] = timetable
         }
     }
 }

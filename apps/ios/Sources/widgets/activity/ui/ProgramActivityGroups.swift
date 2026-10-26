@@ -39,7 +39,7 @@ struct ProgramActivityGroups: View {
             // Until both the open and the upcoming/past lists arrive (contract "내용 로딩은 스켈레톤" 2026-10-22).
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(0..<2, id: \.self) { _ in
-                    ActivityCard(activityID: "", title: "불러오는 활동 이름", recruitment: .open, recruitmentText: "10월 20일 (화) ~ 11월 10일 (화)",
+                    ActivityCard(activityID: "", title: "불러오는 활동 이름", recruitment: .open, recruitmentText: "10.20 – 11.10",
                                  scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인", accessory: { EmptyView() }) {}
                 }
             }.dearbySkeleton()
@@ -50,8 +50,9 @@ struct ProgramActivityGroups: View {
             .padding(.horizontal, 6).padding(.top, 6).accessibilityAddTraits(.isHeader)
     }
     private func card(_ activity: ActivityModel) -> some View {
-        ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
-                     recruitmentText: activity.recruitmentText(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
+        let recruitmentDate = activity.recruitmentDate(at: state.loadedAt)
+        return ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
+                     recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday, scheduleText: activity.scheduleText(at: state.loadedAt),
                      place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
                      hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id, source: source) }))

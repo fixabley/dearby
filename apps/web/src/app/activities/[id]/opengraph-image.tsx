@@ -1,4 +1,4 @@
-import { activityId, scheduleLabel } from "@/lib/models";
+import { activityId, recruitmentDate } from "@/lib/models";
 import { appIcon, defaultOgImage, logoDataUrl, OG_SIZE, ogImage } from "@/lib/og";
 import { previewActivity } from "@/lib/preview";
 // 활동별 미리보기 이미지 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): 프로그램 로고(있으면), 활동 이름, 프로그램·주최,
@@ -12,7 +12,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const activity = id === undefined ? undefined : await previewActivity(id);
   if (!activity) return defaultOgImage();
   const logo = await logoDataUrl(activity.program.logoUrl);
-  const period = scheduleLabel(activity.application, "recruitment");
+  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26") without the D-day: the image is cached for an hour and shared for longer.
+  const period = recruitmentDate(activity.application).text;
   return ogImage(
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "64px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>

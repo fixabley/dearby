@@ -55,5 +55,9 @@ struct FavoriteSession: Equatable, Identifiable, Sendable {
     let scheduleID: String
     let scheduleTitle: String
     let session: TimetableSession
+    /// The session's track; nil for a full-width session or on an older response.
+    var track: TimetableTrack?
+    /// The block's zone (an all-day block's is Seoul): the session's times and day are read in it.
+    var zone = "Asia/Seoul"
     var id: Int64 { session.id }
 }
