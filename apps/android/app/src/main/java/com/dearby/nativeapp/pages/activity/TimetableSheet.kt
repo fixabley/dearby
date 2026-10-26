@@ -47,7 +47,8 @@ import java.time.format.DateTimeFormatter
     notices: SnackbarHostState? = null,
     /** Opens on `찜한 세션` (a 세션 이동 알림 tap). */
     favoritesFirst: Boolean = false) {
-    var favoritesOnly by remember { mutableStateOf(favoritesFirst) }
+    // Keyed so a reminder tap moves an already open sheet to 찜한 세션 too.
+    var favoritesOnly by remember(favoritesFirst) { mutableStateOf(favoritesFirst) }
     var opened by remember { mutableStateOf<String?>(null) }
     val trackOf: (SessionState) -> TrackState? = { session -> timetable?.tracks?.firstOrNull { it.id == session.trackId } }
     ModalBottomSheet(dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
