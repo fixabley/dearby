@@ -35,7 +35,7 @@ struct TimetablePage: View {
                 .accessibilityIdentifier("timetable-mode")
             }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle(route.activityTitle + " · " + route.scheduleTitle).navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
