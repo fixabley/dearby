@@ -8,7 +8,7 @@ struct ActivityCard<Accessory: View>: View {
     let title: String
     let recruitment: ActivityModel.Recruitment
     /// Recruitment window text (`ActivityModel.recruitmentDate`: `M.d – M.d` with both bounds, else structured dates before the collected
-    /// label); nil reads as `미정`.
+    /// label); nil reads as `일정 없음` (모집 일정 없음, a closed activity).
     var recruitmentText: String?
     /// `D-3`/`D-DAY` beside the period while recruiting (contract "모집 날짜 표기 — 2026-10-26"); nil for none.
     var recruitmentDDay: String?
@@ -41,7 +41,7 @@ struct ActivityCard<Accessory: View>: View {
                 VStack(alignment: .leading, spacing: 3) {
                     LabeledContent("모집") {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(recruitmentText ?? "미정")
+                            Text(recruitmentText ?? "일정 없음")
                             if let recruitmentDDay { DearbyMiniBadge(title: recruitmentDDay, filled: true) }
                         }
                     }.labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
@@ -55,7 +55,7 @@ struct ActivityCard<Accessory: View>: View {
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([title, statusText, hasTimetable ? "시간표 있음" : nil, "모집 " + (recruitmentText ?? "미정") + (recruitmentDDay.map { " " + $0 } ?? ""), "활동 " + (scheduleText ?? "미정"),
+            .accessibilityLabel([title, statusText, hasTimetable ? "시간표 있음" : nil, "모집 " + (recruitmentText ?? "일정 없음") + (recruitmentDDay.map { " " + $0 } ?? ""), "활동 " + (scheduleText ?? "미정"),
                                  place.map { "장소 " + $0 }, TagChipLine.label(field: fieldTag, traits: traitTags)].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")

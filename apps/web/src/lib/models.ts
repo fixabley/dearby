@@ -228,9 +228,9 @@ export const programPageSchema = z.object({
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 export type ProgramPage = z.infer<typeof programPageSchema>;
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
-export function deadlineLabel(endAt: string | null, event = false): string | undefined {
+export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);
-  return day && `${day} ${event ? "행사" : "마감"}`;
+  return day && `${day} 마감`;
 }
 /** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
@@ -253,12 +253,12 @@ export function recruitment(
   application: Schedule | null,
   now = Date.now(),
 ): { open: boolean; label: string } {
-  if (!application) return { open: false, label: "모집 여부 확인 필요" };
+  // 모집 일정이 없는 활동은 종류와 상관없이 마감 (user 2026-10-26, contract "모집 일정 없는 활동은 마감").
+  if (!application) return { open: false, label: "모집 마감" };
   // Date-only windows compare Seoul days: before the start → 예정, before the exclusive end → 중, otherwise 마감
   // (contract "열린 활동 판정 일원화"). Timed windows compare instants; a missing end or start is open on that side.
   if (!application.startAt && !application.endAt) {
-    if (!application.startDate && !application.endDateExclusive)
-      return { open: false, label: "모집 여부 확인 필요" };
+    if (!application.startDate && !application.endDateExclusive) return { open: false, label: "모집 마감" };
     const today = seoulDay(now);
     if (application.startDate && today < application.startDate) return { open: false, label: "모집 예정" };
     if (application.endDateExclusive && today >= application.endDateExclusive) return { open: false, label: "모집 마감" };

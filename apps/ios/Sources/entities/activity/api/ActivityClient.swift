@@ -41,10 +41,11 @@ enum ActivityClient {
     }
     private static func summary(_ program: Program, api: URL) -> ProgramSummary {
         ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
-                       openActivityCount: program.openActivityCount ?? 0, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
+                       openActivityCount: program.openActivityCount ?? 0,
+                       // An older server's activity-start stand-in (`nearestIsActivityStart`) is not a deadline: dropped (user 2026-10-26).
+                       nearestRecruitmentEndAt: program.nearestIsActivityStart == true ? nil : program.nearestRecruitmentEndAt,
                        matchedActivityIDs: (program.matchedActivityIds ?? []).map(String.init), latestActivityAt: program.latestActivityAt,
                        upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
-                       nearestIsActivityStart: program.nearestIsActivityStart ?? false,
                        fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
                        traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
                        logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL }, hasTimetable: program.hasTimetable ?? false)

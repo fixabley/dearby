@@ -30,7 +30,7 @@ export function ActivityCard({
   id: number;
   name: string;
   statusTone: StatusTone;
-  /** 모집 기간 문구; 없으면 `미정`. */
+  /** 모집 기간 문구; 없으면 `일정 없음`(모집 일정 없음 = 마감). */
   recruitmentLabel: string;
   /** `D-3`·`D-DAY` beside the period while 모집 중 (contract "모집 날짜 표기 — 2026-10-26"). */
   recruitmentDday?: string;
@@ -45,7 +45,7 @@ export function ActivityCard({
   traitTags?: Tag[];
 }) {
   const rows: [string, string, boolean, string?][] = [
-    ["모집", recruitmentLabel || "미정", recruitmentActive, recruitmentDday],
+    ["모집", recruitmentLabel || "일정 없음", recruitmentActive, recruitmentDday],
     ["활동", activityLabel || "일정 미확인", false],
   ];
   if (placeName) rows.push(["장소", placeName, false]);

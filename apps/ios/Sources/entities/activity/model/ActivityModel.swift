@@ -66,16 +66,12 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
             if let end, now >= end { return .closed }
             return .open
         }
-        return .unknown
+        // 모집 일정이 없는 활동은 종류와 상관없이 마감 (user 2026-10-26, contract "모집 일정 없는 활동은 마감").
+        return .closed
     }
-    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); with no
-    /// window at all, the activity start. nil when neither is known. Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
-    var upcomingStart: Date? {
-        if recruitmentStartAt != nil || recruitmentEndAt != nil || recruitmentStartDate != nil || recruitmentEndDateExclusive != nil {
-            return Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate)
-        }
-        return activityStage?.anchor
-    }
+    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); nil without one (an activity
+    /// without a recruitment schedule is closed, never upcoming). Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
+    var upcomingStart: Date? { Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate) }
     /// Some block (`schedules[]` or the activity period) has a 트랙·세션 시간표.
     var hasTimetable: Bool { (stages + [activityStage].compactMap { $0 }).contains(where: \.hasTimetable) }
     /// Everything the overlap check can compare (contract "겹침 확인 시간" 2026-10-22): `schedules[]` and the activity period, each timed
@@ -352,8 +348,6 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var upcomingActivityCount: Int = 0
     /// Raw ISO 8601 of the earliest recruitment start among the upcoming ones (activity start without a window); nil when none.
     var nearestRecruitmentStartAt: String? = nil
-    /// `nearestRecruitmentEndAt` is an activity start (an open activity without a recruitment deadline), not a deadline; false on older responses.
-    var nearestIsActivityStart = false
     /// The program's most relevant 분야 tags, at most two (contract "분야·성격 태그와 아이콘"); empty on older responses.
     var fieldTags: [Tag] = []
     /// The program's 성격 tags (vocabulary order); older responses' `tags` stand in.

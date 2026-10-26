@@ -316,11 +316,9 @@ function activityStart(activity: Activity): number {
 /** 지난 활동 window (contract "모집 중인 프로그램만 보기", 2026-10-19 저녁: 3년). */
 const THREE_YEARS = 1095 * 24 * 60 * 60 * 1000;
 
-/** Recruitment start (timed, else the date at UTC midnight), or the activity start when there is no recruitment window; NaN without one. */
+/** Recruitment start (timed, else the date at UTC midnight); NaN without one (no recruitment schedule = 마감, never 모집 예정). */
 function upcomingKey(activity: Activity): number {
-  const key = activity.application
-    ? (activity.application.startAt ?? activity.application.startDate)
-    : (activity.activitySchedule.startAt ?? activity.activitySchedule.startDate);
+  const key = activity.application?.startAt ?? activity.application?.startDate;
   return key ? Date.parse(key) : NaN;
 }
 /**
@@ -432,9 +430,12 @@ function ProgramRow({
   }, [open]);
   const logoSrc = programLogoSrc(program.logoUrl);
   const count = program.openActivityCount + (program.upcomingActivityCount ?? 0);
-  // Meta line precedence: a deadline while something is open, else the next start, else the latest activity month.
+  // Meta line precedence: a deadline while something is open, else the next start, else the latest activity month. An older server's
+  // activity-start stand-in (`nearestIsActivityStart`) is not a deadline (user 2026-10-26: no recruitment schedule = 마감).
   const meta =
-    (program.openActivityCount > 0 && deadlineLabel(program.nearestRecruitmentEndAt, program.nearestIsActivityStart)) ||
+    (program.openActivityCount > 0 &&
+      !program.nearestIsActivityStart &&
+      deadlineLabel(program.nearestRecruitmentEndAt)) ||
     ((program.upcomingActivityCount ?? 0) > 0 && startLabel(program.nearestRecruitmentStartAt ?? null)) ||
     `최근 ${monthLabel(program.latestActivityAt ?? null)}`;
   // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.
