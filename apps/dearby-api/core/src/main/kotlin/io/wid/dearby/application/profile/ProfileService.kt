@@ -153,7 +153,7 @@ class ProfileService(
     @Transactional
     fun giveConsent(userId: UserId, privacyVersion: String, termsVersion: String) {
         if (privacyVersion != consentVersions.privacy || termsVersion != consentVersions.terms) {
-            throw InvalidInputException("동의 문서 버전이 현재 버전과 다릅니다", "Consent version mismatch: $privacyVersion/$termsVersion", code = CONSENT_VERSION)
+            throw InvalidInputException("동의 문서 버전이 바뀌었어요. 앱을 업데이트한 뒤 다시 동의해 주세요.", "Consent version mismatch: $privacyVersion/$termsVersion", code = CONSENT_VERSION)
         }
         consents.save(userId, Consent(privacyVersion, termsVersion, OffsetDateTime.now(ZoneOffset.UTC)))
     }

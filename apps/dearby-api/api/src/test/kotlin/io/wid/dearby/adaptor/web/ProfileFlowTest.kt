@@ -348,6 +348,7 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
             asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-22","termsVersion":"2026-10-22"}"""
         }.andExpect { status { isBadRequest() } })
         assertEquals("CONSENT_VERSION", wrong["code"].asString())
+        assertTrue(wrong["detail"].asString().contains("앱을 업데이트한 뒤 다시 동의해 주세요"))
         consent(user)
         val after = read(mvc.get("/v1/profile") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf(false, "2026-10-26", "2026-10-22"), listOf(after["consentRequired"].asBoolean(), after["consent"]["privacyVersion"].asString(), after["consent"]["termsVersion"].asString()))
