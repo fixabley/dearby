@@ -10,8 +10,9 @@ private let log = Logger(subsystem: "com.dearby.app", category: "push")
 /// or `dearby://favorites?view=calendar` for the day's summary), `activityId` and `notificationId` (contract "알림 목록").
 @MainActor @Observable final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     private(set) var deviceToken: Data?
-    /// The tapped notification's `url`, else its `activityId`; the root opens it and clears it.
-    enum Tap: Equatable { case link(URL), activity(String) }
+    /// The tapped notification's `url`, else its `activityId`; a local 세션 이동 알림 (contract "찜한 세션 이동 알림") opens its block's
+    /// timetable on 찜한 세션. The root opens it and clears it.
+    enum Tap: Equatable { case link(URL), activity(String), timetable(activityID: String, scheduleID: String) }
     var tapped: Tap?
     /// The tapped notification's `notificationId` (알림 목록): it is marked read.
     var tappedNotification: Int64?
@@ -34,6 +35,12 @@ private let log = Logger(subsystem: "com.dearby.app", category: "push")
     }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
+        if info[SessionReminderModel.Key.kind] as? String == SessionReminderModel.kind,
+           let activityID = info[SessionReminderModel.Key.activity] as? String, let scheduleID = info[SessionReminderModel.Key.schedule] as? String {
+            // Local, so no `push_open` (analytics-v1.md lists the server's kinds).
+            await MainActor.run { tapped = .timetable(activityID: activityID, scheduleID: scheduleID) }
+            return
+        }
         let url = (info["url"] as? String).flatMap(URL.init(string:))
         let activityID = (info["activityId"] as? NSNumber)?.stringValue ?? info["activityId"] as? String
         let notificationID = (info["notificationId"] as? NSNumber)?.int64Value ?? (info["notificationId"] as? String).flatMap { Int64($0) }
