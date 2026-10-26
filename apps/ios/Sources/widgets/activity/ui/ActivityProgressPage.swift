@@ -9,8 +9,8 @@ struct ActivityProgressRoute: Hashable {
 /// system separators. `활동 정보` is the discovery `ActivityCard` (opens the detail) with the program and organization under it; `진행 단계`
 /// has one row per stage (icon, name, date · 지남/진행 중/예정, and on the right the marked status of a 선발 단계 only — 2026-10-26) whose
 /// header names the current stage (`D-3 · 면접`); pressing a row opens its menu (the schedule's statuses, contract "진행 단계 상태" 2026-10-22,
-/// `캘린더에 추가`, `겹치는 시간 확인`). `시간표` lists the blocks with a 트랙·세션 시간표 as rows that open the timetable sheet. `내 활동에서 빼기`
-/// is the last row. A FAILED kind ends the track.
+/// `캘린더에 추가`, `겹치는 시간 확인`); a block with a 트랙·세션 시간표 shows the `tablecells` glyph and its menu starts with `시간표 보기`
+/// (user 2026-10-26), opening the same sheet as the activity detail. `내 활동에서 빼기` is the last row. A FAILED kind ends the track.
 struct ActivityProgressPage: View {
     let state: ActivityViewModel
     let activityID: String
@@ -44,12 +44,6 @@ struct ActivityProgressPage: View {
                         }
                     } footer: {
                         Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요.")
-                    }
-                    let blocks = progress.stages.filter { $0.id != ActivityStages.applicationStageID && $0.source.hasTimetable }
-                    if !blocks.isEmpty {
-                        Section("시간표") {
-                            ForEach(blocks) { stage in timetableRow(stage, activity: activity) }
-                        }
                     }
                     Section {
                         Button("내 활동에서 빼기", role: .destructive) { removing = activityID }
@@ -87,8 +81,15 @@ struct ActivityProgressPage: View {
     /// One stage: a plain row, or a menu when it has something to choose or do.
     @ViewBuilder private func stageRow(_ stage: ActivityStage, activity: ActivityModel) -> some View {
         let draft = stage.calendarDraft(activity, link: state.calendarLink(activity.id))
-        if stage.selection || draft != nil || !stage.overlapSchedules.isEmpty {
+        if stage.selection || draft != nil || !stage.overlapSchedules.isEmpty || stage.source.hasTimetable {
             Menu {
+                // The block's 트랙·세션 시간표 first (user 2026-10-26 "펼쳤을 때 시간표 보기 버튼"): the same sheet as the activity detail.
+                if stage.source.hasTimetable {
+                    Button("시간표 보기", systemImage: "tablecells") {
+                        timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: stage.source.id,
+                                                   scheduleTitle: stage.name, date: stage.dateText(now: Date()))
+                    }
+                }
                 if stage.selection {
                     Picker("\(stage.name) 표시", selection: Binding(get: { stage.status },
                                                                  set: { state.markStage(activityID, stage.source.id, StageMark($0)) })) {
@@ -100,7 +101,7 @@ struct ActivityProgressPage: View {
             } label: {
                 stageLabel(stage, menu: true)
             }
-            .accessibilityHint(stage.selection ? "누르면 표시를 고르거나 캘린더에 추가해요" : "누르면 캘린더에 추가하거나 겹침을 확인해요")
+            .accessibilityHint(stage.selection ? "누르면 표시를 고르거나 캘린더에 추가해요" : "누르면 시간표를 보거나 캘린더에 추가해요")
         } else {
             stageLabel(stage, menu: false)
         }
@@ -113,33 +114,18 @@ struct ActivityProgressPage: View {
                 Text(stage.dateText(now: Date()) + " · " + timeWord(stage)).font(.dearby(.footnote)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
+            // 시간표 있음 (user 2026-10-26): the timetable glyph before the status, secondary.
+            if stage.source.hasTimetable {
+                Image(systemName: "tablecells").font(.dearby(.subheadline)).foregroundStyle(.secondary).accessibilityHidden(true)
+            }
             if stage.selection { status(stage) }
             if menu { Image(systemName: "chevron.up.chevron.down").font(.dearby(.caption).weight(.semibold)).foregroundStyle(.tertiary) }
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([stage.name, stage.dateText(now: Date()), timeWord(stage), stage.selection ? stage.status.name : nil]
+        .accessibilityLabel([stage.name, stage.dateText(now: Date()), timeWord(stage), stage.selection ? stage.status.name : nil,
+                             stage.source.hasTimetable ? "시간표 있음" : nil]
             .compactMap { $0 }.joined(separator: ", "))
-    }
-    /// A block with a timetable: the same row shape, opening the sheet.
-    private func timetableRow(_ stage: ActivityStage, activity: ActivityModel) -> some View {
-        Button {
-            timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: stage.source.id,
-                                       scheduleTitle: stage.name, date: stage.dateText(now: Date()))
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "tablecells").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(width: 24)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(stage.name).font(.dearby(.body)).foregroundStyle(.primary)
-                    Text(stage.dateText(now: Date())).font(.dearby(.footnote)).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
-            }.contentShape(Rectangle())
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(stage.name) 시간표, \(stage.dateText(now: Date()))").accessibilityHint("누르면 시간표를 보여요")
-        .accessibilityIdentifier("timetable-\(stage.source.id)")
     }
     private func iconColor(_ stage: ActivityStage) -> Color {
         if stage.mark.kind == .failed { return DearbyStyle.danger }
