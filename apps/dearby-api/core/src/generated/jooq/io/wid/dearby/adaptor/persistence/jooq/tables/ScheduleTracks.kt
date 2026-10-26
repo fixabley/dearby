@@ -8,7 +8,6 @@ import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.SCHEDULE_TRACKS_SCHEDULE_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_TRACK_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS_PKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS_SCHEDULE_ID_NAME_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
@@ -139,7 +138,6 @@ open class ScheduleTracks(
     override fun getIndexes(): List<Index> = listOf(SCHEDULE_TRACKS_SCHEDULE_IDX)
     override fun getIdentity(): Identity<ScheduleTracksRecord, Long?> = super.getIdentity() as Identity<ScheduleTracksRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ScheduleTracksRecord> = SCHEDULE_TRACKS_PKEY
-    override fun getUniqueKeys(): List<UniqueKey<ScheduleTracksRecord>> = listOf(SCHEDULE_TRACKS_SCHEDULE_ID_NAME_KEY)
     override fun getReferences(): List<ForeignKey<ScheduleTracksRecord, *>> = listOf(SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY)
 
     /**

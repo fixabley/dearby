@@ -11,7 +11,6 @@ import io.wid.dearby.application.timetable.SessionOwner
 import io.wid.dearby.application.timetable.TimetableRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
-import io.wid.dearby.domain.Tag
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.timetable.Session
 import io.wid.dearby.domain.timetable.SessionKind
@@ -21,7 +20,6 @@ import io.wid.dearby.domain.timetable.TimetableInput
 import io.wid.dearby.domain.timetable.Track
 import org.jooq.DSLContext
 import org.jooq.JSONB
-import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.readValue
@@ -118,9 +116,6 @@ internal object TimetableRows {
         // 빠진 세션 → 빠진 트랙 순으로 지운다(트랙을 지우면 그 트랙 세션도 cascade로 지워지므로 남길 세션을 먼저 옮긴다)
         val keptSessions = input.sessions.mapNotNull { it.id }.toSet()
         dsl.deleteFrom(SCHEDULE_SESSIONS).where(SCHEDULE_SESSIONS.SCHEDULE_ID.eq(scheduleId), SCHEDULE_SESSIONS.ID.notIn(keptSessions)).execute()
-        // 이름 유일 제약을 피하려고 남길 트랙의 이름을 잠시 비켜 둔다
-        dsl.update(SCHEDULE_TRACKS).set(SCHEDULE_TRACKS.NAME, DSL.concat(DSL.inline("\u0001"), SCHEDULE_TRACKS.ID.cast(String::class.java)))
-            .where(SCHEDULE_TRACKS.SCHEDULE_ID.eq(scheduleId)).execute()
         val trackIds = input.tracks.mapIndexed { position, track ->
             if (track.id != null) {
                 dsl.update(SCHEDULE_TRACKS).set(SCHEDULE_TRACKS.NAME, track.name).set(SCHEDULE_TRACKS.ROOM, track.room).set(SCHEDULE_TRACKS.POSITION, position)

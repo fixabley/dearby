@@ -1019,6 +1019,7 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(true, jdbc.sql("select curated from schedules where id = ?").param(block).query(Boolean::class.java).single())
         val listed = read(mvc.get("/v1/admin/activities?q=시간표 편집 활동") { asAdmin() })["items"].toList().single { it["id"].asLong() == activity }["schedules"].toList().single()
         assertEquals(true, listed["hasTimetable"].asBoolean())
+        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity/schedules/$block") { asAdmin(); body("""{"title":"오전 세션"}""") }.andExpect { status { isOk() } })["hasTimetable"].asBoolean())
 
         // id로 고치면 세션 찜이 남고, 빠진 세션·트랙은 지운다(그 세션 찜도). 트랙 순서를 바꿀 수 있다
         val (trackA, trackB) = first["tracks"].toList().map { it["id"].asLong() }

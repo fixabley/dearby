@@ -9,8 +9,7 @@ create table schedule_tracks
     schedule_id bigint       not null references schedules (id) on delete cascade,
     name        varchar(50)  not null,
     room        varchar(100),
-    position    integer      not null,
-    unique (schedule_id, name)
+    position    integer      not null -- 이름 중복은 서버 검증(TimetableRules)이 막는다
 );
 create index schedule_tracks_schedule_idx on schedule_tracks (schedule_id);
 

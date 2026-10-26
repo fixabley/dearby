@@ -1,6 +1,7 @@
 package io.wid.dearby.application.timetable
 
 import io.wid.dearby.application.activity.ActivityCurationRepository
+import io.wid.dearby.application.activity.ActivityRepository
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.application.tag.TagRepository
@@ -25,6 +26,7 @@ import java.time.ZoneOffset
 class TimetableService(
     private val timetables: TimetableRepository,
     private val activities: ActivityService,
+    private val activityRepository: ActivityRepository,
     private val curations: ActivityCurationRepository,
     private val tags: TagRepository,
 ) {
@@ -65,7 +67,7 @@ class TimetableService(
     @Transactional
     fun putFavorite(userId: UserId, sessionId: Id) {
         val owner = timetables.sessionOwner(sessionId) ?: throw sessionNotFound(sessionId)
-        runCatching { activities.getById(owner.activityId) }.getOrNull() ?: throw sessionNotFound(sessionId)
+        activityRepository.findById(owner.activityId) ?: throw sessionNotFound(sessionId) // 게시 활동만
         timetables.saveFavorite(userId, sessionId, OffsetDateTime.now(ZoneOffset.UTC))
     }
 

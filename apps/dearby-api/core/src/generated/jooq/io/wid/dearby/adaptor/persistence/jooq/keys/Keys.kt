@@ -234,7 +234,6 @@ val SCHEDULE_SESSION_TAGS_PKEY: UniqueKey<ScheduleSessionTagsRecord> = Internal.
 val SCHEDULE_SESSIONS_PKEY: UniqueKey<ScheduleSessionsRecord> = Internal.createUniqueKey(ScheduleSessions.SCHEDULE_SESSIONS, DSL.name("schedule_sessions_pkey"), arrayOf(ScheduleSessions.SCHEDULE_SESSIONS.ID), true)
 val SCHEDULE_STATUSES_PKEY: UniqueKey<ScheduleStatusesRecord> = Internal.createUniqueKey(ScheduleStatuses.SCHEDULE_STATUSES, DSL.name("schedule_statuses_pkey"), arrayOf(ScheduleStatuses.SCHEDULE_STATUSES.ID), true)
 val SCHEDULE_TRACKS_PKEY: UniqueKey<ScheduleTracksRecord> = Internal.createUniqueKey(ScheduleTracks.SCHEDULE_TRACKS, DSL.name("schedule_tracks_pkey"), arrayOf(ScheduleTracks.SCHEDULE_TRACKS.ID), true)
-val SCHEDULE_TRACKS_SCHEDULE_ID_NAME_KEY: UniqueKey<ScheduleTracksRecord> = Internal.createUniqueKey(ScheduleTracks.SCHEDULE_TRACKS, DSL.name("schedule_tracks_schedule_id_name_key"), arrayOf(ScheduleTracks.SCHEDULE_TRACKS.SCHEDULE_ID, ScheduleTracks.SCHEDULE_TRACKS.NAME), true)
 val SCHEDULES_ACTIVITY_ID_SLOT_KEY: UniqueKey<SchedulesRecord> = Internal.createUniqueKey(Schedules.SCHEDULES, DSL.name("schedules_activity_id_slot_key"), arrayOf(Schedules.SCHEDULES.ACTIVITY_ID, Schedules.SCHEDULES.SLOT), true)
 val SCHEDULES_PKEY: UniqueKey<SchedulesRecord> = Internal.createUniqueKey(Schedules.SCHEDULES, DSL.name("schedules_pkey"), arrayOf(Schedules.SCHEDULES.ID), true)
 val SCHEDULES_SOURCE_ID_KEY: UniqueKey<SchedulesRecord> = Internal.createUniqueKey(Schedules.SCHEDULES, DSL.name("schedules_source_id_key"), arrayOf(Schedules.SCHEDULES.SOURCE_ID), true)
