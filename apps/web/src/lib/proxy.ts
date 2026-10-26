@@ -6,6 +6,7 @@ import {
   guestListSchema,
   activityPageSchema,
   programPageSchema,
+  timetableSchema,
   uuid,
 } from "./models";
 import {
@@ -48,7 +49,7 @@ function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
 /**
- * Only `q`, `cursor`, `size`, `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
+ * Only `q`, `cursor`, `size`, `kind` (프로그램·이벤트 전환), `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
  * to the searches, rebuilt from validated values. Tags are searched through `q` only; the web never sends `tagIds`
  * (contract "태그 칩 줄 제거", 2026-10-19 밤).
  */
@@ -59,6 +60,8 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   const size = url.searchParams.get("size");
   const programId = url.searchParams.get("programId");
   const participationType = url.searchParams.get("participationType");
+  const kind = url.searchParams.get("kind");
+  if (kind !== null && !["program", "event"].includes(kind)) return;
   // `open=true` asks the server for its open-activity rule (contract "열린 활동 판정 일원화"); no other value is accepted.
   const openOnly = url.searchParams.get("open");
   if (openOnly !== null && (programs || openOnly !== "true")) return;
@@ -79,6 +82,7 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   if (q) query.set("q", q);
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
+  if (kind !== null) query.set("kind", kind);
   if (programId !== null) query.set("programId", programId);
   if (openOnly !== null) query.set("open", openOnly);
   if (programsOpenOnly !== null) query.set("openOnly", programsOpenOnly);
@@ -124,6 +128,12 @@ export async function proxy(
   // `discovery/*` has no id segment; treating "programs" as one failed the uuid check and 422-ed every discovery list.
   const id = segments[0] === "discovery" ? "" : segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
+  // 트랙·세션 시간표 (contract "트랙·세션 시간표"): `activities/:id/schedules/:scheduleId/timetable`, both ids numeric.
+  const timetableRoute =
+    segments.length === 5 &&
+    segments[0] === "activities" &&
+    segments[2] === "schedules" &&
+    segments[4] === "timetable";
   // Public program logo images (contract "프로그램 로고"): binary passthrough, cached like the API says.
   const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
   const programs = path === "discovery/programs";
@@ -134,7 +144,7 @@ export async function proxy(
   const method = request.method;
   const allowed =
     (search && method === "GET") ||
-    (activityRoute && method === "GET") ||
+    ((activityRoute || timetableRoute) && method === "GET") ||
     (logoRoute && method === "GET") ||
     (cardRoute && method === "GET") ||
     ((reportRoute || blockRoute) && method === "POST") ||
@@ -145,8 +155,9 @@ export async function proxy(
       ["PUT", "DELETE"].includes(method)) ||
     (path === "guest/session" && method === "DELETE");
   if (!allowed) return failure(404, "NOT_FOUND");
-  if (id && !(activityRoute || logoRoute ? activityId(id) : uuid.safeParse(id).success))
+  if (id && !(activityRoute || timetableRoute || logoRoute ? activityId(id) : uuid.safeParse(id).success))
     return failure(422, "INVALID_INPUT");
+  if (timetableRoute && activityId(segments[3]) === undefined) return failure(422, "INVALID_INPUT");
   // A card view takes the QR code from the `X-Card-Code` header (never the query) and sends it upstream as `?code=`.
   const cardCode = cardRoute ? request.headers.get("x-card-code") : null;
   if (cardCode !== null && !TOKEN.test(cardCode)) return failure(422, "INVALID_INPUT");
@@ -219,7 +230,7 @@ export async function proxy(
       query,
       accept: logoRoute ? "image/*" : undefined,
       acceptLanguage:
-        search || activityRoute
+        search || activityRoute || timetableRoute
           ? acceptLanguage(request.headers.get("accept-language"))
           : undefined,
     });
@@ -260,7 +271,7 @@ export async function proxy(
       return new Response(await result.arrayBuffer(), { headers: logoHeaders });
     }
     const outputHeaders: Record<string, string> = { ...headers };
-    if (search || activityRoute)
+    if (search || activityRoute || timetableRoute)
       outputHeaders.Vary = `${headers.Vary}, Accept-Language`;
     if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
@@ -286,6 +297,8 @@ export async function proxy(
           ? programPageSchema.parse(json)
           : activityRoute
           ? activitySchema.parse(json)
+          : timetableRoute
+          ? timetableSchema.parse(json)
           : guest
           ? guestListSchema.parse(json)
           : cardSchema.parse(json);

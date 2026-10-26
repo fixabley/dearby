@@ -86,6 +86,8 @@ const scheduleSchema = z.object({
     ])
     .nullable()
     .catch(null),
+  // 이 블록에 세션이 하나라도 있음(contract "트랙·세션 시간표"); older responses omit it.
+  hasTimetable: z.boolean().optional().catch(false),
 });
 export type Schedule = z.infer<typeof scheduleSchema>;
 const named = z.object({ id: z.number().int(), name: text });
@@ -133,6 +135,32 @@ export function fieldTagsOf(item: { fieldTags?: Tag[] }): Tag[] {
 /** 성격 tags (얻을 수 있는 것); older responses only send `tags`, which were all traits then. */
 export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
   return item.traitTags ?? item.tags ?? [];
+}
+// 트랙·세션 시간표 (contract "트랙·세션 시간표 — 2026-10-26"): `favorited` is dropped, the web has no sign-in.
+const trackSchema = z.object({ id: z.number().int(), name: text, room: text.nullable(), position: z.number().int() });
+export type Track = z.infer<typeof trackSchema>;
+const sessionSchema = z.object({
+  id: z.number().int(),
+  // null = 모든 트랙에 걸친 전폭 세션(키노트·쉬는시간·점심).
+  trackId: z.number().int().nullable(),
+  kind: z.enum(["TALK", "KEYNOTE", "BREAK", "MEAL", "OTHER"]).catch("OTHER"),
+  title: text,
+  startAt: text,
+  endAt: text,
+  speakers: z.array(z.object({ name: text, affiliation: text.nullable() })),
+  tags: z.array(tagSchema).catch([]),
+});
+export type Session = z.infer<typeof sessionSchema>;
+export const timetableSchema = z.object({
+  activityId: z.number().int(),
+  schedule: scheduleSchema,
+  tracks: z.array(trackSchema),
+  sessions: z.array(sessionSchema),
+});
+export type Timetable = z.infer<typeof timetableSchema>;
+/** `HH:mm` (24h) of an instant in a zone, for timetable rows. */
+export function clockTime(time: number, timeZone: string): string {
+  return koreanParts(time, timeZone, true).time;
 }
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;

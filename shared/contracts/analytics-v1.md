@@ -88,6 +88,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `home_shortcut_install` | 안내의 `홈 화면에 추가`(`prompt()`)에 사용자가 답함 | `outcome`(`accepted`·`dismissed`) |
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
+| `timetable_view` | 활동 상세에서 일정 블록의 `… 시간표`를 펼쳐 시간표를 불러옴(펼칠 때마다, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
 `activity_view`·`apply_click`은 앱과 같은 이름이라 GA에서 플랫폼(스트림) 측정기준으로 나눠 본다. 웹은 공개 태그 사전을 불러오지 않으므로 `field`를 보내지 않는다.
