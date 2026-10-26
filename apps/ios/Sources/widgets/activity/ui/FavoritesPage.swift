@@ -8,6 +8,7 @@ struct FavoritesPage: View {
     let state: ActivityViewModel
     @Binding var path: NavigationPath
     @Environment(FavoritesModel.self) private var favorites
+    @Environment(SessionFavoritesModel.self) private var sessions
     var body: some View {
         Group {
             switch favorites.phase {
@@ -23,13 +24,34 @@ struct FavoritesPage: View {
                 if favorites.programs.isEmpty && favorites.activities.isEmpty {
                     CenteredMessage(symbol: "heart", title: "하트를 누르면 여기에 모여요", message: "발견에서 마음에 드는 활동과 프로그램에 하트를 눌러 보세요.")
                 } else {
-                    FavoritesCalendarView(items: favorites.activities, open: { path.append($0) }) { undated in
+                    FavoritesCalendarView(items: favorites.activities, sessionDays: Set(sessions.items.map { SeoulDay($0.session.start) }),
+                                          open: { path.append($0) }) { undated in
                         if !favorites.programs.isEmpty || !undated.isEmpty {
                             undatedSection(undated)
                         }
                     }
                     .refreshable { await favorites.load() }
                 }
+            }
+        }
+        // 찜한 세션 (contract "트랙·세션 시간표" 2026-10-26): with at least one, a row above the calendar opens 나만의 시간표.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !sessions.items.isEmpty {
+                Button { path.append(MySessionsRoute()) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "heart.text.square").foregroundStyle(.pink)
+                        Text("찜한 세션").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
+                        Text("\(sessions.items.count)개").font(.dearby(.subheadline)).foregroundStyle(.secondary).monospacedDigit()
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 16).frame(minHeight: 48)
+                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).padding(.horizontal, 20).padding(.vertical, 8)
+                .accessibilityLabel("찜한 세션 \(sessions.items.count)개").accessibilityHint("누르면 나만의 시간표를 보여요")
+                .accessibilityIdentifier("favorite-sessions")
             }
         }
         .analyticsScreen("favorites")

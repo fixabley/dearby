@@ -157,7 +157,9 @@
     "TimetableSessionCard",
     "TimetableSessionSheet",
     "TimetableTrackBadge",
-    "TimetableText"
+    "TimetableText",
+    "MySessionsPage",
+    "MySessionsRoute"
   ],
   "widgets/identity": [
     "AccountViewModel",

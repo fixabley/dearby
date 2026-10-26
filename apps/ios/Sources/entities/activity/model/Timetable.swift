@@ -49,10 +49,11 @@ struct TimetableSession: Equatable, Identifiable, Sendable {
 }
 
 /// One item of `GET /v1/me/session-favorites` (내 시간표, session start order).
-struct FavoriteSession: Equatable, Sendable {
+struct FavoriteSession: Equatable, Identifiable, Sendable {
     let activityID: String
     let activityName: String
     let scheduleID: String
     let scheduleTitle: String
     let session: TimetableSession
+    var id: Int64 { session.id }
 }

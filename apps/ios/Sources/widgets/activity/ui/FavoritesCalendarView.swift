@@ -8,6 +8,8 @@ import UIKit
 /// nothing is written to the device calendar.
 struct FavoritesCalendarView<Undated: View>: View {
     let items: [FavoriteActivity]
+    /// Days with a favorited session (세션 찜, contract "트랙·세션 시간표"): a pink dot only, the list stays activities.
+    var sessionDays: Set<SeoulDay> = []
     let open: (String) -> Void
     @ViewBuilder let undated: ([FavoriteActivity]) -> Undated
     @State private var target: String?
@@ -18,7 +20,7 @@ struct FavoritesCalendarView<Undated: View>: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    FavoriteMonthCalendar(marks: days.mapValues { Set($0.map(\.kind)) }) { day in
+                    FavoriteMonthCalendar(marks: days.mapValues { Set($0.map(\.kind)) }, sessionDays: sessionDays) { day in
                         // The chosen day, else the next day with something on it.
                         target = days.keys.filter { $0 >= day }.min().map(Self.dayID)
                     } monthChanged: { month in
@@ -99,6 +101,7 @@ struct FavoritesCalendarView<Undated: View>: View {
 /// `UICalendarView` in Seoul days with one decoration per marked day and single-day selection; SwiftUI has no month calendar of its own.
 private struct FavoriteMonthCalendar: UIViewRepresentable {
     let marks: [SeoulDay: Set<FavoriteDate.Kind>]
+    let sessionDays: Set<SeoulDay>
     let select: (SeoulDay) -> Void
     let monthChanged: (SeoulDay) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -111,14 +114,16 @@ private struct FavoriteMonthCalendar: UIViewRepresentable {
         view.delegate = context.coordinator
         view.selectionBehavior = UICalendarSelectionSingleDate(delegate: context.coordinator)
         context.coordinator.marks = marks
+        context.coordinator.sessionDays = sessionDays
         return view
     }
     func updateUIView(_ view: UICalendarView, context: Context) {
-        let old = context.coordinator.marks
+        let old = context.coordinator.marks, oldSessions = context.coordinator.sessionDays
         context.coordinator.parent = self
         context.coordinator.marks = marks
-        guard old != marks else { return }
-        view.reloadDecorations(forDateComponents: Set(old.keys).union(marks.keys).map(\.components), animated: false)
+        context.coordinator.sessionDays = sessionDays
+        guard old != marks || oldSessions != sessionDays else { return }
+        view.reloadDecorations(forDateComponents: Set(old.keys).union(marks.keys).union(oldSessions).union(sessionDays).map(\.components), animated: false)
     }
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UICalendarView, context: Context) -> CGSize? {
         let width = proposal.width ?? 360
@@ -129,10 +134,13 @@ private struct FavoriteMonthCalendar: UIViewRepresentable {
     final class Coordinator: NSObject, UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
         var parent: FavoriteMonthCalendar
         var marks: [SeoulDay: Set<FavoriteDate.Kind>] = [:]
+        var sessionDays: Set<SeoulDay> = []
         init(_ parent: FavoriteMonthCalendar) { self.parent = parent }
         func calendarView(_ calendarView: UICalendarView, decorationFor dateComponents: DateComponents) -> UICalendarView.Decoration? {
-            guard let day = SeoulDay(dateComponents), let kinds = marks[day], !kinds.isEmpty else { return nil }
-            return .customView { Self.dots(kinds) }
+            guard let day = SeoulDay(dateComponents) else { return nil }
+            let kinds = marks[day] ?? [], session = sessionDays.contains(day)
+            guard !kinds.isEmpty || session else { return nil }
+            return .customView { Self.dots(kinds, session: session) }
         }
         func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
             if let day = dateComponents.flatMap(SeoulDay.init) { parent.select(day) }
@@ -142,8 +150,8 @@ private struct FavoriteMonthCalendar: UIViewRepresentable {
                 parent.monthChanged(SeoulDay(year: year, month: month, day: 1))
             }
         }
-        /// 마감 filled teal, 모집 시작 hollow mint, 행사 filled grey, side by side.
-        private static func dots(_ kinds: Set<FavoriteDate.Kind>) -> UIView {
+        /// 마감 filled teal, 모집 시작 hollow mint, 행사 filled grey, then a pink 찜한 세션 dot, side by side.
+        private static func dots(_ kinds: Set<FavoriteDate.Kind>, session: Bool) -> UIView {
             let stack = UIStackView()
             stack.axis = .horizontal
             stack.spacing = 2
@@ -156,6 +164,14 @@ private struct FavoriteMonthCalendar: UIViewRepresentable {
                 case .start: dot.layer.borderWidth = 1.5; dot.layer.borderColor = UIColor.systemMint.cgColor
                 case .event: dot.backgroundColor = .systemGray
                 }
+                NSLayoutConstraint.activate([dot.widthAnchor.constraint(equalToConstant: 7), dot.heightAnchor.constraint(equalToConstant: 7)])
+                stack.addArrangedSubview(dot)
+            }
+            if session {
+                let dot = UIView()
+                dot.translatesAutoresizingMaskIntoConstraints = false
+                dot.layer.cornerRadius = 3.5
+                dot.backgroundColor = .systemPink
                 NSLayoutConstraint.activate([dot.widthAnchor.constraint(equalToConstant: 7), dot.heightAnchor.constraint(equalToConstant: 7)])
                 stack.addArrangedSubview(dot)
             }
