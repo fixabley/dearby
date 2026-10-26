@@ -44,7 +44,7 @@ type Loaded = { caption: string; tracks: Track[]; entries: Entry[]; timeZone: st
  * switch since "웹 화면 — 2단계 A"): a near-full-height bottom sheet on phones, a large centred dialog from `md`. Radix gives ESC, the
  * focus trap, focus return and `aria-labelledby`/`aria-describedby` from the title and time range. Content mounts on open, so each
  * open loads afresh and starts on `전체`. A block view offers `이 날 전체 보기` when its day has other timed blocks; the day view swaps
- * in inside the same sheet so the dialog is not re-opened. Signed out, a footer line still points to the app.
+ * in inside the same sheet so the dialog is not re-opened. Signed out, the 전체 view carries a one-line sign-in hint.
  */
 export function TimetableSheet({
   activityId,
@@ -118,7 +118,10 @@ export function TimetableSheet({
                 <TimetableView activityId={activityId} schedule={target.schedule} view={view} />
               )}
             </div>
-            {!signedIn && <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">내 시간표는 Dearby 앱에서 만들 수 있어요.</p>}
+            {/* Signed out, the 전체 view keeps one footer line; the 내 시간표 view already says it with a 로그인 button (2026-10-27 결정). */}
+            {!signedIn && view === "all" && (
+              <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">로그인하면 웹에서도 내 시간표를 만들 수 있어요.</p>
+            )}
           </>
         )}
       </SheetContent>
