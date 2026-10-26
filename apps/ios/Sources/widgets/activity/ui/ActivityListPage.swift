@@ -51,7 +51,7 @@ struct ActivityListPage: View {
                             .frame(minHeight: viewport)
                     } else if !state.categories.isEmpty {
                         // 종류 필터 (contract "종류 필터" 2026-10-26): the way out is clearing the 종류.
-                        CenteredMessage(symbol: "calendar", title: "고른 종류의 \(state.kind == .event ? "이벤트가" : "프로그램이") 없어요",
+                        CenteredMessage(symbol: "calendar", title: "고른 조건의 \(state.kind == .event ? "이벤트가" : "프로그램이") 없어요",
                                         message: "다른 종류를 고르거나 종류 필터를 지워 보세요.", embedded: true,
                                         primary: MessageAction("종류 필터 지우기", identifier: "activity-clear-categories") { chooseCategories([]) })
                             .frame(minHeight: viewport)
@@ -201,7 +201,7 @@ struct ActivityListPage: View {
     /// The empty list's title without 지난 활동: the old wording for `지원 가능` alone, else the chosen states.
     private var emptyTitle: String {
         let noun = state.kind == .event ? "이벤트가" : "프로그램이"
-        guard state.statusGroups == [.available] else { return "고른 상태의 \(noun) 없어요" }
+        guard state.statusGroups == [.available] else { return "고른 조건의 \(noun) 없어요" }
         return state.kind == .event ? "지금 열리는 이벤트가 없어요" : "지금 모집 중인 프로그램이 없어요"
     }
     #if DEBUG

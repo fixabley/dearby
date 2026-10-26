@@ -198,7 +198,7 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
         ) : categories.length ? (
           <CenteredMessage
             icon="explore"
-            title={`고른 종류의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
+            title={`고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
             message="다른 종류를 고르거나 종류 필터를 지워 보세요."
             primary={{ label: "종류 필터 지우기", onClick: () => chooseCategories([]) }}
           />
@@ -213,7 +213,7 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
             icon="explore"
             title={
               statusKey !== "available"
-                ? `고른 상태의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`
+                ? `고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`
                 : kind === "event"
                   ? "지금 열린 이벤트가 없어요"
                   : "지금 모집 중인 프로그램이 없어요"
