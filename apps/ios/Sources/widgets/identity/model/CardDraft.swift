@@ -8,9 +8,8 @@ struct CardDraft: Equatable {
     var publicHistoryIDs: Set<String>
     /// 사진 넣기: on for a new card; editing, on when that card has a photo. Only offered when the profile has one.
     var includePhoto: Bool
-    /// 소개 링크 넣기: on for a new card and also when editing — cards published before 2026-10-26 have no link to read the choice from,
-    /// and a link the owner just added is what an edit most likely wants. Only offered when the profile has a link.
-    var includeIntroLink = true
+    /// 소개 링크 넣기: like 사진 넣기 — on for a new card; editing, on when that card has a link (same as Android). Only offered when the profile has a link.
+    var includeIntroLink: Bool
     let profile: AccountProfile
     /// The state the composer opened with; differing from it switches on the 저장 / 원래대로 bar.
     let initial: Initial
@@ -25,6 +24,7 @@ struct CardDraft: Equatable {
         publicContactIDs = prefill.map { Set($0.contacts.map(\.id)) } ?? Set(profile.contacts.map(\.id))
         publicHistoryIDs = prefill.map { Set($0.histories.map(\.id)).intersection(approved) } ?? approved
         includePhoto = prefill.map { $0.photoUrl != nil } ?? true
+        includeIntroLink = prefill.map { $0.introLink != nil } ?? true
         initial = Initial(cardTitle: cardTitle, contacts: publicContactIDs, histories: publicHistoryIDs, includePhoto: includePhoto, includeIntroLink: includeIntroLink)
     }
     var changed: Bool {
