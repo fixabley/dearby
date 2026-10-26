@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 펼친 프로그램 안의 활동 카드(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구). 로고 없이 왼쪽 위 활동명, 오른쪽 위 활동 상태 칩
 /// (contract "활동 상태" 2026-10-26: `모집 중` 청록 채움 캡슐 / `모집 예정` 청록 틴트 캡슐 / `진행 중` 시스템 파랑 틴트 / `모집 마감`·`종료` 시스템 fill 캡슐;
-/// `모집 정보 없음`은 칩 없이 `모집` 줄이 `모집 일정 미정`), 아래 `LabeledContent` 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만).
+/// `모집 정보 없음`은 칩 없이 `모집` 줄이 `모집 일정 미정`; 모집 예정에 모집 시작이 있으면 칩 옆에 `시작 D-n` 민트 미니 배지), 아래 `LabeledContent` 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만).
 /// 모집 중·모집 예정이면 `모집` 줄의 값이 청록 굵은 글씨에 옅은 민트 바탕으로 강조된다. 카드를 누르면 `open`(상세 이동). 접근성에서는 상태와 세 줄을 한 라벨로 읽는다.
 struct ActivityCard<Accessory: View>: View {
     let activityID: String
@@ -14,6 +14,8 @@ struct ActivityCard<Accessory: View>: View {
     var recruitmentText: String?
     /// `D-3`/`D-DAY` beside the period while recruiting (contract "모집 날짜 표기 — 2026-10-26"); nil for none.
     var recruitmentDDay: String?
+    /// `시작 D-5`/`오늘 시작` beside the `모집 예정` chip (`ActivityModel.upcomingStartDDay`, contract "모집 예정 시작 D-day — 2026-10-26"); nil for none.
+    var startDDay: String?
     /// Activity period text (`ActivityModel.scheduleText`); nil reads as `미정`.
     var scheduleText: String?
     /// Place name (contract "활동 장소"); nil omits the row.
@@ -39,6 +41,7 @@ struct ActivityCard<Accessory: View>: View {
                         .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
                     if hasTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
                     if let badge = status?.badge { statusChip(badge) }
+                    if let startDDay { DearbyMiniBadge(title: startDDay) }
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     LabeledContent("모집") {
@@ -57,7 +60,7 @@ struct ActivityCard<Accessory: View>: View {
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([title, status?.badge, hasTimetable ? "시간표 있음" : nil, "모집 " + recruitmentValue + (recruitmentDDay.map { " " + $0 } ?? ""), "활동 " + (scheduleText ?? "미정"),
+            .accessibilityLabel([title, status?.badge, startDDay, hasTimetable ? "시간표 있음" : nil, "모집 " + recruitmentValue + (recruitmentDDay.map { " " + $0 } ?? ""), "활동 " + (scheduleText ?? "미정"),
                                  place.map { "장소 " + $0 }, TagChipLine.label(field: fieldTag, traits: traitTags)].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")
@@ -113,7 +116,7 @@ struct ActivityCardSample: View {
                          traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")],
                          accessory: { EmptyView() }) {}
             ActivityCard(activityID: "2", title: "SK AIGEN 1기", status: .recruitingUpcoming,
-                         recruitmentText: "11.1 – 11.15", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩", accessory: { EmptyView() }) {}
+                         recruitmentText: "11.1 – 11.15", startDDay: "시작 D-5", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩", accessory: { EmptyView() }) {}
             ActivityCard(activityID: "3", title: "우아콘 2025", status: .ended, scheduleText: "2025년 10월 30일 (목)", accessory: { EmptyView() }) {}
         }.padding(10).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
             .padding(16).background(Color(.systemGroupedBackground))
