@@ -8,6 +8,17 @@
 	<string>$(DEARBY_WEB_ORIGIN)</string>
 	<key>DearbyAppleSignInEnabled</key>
 	<true/>
+	<!-- 행사 당일 진행 중 표시 (native-v1.md 2026-10-26): the Live Activity, and the background refresh that moves it on at a session boundary. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>io.wid.dearby.liveSession.refresh</string>
+	</array>
 	<key>GIDClientID</key>
 	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<key>CFBundleURLTypes</key>

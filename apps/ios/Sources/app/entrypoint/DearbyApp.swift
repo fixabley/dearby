@@ -8,6 +8,8 @@ import SwiftUI
     @State private var sessionFavorites = SessionFavoritesModel()
     /// 찜한 세션 이동 알림 (contract "찜한 세션 이동 알림" 2026-10-26): local, rebuilt from the favorites on the device.
     @State private var sessionReminders = SessionReminderModel()
+    /// 행사 당일 진행 중 표시 (contract "행사 당일 진행 중 표시" 2026-10-26): the Live Activity, built on the device from 내 활동 and 내 시간표.
+    @State private var liveSession = LiveSessionModel()
     @State private var inbox = InboxModel()
     @State private var notifications: NotificationModel
     /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
@@ -81,7 +83,7 @@ import SwiftUI
     }
     var body: some Scene {
         WindowGroup {
-            sessionHooks(accountSync(Group {
+            liveSessionHooks(sessionHooks(accountSync(Group {
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
@@ -94,7 +96,8 @@ import SwiftUI
                                                                                          leaveSetup: { tab = 0 },
                                              consentNeeded: consentNeeded, askConsent: { showsConsent = true }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil,
-                                                 sessionReminders: accountReady ? sessionReminders : nil, adConsent: accountReady ? adConsent : nil) },
+                                                 sessionReminders: accountReady ? sessionReminders : nil, liveSession: accountReady ? liveSession : nil,
+                                                 adConsent: accountReady ? adConsent : nil) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel, adConsent: adConsent)
@@ -195,8 +198,33 @@ import SwiftUI
                     }
                     // Past sessions drop out and a permission given in Settings takes effect; signed out this clears what is left.
                     sessionReminders.refresh()
+                    // A new day, or the session boundary passed while the app was away.
+                    syncLiveSession()
                 }
-            }
+            })
+        }
+    }
+    /// 행사 당일 진행 중 표시: the Live Activity follows 내 활동, 내 시간표 and the switch (`syncLiveSession`), kept apart from `body` for the compiler.
+    private func liveSessionHooks(_ content: some View) -> some View {
+        content
+            .onChange(of: activityModel.mineReady, initial: true) { _, _ in syncLiveSession() }
+            .onChange(of: activityModel.appliedIDs) { _, _ in syncLiveSession() }
+            .onChange(of: activityModel.stageMarks) { _, _ in syncLiveSession() }
+            .onChange(of: sessionFavorites.items) { _, _ in syncLiveSession() }
+            .onChange(of: sessionFavorites.phase) { _, _ in syncLiveSession() }
+            .onChange(of: account.phase) { _, _ in syncLiveSession() }
+            .onChange(of: liveSession.enabled) { _, _ in liveSession.refresh() }
+    }
+    /// Signed out, the activity ends. Signed in, the plan is rebuilt once 내 활동 and 내 시간표 were both read this run; before that (a cold
+    /// launch, or offline at the venue) the saved plan keeps the display going.
+    private func syncLiveSession() {
+        if account.phase == .signedOut {
+            liveSession.sync(nil)
+        } else if accountReady, activityModel.mineReady, [.loaded, .unavailable].contains(sessionFavorites.phase) {
+            let now = Date()
+            liveSession.sync(.today(activityModel.appliedProgress(now: now), favorites: sessionFavorites.items, now: now), now: now)
+        } else {
+            liveSession.refresh()
         }
     }
     /// 세션 찜 (contract "트랙·세션 시간표"), kept apart from `body` so the compiler can type-check it: every session heart reads the one model;
@@ -330,6 +358,8 @@ import SwiftUI
             cardsSegment = .received
             Task { await wallet.view(incoming) }
         case .activity(let id): Task { await activityModel.openLinked(id, source: source) }
+        // The Live Activity's tap (contract "행사 당일 진행 중 표시"): the detail with the block's timetable sheet on 내 시간표.
+        case .timetable(let activityID, let scheduleID): Task { await activityModel.openLinkedTimetable(activityID, scheduleID: scheduleID, source: source) }
         case .favorites:
             tab = 1
             mineSegment = .favorites

@@ -163,11 +163,11 @@ import Observation
         }
     }
     func takeLinkSource(_ id: String) -> String? { linkSources.removeValue(forKey: id) }
-    /// Opens a linked activity with its block's timetable sheet on 내 시간표 (a tapped 세션 이동 알림).
-    func openLinkedTimetable(_ id: String, scheduleID: String) async {
+    /// Opens a linked activity with its block's timetable sheet on 내 시간표 (a tapped 세션 이동 알림, `push`; a tapped Live Activity, `link`).
+    func openLinkedTimetable(_ id: String, scheduleID: String, source: String = "push") async {
         guard await prepare(id) else { return }
         linkTimetables[id] = scheduleID
-        await openLinked(id, source: "push")
+        await openLinked(id, source: source)
     }
     func takeLinkTimetable(_ id: String) -> String? { linkTimetables.removeValue(forKey: id) }
     /// Loads an activity discovery has not shown so its detail can open (알림 목록 rows); false, with `notice`, when it could not be loaded.
@@ -185,6 +185,9 @@ import Observation
     /// The build's web origin (`DearbyWebOrigin`), for activity links written into calendar events.
     let webOrigin: URL
     func calendarLink(_ id: String) -> URL { ActivityModel.calendarLink(id, web: webOrigin) }
+    /// The server's 내 활동 was read this run and every activity of it is loaded or known gone: what `appliedProgress` returns is complete
+    /// (행사 당일 진행 중 표시 waits for this rather than ending the display on a half-loaded list).
+    var mineReady: Bool { synced && !mineLoading && appliedIDs.allSatisfy { seen[$0] != nil || deletedIDs.contains($0) } }
     /// Applied activities with their tracks, nearest next stage first; date-less and ended tracks last, then by id.
     func appliedProgress(now: Date) -> [AppliedActivity] {
         appliedIDs.compactMap { seen[$0] }.map { AppliedActivity(activity: $0, progress: progress($0, now: now)) }

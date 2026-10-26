@@ -1,3 +1,4 @@
+import BackgroundTasks
 import Observation
 import OSLog
 import UIKit
@@ -19,6 +20,8 @@ private let log = Logger(subsystem: "com.dearby.app", category: "push")
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // 행사 당일 진행 중 표시 (contract "행사 당일 진행 중 표시"): the session-boundary wake-up must be registered before launch ends.
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: LiveSessionModel.refreshTaskID, using: nil) { LiveSessionModel.handle($0) }
         return true
     }
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {

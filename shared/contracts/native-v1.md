@@ -1626,3 +1626,46 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - 서버 규칙·필드는 위 "명함 교환" › "교환 세션 맥락"(feat/receipt-session-context)이 기준이다. iOS는 `ExchangeContext`의 `scheduleTitle`·`sessionTitle`·`trackName`·`room`을 선택 디코딩한다(없으면 null; `scheduleId`·`sessionId`는 아직 쓰지 않는다).
 - iOS 화면: 받은 명함 상세의 `{프로그램} {활동}에서 받은 명함` 줄은 값이 하나라도 있으면 `우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B`처럼 **있는 값만 ` · `로 이어** 첫 줄에 두고 세션 제목은 둘째 줄, `2026.10.28에 받음`은 셋째 줄이다(사용자 지시 "세션 제목은 둘째 줄"; 서버 절의 한 줄 예시는 같은 내용의 줄 나눔). 목록 행은 프로그램 칩을 그대로 두고 같은 첫 줄을 셋째 줄(캡션)로 보인다. 값이 없으면 기존 `…에서 받음 · 날짜` 그대로다. 공유받은 명함 보기(`/cards/:id` 링크)는 링크에 세션 정보가 없어 그대로다.
+
+## 행사 당일 진행 중 표시 — 2026-10-26 사용자 결정
+
+사용자: "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시". iOS **라이브 액티비티**(잠금 화면·Dynamic Island)로 만든다. 1단계는 **기기 안에서만 갱신**한다 — 서버 변경 없음, 푸시 토큰 없음(`pushType` 없음), 개인정보처리방침 변경 없음. iOS는 라이브 액티비티(feat/ios-live-activity), Android는 **ongoing 알림·라이브 업데이트**(PR #452, 아래 "Android")로 같은 조건·내용을 보인다. 2단계(서버 푸시 갱신)는 별도 결정.
+
+### 표시 조건과 기간
+
+- 대상: "오늘 내 행사 카드"가 **오늘**로 가리키는 활동(같은 `TodayEvent` 판정 재사용 — 내 활동 중 활동 일정 블록이 오늘인 활동, 끝남·탈락 제외)이 있고, 그 활동의 **그 날(서울 날짜) 내 시간표(찜한 세션)** 가 하나 이상일 때. 둘 중 하나가 없으면 띄우지 않는다. 데이터는 이미 읽는 내 활동·세션 찜을 재사용하고 추가 서버 호출이 없다.
+- 기간: **첫 찜 세션 30분 전**부터 **마지막 찜 세션 끝**까지. 끝나면 바로 내린다(잠금 화면에 남기지 않음).
+- 내용: 찜 세션을 시작 시각 순으로 두고 `현재` = 아직 끝나지 않은 첫 세션(시작 전이면 다음에 올 세션), `다음` = 현재보다 늦게 시작하고 끝나지 않은 첫 세션. 세션 경계(각 시작·끝)마다 내용을 갈아 끼운다.
+- 갱신: 앱이 **포그라운드**일 때 시작·갱신·종료한다(내 활동·세션 찜·스위치가 바뀔 때, 포그라운드 복귀, 열려 있는 동안은 다음 경계에 타이머). 그 날의 계획(세션 목록)은 기기에 저장해 두고, 다음 경계에 `BGTaskScheduler`(`BGAppRefreshTask`, 식별자 `io.wid.dearby.liveSession.refresh`, `UIBackgroundModes: fetch`)로 깨어나 저장한 계획으로 갱신을 **시도**한다. **보장은 없다** — 앱이 꺼져 있거나 iOS가 깨우지 않으면 다음 세션으로 넘어가지 않을 수 있고, 남은 시간 카운트다운만 OS가 계속 돈다(`Text(timerInterval:)`). 이를 메우는 것이 2단계 서버 푸시다. 로그아웃·탈퇴(목록이 빔)는 종료로 끝난다. 이번 실행에서 내 활동·세션 찜을 아직 둘 다 읽지 못했으면(막 켰거나 현장에서 오프라인) 저장한 계획을 지우지 않고 그대로 쓴다.
+- iOS 설정에서 앱의 실시간 현황을 꺼 두면(`ActivityAuthorizationInfo().areActivitiesEnabled` false) 띄우지 못한다. 앱이 따로 권한을 묻지 않으며, 설정 스위치 설명이 그 사실을 알린다.
+
+### 내용과 모양
+
+- 사용자에게 보이는 이름은 `내 시간표`(2026-10-26 표현 변경)이고 코드·API의 세션 찜(session favorites)은 그대로다.
+- 잠금 화면·Dynamic Island 확장: 첫 줄 `{활동 이름}`(보조색), 둘째 줄 `지금 · 트랙 B · 그랜드볼룸 B · 세션 제목` 과 오른쪽 `남은 12:30`(카운트다운; 세션 시작 전이면 `10:50 · …`과 `시작까지 29:59`), 셋째 줄 `다음 14:50 · 트랙 C · 방 · 제목`(없으면 생략). 트랙·방은 있을 때만, 시각은 블록 시간대. 1시간 이상이면 시간 자리를 보인다.
+- Dynamic Island compact: 왼쪽 앱 심볼(`DearbySymbol`), 오른쪽 남은 시간. minimal: 남은 시간. 글꼴은 시스템 글꼴(확장에는 Pretendard를 넣지 않는다).
+- 탭 → 앱의 그 블록 시간표 시트를 **`내 시간표`** 보기로(`dearby://timetable/<activityId>/<scheduleId>`, 찜한 세션 이동 알림과 같은 라우팅 `openLinkedTimetable`; 상세의 `activity_view` source는 `link`). 활동이 지워졌거나 블록에 시간표가 없어지면 상세만 열린다.
+
+### 설정
+
+- 설정 › `알림`에 `세션 이동 알림` 아래 `행사 진행 중 표시` 스위치(설명 `행사 당일 내 시간표 세션 진행을 잠금 화면과 Dynamic Island에 보여요`, 기본 켬, 기기 저장 `UserDefaults` `dearby.liveSession.enabled`). 끄면 바로 내린다. 섹션과 같이 로그인 + 동의 뒤에만 보인다.
+
+### 사용 통계·개인정보
+
+- `live_session_shown` — 표시를 **시작**할 때 서울 날짜당 1회. iOS는 활동 매개변수 `activity_id`·`field`·`category`를 붙이고 백그라운드 깨어남으로 시작해도 보낸다; Android는 매개변수 없이 앱이 띄울 때만 보낸다(알람 수신기는 Analytics가 초기화돼 있지 않아 보내지 않음 — 한계). 갱신·탭은 보내지 않는다(탭은 상세의 `activity_view`). [analytics-v1.md](analytics-v1.md).
+- 세션 찜·내 활동은 이미 계정 기록이고 표시는 기기 안에서만 만들어지므로 처리방침 변경은 없다. 라이브 액티비티는 푸시 토큰을 만들지 않는다.
+
+### 프로젝트·서명 (apps/ios)
+
+- `generate_project.rb`가 위젯 확장 타깃 `DearbyWidgets`(번들 `io.wid.dearby.widgets`, 코드 `apps/ios/Widgets/`, `ActivityAttributes`는 `Sources/features/liveSession/model/LiveSessionAttributes.swift` 하나를 두 타깃에 넣음)을 만든다. 앱 Info.plist(두 파일 같음) `NSSupportsLiveActivities` YES. App Group `group.io.wid.dearby`는 **확장 entitlements에만** 둔다 — 1단계 라이브 액티비티는 공유 저장소가 필요 없어 앱 entitlements와 앱의 App Store 프로파일은 그대로다(2단계에서 앱↔확장 공유 저장이 필요해지면 앱 entitlements·프로파일에 함께 넣는다).
+- Release 수동 서명: 확장용 App Store 프로파일 이름 `DEARBY_RELEASE_PROFILE_WIDGETS`(CI 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`)가 비어 있으면 **확장 타깃을 프로젝트에서 빼고** 앱만 만든다 — **확장 프로파일을 등록하기 전까지 TestFlight 빌드에는 라이브 액티비티가 없다**(설정 스위치는 보이되 아무것도 띄우지 않는다). Debug 자동 서명과 CI 시뮬레이터 빌드(native.yml)는 확장을 포함한다. 사용자가 만들 것: App ID `io.wid.dearby.widgets`(App Groups 기능 + `group.io.wid.dearby`), 그 App ID의 App Store 프로파일(Apple Distribution 인증서는 앱과 같은 것), 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`.
+
+### Android — 진행 중 알림·라이브 업데이트 (PR #452, 2026-10-26)
+
+- 조건·창은 iOS와 같다: 로그인+동의 뒤, `ActivityViewModel.todayEvent`가 고른 **오늘** 활동(발견 오늘 카드와 같은 판정, 여럿이면 카드가 고른 하나) + 그 활동의 찜 세션 중 서울 날짜가 오늘인 것 1개 이상. 첫 찜 세션 30분 전 → 마지막 찜 세션 끝, 끝나면 알림·알람 제거. 서버 변경 없음.
+- 알림: 채널 `행사 진행 중`(IMPORTANCE_DEFAULT, 소리·진동 없음)의 ongoing 알림. 제목 `{활동 이름}`, 본문 `지금 · 트랙 B · 그랜드볼룸 B · 세션 제목`(진행 중) / `다음 14:50 · 트랙 C · 방 · 제목 · 20분 뒤`(60분 이상이면 `1시간 20분 뒤`). 트랙·방은 있을 때만. 진행 중 세션의 진행률은 끝 시각 기준 0–100.
+- 플랫폼: SDK 36(BAKLAVA)+ → `NotificationCompat.ProgressStyle`(한 구간 100) + `setRequestPromotedOngoing(true)`(상태 표시줄 칩·One UI 8 Now Bar), 칩 텍스트 `setShortCriticalText`(진행 중 `~15:30`, 대기 중 다음 시작 `14:50`); 그 아래 → `setProgress(100, p, false)` + BigText. androidx.core 1.17.0 compat, 매니페스트 `POST_PROMOTED_NOTIFICATIONS`.
+- 갱신: `AlarmManager` 알람 **하나**(요청 코드 고정, 플랜 JSON을 extras로 싣고 수신기가 다음 알람을 스스로 건다). 다음 갱신 시각 = 창 시작, 각 세션 시작·끝, 시작 10분 전, 그 사이 최대 5분 간격 중 가장 가까운 것. 정확 알람은 세션 이동 알림과 같이 `알람 및 리마인더` 허용 시에만(없으면 inexact, Doze에서 몇 분 늦을 수 있음). 앱 포그라운드·내 활동/내 시간표 변경·스위치 변경 때 다시 계산(플랜이 같으면 다시 그리지 않음). 재부팅은 `SessionReminderBootReceiver`가 저장된 플랜으로 복원. 로그아웃·스위치 끔은 제거; 동의 미확인·내 활동 로딩 중·내 시간표 미읽음(오프라인 시작)은 그대로 둔다.
+- 탭·액션 `내 시간표 보기`: 세션 이동 알림과 같은 payload(`kind=session_reminder`, `activityId`, `scheduleId`, `sessionId`)로 그 활동 상세 → 블록 시간표를 내 시간표 보기로 연다(라우팅 추가 없음).
+- 설정 › 알림 `행사 진행 중 표시` 스위치(기본 켬, `DevicePreferences.liveSessionEnabled`); 켜면 알림 권한을 한 번 묻는 기존 규칙.
+- 사용 통계 `live_session_shown`(하루 1회, 매개변수 없음): 위 "사용 통계·개인정보".

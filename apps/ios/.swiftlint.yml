@@ -1,6 +1,7 @@
 # Project-owned Swift source; dependency/generated/build trees are not app code.
 included:
   - Sources
+  - Widgets
 
 # Explicit, versioned initial policy: correctness and local readability.
 # FSD paths/dependencies/public APIs remain the architecture gate's responsibility.

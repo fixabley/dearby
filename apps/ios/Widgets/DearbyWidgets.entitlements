@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Group for the extension only (contract "행사 당일 진행 중 표시" 2026-10-26): the Live Activity needs no shared container in 1단계, so the
+	     app's entitlements and its App Store profile stay as they are; the app joins the group when 2단계 shares data with the extension. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.io.wid.dearby</string>
+	</array>
+</dict>
+</plist>
