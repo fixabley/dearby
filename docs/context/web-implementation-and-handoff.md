@@ -28,6 +28,10 @@
 
 사용자 결정 "웹도 로그인이랑 관련 기능 추가해줘". 서버 준비는 PR #433(계약 native-v1.md "웹 로그인"), 웹 화면은 `feat/web-auth`(계약의 "웹 화면 — 1단계" 소절·`apps/web/README.md` "Web sign-in"). 들어간 것: HttpOnly 세션 쿠키·전용 refresh 라우트·계정 프록시, 로그인 시트(Apple JS·GIS·WebAuthn), 동의 시트, `/settings`(계정·패스키·정보), 비로그인 저장 → 계정 합치기 질문, 상단 바 로그인 상태, GA `signed_in`. 다음 PR: 즐겨찾기·세션 찜·내 활동·받은 명함·프로필·알림 설정·연결된 로그인·패스키 이름 바꾸기. 로컬 검증은 stub API에 대한 curl만이고 실제 Apple·Google·패스키 로그인은 운영 값(Services ID·Google 웹 클라이언트·`WEBAUTHN_ALLOWED_ORIGINS`에 웹 origin)이 들어간 배포에서 확인해야 한다.
 
+## 웹 2단계 C — 명함·받은 명함·프로필·알림 (2026-10-26)
+
+사용자 결정 "웹에 나머지 기능도 구현". 브랜치 `feat/web-account-pages`(계약 native-v1.md "웹 로그인" › "웹 화면 — 2단계 C", `apps/web/README.md` 라우트 목록). 들어간 것: 계정 프록시 허용 경로 확장(If-Match·multipart·바이너리·Accept-Language), 상단 바 종 배지·드롭다운 메뉴, `/wallet`·`/wallet/:id`(색인 목록·세션 맥락·내 명함도 건네기·신고·차단), 공개 명함의 `내 지갑에 저장`, `/cards/mine`(격자·만들기·고치기·지우기·QR 화면, `qrcode` 1.5.4), `/profile`(명함 디자인 보기·수정 폼·사진 자르기·인증자료·이메일/GitHub 인증·추천 읽기), `/notifications`(프로그램 카드 묶음·읽음·모두 읽음), analytics-v1.md 웹 표 이벤트 5개. 웹에 없는 것: 프로필 변경 이력·되돌리기, 첫 입력 단계 퍼널, 관심 분야 태그 이름(개수만), 색인 레일, 웹 푸시, 차단 목록·해제 UI. 로컬 검증은 stub API에 대한 curl과 lint·typecheck·build이고, 실제 로그인 뒤 화면 흐름과 실기기 QR 스캔은 배포 뒤 확인한다.
+
 ## 검증과 한계
 
 2026-09-29 실제 실행: Node 24.21.0 lint/typecheck/unit+proxy 12개/build 통과. 초기 기본 shell Node26에서도 확인했지만 최종 배포 버전에 맞춰 Node24로 재검증했다.

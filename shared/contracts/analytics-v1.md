@@ -99,6 +99,11 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
 | `tester_cta_tap` | 비공개 테스트 초대의 링크를 누름 — 공개 명함 저장 버튼 아래·`/saved` 상단(비로그인)·로그인 시트의 `비공개 테스트로 앱 받기`(2026-10-26, [native-v1.md](native-v1.md) "명함 교환" › 받는 사람(웹)). iOS는 버튼이 곧 TestFlight 링크, Android·데스크톱은 시트 안의 단계 링크를 누를 때 보낸다(시트를 여는 것만으로는 보내지 않음) | `platform`(`ios`·`android`·`desktop`, UA 판정), `target`(`testflight`·`play_group`·`play_test`) |
+| `card_received` | 로그인 상태의 공개 명함에서 `내 지갑에 저장`이 201로 성공(이미 있어 200이면 보내지 않음; 2026-10-26 "웹 화면 — 2단계 C") | `activity_id`(교환 활동이 있을 때), `reciprocal` = `yes`·`no` |
+| `card_exchange_completed` | 받은 명함 하나가 새로 맞교환이 됨 — 앱과 같은 규칙으로 "맞교환이던 receipt id 집합"을 브라우저 `localStorage`에 두고 `/wallet`·상세에서 지갑을 읽을 때마다 비교(로그아웃 때 지움) | `activity_id`(있을 때), `via` = `reciprocate`(`내 명함도 건네기` 직후)·`wallet`(그 밖) |
+| `card_exchange_milestone` | 맞교환 수가 처음 3에 이름(브라우저에 기록해 한 번) | `count` = 3 |
+| `contact_verify` | 프로필 수정의 연락처 인증 결과 — 이메일 `확인`, GitHub 복귀(`?code=`/`?error=`) | `kind` = `email`·`github`, `result` = `success`·`failed`·`cancelled` |
+| `screen_view` | 내 명함 QR 화면이 열림(웹은 화면 이름이 없어 이 하나만 앱의 `card_qr`와 같은 이름으로 보낸다) | `screen_name` = `card_qr` |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
 `activity_view`·`apply_click`은 앱과 같은 이름이라 GA에서 플랫폼(스트림) 측정기준으로 나눠 본다. 웹은 공개 태그 사전을 불러오지 않으므로 `field`를 보내지 않는다.
@@ -106,7 +111,7 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 
 ## 비공개 테스트 성공 지표 — 2026-10-26 사용자 결정
 
-비공개 테스트의 성공 기준 둘([테스트 계획](../../docs/context/test-plan-2026-10.md)): ① 내 활동에 추가한 활동이 활동 일정(`phase: ACTIVITY`)에 도달하고 참석까지 이어지는가, ② 테스터 1인이 명함 교환(맞교환 완료)을 3회 이상 하는가. 기존 이벤트로 되는 것은 그대로 쓰고(내 활동 추가 `myactivity_add`, 활동 상세 `activity_view(source=my_activity)`, 시간표 `screen_view(timetable)`·웹 `timetable_view`), 아래만 더한다. 앱 구현은 다음 작업이다(iOS·Android 같은 이름; 웹은 내 활동·지갑이 없어 해당 없음). 개인정보 원칙은 위와 같다 — 활동 id·세션 id·개수만 보내고 명함 id·명함 내용·상대 계정은 어떤 매개변수에도 넣지 않는다.
+비공개 테스트의 성공 기준 둘([테스트 계획](../../docs/context/test-plan-2026-10.md)): ① 내 활동에 추가한 활동이 활동 일정(`phase: ACTIVITY`)에 도달하고 참석까지 이어지는가, ② 테스터 1인이 명함 교환(맞교환 완료)을 3회 이상 하는가. 기존 이벤트로 되는 것은 그대로 쓰고(내 활동 추가 `myactivity_add`, 활동 상세 `activity_view(source=my_activity)`, 시간표 `screen_view(timetable)`·웹 `timetable_view`), 아래만 더한다. 앱 구현은 다음 작업이다(iOS·Android 같은 이름; 웹은 2026-10-26 "웹 화면 — 2단계 C"부터 지갑이 있어 지표 2의 `card_received`·`card_exchange_completed`·`card_exchange_milestone`을 위 "웹" 표대로 보내고, 내 활동이 없어 지표 1은 해당 없음). 개인정보 원칙은 위와 같다 — 활동 id·세션 id·개수만 보내고 명함 id·명함 내용·상대 계정은 어떤 매개변수에도 넣지 않는다.
 
 ### 지표 1 — 추가한 활동이 참석까지
 | 이벤트 | 시점 | 매개변수 |
@@ -126,7 +131,7 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 | `card_exchange_completed` | 받은 명함 하나가 **맞교환**(`Receipt.reciprocal: true`)이 됨. 기기에 "맞교환 상태였던 받은 명함 id 집합"을 두고 지갑을 불러올 때마다 비교해, 새로 맞교환이 된 항목마다 1회(내가 `내 명함도 건네기`에 성공한 직후의 다시 불러오기, 상대가 내 명함을 받아 맞교환이 된 것을 내가 지갑을 열어 알게 된 때, 저장하자마자 이미 맞교환인 때 모두 이 규칙 하나로 잡힌다). 집합은 로그아웃하면 지운다 | `activity_id`(그 Receipt의 교환 활동, 있을 때), `via` = `reciprocate`(직전에 내가 건넴)·`wallet`(그 밖) |
 | `card_exchange_milestone` | 아래 `card_exchanges`가 처음 3에 이름(기기에 기록해 계정마다 한 번만) | `count` = 3(숫자) |
 
-- 사용자 속성 `card_exchanges`: 지갑의 맞교환 항목 수(`reciprocal: true`인 Receipt 수; 회수·철회된 것은 목록에 없으므로 빠진다). 지갑을 불러올 때마다 다시 계산해 설정하고, 로그아웃하면 지운다(`signed_in`과 같이). 한 사람이 명함 두 장을 건넸으면 2로 세는 한계가 있고, 정확한 "상대 계정 수"는 서버 `receipts`로 대조한다.
+- 사용자 속성 `card_exchanges`: 지갑의 맞교환 항목 수(웹도 `/wallet`을 읽을 때마다 같이 설정하고 로그아웃 때 지운다, 2026-10-26)(`reciprocal: true`인 Receipt 수; 회수·철회된 것은 목록에 없으므로 빠진다). 지갑을 불러올 때마다 다시 계산해 설정하고, 로그아웃하면 지운다(`signed_in`과 같이). 한 사람이 명함 두 장을 건넸으면 2로 세는 한계가 있고, 정확한 "상대 계정 수"는 서버 `receipts`로 대조한다.
 - 화면 이름 `card_qr`(내 명함 QR 시트)를 `screen_view`에 더한다. 교환 깔때기: `screen_view(card_qr)` → 웹 `card_view`·`card_open_app` → `card_received` → `card_exchange_completed` → `card_exchange_milestone`.
 - 지표 2 계산: `card_exchange_milestone` 사용자 수 ÷ 기간 안 활성 사용자 수(`signed_in=yes`). 분포는 자유 형식 탐색에서 측정기준 `card_exchanges`, 측정항목 활성 사용자. 사용자 수는 Analytics 앱 인스턴스(기기) 단위이고 사용자 ID를 보내지 않으므로, 한 테스터가 두 기기를 쓰면 둘로 보인다.
 
