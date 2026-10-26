@@ -25,7 +25,6 @@ import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.inbox.InboxPage
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
-import com.dearby.nativeapp.pages.activity.FavoritesView
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector, val code: String) {
@@ -52,7 +51,7 @@ private sealed interface Route {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
-    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, favoritesLink: FavoritesView? = null, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
+    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -79,7 +78,7 @@ private sealed interface Route {
             "settings" -> route = Route.Settings
             // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
             "queue" -> { queue.open(); route = Route.Queue }
-            "favorites-calendar" -> { tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(FavoritesView.CALENDAR) }
+            "favorites" -> { tab = Tab.Mine; mineSegment = MineSegment.FAVORITES }
         }
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
@@ -130,8 +129,8 @@ private sealed interface Route {
             favorites.toggle(program, id)
         }
     }, setLevel = { program, id, level -> Analytics.event("notify_level_set", "type" to if (program) "program" else "activity", "level" to level.name.lowercase()); favorites.setLevel(program, id, level) })
-    // `오늘 일정 n개` (dearby://favorites?view=calendar): 내 활동 → 즐겨찾기 in that view.
-    LaunchedEffect(favoritesLink) { favoritesLink?.let { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(it); consumeFavoritesLink() } }
+    // `오늘 일정 n개` (dearby://favorites): 내 활동 → 즐겨찾기.
+    LaunchedEffect(favoritesLink) { if (favoritesLink) { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; consumeFavoritesLink() } }
     val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
@@ -189,7 +188,7 @@ private sealed interface Route {
         route == Route.Consent -> "consent"
         activityDetail -> "activity_detail"
         tab == Tab.Discovery -> "discovery"
-        tab == Tab.Mine -> if (mineSegment != MineSegment.FAVORITES) "my_activity" else if (favoritesView.view == FavoritesView.CALENDAR) "favorites_calendar" else "favorites"
+        tab == Tab.Mine -> if (mineSegment != MineSegment.FAVORITES) "my_activity" else "favorites"
         tab == Tab.Cards -> if (cardsSegment == CardsSegment.MINE) "my_cards" else "received_cards"
         else -> "profile"
     }

@@ -10,9 +10,9 @@ enum IncomingLink: Equatable {
     case viewCard(WalletModel.Incoming)
     /// `/activities/<id>`: the numeric id (`GET /v1/activities/:id`).
     case activity(String)
-    /// `dearby://favorites?view=calendar` (the `오늘 일정 n개` notification, contract "프로그램·활동별 알림 수준" 2026-10-25): 즐겨찾기, as the
-    /// calendar when `view=calendar`.
-    case favorites(calendar: Bool)
+    /// `dearby://favorites` (the `오늘 일정 n개` notification sends `?view=calendar`, contract "프로그램·활동별 알림 수준" 2026-10-25): 즐겨찾기,
+    /// which is the calendar only since 2026-10-26, so `view` is not read.
+    case favorites
 
     init?(url: URL, web: URL) {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
@@ -26,7 +26,7 @@ enum IncomingLink: Equatable {
             return nil
         }
         if segments == ["favorites"] {
-            self = .favorites(calendar: parts.queryItems?.contains { $0.name == "view" && $0.value == "calendar" } ?? false)
+            self = .favorites
             return
         }
         switch segments.count == 2 ? segments[0] : nil {

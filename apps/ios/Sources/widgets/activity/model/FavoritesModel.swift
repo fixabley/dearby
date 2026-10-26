@@ -4,23 +4,14 @@ import Observation
 /// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): signed in only; signed out a heart asks for sign-in (`signInRequested`).
 /// Every heart in the app reads `levels`, built from `GET /v1/me/favorites` (discovery responses are read without a token, so they carry
 /// no `favorited`). A heart or a level changes on screen at once; a failed call (also a 404 from a server without the API) puts it back
-/// and says so in `notice`. The queue's ♥ is this same favorite (the server records the LIKE/UNLIKE signal). A swipe in the favorites
-/// screen hides the row with a `되돌리기` notice and is sent only when the notice ends.
+/// and says so in `notice`. The queue's ♥ is this same favorite (the server records the LIKE/UNLIKE signal).
 @MainActor @Observable final class FavoritesModel {
     enum Phase: Equatable { case signedOut, loading, loaded, failed, unavailable }
-    /// A swiped-away favorite waiting for its notice to end, with its place so `되돌리기` can put it back.
-    struct Pending {
-        let target: FavoriteTarget
-        let level: NotifyLevel
-        let program: (index: Int, item: FavoriteProgram)?
-        let activity: (index: Int, item: FavoriteActivity)?
-    }
     private(set) var phase = Phase.signedOut
     private(set) var programs: [FavoriteProgram] = []
     private(set) var activities: [FavoriteActivity] = []
     /// Every favorite and its 알림 수준.
     private(set) var levels: [FavoriteTarget: NotifyLevel] = [:]
-    private(set) var pending: Pending?
     /// A one-shot message after a change could not be saved.
     var notice: String?
     /// A heart was pressed signed out: the app opens sign-in and clears it.
@@ -42,7 +33,6 @@ import Observation
         programs = []
         activities = []
         levels = [:]
-        pending = nil
     }
     func load() async {
         guard let server else { return }
@@ -54,7 +44,6 @@ import Observation
             activities = list?.activities ?? []
             levels = Dictionary(programs.map { (FavoriteTarget.program($0.id), $0.level) } + activities.map { (.activity($0.id), $0.level) },
                                 uniquingKeysWith: { first, _ in first })
-            if let pending { drop(pending.target) }
             phase = list == nil ? .unavailable : .loaded
         } catch {
             if phase == .loading { phase = .failed }
@@ -63,7 +52,6 @@ import Observation
     /// The heart: on with the default level, or off.
     func toggle(_ target: FavoriteTarget) {
         guard let server else { signInRequested = true; return }
-        commitPending()
         let before = levels[target]
         log(before == nil ? "favorite_add" : "favorite_remove", target)
         if before == nil {
@@ -94,30 +82,6 @@ import Observation
         programs[index].newRecruitment = false
         // Best effort: the badge comes back on the next load if this is lost.
         Task { try? await server.seen(programID) }
-    }
-    /// A swipe in the favorites screen: the row goes now and is removed when the `되돌리기` notice ends.
-    func removeWithUndo(_ target: FavoriteTarget) {
-        commitPending()
-        guard let level = levels[target] else { return }
-        let program = programs.firstIndex { FavoriteTarget.program($0.id) == target }.map { (index: $0, item: programs[$0]) }
-        let activity = activities.firstIndex { FavoriteTarget.activity($0.id) == target }.map { (index: $0, item: activities[$0]) }
-        drop(target)
-        pending = Pending(target: target, level: level, program: program, activity: activity)
-    }
-    func undo() {
-        guard let pending else { return }
-        self.pending = nil
-        levels[pending.target] = pending.level
-        if let program = pending.program { programs.insert(program.item, at: min(program.index, programs.count)) }
-        if let activity = pending.activity { activities.insert(activity.item, at: min(activity.index, activities.count)) }
-    }
-    /// The notice ended, another change started or the screen closed: the pending removal is sent.
-    func commitPending() {
-        guard let pending, let server else { return }
-        self.pending = nil
-        let target = pending.target
-        log("favorite_remove", target)
-        send(failure: "즐겨찾기를 해제하지 못했어요. 잠시 후 다시 시도해 주세요.", revert: { _ in }) { try await server.delete(target) }
     }
     /// 사용 통계 `favorite_add`/`favorite_remove`: the target's type, id and tags.
     private func log(_ event: String, _ target: FavoriteTarget) {

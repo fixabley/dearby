@@ -3,14 +3,16 @@ import UIKit
 
 /// 즐겨찾기 활동 캘린더 보기 (contract 2026-10-25): the system month calendar (`UICalendarView`) with a dot under each day — 마감 a filled teal dot,
 /// 모집 시작 a hollow mint ring, 행사 a filled grey dot — and under it the dates by month like the 일정표 mock: the day number and weekday on the
-/// left, each activity with its program and `마감`/`모집 시작`/`행사` on the right (a deadline within 3 days in red), past days dimmed, `날짜 미정`
-/// last. Choosing a day scrolls the list to it; paging the month scrolls to that month. In-app only: nothing is written to the device calendar.
-struct FavoritesCalendarView: View {
+/// left, each activity with its program and `마감`/`모집 시작`/`행사` on the right (a deadline within 3 days in red), past days dimmed, then
+/// [undated] with the activities that have no date. Choosing a day scrolls the list to it; paging the month scrolls to that month. In-app only:
+/// nothing is written to the device calendar.
+struct FavoritesCalendarView<Undated: View>: View {
     let items: [FavoriteActivity]
     let open: (String) -> Void
+    @ViewBuilder let undated: ([FavoriteActivity]) -> Undated
     @State private var target: String?
     var body: some View {
-        let (dated, undated) = FavoriteDate.build(items)
+        let (dated, dateless) = FavoriteDate.build(items)
         let days = Dictionary(grouping: dated, by: \.day)
         let today = SeoulDay(Date())
         ScrollViewReader { proxy in
@@ -30,15 +32,8 @@ struct FavoritesCalendarView: View {
                                 dayRow(day, entries: days[day] ?? [], today: today).id(Self.dayID(day))
                             }
                         }
-                        if !undated.isEmpty {
-                            header("날짜 미정")
-                            ForEach(undated) { item in
-                                entry(title: item.activity.title, program: item.programName, label: nil, urgent: false) { open(item.id) }
-                                    .padding(.horizontal, 20).padding(.vertical, 6)
-                            }
-                        }
                     }
-                    .padding(.bottom, 24)
+                    undated(dateless).padding(.bottom, 24)
                 }
             }
             .onChange(of: target) { _, id in

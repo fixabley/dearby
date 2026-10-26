@@ -9,7 +9,6 @@ import SwiftUI
     @State private var notifications: NotificationModel
     /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
     @State private var mineSegment = MineSegment.mine
-    @AppStorage(FavoritesLayout.storageKey) private var favoritesLayout = FavoritesLayout.list
     @State private var cards: MyCardsModel
     @State private var profile: ProfileModel
     @State private var wallet: WalletModel
@@ -278,10 +277,9 @@ import SwiftUI
             cardsSegment = .received
             Task { await wallet.view(incoming) }
         case .activity(let id): Task { await activityModel.openLinked(id, source: source) }
-        case .favorites(let calendar):
+        case .favorites:
             tab = 1
             mineSegment = .favorites
-            if calendar { favoritesLayout = .calendar }
         case nil: break
         }
     }
@@ -294,10 +292,9 @@ import SwiftUI
         case .cards: tab = 2
         // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
         case .queue: showsQueue = true
-        case .favoritesCalendar:
+        case .favorites:
             tab = 1
             mineSegment = .favorites
-            favoritesLayout = .calendar
         case .mine:
             if let id = await activityModel.screenshotActivity() { activityModel.apply(id, true) }
             tab = 1

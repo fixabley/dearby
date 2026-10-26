@@ -18,17 +18,13 @@ data class FavoriteHearts(
 }
 fun favoriteKey(program: Boolean, id: String) = (if (program) "programs/" else "activities/") + id
 
-/** 즐겨찾기 화면's 보기 전환 (contract "즐겨찾기 활동 캘린더 보기"), remembered on the device. */
-enum class FavoritesView(val label: String) { LIST("목록"), CALENDAR("캘린더") }
 enum class FavoritesPhase { SIGNED_OUT, LOADING, FAILED, LOADED }
 /** A favorited program: its discovery card state and the `새 모집` badge. */
 data class FavoriteProgramRow(val program: ProgramState, val newRecruitment: Boolean)
 /** What a calendar date carries: the recruitment end (`마감`), start (`모집 시작`), or an event start for an activity without a window (`행사`). */
 enum class CalendarMark(val label: String) { DEADLINE("마감"), START("모집 시작"), EVENT("행사") }
-/** One dated line of the calendar list; [date] null is `날짜 미정`. */
+/** One dated line of the calendar list; [date] null is an activity without any date (`날짜 없는 즐겨찾기`). */
 data class CalendarEntry(val date: LocalDate?, val activityId: String, val title: String, val program: String, val mark: CalendarMark?)
-/** A swiped-away favorite waiting on its `되돌리기` snackbar; [serial] tells two equal removals apart. */
-data class FavoriteUndo(val message: String, val serial: Int)
 
 /**
  * 즐겨찾기 (내 활동 tab's second top tab): [programs] then [activityIds] (server order: nearest deadline first, past last; rows come from
@@ -36,8 +32,7 @@ data class FavoriteUndo(val message: String, val serial: Int)
  */
 data class FavoritesViewState(
     val phase: FavoritesPhase = FavoritesPhase.SIGNED_OUT, val programs: List<FavoriteProgramRow> = emptyList(), val activityIds: List<String> = emptyList(),
-    val entries: List<CalendarEntry> = emptyList(), val view: FavoritesView = FavoritesView.LIST, val undo: FavoriteUndo? = null,
-    val today: LocalDate = LocalDate.now(),
+    val entries: List<CalendarEntry> = emptyList(), val today: LocalDate = LocalDate.now(),
 )
 
 /**
