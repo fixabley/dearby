@@ -17,6 +17,10 @@ class DevicePreferences(context: Context) {
     fun adConsentDeclined(account: String, version: String) = "$account/$version" in preferences.getStringSet("adConsentDeclined", emptySet()).orEmpty()
     fun declineAdConsent(account: String, version: String) =
         preferences.edit { putStringSet("adConsentDeclined", preferences.getStringSet("adConsentDeclined", emptySet()).orEmpty() + "$account/$version") }
+    /** 발견 `프로그램 | 이벤트` (2026-10-26): the last choice, `program` until changed. */
+    var discoveryKind: String
+        get() = preferences.getString("discoveryKind", null) ?: "program"
+        set(value) = preferences.edit { putString("discoveryKind", value) }
     var pushStarted: Boolean
         get() = preferences.getBoolean("pushStarted", false)
         set(value) = preferences.edit { putBoolean("pushStarted", value) }

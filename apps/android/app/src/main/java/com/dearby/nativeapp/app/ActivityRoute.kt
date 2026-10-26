@@ -28,6 +28,8 @@ import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
+import com.dearby.nativeapp.pages.activity.TimetablePage
+import com.dearby.nativeapp.pages.activity.MySessionsPage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
 import androidx.compose.foundation.layout.Column
@@ -41,7 +43,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
     openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, header: (@Composable () -> Unit)? = null,
     hearts: FavoriteHearts = FavoriteHearts(), favorites: FavoritesViewModel? = null, segment: MineSegment = MineSegment.MINE, selectSegment: (MineSegment) -> Unit = {},
-    signIn: () -> Unit = {}, unread: Int = 0, active: (Boolean) -> Unit,
+    signIn: () -> Unit = {}, unread: Int = 0,
+    /** 트랙·세션 시간표 and its 찜 (contract "트랙·세션 시간표"); [sessionHeart] opens sign-in or the consent screen when the account is not ready. */
+    sessions: SessionFavoritesViewModel? = null, sessionHeart: (String) -> Unit = {},
+    active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
     // `+` beside an activity heart (contract "`+` 내 활동에 추가"): adds it to 내 활동, or opens it there once it is in.
@@ -59,11 +64,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     var progressId by remember { mutableStateOf<String?>(null) }
     var stageCalendar by remember { mutableStateOf<Int?>(null) }
     var prompt by remember { mutableStateOf(false) }
+    // 즐겨찾기 › 찜한 세션 (나만의 시간표).
+    var mySessions by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     LaunchedEffect(open) { open?.let { show(it, model.takeLinkSource() ?: "my_activity"); consumeOpen() } }
     // Signed in, opening 내 활동 re-reads the account's records (and retries a failed import or read).
     LaunchedEffect(mine) { if (mine) model.syncMine(announce = true) }
-    DisposableEffect(selected, progressId) { active(selected != null || progressId != null); onDispose { active(false) } }
+    DisposableEffect(selected, progressId, mySessions) { active(selected != null || progressId != null || mySessions); onDispose { active(false) } }
     val context = LocalContext.current
     // Links are already https-only from the activityModel model; failure to open stays on screen.
     val activity = selected?.let(state.known::get)
@@ -105,11 +112,22 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
-    BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
+    // The timetable opened from this detail (the view model is shared by both tabs, so it shows only over its own activity).
+    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == selected }
+    val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
+    val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
+    BackHandler(openTimetable != null) { sessions?.show(null, null) }
+    BackHandler(mySessions && selected == null) { mySessions = false }
+    BackHandler(openTimetable == null && (selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
+        openTimetable != null -> TimetablePage(
+            "${openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: activity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }?.name ?: "세션"} 시간표",
+            openTimetable.phase, openTimetable.timetable, sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry)
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, share, openMap,
-            addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts)
+            addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
+            openTimetable = { sessions?.show(activity.id, it) })
+        mySessions && mine -> MySessionsPage(sessionEntries, sessionIds, sessionHeart, { show(it, "favorites") }) { mySessions = false }
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { show(progress.id, "my_activity") },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
         mine -> MineTab(segment, selectSegment, settings, notify, unread) {
@@ -119,10 +137,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                 val favoritesState by favorites.state.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { favorites.load() }
                 FavoritesPage(favoritesState, state, hearts, openDetail, plus, { favorites.seen(it); model.ensureProgram(it) }, model::retryProgram,
-                    signIn, favorites::load)
+                    signIn, favorites::load, sessionEntries.size, sessionEntries.map { it.session.startAt.toLocalDate() }.toSet()) { sessions?.load(); mySessions = true }
             }
         }
-        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread)
+        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread, model::setKind)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }

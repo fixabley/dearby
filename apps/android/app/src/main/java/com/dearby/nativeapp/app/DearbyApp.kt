@@ -51,7 +51,7 @@ private sealed interface Route {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
-    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
+    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, sessions: SessionFavoritesViewModel, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -132,11 +132,15 @@ private sealed interface Route {
     }, setLevel = { program, id, level -> Analytics.event("notify_level_set", "type" to if (program) "program" else "activity", "level" to level.name.lowercase()); favorites.setLevel(program, id, level) })
     // `오늘 일정 n개` (dearby://favorites): 내 활동 → 즐겨찾기.
     LaunchedEffect(favoritesLink) { if (favoritesLink) { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; consumeFavoritesLink() } }
+    // 세션 찜 (contract "트랙·세션 시간표"): signed out the login sheet, signed in without consent the consent screen — as the activity hearts.
+    val sessionHeart: (String) -> Unit = { id -> if (!ready) needAccount() else sessions.toggle(id) }
     val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
     val showNotice: (String) -> Unit = remember(snackbar) { { text -> snackbarScope.launch { snackbar.showSnackbar(text) } } }
     LaunchedEffect(favoriteNotice) { favoriteNotice?.let { try { snackbar.showSnackbar(it) } finally { favorites.dismissNotice() } } }
+    val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
+    LaunchedEffect(sessionNotice) { sessionNotice?.let { try { snackbar.showSnackbar(it) } finally { sessions.dismissNotice() } } }
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
     // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
@@ -250,7 +254,8 @@ private sealed interface Route {
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
                                 openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; route = Route.Consent }, header = recoHeader,
-                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread) { activityDetail = it }
+                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread,
+                                sessions = sessions, sessionHeart = sessionHeart) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)

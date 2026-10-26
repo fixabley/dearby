@@ -258,6 +258,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
         request("PUT", "me/favorites/$kind/$id", notifyLevel?.let { JSONObject().put("notifyLevel", it) } ?: JSONObject(), session)
     }
     suspend fun deleteFavorite(kind: String, id: String, session: AccountSession) { request("DELETE", "me/favorites/$kind/$id", null, session) }
+    // 세션 찜 (contract "트랙·세션 시간표", 2026-10-26): idempotent 204s; the list is the raw `{items}` for `parseSessionFavorites`.
+    suspend fun sessionFavorites(session: AccountSession) = send("GET", "me/session-favorites", null, session)
+    suspend fun saveSessionFavorite(id: String, session: AccountSession) { request("PUT", "me/session-favorites/$id", null, session) }
+    suspend fun deleteSessionFavorite(id: String, session: AccountSession) { request("DELETE", "me/session-favorites/$id", null, session) }
     /** The program was opened from 즐겨찾기: its `새 모집` badge goes. */
     suspend fun seenFavoriteProgram(id: String, session: AccountSession) { request("POST", "me/favorites/programs/$id/seen", JSONObject(), session) }
     /** This device's FCM token with its IANA [timeZone] (the server sends at 8 in the morning there). The token is never logged. */

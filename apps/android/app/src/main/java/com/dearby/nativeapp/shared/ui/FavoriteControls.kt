@@ -26,6 +26,13 @@ import androidx.compose.ui.unit.dp
             tint = if (favorited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
+/** 세션 찜 하트 (contract "트랙·세션 시간표"): `FavoriteBorder`/`Favorite`, named `찜`/`찜 해제` by what a tap does. */
+@Composable fun SessionHeartButton(favorited: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) =
+    IconButton(onClick, modifier) {
+        Icon(if (favorited) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (favorited) "찜 해제" else "찜",
+            tint = if (favorited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
 /** `+` 내 활동에 추가 beside an activity heart (contract "`+` 내 활동에 추가"): a check once the activity is in 내 활동. */
 @Composable fun AddToMineButton(added: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) =
     IconButton(onClick, modifier) {

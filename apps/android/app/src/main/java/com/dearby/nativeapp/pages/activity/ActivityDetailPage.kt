@@ -31,6 +31,8 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
     activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
     openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
     hearts: FavoriteHearts = FavoriteHearts(),
+    /** `{블록 제목} 시간표` (contract "트랙·세션 시간표"): opens the block's timetable by its schedule id. */
+    openTimetable: (String) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         // Share sends the Dearby link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). 추가 left the bar for the `+` beside the heart
@@ -83,6 +85,12 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                 Column { activity.schedules.forEach { item ->
                     ListItem({ Text(item.name) }, supportingContent = { Text(item.dateText) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         trailingContent = item.draft?.let { draft -> { IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "${item.name} 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } } })
+                    // A block with sessions (`hasTimetable`) gets its own `오전 세션 시간표` button under the row.
+                    item.scheduleId?.takeIf { item.hasTimetable }?.let { id ->
+                        DearbyOutlineButton({ openTimetable(id) }, Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("${item.name} 시간표")
+                        }
+                    }
                 } }
                 // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침"); it needs one comparable schedule — timed,
                 // or date-only with the admin's overlap-check time (contract "겹침 확인 시간", 2026-10-22). Otherwise one line says why not.
