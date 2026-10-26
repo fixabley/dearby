@@ -185,7 +185,7 @@ export function SavedCards() {
           >
             {cards.map((item) => row(item))}
           </InsetGroup>
-          <InstallOffer />
+          <InstallOffer place="saved" />
         </>
       )}
       {!invalid && cards && (

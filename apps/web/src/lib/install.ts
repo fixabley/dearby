@@ -1,63 +1,79 @@
 "use client";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+import type { ShortcutSteps } from "@/shared/ui/install-prompt";
 import { inAppBrowser } from "./in-app-browser";
 
-/** iPhone/iPad Safari, where installing means Share → Add to Home Screen. */
-export function isIosSafari(userAgent: string, maxTouchPoints = 0): boolean {
-  const ios =
-    /iPhone|iPad|iPod/.test(userAgent) ||
-    (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
-  return (
-    ios &&
-    /Safari\//.test(userAgent) &&
-    !/CriOS|FxiOS|EdgiOS/.test(userAgent) &&
-    !inAppBrowser(userAgent)
-  );
+/**
+ * How this browser adds the saved list to the home screen (contract "웹 비로그인 명함 저장" › 홈 화면 바로가기):
+ * Share → 홈 화면에 추가 on iOS Safari and Chrome, the ⋮ / ≡ menu on Android Chrome and Samsung Internet. Other browsers and
+ * in-app browsers get nothing. iPadOS reports a Mac user agent, hence `maxTouchPoints`.
+ */
+export function shortcutKind(userAgent: string, maxTouchPoints = 0): ShortcutSteps | undefined {
+  if (inAppBrowser(userAgent)) return;
+  const ios = /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
+  if (ios) {
+    if (/CriOS/.test(userAgent)) return "ios-chrome";
+    return /Safari\//.test(userAgent) && !/FxiOS|EdgiOS|OPiOS/.test(userAgent) ? "ios-safari" : undefined;
+  }
+  if (!/Android/.test(userAgent)) return;
+  if (/SamsungBrowser\//.test(userAgent)) return "samsung";
+  return /Chrome\//.test(userAgent) && !/EdgA|OPR|YaBrowser|Firefox/.test(userAgent) ? "chrome" : undefined;
 }
 
-type InstallPromptEvent = Event & { prompt: () => Promise<void> };
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
+// Chrome and Samsung Internet fire beforeinstallprompt once, at page load — long before 브라우저에 저장 — so it is caught when
+// this module loads, not when the offer mounts.
+let deferred: InstallPromptEvent | undefined;
+let appInstalled = false;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((listener) => listener());
+if (typeof window !== "undefined") {
+  addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferred = event as InstallPromptEvent;
+    emit();
+  });
+  addEventListener("appinstalled", () => {
+    appInstalled = true;
+    deferred = undefined;
+    emit();
+  });
+}
 const standaloneQuery = "(display-mode: standalone)";
-function watchStandalone(change: () => void) {
+function subscribe(change: () => void) {
+  listeners.add(change);
   const query = matchMedia(standaloneQuery);
   query.addEventListener("change", change);
-  return () => query.removeEventListener("change", change);
+  return () => {
+    listeners.delete(change);
+    query.removeEventListener("change", change);
+  };
 }
 const isStandalone = () =>
-  matchMedia(standaloneQuery).matches ||
-  (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  matchMedia(standaloneQuery).matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 /**
- * Install state for the home-screen web app. `prompt` exists only after
- * Chrome fires beforeinstallprompt; `installed` hides install UI.
+ * Install state for the home-screen web app. `installed` (opened from the home screen, or installed just now) hides install UI;
+ * `prompt` exists only after the browser fired beforeinstallprompt and resolves with the user's choice.
  */
 export function useInstall() {
-  const standalone = useSyncExternalStore(
-    watchStandalone,
-    isStandalone,
-    () => false,
-  );
-  const [event, setEvent] = useState<InstallPromptEvent>();
-  const [appInstalled, setAppInstalled] = useState(false);
-  useEffect(() => {
-    const ready = (value: Event) => {
-      value.preventDefault();
-      setEvent(value as InstallPromptEvent);
-    };
-    const done = () => {
-      setAppInstalled(true);
-      setEvent(undefined);
-    };
-    addEventListener("beforeinstallprompt", ready);
-    addEventListener("appinstalled", done);
-    return () => {
-      removeEventListener("beforeinstallprompt", ready);
-      removeEventListener("appinstalled", done);
-    };
-  }, []);
-  const installed = standalone || appInstalled;
+  const installed = useSyncExternalStore(subscribe, () => appInstalled || isStandalone(), () => false);
+  const event = useSyncExternalStore(subscribe, () => deferred, () => undefined);
   return {
     installed,
-    prompt: event && !installed ? () => event.prompt() : undefined,
+    prompt:
+      event && !installed
+        ? async () => {
+            // An event prompts once; Chrome fires a new one if the user declines.
+            deferred = undefined;
+            emit();
+            await event.prompt();
+            return (await event.userChoice).outcome;
+          }
+        : undefined,
   };
 }

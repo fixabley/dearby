@@ -7,8 +7,9 @@ export async function GET(request: Request) {
   const code = token && (await issueHandoff(token));
   return Response.json(
     {
-      name: "Dearby",
-      short_name: "Dearby",
+      // The home-screen label: the shortcut opens the saved list, and differs from the Dearby app if both are there.
+      name: "Dearby 명함함",
+      short_name: "Dearby 명함함",
       description: "받은 공개 명함을 이 브라우저에 모아 봐요.",
       // Installability only: no service worker, so saved cards are never cached offline.
       start_url: code ? `/saved?handoff=${code}` : "/saved",
