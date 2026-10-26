@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.activity
 
+import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.shared.ui.TagLabel
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
@@ -8,13 +9,22 @@ import java.time.Instant
 import java.time.LocalDate
 
 enum class ActivityListPhase { LOADING, FAILED, LOADED }
+/** One 종류 dropdown item: the API category code (also the icon key) and its Korean label. */
+data class CategoryOption(val code: String, val label: String)
 /**
  * 발견 `프로그램 | 이벤트` (2026-10-26, contract "프로그램·이벤트 전환"): the API `kind` code. 이벤트 is 컨퍼런스·워크샵·밋업·강연; 프로그램 is every
- * other kind and 미분류 (해커톤 included).
+ * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (contract "종류 필터", 2026-10-26), in the contract's category order.
  */
-enum class DiscoveryKind(val code: String, val label: String) { PROGRAM("program", "프로그램"), EVENT("event", "이벤트");
+enum class DiscoveryKind(val code: String, val label: String, val categories: List<CategoryOption>) {
+    PROGRAM("program", "프로그램", options(ActivityCategory.BOOTCAMP, ActivityCategory.STUDY, ActivityCategory.CLUB, ActivityCategory.HACKATHON, ActivityCategory.CONTEST, ActivityCategory.OTHER)),
+    EVENT("event", "이벤트", options(ActivityCategory.CONFERENCE, ActivityCategory.WORKSHOP, ActivityCategory.LECTURE, ActivityCategory.MEETUP));
+    /** The chosen [categories] in menu order; codes of the other kind (or unknown) are dropped. */
+    fun chosen(codes: Set<String>) = categories.filter { it.code in codes }
+    /** The `category=` value, or null for 전체 (nothing chosen). */
+    fun categoryQuery(codes: Set<String>) = chosen(codes).joinToString(",") { it.code }.ifEmpty { null }
     companion object { fun of(code: String?) = entries.firstOrNull { it.code == code } ?: PROGRAM }
 }
+private fun options(vararg categories: ActivityCategory) = categories.map { CategoryOption(it.name, it.label) }
 /**
  * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the dropdown's three groups and the server states each sends as `status=`. [code] is what the
  * device keeps and what analytics `discovery_status_filter` reports.
@@ -49,8 +59,8 @@ data class ActivityState(
     val applied: Boolean = false,
     /** 대상 lines in Korean (contract "대상자 조건"); empty when the activity has no eligibility. */
     val eligibility: List<String> = emptyList(),
-    /** 활동 종류 label (부트캠프 …) in display order via [categoryOrder]; null = 미분류, grouped last. */
-    val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE,
+    /** 활동 종류 label (부트캠프 …) in display order via [categoryOrder], and its API code for the detail chip's icon; null = 미분류, grouped last. */
+    val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE, val categoryCode: String? = null,
     /** Discovery order inside a category group: recruitment deadline, else activity start; null last. */
     val sortKey: Instant? = null,
     /** 분야, at most 2 by relevance, and every 분야 for the detail (contract "분야·성격 태그와 아이콘"). */
@@ -104,6 +114,8 @@ data class ProgramState(
     val hasTimetable: Boolean = false,
     /** Activities in the asked states by server state (`statusCounts`); empty on an older API. */
     val statusCounts: Map<String, Int> = emptyMap(),
+    /** 종류 label (부트캠프 …) and its API code for the icon, shown above the title; null = 미분류, no label. */
+    val category: String? = null, val categoryCode: String? = null,
 )
 /**
  * An expanded program's activities in the chosen [StatusGroup]s, loaded on first expand and split by the server's state (contract "활동 상태");
@@ -138,6 +150,8 @@ data class ActivityListState(
     val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
     /** 발견 `프로그램 | 이벤트`, kept on the device. */
     val kind: DiscoveryKind = DiscoveryKind.PROGRAM,
+    /** The 종류 dropdown's chosen codes for [kind] (kept on the device per kind); empty = 전체. */
+    val categories: Set<String> = emptySet(),
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

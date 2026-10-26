@@ -44,8 +44,8 @@ import org.json.JSONObject
  * "활동 상태", comma-joined enum values; the client never judges states itself). Transport or parsing failure throws, never an empty page.
  * Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, status: String? = null, kind: String? = null): ActivityPage =
-    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, status?.let { "status" to it }, kind?.let { "kind" to it })))
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, status: String? = null, kind: String? = null, category: String? = null): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, status?.let { "status" to it }, kind?.let { "kind" to it }, category?.let { "category" to it })))
 
 /**
  * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
@@ -55,9 +55,10 @@ fun fetchActivities(api: String, query: String?, cursor: String?, programId: Str
  * [query] also matches tag names (contract "태그 칩 줄 제거", 2026-10-19 밤: tags are a search condition only; the app sends no tag filter).
  * The program logo path is resolved against [api] (contract "프로그램 로고"). [kind] `program`|`event` (contract "프로그램·이벤트 전환", 2026-10-26)
  * narrows to that kind's activities on both this call and [fetchActivities]; a server without it ignores the parameter and lists everything.
+ * [category] (contract "활동 종류(category)") is a comma-joined list of category codes on both calls; null = every kind.
  */
-fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, status: String? = null, kind: String? = null): ProgramPage =
-    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, status?.let { "status" to it }, kind?.let { "kind" to it })), api)
+fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, status: String? = null, kind: String? = null, category: String? = null): ProgramPage =
+    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, status?.let { "status" to it }, kind?.let { "kind" to it }, category?.let { "category" to it })), api)
 
 private fun get(api: String, path: String, params: List<Pair<String, String>>): String {
     val query = params.joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }
@@ -204,6 +205,7 @@ private fun JSONObject.programSummary(api: String): ProgramSummary {
         tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
         hasTimetable = optBoolean("hasTimetable", false),
         statusCounts = optJSONObject("statusCounts")?.let { counts -> counts.keys().asSequence().associateWith { counts.optInt(it, 0) }.filterValues { it > 0 } }.orEmpty(),
+        category = ActivityCategory.fromCode(text("category")),
     )
 }
 

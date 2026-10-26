@@ -214,6 +214,8 @@ data class ProgramSummary(
     val hasTimetable: Boolean = false,
     /** Activities in the asked range by server state (contract "활동 상태": `statusCounts`, zeros left out); empty on an older API. */
     val statusCounts: Map<String, Int> = emptyMap(),
+    /** The program's 기본 종류 (`programs.category`, contract "활동 종류(category)"); null = 미분류 or an older API. */
+    val category: ActivityCategory? = null,
 )
 
 /** One icon-and-text line: an activity's 핵심 세 줄 (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`) or an ELIGIBILITY scene item. */
