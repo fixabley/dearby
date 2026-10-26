@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: { default: "dearby · 탐색", template: "%s · dearby" },
   description: "새로운 활동을 발견하고, 받은 공개 명함을 저장하세요.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Dearby", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Dearby 명함함", statusBarStyle: "default" },
   // 오픈그래프 공통 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the image is `opengraph-image.tsx`.
   metadataBase: WEB_ORIGIN,
   openGraph: siteOpenGraph,

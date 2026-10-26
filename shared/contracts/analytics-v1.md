@@ -84,6 +84,8 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `card_view` | 공개 명함(`/cards/:id`)을 불러옴 | `activity_id`(QR에 교환 활동이 있을 때만) |
 | `card_open_app` | `Dearby 앱에 저장`(앱 링크 `dearby://cards/…`)을 누름 | — |
 | `card_save_browser` | `브라우저에 저장`이 저장 목록 확인까지 성공 | — |
+| `home_shortcut_prompt_shown` | 홈 화면 바로가기 안내가 보임(화면에 띄울 때마다, [native-v1.md](native-v1.md) "홈 화면 바로가기 안내") | `place`(`card`·`saved`), `kind`(`prompt`·`ios-safari`·`ios-chrome`·`chrome`·`samsung`) |
+| `home_shortcut_install` | 안내의 `홈 화면에 추가`(`prompt()`)에 사용자가 답함 | `outcome`(`accepted`·`dismissed`) |
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
 
