@@ -85,10 +85,11 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
     @discardableResult nonisolated static func apply(now: Date = Date()) async -> Date? {
         let enabled = UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
         let plan = enabled ? load() : nil
-        let moment = plan.map { moment($0, now: now) }
+        // Named apart from `moment(_:now:)` and called on `Self`: Xcode 26's compiler otherwise picks SwiftUI's `Gesture.map` here.
+        let current = plan.map { Self.moment($0, now: now) }
         let activities = Activity<LiveSessionAttributes>.activities.filter { [.active, .stale].contains($0.activityState) }
-        if let plan, let state = moment?.state {
-            let content = ActivityContent(state: state, staleDate: moment?.boundary)
+        if let plan, let state = current?.state {
+            let content = ActivityContent(state: state, staleDate: current?.boundary)
             var kept = false
             for activity in activities {
                 if !kept, activity.attributes == plan.attributes {
@@ -109,7 +110,7 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
         } else {
             for activity in activities { await activity.end(nil, dismissalPolicy: .immediate) }
         }
-        if let boundary = moment?.boundary {
+        if let boundary = current?.boundary {
             let request = BGAppRefreshTaskRequest(identifier: refreshTaskID)
             request.earliestBeginDate = boundary
             // Unavailable on the simulator and when Background App Refresh is off; the foreground timer still runs.
@@ -117,7 +118,7 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
         } else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: refreshTaskID)
         }
-        return moment?.boundary
+        return current?.boundary
     }
     /// The background wake-up (`AppDelegate` registers it before launch ends): the saved plan is applied for now.
     nonisolated static func handle(_ task: BGTask) {
