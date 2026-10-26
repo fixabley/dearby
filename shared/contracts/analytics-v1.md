@@ -60,6 +60,7 @@
 | `menu_open` | 탭 안의 주요 메뉴·행을 엶 | `menu` = `my_activity_list`·`favorites`·`queue`·`funnel`·`eligibility`·`interests`·`notifications`·`my_cards`·`received_cards`·`card_create`·`profile_edit`·`history`·`settings`·`notifications_inbox`(알림 목록, 종 버튼)(새 메뉴는 이 목록에 먼저 더한다) |
 | `discovery_mode` | 발견 맨 위 `프로그램 \| 이벤트` 전환을 사용자가 바꿈(앱 시작 때 기억된 값은 보내지 않음, 2026-10-26) | `mode` = `program`·`event` |
 | `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`) |
+| `discovery_category_filter` | 발견 `종류` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
 
 접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
 
@@ -91,6 +92,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
 | `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 바꿈(앱과 같음) | `groups` |
+| `discovery_category_filter` | 발견 `종류` 다중 선택을 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
