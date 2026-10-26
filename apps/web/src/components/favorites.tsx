@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { type Favorites as FavoritesPage, type SessionFavorite, type StatusGroup, calendarDay, dayLabel } from "@/lib/models";
+import { type Favorites as FavoritesPage, type FavoriteSession, type StatusGroup, calendarDay, dayLabel } from "@/lib/models";
 import { RequestError } from "@/lib/client";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { favorites as listFavorites, programSeen, sessionFavorites as listSessionFavorites } from "@/features/favorites/api/favorites-client";
@@ -59,7 +59,7 @@ export function Favorites() {
 function Content() {
   const { epoch, signedOutLocally } = useAuth();
   const [page, setPage] = useState<FavoritesPage>();
-  const [sessions, setSessions] = useState<SessionFavorite[]>();
+  const [sessions, setSessions] = useState<FavoriteSession[]>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(Date.now);
@@ -158,9 +158,9 @@ function FavoriteProgram({ program, newRecruitment }: { program: FavoritesPage["
   );
 }
 
-type DayGroup = { key: string; activityId: number; activityName: string; timeZone: string; items: SessionFavorite[] };
+type DayGroup = { key: string; activityId: number; activityName: string; timeZone: string; items: FavoriteSession[] };
 /** Activities in the order of their first session, then their days in order (same grouping as iOS `MySessionsPage`). */
-function dayGroups(items: SessionFavorite[]): DayGroup[] {
+function dayGroups(items: FavoriteSession[]): DayGroup[] {
   const groups: DayGroup[] = [];
   for (const item of [...items].sort((a, b) => Date.parse(a.session.startAt) - Date.parse(b.session.startAt))) {
     const timeZone = item.schedule.timeZone ?? "Asia/Seoul";
@@ -178,7 +178,7 @@ function dayGroups(items: SessionFavorite[]): DayGroup[] {
  * `내 시간표 · 세션 n개` (contract "트랙·세션 시간표" › 활동 밖 찜한 세션): a disclosure row; opened, every activity's days as 나만의 시간표 drawn from
  * the list items' own `track` and `schedule` (no timetable is read again).
  */
-function MySessions({ items }: { items: SessionFavorite[] }) {
+function MySessions({ items }: { items: FavoriteSession[] }) {
   const [open, setOpen] = useState(false);
   const panelId = "my-timetable";
   return (

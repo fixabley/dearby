@@ -126,10 +126,20 @@ export function parseStatusGroups(value: string | undefined): StatusGroup[] {
 export function groupStatuses(groups: StatusGroup[]): ActivityStatus[] {
   return groups.flatMap((group) => STATUS_GROUPS[group].statuses);
 }
+// 일정 상태 (contract "내 활동 서버 저장·일정 상태"): the options a stage can be marked with — the admin's (with an id) or the default
+// 대기·통과·탈락 the server fills in (id null). `kind` drives the track; `name` is what the picker shows.
+export const STATUS_KINDS = ["WAITING", "PASSED", "FAILED", "OTHER"] as const;
+export type StatusKind = (typeof STATUS_KINDS)[number];
+const scheduleStatusSchema = z.object({ id: z.number().int().nullable(), name: text, kind: z.enum(STATUS_KINDS) });
+export type ScheduleStatus = z.infer<typeof scheduleStatusSchema>;
+export const SCHEDULE_KINDS = ["DEADLINE", "ANNOUNCEMENT", "INTERVIEW", "EVENT"] as const;
 // Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
 const scheduleSchema = z.object({
   id: z.number().int(),
   title: text,
+  // 종류 (contract "내 활동 진행 트랙": 마감·발표·면접 or an event); absent on older responses.
+  kind: z.enum(SCHEDULE_KINDS).optional().catch(undefined),
+  statuses: z.array(scheduleStatusSchema).optional().catch([]),
   startAt: text.nullable(),
   endAt: text.nullable(),
   timeZone: text.nullable(),
@@ -224,6 +234,37 @@ export const timetableSchema = z.object({
   sessions: z.array(sessionSchema),
 });
 export type Timetable = z.infer<typeof timetableSchema>;
+// 내 활동 (contract "내 활동 서버 저장·일정 상태", web since 2026-10-26 "웹 로그인" 2단계 B): `GET /v1/me/activities` items. A mark on a
+// schedule is the admin status by id or a default one by kind (`statusId` null).
+export const myActivitySchema = z.object({
+  activityId: z.number().int().positive(),
+  createdAt: text,
+  deleted: z.boolean(),
+  statuses: z.array(z.object({ scheduleId: z.number().int(), statusId: z.number().int().nullable(), kind: z.enum(STATUS_KINDS) })),
+});
+export type MyActivity = z.infer<typeof myActivitySchema>;
+export const myActivityListSchema = z.object({ items: z.array(myActivitySchema) });
+/** `PUT /v1/me/activities/{id}/schedules/{scheduleId}` body: an admin status by id or a default one by kind, never both. */
+export const statusPickSchema = z.union([
+  z.object({ statusId: z.number().int().positive() }).strict(),
+  z.object({ kind: z.enum(STATUS_KINDS) }).strict(),
+]);
+export type StatusPick = z.infer<typeof statusPickSchema>;
+// 찜한 세션 (contract "트랙·세션 시간표" › 공개 API `GET /v1/me/session-favorites`): the web reads them only for the 오늘 내 행사 card.
+export const favoriteSessionSchema = z.object({
+  activityId: z.number().int(),
+  activityName: text,
+  scheduleId: z.number().int(),
+  scheduleTitle: text,
+  /** The parent block (start·end·zone), sent since 2026-10-26 (#401): 내 시간표 draws from it without reading the timetable again. */
+  schedule: scheduleSchema,
+  /** The session's track; null for a full-width session. */
+  track: trackSchema.nullable().optional().catch(null),
+  session: sessionSchema,
+  favoritedAt: text,
+});
+export type FavoriteSession = z.infer<typeof favoriteSessionSchema>;
+export const favoriteSessionListSchema = z.object({ items: z.array(favoriteSessionSchema) });
 /** `HH:mm` (24h) of an instant in a zone, for timetable rows. */
 export function clockTime(time: number, timeZone: string): string {
   return koreanParts(time, timeZone, true).time;
@@ -305,6 +346,8 @@ export const activitySchema = z.object({
   // 활동 상태 (contract "활동 상태" 2026-10-26); older responses omit it, an unknown value reads as none.
   status: z.enum(ACTIVITY_STATUSES).optional().catch(undefined),
   favorited,
+  // 시간표 배지 (contract "트랙·세션 시간표"): any block with a timetable; older responses omit it (the blocks' own flags stand in).
+  hasTimetable: z.boolean().optional().catch(undefined),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -355,19 +398,6 @@ export const favoritesSchema = z.object({
   activities: z.array(z.object({ activity: activitySchema, program: programSummarySchema, favoritedAt: text })),
 });
 export type Favorites = z.infer<typeof favoritesSchema>;
-/** `GET /v1/me/session-favorites` (contract "트랙·세션 시간표"): 내 시간표 in session start order, each with its block and track. */
-export const sessionFavoriteSchema = z.object({
-  activityId: z.number().int(),
-  activityName: text,
-  scheduleId: z.number().int(),
-  scheduleTitle: text,
-  schedule: scheduleSchema,
-  track: trackSchema.nullable().optional().catch(null),
-  session: sessionSchema,
-  favoritedAt: text,
-});
-export type SessionFavorite = z.infer<typeof sessionFavoriteSchema>;
-export const sessionFavoritesSchema = z.object({ items: z.array(sessionFavoriteSchema) });
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
 export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);
@@ -431,7 +461,7 @@ export function recruitmentPhrase(application: Schedule | null, now = Date.now()
   return day ? `${day} ${open ? "마감" : "모집 시작"}` : label;
 }
 /** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
-function seoulDay(now: number): string {
+export function seoulDay(now: number): string {
   return calendarDay(now, "Asia/Seoul");
 }
 /** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
@@ -451,7 +481,7 @@ function koreanParts(time: number, timeZone: string, withTime: boolean) {
     time: withTime ? `${part("hour")}:${part("minute")}` : "",
   };
 }
-const DAY = 86_400_000;
+export const DAY = 86_400_000;
 /** Which slot a schedule fills: the end-only suffix is `마감` for recruitment and `까지` for activity periods and detail schedules. */
 export type ScheduleKind = "recruitment" | "activity";
 /**
@@ -526,7 +556,7 @@ export function upcomingStartDday(activity: Activity, now = Date.now()): string 
 export function calendarDay(time: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
 }
-function parseTime(value: string | null): number | undefined {
+export function parseTime(value: string | null): number | undefined {
   const time = value ? Date.parse(value) : NaN;
   return Number.isNaN(time) ? undefined : time;
 }

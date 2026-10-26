@@ -32,9 +32,11 @@ data class CalendarDraft(val title: String, val begin: Long, val end: Long, val 
  * [selected] the user's choice (the first waiting status until one is chosen); [hasWindow] when the calendar comparison can open on it;
  * [draft] for `캘린더에 추가`, null for an undated step. [timetableId] is the schedule id of a step with a 트랙·세션 시간표 (`hasTimetable`), else null.
  * [selection] puts the step under `선발 과정` (the only steps with [options]); otherwise it is 활동 일정 (contract "선발 과정·활동 일정 분리").
+ * [day] is the Seoul date a timed block joins in the page's day grouping (하루 시간표, 2026-10-26); null for an all-day, undated, repeating
+ * or activity-period step, which stays its own row.
  */
 data class ProgressStage(val name: String, val kind: String, val dateText: String, val status: ProgressStatus, val options: List<StatusOption>, val selected: StatusOption?, val hasWindow: Boolean,
-    val draft: CalendarDraft? = null, val timetableId: String? = null, val selection: Boolean = false)
+    val draft: CalendarDraft? = null, val timetableId: String? = null, val selection: Boolean = false, val day: LocalDate? = null)
 
 /**
  * The progress track of one applied activity (contract "내 활동 진행 트랙"). [stages] is empty for an activity without

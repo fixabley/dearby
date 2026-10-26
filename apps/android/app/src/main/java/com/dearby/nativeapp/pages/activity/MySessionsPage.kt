@@ -17,8 +17,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
-import java.time.format.TextStyle
-import java.util.Locale
 
 /**
  * 즐겨찾기 › 내 시간표 (2026-10-26 사용자 "찜한 시간표만 따로"): `GET /v1/me/session-favorites` as 나만의 시간표, grouped by activity (its
@@ -37,7 +35,7 @@ import java.util.Locale
                     Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 ofActivity.groupBy { it.session.startAt.toLocalDate() }.forEach { (day, ofDay) ->
-                    Text("${day.monthValue}월 ${day.dayOfMonth}일 (${day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.KOREAN)})", Modifier.semantics { heading() },
+                    Text(dayLabel(day), Modifier.semantics { heading() },
                         color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                     MyTimetable(ofDay, favorites, heart, { opened = it.id })
                 }

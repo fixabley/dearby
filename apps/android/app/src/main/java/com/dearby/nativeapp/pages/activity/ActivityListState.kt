@@ -100,7 +100,12 @@ data class ActivityState(
  */
 data class ScheduleItemState(val name: String, val dateText: String, val draft: CalendarDraft?,
     /** The block's id and whether it has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): then the row offers `{name} 시간표`. */
-    val scheduleId: String? = null, val hasTimetable: Boolean = false, val selection: Boolean = false)
+    val scheduleId: String? = null, val hasTimetable: Boolean = false, val selection: Boolean = false,
+    /** The Seoul date a timed block joins in the day grouping ([dayGroups]); null for an all-day, undated, repeating or activity-period row. */
+    val day: LocalDate? = null) {
+    /** The row as a day's block, when it joins one. */
+    val block get() = day?.let { dayBlock(scheduleId, name, draft!!, hasTimetable) }
+}
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matchedCount] is how many open activities' names the search hit (shown as `맞는 활동 n개`).
  * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정

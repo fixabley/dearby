@@ -11,20 +11,15 @@ import {
   type StatusGroup,
   STATUS_GROUPS,
   activityStatus,
-  applicable,
   deadlineLabel,
   fieldTagsOf,
   groupStatuses,
   traitTagsOf,
   programLogoSrc,
   startLabel,
-  recruitmentDate,
-  scheduleLabel,
-  upcomingStartDday,
 } from "@/lib/models";
 import { track } from "@/shared/lib/analytics";
-import { errorMessage } from "@/lib/client";
-import { publicRead } from "@/features/auth/api/auth-client";
+import { errorMessage, publicRead } from "@/lib/client";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
@@ -37,7 +32,9 @@ import { Input } from "@/shared/ui/input";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Segmented } from "@/shared/ui/segmented";
-import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
+import { ActivityCard, ActivityCardSkeleton, activityCardProps } from "@/widgets/activity/activity-card";
+import { TodayCard } from "@/widgets/activity/today-card";
+import { MineToggle } from "@/features/mine/ui/mine-toggle";
 import { DiscoveryFilterBar, type DiscoveryFilters } from "@/widgets/activity/discovery-filter";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
@@ -150,6 +147,8 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
   return (
     <>
       <LargeTitle>활동 둘러보기</LargeTitle>
+      {/* 오늘 내 행사 (contract "오늘 내 행사 카드"): signed in, not while searching. */}
+      {!q && <TodayCard className="mt-1 mb-3" />}
       <SearchField q={q} kind={kind} groups={groups} categories={categories} />
       <Segmented
         label="활동 묶음"
@@ -300,31 +299,16 @@ function SearchField({ q, kind, groups, categories }: { q: string; kind: Kind; g
   );
 }
 
-/**
- * Props the renewed activity card needs (contract "발견 카드 리뉴얼"·"활동 상태"): the capsule is the server's status; 모집 정보 없음 has
- * none and its `모집` row reads `모집 일정 미정`; the row stands out only while 모집 중·모집 예정 and a period exists. The heart
- * (contract "즐겨찾기(하트)", web since "웹 화면 — 2단계 A") starts from the response's `favorited`.
- */
+/** The card plus the heart (web 2단계 A, contract "즐겨찾기(하트)") and the 내 활동 `+`/check (2단계 B) beside it; `/favorites` reuses it. */
 export function cardProps(activity: Activity, now: number) {
-  const status = activityStatus(activity, now);
-  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` + `D-3` while open; an end alone keeps `~ … 마감`.
-  const { text, dday: recruitmentDday } = recruitmentDate(activity.application, now);
-  const recruitmentLabel = status === "NO_RECRUITMENT" ? "" : text;
   return {
-    id: activity.id,
-    name: activity.name,
-    favorite: <FavoriteHeart kind="activity" id={activity.id} favorited={activity.favorited ?? false} category={activity.category} size="sm" />,
-    status,
-    recruitmentLabel,
-    recruitmentDday,
-    // 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26") beside the 모집 예정 capsule.
-    startDday: upcomingStartDday(activity, now),
-    recruitmentActive: applicable(status) && recruitmentLabel !== "",
-    activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
-    // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
-    placeName: activity.place?.name ?? activity.location ?? null,
-    fieldTag: fieldTagsOf(activity)[0],
-    traitTags: traitTagsOf(activity),
+    ...activityCardProps(activity, now),
+    action: (
+      <>
+        <FavoriteHeart kind="activity" id={activity.id} favorited={activity.favorited ?? false} category={activity.category} size="sm" />
+        <MineToggle activity={activity} source="discovery" />
+      </>
+    ),
   };
 }
 

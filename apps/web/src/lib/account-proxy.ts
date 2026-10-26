@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { TOKEN, acceptLanguage, readGuestCookie } from "./guest-upstream";
 import { callAsAccount, clearedSessionCookies, withCookies } from "./session";
-import { favoritesSchema, profileConsentSchema, sessionFavoritesSchema } from "./models";
+import { activityId, favoriteSessionListSchema, favoritesSchema, myActivityListSchema, myActivitySchema, profileConsentSchema, statusPickSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
@@ -20,6 +20,7 @@ const bodies = {
   registration: z.object({ challengeId, credential }).strict(),
   linkToken: z.object({ linkToken: z.string().min(1).max(4096) }).strict(),
   empty: z.object({}).strict(),
+  statusPick: statusPickSchema,
 };
 /** Response shapes that cross to the browser (tokens never do). */
 const meSchema = z.object({
@@ -39,6 +40,8 @@ const passkeyListSchema = z.object({ items: z.array(passkeySchema) });
 const optionsSchema = z.object({ challengeId, options: z.looseObject({}) });
 /** `POST /v1/wallet/import-guest` (server PR, contract "웹 로그인"): how many saved cards moved into the account. */
 const importSchema = z.object({ imported: z.number().int().nonnegative() });
+/** `*`, or one or more (weak) entity tags. */
+const IF_MATCH = /^(\*|(W\/)?"[^"]{1,128}"(, ?(W\/)?"[^"]{1,128}")*)$/;
 const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED", "GUEST_SESSION_INVALID"];
 
 type Route = {
@@ -64,7 +67,6 @@ function route(method: string, segments: string[]): Route | undefined {
   // Opening a favorited program turns its `새 모집` off.
   if (method === "POST" && segments.length === 5 && path.startsWith("me/favorites/programs/") && segments[4] === "seen" && NUMERIC_ID.test(segments[3]))
     return { ...noContent, body: "empty" };
-  if (method === "GET" && path === "me/session-favorites") return { parse: (json) => sessionFavoritesSchema.parse(json) };
   if (segments.length === 3 && segments[0] === "me" && segments[1] === "session-favorites" && NUMERIC_ID.test(segments[2])) {
     if (method === "PUT") return { ...noContent, body: "empty" };
     if (method === "DELETE") return noContent;
@@ -84,6 +86,16 @@ function route(method: string, segments: string[]): Route | undefined {
   if (method === "POST" && segments.length === 3 && segments[0] === "me" && segments[1] === "identities" && ["apple", "google"].includes(segments[2]))
     return { body: "linkToken", parse: () => undefined, noContent: true };
   if (method === "POST" && path === "wallet/import-guest") return { body: "empty", parse: (json) => importSchema.parse(json) };
+  // 내 활동 (contract "내 활동 서버 저장·일정 상태", web 2단계 B): the list, add (idempotent PUT, empty body), remove, and a stage mark.
+  if (method === "GET" && path === "me/activities") return { parse: (json) => myActivityListSchema.parse(json) };
+  if (segments[0] === "me" && segments[1] === "activities" && activityId(segments[2] ?? "") !== undefined) {
+    if (segments.length === 3 && method === "PUT") return { body: "empty", parse: (json) => myActivitySchema.parse(json) };
+    if (segments.length === 3 && method === "DELETE") return { parse: () => undefined, noContent: true };
+    if (segments.length === 5 && segments[3] === "schedules" && activityId(segments[4]) !== undefined && method === "PUT")
+      return { body: "statusPick", parse: (json) => myActivitySchema.parse(json) };
+  }
+  // 내 시간표 목록 (contract "트랙·세션 시간표"; 2단계 A hearts, 2단계 B 오늘 내 행사 card).
+  if (method === "GET" && path === "me/session-favorites") return { parse: (json) => favoriteSessionListSchema.parse(json) };
 }
 export function isAccountRoute(method: string, segments: string[]) {
   return route(method, segments) !== undefined;
@@ -129,12 +141,15 @@ export async function accountProxy(request: Request, segments: string[]): Promis
   }
   const path = segments.join("/");
   const responseHeaders = spec.language ? { ...headers, Vary: `${headers.Vary}, Accept-Language` } : headers;
+  // `If-Match` crosses as it is (contract "웹에서 쓰는 로그인 기능": the profile PUT's version check); a malformed value is dropped.
+  const ifMatch = request.headers.get("if-match");
   try {
     const result = await callAsAccount(cookieHeader, {
       path,
       method,
       body: mutation ? body : undefined,
       acceptLanguage: spec.language ? acceptLanguage(request.headers.get("accept-language")) : undefined,
+      ifMatch: ifMatch && IF_MATCH.test(ifMatch) ? ifMatch : undefined,
     });
     if (result.kind === "signedOut") return failure(401, "SIGNED_OUT");
     const { response } = result;

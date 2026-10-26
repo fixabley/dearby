@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { type Schedule, type ScheduleDay, type Session, type Timetable, type Track, clockTime, scheduleDayRange, scheduleLabel } from "@/lib/models";
-import { errorMessage, RequestError } from "@/lib/client";
-import { publicRead } from "@/features/auth/api/auth-client";
+import { errorMessage, publicRead, RequestError } from "@/lib/client";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
 import { track } from "@/shared/lib/analytics";
