@@ -75,19 +75,19 @@ private struct ContactRow: View {
         switch contact.action {
         case .open(let url):
             Button { openURL(url) } label: { content(mark: "arrow.up.right") }.buttonStyle(.plain)
-                .accessibilityLabel(contact.rowLabel + ": " + contact.value)
+                .accessibilityLabel(contact.rowLabel + ": " + contact.displayValue)
                 .accessibilityHint(contact.kind == "phone" ? "전화를 걸어요" : contact.kind == "email" ? "메일을 보내요" : "링크를 열어요")
         case .copy(let id):
             Button { copy(id) } label: { content(mark: "doc.on.doc") }.buttonStyle(.plain)
-                .accessibilityLabel(contact.rowLabel + ": " + contact.value).accessibilityHint("ID를 복사해요")
+                .accessibilityLabel(contact.rowLabel + ": " + contact.displayValue).accessibilityHint("ID를 복사해요")
         case nil:
-            content(mark: nil).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.value)
+            content(mark: nil).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.displayValue)
         }
     }
     private func content(mark: String?) -> some View {
         HStack(spacing: 12) {
-            ContactSymbol(kind: contact.kind)
-            Text(contact.value).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
+            DearbyGlyphView(glyph: ContactModel.glyph(kind: contact.kind))
+            Text(contact.displayValue).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
             Spacer(minLength: 0)
             if copied {
                 Text("ID를 복사했어요").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.teal)

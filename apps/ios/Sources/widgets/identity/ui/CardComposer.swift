@@ -46,7 +46,10 @@ struct CardComposer: View {
                 ForEach(draft.profile.contacts) { contact in
                     DearbyCheckRow(isOn: Binding(get: { draft.publicContactIDs.contains(contact.id) },
                                                  set: { on in if on { draft.publicContactIDs.insert(contact.id) } else { draft.publicContactIDs.remove(contact.id) } })) {
-                        Text("\(contact.label) · \(contact.value)")
+                        HStack(spacing: 12) {
+                            DearbyGlyphView(glyph: ContactModel.glyph(kind: contact.kind))
+                            Text(ContactModel.username(kind: contact.kind, contact.value) ?? contact.value)
+                        }
                     }
                 }
             } header: {

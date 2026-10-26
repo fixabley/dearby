@@ -26,7 +26,8 @@ struct ProfileForm: Equatable {
         phoneID = phoneRow?.id ?? UUID().uuidString.lowercased()
         emailID = emailRow?.id ?? UUID().uuidString.lowercased()
         extras = profile.contacts.filter { $0.id != phoneRow?.id && $0.id != emailRow?.id }
-            .map { ProfileExtraContact(id: $0.id, kind: $0.kind, value: $0.value) }
+            // A profile URL saved before 2026-10-26 reads as its username (contract "연락처 사용자명 입력").
+            .map { ProfileExtraContact(id: $0.id, kind: $0.kind, value: ContactModel.username(kind: $0.kind, $0.value) ?? $0.value) }
         histories = profile.histories
     }
     mutating func addContact(_ kind: String) { extras.append(ProfileExtraContact(id: UUID().uuidString.lowercased(), kind: kind, value: "")) }
