@@ -477,8 +477,12 @@ export function upcomingStartDday(activity: Activity, now = Date.now()): string 
   const days = Math.round((Date.parse(startDay) - Date.parse(seoulDay(now))) / DAY);
   return days <= 0 ? "오늘 시작" : `시작 D-${days}`;
 }
+/** `10월 28일 (수)` of an instant in a zone (내 시간표 day headings). */
+export function dayLabel(time: number, timeZone: string): string {
+  return koreanParts(time, timeZone, false).day;
+}
 /** `yyyy-MM-dd` of an instant in a zone. */
-function calendarDay(time: number, timeZone: string): string {
+export function calendarDay(time: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
 }
 function parseTime(value: string | null): number | undefined {
