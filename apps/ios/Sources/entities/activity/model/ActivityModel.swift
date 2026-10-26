@@ -323,6 +323,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var upcomingActivityCount: Int = 0
     /// Raw ISO 8601 of the earliest recruitment start among the upcoming ones (activity start without a window); nil when none.
     var nearestRecruitmentStartAt: String? = nil
+    /// `nearestRecruitmentEndAt` is an activity start (an open activity without a recruitment deadline), not a deadline; false on older responses.
+    var nearestIsActivityStart = false
     /// The program's most relevant 분야 tags, at most two (contract "분야·성격 태그와 아이콘"); empty on older responses.
     var fieldTags: [Tag] = []
     /// The program's 성격 tags (vocabulary order); older responses' `tags` stand in.

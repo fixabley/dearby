@@ -46,7 +46,7 @@ struct FavoritesPage: View {
     private func programRow(_ favorite: FavoriteProgram) -> some View {
         let program = favorite.program
         return ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
-                             nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
+                             nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
                              nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                              fieldTags: program.fieldTags, traitTags: program.traitTags, newRecruitment: favorite.newRecruitment, expanded: false) {
             FavoriteControls(target: .program(program.id), showsLevel: true)
@@ -90,7 +90,7 @@ struct ProgramDetailPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
-                              nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
+                              nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
                               nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                               fieldTags: program.fieldTags, traitTags: program.traitTags, expanded: false,
                               accessory: { FavoriteControls(target: .program(program.id)) }, toggle: nil)

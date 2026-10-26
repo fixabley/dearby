@@ -39,6 +39,7 @@ enum ActivityClient {
                        openActivityCount: program.openActivityCount ?? 0, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
                        matchedActivityIDs: (program.matchedActivityIds ?? []).map(String.init), latestActivityAt: program.latestActivityAt,
                        upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
+                       nearestIsActivityStart: program.nearestIsActivityStart ?? false,
                        fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
                        traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
                        logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
@@ -292,7 +293,7 @@ enum ActivityClient {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
         /// Both absent outside discovery (a favorite's ProgramSummary); read as 0 and none.
         let openActivityCount: Int?; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]?; let latestActivityAt: String?
-        let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?
+        let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?; let nearestIsActivityStart: Bool?
         /// 분야 (at most two, relevance order) and 성격 tags (contract "분야·성격 태그와 아이콘" 2026-10-24); absent on older responses,
         /// which only send the mixed `tags`.
         let fieldTags: [TagDTO]?; let traitTags: [TagDTO]?; let tags: [TagDTO]?

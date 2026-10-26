@@ -172,7 +172,7 @@ struct ActivityListPage: View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 0) {
             ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
-                          nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
+                          nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                           fieldTags: program.fieldTags, traitTags: program.traitTags,
                           matchedCount: program.matchedActivityIDs.count, expanded: open) {
