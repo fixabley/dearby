@@ -71,7 +71,7 @@ OTP 코드는 응답에서 반환하지 않는다. 개발용 메일 수신기는
 | DELETE /v1/guest/cards/:id | 204 | 자기 참조만 제거; 이미 제거·철회된 ID도 멱등 처리 |
 | DELETE /v1/guest/session | 204 | 자기 세션 및 저장 참조 폐기 |
 
-요청 body는 필요 없다. 새 세션 생성 전용 endpoint는 없다. 무쿠키 목록 조회는 Next에서 `{items:[]}`로 처리해 API 호출이나 DB 세션 생성을 하지 않는다. 첫 저장 응답 `guestToken`은 Next 서버만 소비하며 브라우저 JSON/로그에 노출하지 않는다. DB에는 SHA-256 token digest와 card ID 연결만 저장하고 원문 토큰·쿠키·방문자 개인정보를 저장하지 않는다. 회원 wallet과 guest 저장은 서로 독립이며 자동 전환/가져오기를 수행하지 않는다.
+요청 body는 필요 없다. 새 세션 생성 전용 endpoint는 없다. 무쿠키 목록 조회는 Next에서 `{items:[]}`로 처리해 API 호출이나 DB 세션 생성을 하지 않는다. 첫 저장 응답 `guestToken`은 Next 서버만 소비하며 브라우저 JSON/로그에 노출하지 않는다. DB에는 SHA-256 token digest와 card ID 연결만 저장하고 원문 토큰·쿠키·방문자 개인정보를 저장하지 않는다. 회원 wallet과 guest 저장은 서로 독립이며 자동으로 옮기지 않는다. 2026-10-26부터 웹에 로그인한 사용자가 직접 요청하면 `POST /v1/wallet/import-guest`로 게스트 저장을 계정 지갑으로 옮긴다(아래 "웹 로그인").
 
 쿠키 이름은 `__Host-dearby_guest`, `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=34560000`이며 **Domain 속성을 넣지 않는다**. 서버 세션은 자동 만료가 없고 `expiresAt` 응답도 없다. 브라우저 쿠키는 400일이며 요청 시 같은 token의 Max-Age만 갱신한다. 갱신으로 새 token/session을 만들거나 기존 저장을 지우지 않는다. 브라우저 자체 보관 제한·사용자 쿠키 삭제로 접근이 끊길 수 있으며 무제한 쿠키 보관을 보장하지 않는다. 명시적 세션 삭제에서 API 401(이미 폐기)도 웹은 쿠키를 삭제한다. 다른 401을 임의로 새 세션으로 대체하지 않는다.
 
@@ -170,7 +170,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 - RP ID는 `wid.io.kr`(API `WEBAUTHN_RP_ID`). 바꾸면 등록된 패스키를 모두 쓸 수 없다.
 - `https://wid.io.kr/.well-known/apple-app-site-association`에 `webcredentials.apps`(`<TeamID>.<bundle ID>`)를, `https://wid.io.kr/.well-known/assetlinks.json`에 `delegate_permission/common.get_login_creds`(패키지·서명 SHA-256)를 둔다. `wid.io.kr`은 웹(Vercel)이 아니라 운영 ingress(nginx)가 내준다. 유니버설 링크 `/s/*`의 `applinks`는 기존대로 웹 도메인에 둔다.
 - iOS entitlements에 `webcredentials:wid.io.kr`, Android는 Credential Manager를 쓴다.
-- API 허용 origin(`WEBAUTHN_ALLOWED_ORIGINS`)에 iOS의 `https://wid.io.kr`과 Android의 `android:apk-key-hash:<서명 SHA-256의 base64url>`을 넣는다. 웹에서 패스키를 쓰면 웹 origin도 넣는다.
+- API 허용 origin(`WEBAUTHN_ALLOWED_ORIGINS`)에 iOS의 `https://wid.io.kr`과 Android의 `android:apk-key-hash:<서명 SHA-256의 base64url>`을 넣는다. 웹에서 패스키를 쓰면 웹 origin(`https://dearby.wid.io.kr`)도 넣는다(2026-10-26 "웹 로그인"; `.env.prod.example`에는 이미 있다).
 
 ### API
 
@@ -324,7 +324,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
   3. 애플은 Services ID의 Return URL(`https://api.dearby.wid.io.kr/v1/auth/apple/callback`)로 form_post한다. 서버는 토큰을 확인하고 `dearby://auth/apple?code=…`로 돌려보낸다.
   4. 앱은 그 code와 verifier로 `web/exchange`를 부른다.
   - 결과 code는 10분, 한 번만 쓴다. 주소에 토큰을 싣지 않고, verifier가 없는 다른 앱은 code를 바꿔 갈 수 없다.
-- 웹: 사용자 웹은 아직 로그인해서 쓰는 기능이 없다(명함 제작은 앱). 웹 애플 로그인은 웹에 로그인 기능이 생길 때 Apple JS(Services ID, popup)로 `POST /v1/auth/apple`을 쓴다.
+- 웹: 2026-10-26 사용자 결정으로 웹에도 로그인을 만든다. Apple JS(Services ID, popup)로 받은 `id_token`을 `POST /v1/auth/apple`에 보낸다(아래 "웹 로그인"). 그 전까지는 사용자 웹에 로그인해서 쓰는 기능이 없었다.
 - 애플 토큰
   - iOS는 credential의 `authorizationCode`를 함께 보낸다. 웹 방식은 콜백의 `code`를 서버가 쓴다.
   - 서버는 `.p8` 키로 서명한 client secret으로 code를 애플 refresh token으로 바꿔 `user_identities`에 둔다. 아래 "계정 삭제" 때 폐기하기 위해서다.
@@ -1129,6 +1129,44 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **운영 준비(사용자)**: Google Cloud 콘솔 OAuth 클라이언트 세 개 — ① 웹 애플리케이션(리디렉션 URI 없음) → 서버 `GOOGLE_CLIENT_IDS`와 Android `GOOGLE_SERVER_CLIENT_ID`, ② iOS(번들 `io.wid.dearby`) → `GOOGLE_IOS_CLIENT_ID`와 서버 허용 목록, ③ Android(패키지 `io.wid.dearby`, 디버그 keystore SHA-1; 출시 서명 SHA-1은 출시 서명을 정한 뒤). 값은 채팅에 적지 않고 서버 `.env.prod`와 로컬 `~/.dearby-deploy/mobile.env`(`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME`, `GOOGLE_SERVER_CLIENT_ID`)에만 둔다. 기기 설치 빌드는 그 파일을 읽어 넘기고 CI는 값 없이 빌드한다(버튼 숨김).
 - 변경 이력: 2026-10-18 웹 방식(서버 코드 흐름 `web/start`·`callback`·`web/exchange`, `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`, iOS `ASWebAuthenticationSession`·Android Custom Tab, 운영에 설정된 적 없음) [`fe52a2f9`](https://github.com/fixabley/dearby/blob/fe52a2f9/shared/contracts/native-v1.md#구글-로그인--2026-10-18-사용자-결정) → 2026-10-19 구글 개발자 계정 인증 완료로 네이티브 SDK로 교체(웹 방식 엔드포인트·시크릿 삭제) [`416d38ac`](https://github.com/fixabley/dearby/blob/416d38ac/shared/contracts/native-v1.md#구글-로그인--2026-10-19-네이티브-sdk로-전환).
 
+## 웹 로그인 — 2026-10-26 사용자 결정
+
+사용자: "웹도 로그인이랑 관련 기능 추가해줘." 사용자 웹(`https://dearby.wid.io.kr`, Next.js)에 앱과 같은 세 로그인 수단과 로그인 기능(동의·프로필·내 활동·즐겨찾기·세션 찜·알림·받은 명함)을 만든다. 서버 API는 앱이 쓰는 것을 그대로 쓰고, 웹은 지금처럼 same-origin `/api/*` 프록시(`apps/web/src/lib/proxy.ts`, 허용 경로 명시)만 거친다. 이 절은 서버 준비(2026-10-26 PR)와 웹이 따를 규칙이다. 웹 화면은 별도 PR.
+
+### 로그인 수단
+
+- **패스키(WebAuthn)**: 기존 `/v1/auth/passkeys/*`를 그대로 쓴다. RP ID `wid.io.kr`은 웹 origin `dearby.wid.io.kr`의 등록 가능한 상위 도메인이므로 앱에서 만든 패스키를 웹에서, 웹에서 더한 패스키를 앱에서 쓸 수 있다. 서버는 `clientDataJSON.origin`을 `WEBAUTHN_ALLOWED_ORIGINS`와 대조하므로 그 목록에 `https://dearby.wid.io.kr`이 있어야 한다(`.env.prod.example`에는 있고, 운영 `.env.prod` 값은 배포 때 확인한다; 프록시를 거쳐도 origin은 브라우저 값이다). `options`는 WebAuthn 표준 JSON(base64url)이라 `PublicKeyCredential.parseCreationOptionsFromJSON`·`parseRequestOptionsFromJSON`에 그대로 넣고, 결과는 `credential.toJSON()`을 `credential`로 보낸다(구형 브라우저는 같은 형식의 polyfill). 가입은 없고(2026-10-25) "패스키로 로그인"과 설정의 패스키 추가(`registration/options`·`registration`에 Bearer)만 있다. `/v1/auth/**` 중 Bearer를 읽는 경로는 `registration/options` 하나이므로 프록시는 거기에만 토큰을 붙이면 된다.
+- **애플**: Apple JS(`appleid.auth.init({clientId: <Services ID>, scope: "name email", redirectURI, usePopup: true, nonce})`)로 받은 `authorization.id_token`을 `POST /v1/auth/apple`의 `identityToken`으로 보낸다. nonce는 `POST /v1/auth/apple/nonce`의 값을 해시하지 않고 그대로 넣고 `challengeId`를 함께 보낸다. Services ID는 `APPLE_CLIENT_IDS`에 이미 있는 `io.wid.dearby.web`(Android 웹 방식과 같은 것). 처음 인가 때만 오는 `user.name`은 `displayName`으로 보낸다(popup은 서버 콜백을 거치지 않아 서버가 읽을 수 없다). `authorization.code`를 `authorizationCode`로 보내면 서버가 애플 refresh token으로 바꿔 두는데(계정 삭제 때 폐기용), Services ID로 받은 code의 교환에는 서버가 `APPLE_CALLBACK_URL`을 `redirect_uri`로 넣으므로 Apple JS의 `redirectURI`도 그 값(`https://api.dearby.wid.io.kr/v1/auth/apple/callback`)이어야 교환이 된다. Apple JS가 페이지와 다른 호스트의 `redirectURI`를 받는지는 확인하지 않았다; 거절하면 웹은 `authorizationCode`를 보내지 않는다(교환이 안 돼도 로그인은 되고 애플 토큰만 저장되지 않는다는 기존 규칙). 202(처음 보는 계정)는 앱과 같이 "새 계정으로 시작"(`register`) 또는 "기존 계정에 연결"(패스키로 로그인한 뒤 `/me/identities/apple`)을 묻는다(웹은 조용히 패스키를 확인할 수단이 없다).
+- **구글**: Google Identity Services(`google.accounts.id.initialize({client_id, nonce, callback})` + `renderButton`)가 돌려주는 `credential`(ID 토큰)을 `POST /v1/auth/google {idToken, nonce}`에 보낸다. nonce는 `POST /v1/auth/google/nonce`(10분, 1회용)이며 401이나 만료 뒤에는 nonce를 새로 받아 `initialize`를 다시 한다. 서버는 허용 `aud`에 **웹 클라이언트 id**를 더하는 `GOOGLE_WEB_CLIENT_ID`를 읽는다(`dearby.google.web-client-id`, `GOOGLE_CLIENT_IDS`와 합쳐 허용 목록이 된다). 비어 있으면 서버는 그 토큰을 401로 거절하고, 웹은 자기 빌드 값(`NEXT_PUBLIC_GOOGLE_CLIENT_ID`)이 비어 있으면 버튼을 숨긴다 — 두 값은 같아야 한다. 값은 사용자가 Google Cloud에서 만든다(아직 없음): OAuth 클라이언트 "웹 애플리케이션", 승인된 JavaScript 원본 `https://dearby.wid.io.kr`(개발용 `http://localhost:3000`), 리디렉션 URI 없음. 기존 ①(Android `serverClientId`) 클라이언트에 JavaScript 원본을 더해 같은 id를 쓰는 것도 가능하며 그러면 `GOOGLE_WEB_CLIENT_ID`에 같은 값을 넣는다. 202 처리는 애플과 같다.
+- 로그인 고지 한 줄(위 "애플 로그인"의 "로그인 고지")은 웹 로그인 화면에도 둔다.
+
+### 토큰 보관 — 쿠키는 Next 서버만
+
+- 서버 변경은 없다. TokenPair(`accessToken`·`refreshToken`)는 브라우저 JS에 두지 않는다. 로그인 응답을 받은 Next 라우트 핸들러가 두 토큰을 `HttpOnly; Secure; SameSite=Lax; Path=/`인 `__Host-` 쿠키에 넣고(게스트 쿠키와 같은 규칙, Domain 없음), 프록시가 요청마다 쿠키의 access token을 `Authorization: Bearer`로 바꿔 붙인다. 브라우저 응답 JSON·로그에 토큰을 내지 않는다.
+- **refresh 회전**: access token은 1분이고 refresh token은 한 번 쓰면 폐기된다(회전). Next는 인스턴스가 여럿이고 공유 잠금이 없어 프록시가 요청마다 알아서 refresh하면 같은 refresh token을 동시에 두 번 써서 한쪽이 401로 끝난다. 그래서 프록시는 **대신 refresh하지 않고 401을 그대로 돌려준다**. 브라우저는 앱과 같은 규칙으로 전용 라우트 `POST /api/auth/refresh` 하나를 Web Locks로 탭 사이에서 한 번만 부른 뒤 원래 요청을 다시 보낸다. 그 라우트는 쿠키의 refresh token으로 `/v1/auth/refresh`를 부르고 새 쌍을 쿠키에 쓴다. refresh가 401이면 쿠키를 지우고 로그아웃 상태로, 네트워크 오류·5xx면 쿠키를 남기고 그 요청만 실패시킨다.
+- 로그아웃은 `/v1/auth/logout` 뒤 쿠키를 지운다(실패해도 지운다). 계정 삭제(`DELETE /v1/me`) 뒤도 같다.
+- **CSRF**: 쿠키로 인증하므로 프록시의 mutation(POST·PUT·PATCH·DELETE)은 게스트 저장과 같은 규칙 — `Origin`을 현재 웹 origin과 정확히 대조하고 JSON 또는 custom header를 요구하며 누락·불일치는 거부한다. SameSite만으로 대신하지 않는다.
+- **CORS**: 웹이 same-origin 프록시만 쓰므로 API에 CORS를 열지 않는다(`SecurityConfig`의 `cors { disable() }` 유지). 브라우저가 `api.dearby.wid.io.kr`을 직접 부르는 경로는 없다.
+
+### 비로그인 저장 → 계정 합치기
+
+게스트 쿠키로 저장해 둔 명함이 있는 사람이 로그인하면 웹이 "브라우저에 저장한 명함 n개를 계정으로 옮길까요?"를 묻고, 동의하면 Next가 게스트 쿠키의 토큰을 본문에 넣어 부른다(토큰은 브라우저 JS에 보이지 않는다). 자동으로 옮기지 않는다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/wallet/import-guest | Bearer | `{guestToken}` | 200 `{imported: n}`(새로 만든 Receipt 수). 토큰 형식이 틀리거나 모르는·폐기된 세션은 400 `GUEST_SESSION_INVALID`(Bearer 경로라 401을 쓰지 않는다 — 프록시가 로그인 만료로 오해하지 않게) |
+
+- 세션의 회수 전 저장(철회된 명함 제외)마다 계정 지갑에 Receipt를 만든다. **받은 날은 게스트 저장 시각**(`savedAt`)이고 활동 맥락(`activityId`)도 그대로 옮긴다(활동이 지워졌으면 `null`). 게스트는 저장할 때 QR 코드를 이미 확인했으므로 코드를 다시 요구하지 않는다.
+- 이미 그 명함의 Receipt가 있으면 그대로 둔다(받은 날 유지, 활동이 비어 있었고 게스트 쪽에 있으면 채운다). 내 명함과 내가 차단한 주인의 명함은 건너뛴다. 둘 다 `imported`에 세지 않는다.
+- 옮긴 뒤 그 세션의 저장은 모두 `recalled_at`로 닫아(행은 보존) 게스트 목록이 빈다. 세션 자체는 두므로 다시 부르면 `{imported: 0}`이고, 웹은 쿠키를 지우려면 기존 `DELETE /v1/guest/session`을 따로 부른다. 단방향 30일 회수 규칙은 옮긴 Receipt에도 그대로 적용된다(받은 날 기준이라 옮기기 전 지난 날이 포함된다).
+- 게스트 세션의 요청 제한 카운터는 세지 않고(Bearer 경로), 프록시 키도 보지 않는다.
+
+### 웹에서 쓰는 로그인 기능 — Bearer만으로 되는 것
+
+2026-10-26 점검: 동의(`/v1/me/consents*`), 프로필(`/v1/profile*`, 사진·인증자료 multipart 포함), 내 활동(`/v1/me/activities*`), 즐겨찾기(`/v1/me/favorites*`), 세션 찜(`/v1/me/session-favorites*`), 알림 목록(`/v1/me/notifications*`), 알림 설정(`/v1/me/notification-settings`), 받은 명함·차단(`/v1/wallet*`), 내 명함(`/v1/cards*`), 계정·연결·패스키(`/v1/me`, `/v1/me/identities*`, `/v1/me/passkeys*`)는 모두 `@AuthenticationPrincipal Jwt`만 본다. 프록시는 `If-Match`(프로필 PUT), `Accept-Language`(즐겨찾기·알림·대기열), multipart 본문을 그대로 넘겨야 한다.
+
+- 웹에서 쓰지 않는 것: `PUT /v1/me/push-devices`는 `platform`이 `IOS`·`ANDROID`만이라(웹 푸시 없음) 웹은 부르지 않는다. 맞춤 대기열(`/v1/me/discovery-queue*`)·광고 동의는 앱 전용 화면이다.
+
 ## 대상자 조건(eligibility) — 2026-10-18 사용자 결정
 
 수집된 활동의 "대상자"를 자유 문장(`audience`)만으로 두지 않고, **중첩 가능한 JSON** `eligibility`로 규격화한다. 원문 `audience`는 그대로 남긴다. 사용자 지시: 필드 어휘는 한글이고 영문 버전도 함께 저장하며, 범위는 `from`·`to`로 표현하고, 검색할 수 있어야 한다. 표기 규칙(2026-10-18 사용자 지시): snake_case는 데이터베이스 열 이름에만 쓰고, JSON 키·영문 어휘·쿼리 키는 기존 API처럼 camelCase다.
@@ -1194,6 +1232,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. 회수된 것·철회된 명함 제외, `seq` 순 |
 | GET /v1/guest/cards | 게스트 토큰 | — | 200 `{items: GuestItem[]}`(2026-10-19부터 `Card[]`가 아니다) |
 | PUT /v1/guest/cards/:id | 게스트 토큰 선택 | `{activityId?: number}` | 기존 응답 그대로(201/200). 활동은 처음 저장할 때만 기록 |
+| POST /v1/wallet/import-guest | Bearer | `{guestToken}` | 200 `{imported: n}`. 웹 게스트 저장을 계정 지갑으로 옮긴다(2026-10-26 "웹 로그인") |
 
 - Receipt: `{id, card, context: {activityId: number|null, activityName: string|null, programName: string|null}, receivedAt, reciprocal: boolean, expiresAt: string|null}`. `expiresAt`은 서버가 계산한 회수 예정 시각(`receivedAt` + 30일), 맞교환이면 `null`. 클라이언트는 다시 계산하지 않는다. 활동 id가 있지만 활동이 지워졋으면 이름은 `null`.
 - GuestItem: `{card, context: {activityId, activityName, programName}, savedAt, expiresAt}`(`expiresAt`은 항상 `savedAt` + 30일).
