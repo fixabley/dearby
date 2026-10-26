@@ -19,7 +19,7 @@ API = {
     'widgets.activity.sessionCard': {'SessionCard', 'SessionBand', 'TrackBadge'},
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardHistoryRow', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
-    'pages.profile': {'NotificationRow', 'SessionReminderRow', 'UsageStatsRow', 'AdConsentRow', 'ConsentPage', 'ConsentRequiredMessage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ContactVerifyState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
+    'pages.profile': {'NotificationRow', 'SessionReminderRow', 'LiveSessionRow', 'UsageStatsRow', 'AdConsentRow', 'ConsentPage', 'ConsentRequiredMessage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ContactVerifyState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'CardQrState', 'QrActivity'},
     'features.passkey': {'Passkeys'},
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
@@ -27,6 +27,8 @@ API = {
     'features.push': {'Push', 'DearbyMessagingService'},
     # 찜한 세션 이동 알림 (2026-10-26, device-local): the alarm plan, its receiver and the tap extras MainActivity reads.
     'features.reminder': {'SessionReminders', 'SessionReminderReceiver', 'Reminder'},
+    # 행사 당일 진행 중 알림 (2026-10-26, device-local): the day plan, the ongoing notification and its redraw alarm's receiver.
+    'features.live': {'LiveSessions', 'LiveSessionReceiver', 'LivePlan', 'LiveEntry'},
     'features.analytics': {'Analytics'},
     'features.ads': {'QueueAd', 'NativeAdCard', 'AdConsentSheet'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},

@@ -96,6 +96,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.12.4")
     // Launch splash (logo on the app background) on every Android version.
     implementation("androidx.core:core-splashscreen:1.2.0")
+    // 행사 당일 진행 중 알림 (2026-10-26): NotificationCompat's Android 16 live update (ProgressStyle, setRequestPromotedOngoing, setShortCriticalText)
+    // needs core 1.17; compileSdk 36 (not 36.1) has no platform `setRequestPromotedOngoing`, so the compat path is the only one.
+    implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     // 활동 이미지(`imageUrl`) 표시 (Apache-2.0).
