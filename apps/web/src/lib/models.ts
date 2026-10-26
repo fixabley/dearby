@@ -198,7 +198,10 @@ export function fieldTagsOf(item: { fieldTags?: Tag[] }): Tag[] {
 export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
   return item.traitTags ?? item.tags ?? [];
 }
-// 트랙·세션 시간표 (contract "트랙·세션 시간표 — 2026-10-26"): `favorited` is dropped, the web has no sign-in.
+// 즐겨찾기·세션 찜 (contract "즐겨찾기(하트)", "트랙·세션 시간표", web since "웹 화면 — 2단계 A"): true only on a signed-in response
+// (the proxy sends the access cookie as Bearer); anonymous and older responses read false.
+const favorited = z.boolean().optional().catch(false);
+// 트랙·세션 시간표 (contract "트랙·세션 시간표 — 2026-10-26").
 const trackSchema = z.object({ id: z.number().int(), name: text, room: text.nullable(), position: z.number().int() });
 export type Track = z.infer<typeof trackSchema>;
 const sessionSchema = z.object({
@@ -211,6 +214,7 @@ const sessionSchema = z.object({
   endAt: text,
   speakers: z.array(z.object({ name: text, affiliation: text.nullable() })),
   tags: z.array(tagSchema).catch([]),
+  favorited,
 });
 export type Session = z.infer<typeof sessionSchema>;
 export const timetableSchema = z.object({
@@ -255,6 +259,7 @@ export const activitySchema = z.object({
   place: placeSchema.nullable().optional().catch(null),
   // 활동 상태 (contract "활동 상태" 2026-10-26); older responses omit it, an unknown value reads as none.
   status: z.enum(ACTIVITY_STATUSES).optional().catch(undefined),
+  favorited,
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -288,6 +293,7 @@ export const programSummarySchema = z.object({
   logoUrl: text.nullable().optional().catch(null),
   /** Activities per 활동 상태 in the query's scope, zeros left out (contract "활동 상태"); absent on older responses. */
   statusCounts: z.record(z.string(), z.number().int().nonnegative()).optional().catch(undefined),
+  favorited,
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -295,6 +301,28 @@ export const programPageSchema = z.object({
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 export type ProgramPage = z.infer<typeof programPageSchema>;
+/**
+ * `GET /v1/me/favorites` (contract "즐겨찾기(하트)"): programs most recently favorited first, activities by nearest deadline (past ones
+ * last) — shown in server order. `notifyLevel` and the apps' push settings are not read on the web.
+ */
+export const favoritesSchema = z.object({
+  programs: z.array(z.object({ program: programSummarySchema, favoritedAt: text, newRecruitment: z.boolean().catch(false) })),
+  activities: z.array(z.object({ activity: activitySchema, program: programSummarySchema, favoritedAt: text })),
+});
+export type Favorites = z.infer<typeof favoritesSchema>;
+/** `GET /v1/me/session-favorites` (contract "트랙·세션 시간표"): 내 시간표 in session start order, each with its block and track. */
+export const sessionFavoriteSchema = z.object({
+  activityId: z.number().int(),
+  activityName: text,
+  scheduleId: z.number().int(),
+  scheduleTitle: text,
+  schedule: scheduleSchema,
+  track: trackSchema.nullable().optional().catch(null),
+  session: sessionSchema,
+  favoritedAt: text,
+});
+export type SessionFavorite = z.infer<typeof sessionFavoriteSchema>;
+export const sessionFavoritesSchema = z.object({ items: z.array(sessionFavoriteSchema) });
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
 export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);

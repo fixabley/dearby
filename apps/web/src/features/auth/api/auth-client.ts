@@ -25,7 +25,7 @@ async function refreshOnce(): Promise<boolean> {
   return navigator.locks ? navigator.locks.request("dearby-auth-refresh", work) : work();
 }
 /** An account request: on 401 (expired access token) refresh once and retry; a second 401 means the session is over. */
-async function account<T>(path: string, init?: RequestInit): Promise<T> {
+export async function account<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     return await request<T>(path, init);
   } catch (error) {
@@ -34,8 +34,22 @@ async function account<T>(path: string, init?: RequestInit): Promise<T> {
     return request<T>(path, init);
   }
 }
-function accountSend<T>(path: string, method: "POST" | "PATCH" | "DELETE", body: unknown = {}) {
+export function accountSend<T>(path: string, method: "PUT" | "POST" | "PATCH" | "DELETE", body: unknown = {}) {
   return account<T>(path, { method, headers: json, body: JSON.stringify(body) });
+}
+/**
+ * A public read that carries the session when there is one (발견·활동·시간표, contract "웹 화면 — 2단계 A"): the proxy answers 401
+ * `SIGNED_OUT` while the access token has lapsed, so refresh once and retry — even when the refresh was refused, since the cookies
+ * are then gone and the retry reads anonymously (a visitor whose session ended must still browse).
+ */
+export async function publicRead<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await request<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof RequestError && error.status === 401 && error.code === "SIGNED_OUT")) throw error;
+    await refreshOnce();
+    return request<T>(path, init);
+  }
 }
 
 export type Session = { signedIn: boolean; consent?: ProfileConsent | null };

@@ -22,6 +22,10 @@ export type Auth = {
   signOut: () => Promise<void>;
   /** The session ended elsewhere (account deleted, refresh refused): forget it here and optionally say why. */
   signedOutLocally: (notice?: string) => void;
+  /** Counts sign-ins and sign-outs after the first load, so public reads that carry `favorited` reload on a change (not on page load). */
+  epoch: number;
+  /** A transient notice at the bottom of the screen (shared toast). */
+  notify: (text: string) => void;
 };
 const AuthContext = createContext<Auth | null>(null);
 const signedOut: State = { status: "signedOut", consent: undefined };
@@ -60,6 +64,13 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
   useEffect(() => {
     if (state.status !== "loading") setSignedIn(state.status === "signedIn" && state.consent?.consentRequired === false);
   }, [state]);
+  const [epoch, setEpoch] = useState(0);
+  const seen = useRef<Status>("loading");
+  useEffect(() => {
+    if (state.status === "loading") return;
+    if (seen.current !== "loading" && seen.current !== state.status) setEpoch((value) => value + 1);
+    seen.current = state.status;
+  }, [state.status]);
 
   const notify = useCallback((text: string) => setNotice({ id: Date.now(), text }), []);
   /** Signed in with consent: run what the person was doing, then ask about the browser's saved cards. */
@@ -128,6 +139,8 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
     requireAccount,
     signOut,
     signedOutLocally,
+    epoch,
+    notify,
   };
   return (
     <AuthContext value={value}>

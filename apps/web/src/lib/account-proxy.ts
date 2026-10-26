@@ -1,9 +1,9 @@
 // Signed-in account routes of the `/api/*` proxy (contract native-v1.md "웹 로그인"): a fixed allowlist, the access token from the
 // session cookie as Bearer, one refresh on 401, and validated bodies both ways. Nothing here is reachable without the cookies.
 import { z } from "zod";
-import { TOKEN, readGuestCookie } from "./guest-upstream";
+import { TOKEN, acceptLanguage, readGuestCookie } from "./guest-upstream";
 import { callAsAccount, clearedSessionCookies, withCookies } from "./session";
-import { profileConsentSchema } from "./models";
+import { favoritesSchema, profileConsentSchema, sessionFavoritesSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
@@ -41,11 +41,34 @@ const optionsSchema = z.object({ challengeId, options: z.looseObject({}) });
 const importSchema = z.object({ imported: z.number().int().nonnegative() });
 const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED", "GUEST_SESSION_INVALID"];
 
-type Route = { body?: keyof typeof bodies; parse: (json: unknown) => unknown; noContent?: boolean };
+type Route = {
+  body?: keyof typeof bodies;
+  parse: (json: unknown) => unknown;
+  noContent?: boolean;
+  /** The browser's `Accept-Language` goes upstream (즐겨찾기 activity text is ko or en) and the response varies on it. */
+  language?: boolean;
+};
+const NUMERIC_ID = /^[1-9]\d{0,17}$/;
+const noContent: Route = { parse: () => undefined, noContent: true };
 /** `METHOD path` → how the request and response are validated. `:id` is a passkey credential id, `:provider` apple|google. */
 function route(method: string, segments: string[]): Route | undefined {
   const path = segments.join("/");
   if (method === "GET" && path === "me") return { parse: (json) => meSchema.parse(json) };
+  // 즐겨찾기·세션 찜 (contract "즐겨찾기(하트)", "트랙·세션 시간표", web "웹 화면 — 2단계 A"): PUT without a body keeps the API's default
+  // notify level; DELETE is idempotent. Both answer 204.
+  if (method === "GET" && path === "me/favorites") return { parse: (json) => favoritesSchema.parse(json), language: true };
+  if (segments.length === 4 && segments[0] === "me" && segments[1] === "favorites" && ["programs", "activities"].includes(segments[2]) && NUMERIC_ID.test(segments[3])) {
+    if (method === "PUT") return { ...noContent, body: "empty" };
+    if (method === "DELETE") return noContent;
+  }
+  // Opening a favorited program turns its `새 모집` off.
+  if (method === "POST" && segments.length === 5 && path.startsWith("me/favorites/programs/") && segments[4] === "seen" && NUMERIC_ID.test(segments[3]))
+    return { ...noContent, body: "empty" };
+  if (method === "GET" && path === "me/session-favorites") return { parse: (json) => sessionFavoritesSchema.parse(json) };
+  if (segments.length === 3 && segments[0] === "me" && segments[1] === "session-favorites" && NUMERIC_ID.test(segments[2])) {
+    if (method === "PUT") return { ...noContent, body: "empty" };
+    if (method === "DELETE") return noContent;
+  }
   if (method === "DELETE" && path === "me") return { parse: () => undefined, noContent: true };
   if (method === "GET" && path === "profile") return { parse: (json) => profileConsentSchema.parse(json) };
   if (method === "POST" && path === "me/consents") return { body: "consents", parse: () => undefined, noContent: true };
@@ -105,8 +128,14 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     body = { guestToken };
   }
   const path = segments.join("/");
+  const responseHeaders = spec.language ? { ...headers, Vary: `${headers.Vary}, Accept-Language` } : headers;
   try {
-    const result = await callAsAccount(cookieHeader, { path, method, body: mutation ? body : undefined });
+    const result = await callAsAccount(cookieHeader, {
+      path,
+      method,
+      body: mutation ? body : undefined,
+      acceptLanguage: spec.language ? acceptLanguage(request.headers.get("accept-language")) : undefined,
+    });
     if (result.kind === "signedOut") return failure(401, "SIGNED_OUT");
     const { response } = result;
     // Account deletion ends the session here as well; the API has already dropped the refresh token.
@@ -128,7 +157,7 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     }
     if (spec.noContent) return new Response(null, { status: 204, headers });
     const output = spec.parse(response.status === 204 ? undefined : await response.json());
-    return Response.json(output ?? {}, { status: response.status === 201 ? 201 : 200, headers });
+    return Response.json(output ?? {}, { status: response.status === 201 ? 201 : 200, headers: responseHeaders });
   } catch {
     return failure(502, "UPSTREAM_UNAVAILABLE");
   }

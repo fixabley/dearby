@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { type Schedule, type Session, type Timetable, type Track, clockTime, scheduleLabel } from "@/lib/models";
-import { errorMessage, request, RequestError } from "@/lib/client";
+import { errorMessage, RequestError } from "@/lib/client";
+import { publicRead } from "@/features/auth/api/auth-client";
 import { track } from "@/shared/lib/analytics";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
@@ -96,7 +97,7 @@ function TimetableView({ activityId, schedule }: { activityId: number; schedule:
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    request<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
+    publicRead<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
       .then((found) => {
         setTimetable(found);
         track("timetable_view", { activity_id: activityId });

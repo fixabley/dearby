@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type Activity,
   type Schedule,
@@ -17,7 +17,9 @@ import {
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
 import { CategoryIcon } from "@/shared/ui/category-icon";
-import { errorMessage, request, RequestError } from "@/lib/client";
+import { errorMessage, RequestError } from "@/lib/client";
+import { publicRead } from "@/features/auth/api/auth-client";
+import { useAuth } from "@/features/auth/model/auth-context";
 import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
@@ -59,12 +61,16 @@ export function ActivityDetail({ id }: { id: number }) {
   // closing animation keeps its content.
   const [timetableId, setTimetableId] = useState<number>();
   const [timetableOpen, setTimetableOpen] = useState(false);
+  // A sign-in or sign-out reloads the activity so `favorited` follows the account; `activity_view` counts only the first load.
+  const { epoch } = useAuth();
+  const viewed = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
-    request<Activity>(`/activities/${id}`, { signal: controller.signal })
+    publicRead<Activity>(`/activities/${id}`, { signal: controller.signal })
       .then((found) => {
         setActivity(found);
-        track("activity_view", eventParams(found));
+        if (!viewed.current) track("activity_view", eventParams(found));
+        viewed.current = true;
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
@@ -76,7 +82,7 @@ export function ActivityDetail({ id }: { id: number }) {
       controller.abort();
       clearInterval(timer);
     };
-  }, [id, attempt]);
+  }, [id, attempt, epoch]);
   if (error)
     return (
       <Failure

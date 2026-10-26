@@ -23,7 +23,9 @@ import {
   upcomingStartDday,
 } from "@/lib/models";
 import { track } from "@/shared/lib/analytics";
-import { errorMessage, request } from "@/lib/client";
+import { errorMessage } from "@/lib/client";
+import { publicRead } from "@/features/auth/api/auth-client";
+import { useAuth } from "@/features/auth/model/auth-context";
 import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
@@ -93,21 +95,23 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
   // The groups as one value, so the effect reruns when the URL's `status` changes.
   const statusKey = groups.join(",");
   const categoryKey = categories.join(",");
+  // A sign-in or sign-out reloads the list so `favorited` (hearts) follows the account (contract "웹 화면 — 2단계 A").
+  const { epoch } = useAuth();
   useEffect(() => {
     const controller = new AbortController();
     const chosen = categoryKey ? categoryKey.split(",") : [];
-    request<ProgramPage>(programsPath(q, statusKey.split(",") as StatusGroup[], kind, chosen), { signal: controller.signal })
+    publicRead<ProgramPage>(programsPath(q, statusKey.split(",") as StatusGroup[], kind, chosen), { signal: controller.signal })
       .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [q, statusKey, categoryKey, kind, attempt]);
+  }, [q, statusKey, categoryKey, kind, attempt, epoch]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, groups, kind, categories, page.nextCursor))
+    publicRead<ProgramPage>(programsPath(q, groups, kind, categories, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -203,8 +207,8 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
         )
       ) : (
         <>
-          {/* Keyed by the groups so each program loads its activities again for new ones. */}
-          <ul key={`${statusKey}:${categoryKey}`} className="flex flex-col gap-2.5">
+          {/* Keyed by the groups (and the sign-in epoch) so each program loads its activities again for new ones. */}
+          <ul key={`${statusKey}:${categoryKey}:${epoch}`} className="flex flex-col gap-2.5">
             {page.items.map((program) => (
               <ProgramRow
                 key={program.id}
@@ -441,7 +445,7 @@ function ProgramRow({
     const controller = new AbortController();
     const status = groupStatuses(groups).join(",");
     const category = categories.length ? `&category=${categories.join(",")}` : "";
-    request<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&status=${status}${category}&size=100`, {
+    publicRead<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&status=${status}${category}&size=100`, {
       signal: controller.signal,
     })
       .then(setActivities)
