@@ -171,7 +171,7 @@ private sealed interface Route {
     LaunchedEffect(signedIn, ready, walletState.needSignIn) { if (signedIn && !ready && walletState.needSignIn && consentNeeded) route = Route.Consent }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
-    // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their
+    // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `dismissKeyboardOnScroll()` on their
     // scroll containers but no `imePadding()` of their own, and the tab bar is hidden while the keyboard is up.
     // 사용 통계: one `screen_view` per screen shown (analytics-v1 screen names), nothing else about the screen.
     val favoritesView by favorites.state.collectAsStateWithLifecycle()
