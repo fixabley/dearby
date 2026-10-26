@@ -197,11 +197,6 @@ import SwiftUI
                     sessionReminders.refresh()
                 }
             }
-            .sheet(item: Binding(get: { activityModel.asking }, set: { if $0 == nil { activityModel.answer(.notYet) } })) { activity in
-                ApplyConfirmationSheet(activityTitle: activity.title, applied: { activityModel.answer(.applied) },
-                                       notYet: { activityModel.answer(.notYet) }, neverAsk: { activityModel.answer(.neverAsk) })
-                    .presentationDetents([.medium])
-            }
         }
     }
     /// 세션 찜 (contract "트랙·세션 시간표"), kept apart from `body` so the compiler can type-check it: every session heart reads the one model;
@@ -246,6 +241,9 @@ import SwiftUI
                 .alert(favorites.notice ?? "", isPresented: Binding(get: { isTop && favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
                     Button("확인", role: .cancel) {}
                 }
+                // `신청하셨나요?` and the 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26) on the top layer too: the queue cover and its
+                // detail sheet carry `promptLayer`, so `+` there is asked where it was pressed.
+                .activityPrompts(activityModel, isTop: isTop)
                 .background {
                     // A separate host so it does not compete with the other alert.
                     Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { isTop && sessionFavorites.notice != nil },
