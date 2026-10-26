@@ -47,5 +47,4 @@ enum ActivityCategory: String, CaseIterable, Sendable {
 enum DiscoveryKind: String, CaseIterable, Sendable {
     case program, event
     var title: String { self == .program ? "프로그램" : "이벤트" }
-    static let eventCategories: [ActivityCategory] = [.conference, .meetup, .lecture, .workshop]
 }
