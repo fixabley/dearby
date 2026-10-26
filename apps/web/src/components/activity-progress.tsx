@@ -17,7 +17,7 @@ import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Failure } from "@/shared/ui/states";
 import { ActivityCard, activityCardProps } from "@/widgets/activity/activity-card";
-import { TimetableSheet } from "@/widgets/activity/timetable";
+import { TimetableSheet, type TimetableTarget } from "@/widgets/activity/timetable";
 
 /**
  * `/mine/[id]` (contract "진행 단계 화면 정리"·"선발 과정·활동 일정 분리"·"트랙·세션 시간표" 내 활동, web 2단계 B): the activity card (no tag line)
@@ -30,7 +30,7 @@ export function ActivityProgress({ id }: { id: number }) {
   const mine = useMine();
   const router = useRouter();
   const [now, setNow] = useState(Date.now);
-  const [timetableId, setTimetableId] = useState<number>();
+  const [timetableTarget, setTimetableTarget] = useState<TimetableTarget>();
   const [timetableOpen, setTimetableOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,7 +68,6 @@ export function ActivityProgress({ id }: { id: number }) {
   const selection = progress.stages.filter((stage) => !stage.inActivitySection);
   const activityStages = progress.stages.filter((stage) => stage.inActivitySection);
   const badge = progressBadge(progress, now);
-  const openTimetable = progress.stages.find((stage) => stage.id === timetableId)?.schedule;
   async function pick(stage: Stage, status: ScheduleStatus) {
     setError("");
     try {
@@ -93,7 +92,7 @@ export function ActivityProgress({ id }: { id: number }) {
       <InsetGroup key={title} title={title} trailing={trailing}>
         {stages.map((stage) => (
           <StageRow key={stage.id} stage={stage} now={now} onPick={(status) => pick(stage, status)} onTimetable={() => {
-            setTimetableId(stage.id);
+            setTimetableTarget({ kind: "block", schedule: stage.schedule });
             setTimetableOpen(true);
           }} />
         ))}
@@ -122,7 +121,7 @@ export function ActivityProgress({ id }: { id: number }) {
       {section("선발 과정", selection, !progress.participating && statusBadge(badge))}
       {section("활동 일정", activityStages, progress.participating ? statusBadge("참여 중", true) : !selection.length && statusBadge(badge))}
       <p className="mt-1.5 px-4 text-footnote text-secondary-label">표시는 내가 남긴 것이며 주최 측 결과가 아니에요.</p>
-      <TimetableSheet activityId={activity.id} activityName={activity.name} schedule={openTimetable} open={timetableOpen} onOpenChange={setTimetableOpen} />
+      <TimetableSheet activityId={activity.id} activityName={activity.name} target={timetableTarget} open={timetableOpen} onOpenChange={setTimetableOpen} onTargetChange={setTimetableTarget} />
       <Button variant="destructive" className="mx-auto mt-8 flex" disabled={busy} onClick={() => setConfirming(true)}>
         내 활동에서 빼기
       </Button>

@@ -7,7 +7,7 @@ import { track } from "@/shared/lib/analytics";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { Icon } from "@/shared/ui/icon";
-import { TimetableSheet } from "./timetable";
+import { TimetableSheet, type TimetableTarget } from "./timetable";
 
 /**
  * 오늘 내 행사 (contract "오늘 내 행사 카드" 2026-10-26) at the top of 발견: the one applied activity whose 활동 일정 block is today or within 7
@@ -20,6 +20,8 @@ export function TodayCard({ className }: { className?: string }) {
   const router = useRouter();
   const [now, setNow] = useState(Date.now);
   const [timetableOpen, setTimetableOpen] = useState(false);
+  // The sheet may switch to a day view (#447); it starts on the card's block each time it opens.
+  const [target, setTarget] = useState<TimetableTarget>();
   // Redrawn each minute so `지금` and the next session move on.
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60_000);
@@ -38,8 +40,10 @@ export function TodayCard({ className }: { className?: string }) {
   const timetable = today && !!event.block.hasTimetable;
   const open = () => {
     track("today_card_tap", { ...activityParams(event.activity), target: timetable ? "timetable" : "progress" });
-    if (timetable) setTimetableOpen(true);
-    else router.push(`/mine/${event.activity.id}`);
+    if (timetable) {
+      setTarget({ kind: "block", schedule: event.block });
+      setTimetableOpen(true);
+    } else router.push(`/mine/${event.activity.id}`);
   };
   return (
     <Card className={className}>
@@ -64,9 +68,10 @@ export function TodayCard({ className }: { className?: string }) {
         <TimetableSheet
           activityId={event.activity.id}
           activityName={event.activity.name}
-          schedule={event.block}
+          target={target}
           open={timetableOpen}
           onOpenChange={setTimetableOpen}
+          onTargetChange={setTarget}
         />
       )}
     </Card>
