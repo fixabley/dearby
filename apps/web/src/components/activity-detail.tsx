@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   type Activity,
   type Schedule,
@@ -21,7 +21,8 @@ import { downloadIcs, icsOf } from "@/lib/ics";
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
 import { CategoryIcon } from "@/shared/ui/category-icon";
-import { errorMessage, request, RequestError } from "@/lib/client";
+import { errorMessage, publicRead, RequestError } from "@/lib/client";
+import { useAuth } from "@/features/auth/model/auth-context";
 import { track } from "@/shared/lib/analytics";
 import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
@@ -38,6 +39,7 @@ import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { TimetableSheet, type TimetableTarget } from "@/widgets/activity/timetable";
 import { statusVariant } from "@/widgets/activity/activity-card";
+import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
 import { MineToggle } from "@/features/mine/ui/mine-toggle";
 
 /** One row of a schedule section: the block it stands for, its heading, the date text and an optional `D-n` badge (모집 기간 only). */
@@ -67,12 +69,16 @@ export function ActivityDetail({ id }: { id: number }) {
   // target outlives `open` so the closing animation keeps its content.
   const [timetableTarget, setTimetableTarget] = useState<TimetableTarget>();
   const [timetableOpen, setTimetableOpen] = useState(false);
+  // A sign-in or sign-out reloads the activity so `favorited` follows the account; `activity_view` counts only the first load.
+  const { epoch } = useAuth();
+  const viewed = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
-    request<Activity>(`/activities/${id}`, { signal: controller.signal })
+    publicRead<Activity>(`/activities/${id}`, { signal: controller.signal })
       .then((found) => {
         setActivity(found);
-        track("activity_view", eventParams(found));
+        if (!viewed.current) track("activity_view", eventParams(found));
+        viewed.current = true;
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
@@ -84,7 +90,7 @@ export function ActivityDetail({ id }: { id: number }) {
       controller.abort();
       clearInterval(timer);
     };
-  }, [id, attempt]);
+  }, [id, attempt, epoch]);
   if (error)
     return (
       <Failure
@@ -217,8 +223,11 @@ export function ActivityDetail({ id }: { id: number }) {
                 {categoryLabel(activity.category)}
               </Badge>
             )}
-            {/* 내 활동에 추가 / 내 활동으로 (contract "내 활동 서버 저장" › 상세 행동 정리; web 2단계 B puts it beside the capsules). */}
-            <MineToggle activity={activity} source="link" className="-my-1.5 ml-auto" />
+            {/* 활동 하트 + 내 활동 `+` (contract "즐겨찾기(하트)" › 활동 상세 머리, web 2단계 A·B): the heart with the 내 활동 toggle beside it. */}
+            <span className="-my-1.5 ml-auto flex items-center gap-1">
+              <FavoriteHeart kind="activity" id={activity.id} favorited={activity.favorited ?? false} category={activity.category} />
+              <MineToggle activity={activity} source="link" />
+            </span>
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>
           <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>

@@ -1,43 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  type Schedule,
-  type ScheduleDay,
-  type Session,
-  type Timetable,
-  type Track,
-  clockTime,
-  scheduleDayRange,
-  scheduleLabel,
-} from "@/lib/models";
-import { errorMessage, request, RequestError } from "@/lib/client";
+import { type Schedule, type ScheduleDay, type Session, type Timetable, type Track, clockTime, scheduleDayRange, scheduleLabel } from "@/lib/models";
+import { errorMessage, publicRead, RequestError } from "@/lib/client";
+import { useAuth } from "@/features/auth/model/auth-context";
+import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
 import { track } from "@/shared/lib/analytics";
-import { cn } from "@/shared/lib/utils";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Icon } from "@/shared/ui/icon";
+import { Segmented } from "@/shared/ui/segmented";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from "@/shared/ui/sheet";
 import { Failure } from "@/shared/ui/states";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
-import { TagIcon } from "@/shared/ui/tag-icon";
-
-/** Track colours by `position` (contract "트랙·세션 시간표": the server sends only the order); light and dark pairs keep the badge text readable. */
-const TRACK_COLORS = [
-  "bg-teal-100 text-teal-900 dark:bg-teal-400/20 dark:text-teal-100",
-  "bg-indigo-100 text-indigo-900 dark:bg-indigo-400/20 dark:text-indigo-100",
-  "bg-orange-100 text-orange-900 dark:bg-orange-400/20 dark:text-orange-100",
-  "bg-pink-100 text-pink-900 dark:bg-pink-400/20 dark:text-pink-100",
-  "bg-lime-100 text-lime-900 dark:bg-lime-400/20 dark:text-lime-100",
-  "bg-purple-100 text-purple-900 dark:bg-purple-400/20 dark:text-purple-100",
-];
-const trackColor = (position: number) => TRACK_COLORS[position % TRACK_COLORS.length];
+import { MyTimetableList } from "./my-timetable";
+import { type Entry, isBreak, SessionCard, TrackBadge } from "./session-card";
 
 type Row = { start: number; end: number };
-/**
- * One cell's worth of the table: a real session, or in the day timetable a whole block without a timetable (`block: "plain"`,
- * the block title as a muted band) or one whose timetable failed to load (`block: "failed"`).
- */
-type Entry = Session & { block?: "plain" | "failed" };
+/** `전체` is the table; `mine` the favorited sessions as 나만의 시간표 (contract "트랙·세션 시간표" › `내 시간표(찜한 세션)`). */
+type View = "all" | "mine";
 
 /**
  * Rows of the table (contract "트랙·세션 시간표" › 행 나누기): every session boundary splits the block, so tracks with different
@@ -57,12 +36,15 @@ function rowsOf(sessions: Entry[]): Row[] {
  */
 export type TimetableTarget = { kind: "block"; schedule: Schedule; day?: ScheduleDay } | { kind: "day"; day: ScheduleDay };
 
+/** What a loaded block or day shows: its tracks and entries and the zone. */
+type Loaded = { caption: string; tracks: Track[]; entries: Entry[]; timeZone: string };
+
 /**
- * The timetable as a modal (contract "트랙·세션 시간표" › 앱·웹 화면, 2026-10-26 "웹도 마찬가지로"): a near-full-height bottom
- * sheet on phones, a large centred dialog from `md`. Radix gives ESC, the focus trap, focus return and `aria-labelledby`/
- * `aria-describedby` from the title and time range. Content mounts on open, so each open loads afresh. The web has no sign-in, so
- * no 찜 and no `전체 | 내 시간표` switch — a footer line points to the app. A block view offers `이 날 전체 보기` when its day has
- * other timed blocks; the day view swaps in inside the same sheet so the dialog is not re-opened.
+ * The timetable as a modal (contract "트랙·세션 시간표" › 앱·웹 화면, 2026-10-26 "웹도 마찬가지로"; hearts and the `전체 | 내 시간표`
+ * switch since "웹 화면 — 2단계 A"): a near-full-height bottom sheet on phones, a large centred dialog from `md`. Radix gives ESC, the
+ * focus trap, focus return and `aria-labelledby`/`aria-describedby` from the title and time range. Content mounts on open, so each
+ * open loads afresh and starts on `전체`. A block view offers `이 날 전체 보기` when its day has other timed blocks; the day view swaps
+ * in inside the same sheet so the dialog is not re-opened. Signed out, the 전체 view carries a one-line sign-in hint.
  */
 export function TimetableSheet({
   activityId,
@@ -79,8 +61,16 @@ export function TimetableSheet({
   onOpenChange: (open: boolean) => void;
   onTargetChange: (target: TimetableTarget) => void;
 }) {
+  const [view, setView] = useState<View>("all");
+  const { signedIn } = useAuth();
   return (
-    <Sheet open={open && !!target} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open && !!target}
+      onOpenChange={(next) => {
+        if (!next) setView("all");
+        onOpenChange(next);
+      }}
+    >
       <SheetContent className="flex h-[92dvh] flex-col bg-background px-0 md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(85dvh,960px)] md:w-[min(1200px,calc(100vw-4rem))] md:max-w-none md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-card md:pt-5 md:[&>:first-child]:hidden">
         {target && (
           <>
@@ -111,14 +101,27 @@ export function TimetableSheet({
                 <Icon name="close" size="inline" />
               </SheetClose>
             </header>
+            <Segmented
+              label="시간표 보기"
+              className="mx-5 mb-3 md:max-w-xs"
+              options={[
+                { value: "all", label: "전체" },
+                { value: "mine", label: "내 시간표" },
+              ]}
+              value={view}
+              onChange={setView}
+            />
             <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3">
               {target.kind === "day" ? (
-                <DayTimetableView activityId={activityId} day={target.day} />
+                <DayTimetableView activityId={activityId} day={target.day} view={view} />
               ) : (
-                <TimetableView activityId={activityId} schedule={target.schedule} />
+                <TimetableView activityId={activityId} schedule={target.schedule} view={view} />
               )}
             </div>
-            <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">내 시간표는 Dearby 앱에서 만들 수 있어요.</p>
+            {/* Signed out, the 전체 view keeps one footer line; the 내 시간표 view already says it with a 로그인 button (2026-10-27 결정). */}
+            {!signedIn && view === "all" && (
+              <p className="border-t border-separator px-5 pt-3 text-footnote text-secondary-label">로그인하면 웹에서도 내 시간표를 만들 수 있어요.</p>
+            )}
           </>
         )}
       </SheetContent>
@@ -142,13 +145,14 @@ function TimetableLoading() {
  * stays empty and a full-width session (`trackId` null) spans the row. The sheet body scrolls the whole table both ways at once,
  * with the time column and the track row pinned; a wide dialog fits every column without sideways scrolling.
  */
-function TimetableView({ activityId, schedule }: { activityId: number; schedule: Schedule }) {
+function TimetableView({ activityId, schedule, view }: { activityId: number; schedule: Schedule; view: View }) {
   const [timetable, setTimetable] = useState<Timetable | null>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const { epoch } = useAuth();
   useEffect(() => {
     const controller = new AbortController();
-    request<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
+    publicRead<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
       .then((found) => {
         setTimetable(found);
         track("timetable_view", { activity_id: activityId });
@@ -159,7 +163,7 @@ function TimetableView({ activityId, schedule }: { activityId: number; schedule:
         else setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [activityId, schedule.id, attempt]);
+  }, [activityId, schedule.id, attempt, epoch]);
   if (error)
     return (
       <Failure
@@ -175,11 +179,16 @@ function TimetableView({ activityId, schedule }: { activityId: number; schedule:
   if (!timetable || !timetable.sessions.length)
     return <p className="px-4 text-subheadline text-secondary-label">시간표가 아직 없어요.</p>;
   return (
-    <TimetableTable
-      caption={`${schedule.title} 시간표`}
-      tracks={timetable.tracks}
-      entries={timetable.sessions}
-      timeZone={timetable.schedule.timeZone ?? "Asia/Seoul"}
+    <LoadedTimetable
+      key={epoch}
+      activityId={activityId}
+      view={view}
+      loaded={{
+        caption: `${schedule.title} 시간표`,
+        tracks: timetable.tracks,
+        entries: timetable.sessions,
+        timeZone: timetable.schedule.timeZone ?? "Asia/Seoul",
+      }}
     />
   );
 }
@@ -193,16 +202,17 @@ type BlockResult = Timetable | null | "failed";
  * carry their own 트랙 A–G rows), sessions keep their times — and a block without a timetable, or one that failed, becomes one
  * full-width band row so the day reads as a whole. A failure in some blocks keeps the rest and offers one retry.
  */
-function DayTimetableView({ activityId, day }: { activityId: number; day: ScheduleDay }) {
+function DayTimetableView({ activityId, day, view }: { activityId: number; day: ScheduleDay; view: View }) {
   const [results, setResults] = useState<Map<number, BlockResult>>();
   const [attempt, setAttempt] = useState(0);
+  const { epoch } = useAuth();
   useEffect(() => {
     const controller = new AbortController();
     Promise.all(
       day.schedules
         .filter((schedule) => schedule.hasTimetable)
         .map((schedule) =>
-          request<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
+          publicRead<Timetable>(`/activities/${activityId}/schedules/${schedule.id}/timetable`, { signal: controller.signal })
             .then((found): [number, BlockResult] => [schedule.id, found])
             .catch((error): [number, BlockResult] => [schedule.id, error instanceof RequestError && error.status === 404 ? null : "failed"]),
         ),
@@ -212,7 +222,7 @@ function DayTimetableView({ activityId, day }: { activityId: number; day: Schedu
       track("timetable_view", { activity_id: activityId });
     });
     return () => controller.abort();
-  }, [activityId, day, attempt]);
+  }, [activityId, day, attempt, epoch]);
   if (results === undefined) return <TimetableLoading />;
   const retry = () => {
     setResults(undefined);
@@ -223,7 +233,7 @@ function DayTimetableView({ activityId, day }: { activityId: number; day: Schedu
   const merged = mergeDay(day, results);
   return (
     <>
-      <TimetableTable caption={`${day.label} 시간표`} tracks={merged.tracks} entries={merged.entries} timeZone={day.timeZone} />
+      <LoadedTimetable key={epoch} activityId={activityId} view={view} loaded={{ caption: `${day.label} 시간표`, ...merged, timeZone: day.timeZone }} />
       {failed > 0 && (
         <p className="flex items-center justify-between gap-3 px-2 py-2 text-footnote text-secondary-label">
           일부 블록을 불러오지 못했어요.
@@ -274,18 +284,62 @@ function mergeDay(day: ScheduleDay, results: Map<number, BlockResult>): { tracks
   return { tracks, entries };
 }
 
-function TimetableTable({
-  caption,
-  tracks: unsorted,
-  entries: sessions,
-  timeZone,
-}: {
-  caption: string;
-  tracks: Track[];
-  entries: Entry[];
-  timeZone: string;
-}) {
-  const tracks = [...unsorted].sort((a, b) => a.position - b.position);
+/**
+ * A loaded block or day in the chosen view. Hearts start from the response's `favorited` (keyed by the sign-in epoch, so a reload
+ * resets them) and the set of favorited ids follows each toggle, so `내 시간표` reflects the taps made here (contract "트랙·세션 시간표"
+ * › 내 시간표, web "웹 화면 — 2단계 A").
+ */
+function LoadedTimetable({ activityId, loaded, view }: { activityId: number; loaded: Loaded; view: View }) {
+  const [favorites, setFavorites] = useState<Set<number>>(() => new Set(loaded.entries.filter((s) => s.favorited).map((s) => s.id)));
+  const heart = (session: Entry) =>
+    isBreak(session) ? undefined : (
+      <FavoriteHeart
+        kind="session"
+        id={session.id}
+        favorited={favorites.has(session.id)}
+        activityId={activityId}
+        size="sm"
+        onChange={(on) =>
+          setFavorites((current) => {
+            const next = new Set(current);
+            if (on) next.add(session.id);
+            else next.delete(session.id);
+            return next;
+          })
+        }
+      />
+    );
+  if (view === "mine") return <MyTimetableView loaded={loaded} favorites={favorites} heart={heart} />;
+  return <TimetableTable loaded={loaded} heart={heart} />;
+}
+
+/** `내 시간표` inside the sheet: a sign-in notice, the empty notice, or the favorited sessions of this block or day as 나만의 시간표. */
+function MyTimetableView({ loaded, favorites, heart }: { loaded: Loaded; favorites: Set<number>; heart: (session: Entry) => React.ReactNode }) {
+  const { signedIn, openSignIn } = useAuth();
+  if (!signedIn)
+    return (
+      <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+        <p className="text-subheadline text-secondary-label break-keep">로그인하면 세션에 하트를 눌러 내 시간표를 만들 수 있어요.</p>
+        <Button variant="tinted" onClick={openSignIn}>
+          로그인
+        </Button>
+      </div>
+    );
+  const tracks = new Map(loaded.tracks.map((track) => [track.id, track]));
+  const items = loaded.entries
+    .filter((session) => !isBreak(session) && favorites.has(session.id))
+    .map((session) => ({ session: session as Session, track: session.trackId === null ? null : (tracks.get(session.trackId) ?? null) }));
+  if (!items.length) return <p className="px-4 py-10 text-center text-subheadline text-secondary-label break-keep">세션에 하트를 누르면 내 시간표에 모여요</p>;
+  return (
+    <div className="px-1 pb-3">
+      <MyTimetableList items={items} timeZone={loaded.timeZone} favorite={(item) => heart(item.session)} />
+    </div>
+  );
+}
+
+function TimetableTable({ loaded, heart }: { loaded: Loaded; heart: (session: Entry) => React.ReactNode }) {
+  const { caption, entries: sessions, timeZone } = loaded;
+  const tracks = [...loaded.tracks].sort((a, b) => a.position - b.position);
   const rows = rowsOf(sessions);
   const columns = Math.max(1, tracks.length);
   const span = (session: Entry) =>
@@ -339,7 +393,7 @@ function TimetableTable({
               {wide
                 ? Date.parse(wide.startAt) === row.start && (
                     <td colSpan={columns} rowSpan={span(wide)} className="h-px align-top">
-                      <SessionCard session={wide} time={time} spansRows={span(wide) > 1} />
+                      <SessionCard session={wide} time={time} spansRows={span(wide) > 1} favorite={heart(wide)} />
                     </td>
                   )
                 : tracks.map((track) => {
@@ -348,7 +402,7 @@ function TimetableTable({
                     if (Date.parse(session.startAt) !== row.start) return null;
                     return (
                       <td key={track.id} rowSpan={span(session)} className="h-px align-top">
-                        <SessionCard session={session} track={track} time={time} spansRows={span(session) > 1} />
+                        <SessionCard session={session} track={track} time={time} spansRows={span(session) > 1} favorite={heart(session)} />
                       </td>
                     );
                   })}
@@ -357,72 +411,5 @@ function TimetableTable({
         })}
       </tbody>
     </table>
-  );
-}
-
-function TrackBadge({ track }: { track: Track }) {
-  return (
-    <span className={cn("inline-flex max-w-full flex-col rounded-[10px] px-2 py-1 text-caption font-semibold", trackColor(track.position))}>
-      <span className="truncate">{track.name}</span>
-      {track.room && <span className="truncate font-normal opacity-80">{track.room}</span>}
-    </span>
-  );
-}
-
-/**
- * 쉬는시간·점심 and whole blocks without a timetable are a muted band (a failed block adds `불러오지 못했어요`); other sessions a
- * card with the track badge, up to two 분야 tags, the title and the speakers. A card over several rows shows its own range, since
- * each time cell shows only its row.
- */
-function SessionCard({
-  session,
-  track,
-  time,
-  spansRows,
-}: {
-  session: Entry;
-  track?: Track;
-  time: (value: number) => string;
-  spansRows: boolean;
-}) {
-  const range = `${time(Date.parse(session.startAt))} – ${time(Date.parse(session.endAt))}`;
-  if (session.block || session.kind === "BREAK" || session.kind === "MEAL")
-    return (
-      <div className="flex h-full min-h-11 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-[14px] bg-fill px-3 py-2 text-subheadline text-secondary-label">
-        <span className="font-semibold break-keep">{session.title || (session.kind === "MEAL" ? "점심" : "쉬는시간")}</span>
-        <span className="text-caption tabular-nums">{range}</span>
-        {session.block === "failed" && (
-          <span className="flex items-center gap-1 text-caption text-danger">
-            <Icon name="warning" size="inline" />
-            불러오지 못했어요
-          </span>
-        )}
-      </div>
-    );
-  return (
-    <article className="flex h-full flex-col gap-1.5 rounded-[14px] bg-card p-3">
-      <div className="flex flex-wrap gap-1">
-        {track && (
-          <span className={cn("rounded-full px-2 py-0.5 text-caption2 font-semibold", trackColor(track.position))}>
-            {track.name}
-            {track.room && ` · ${track.room}`}
-          </span>
-        )}
-        {session.kind === "KEYNOTE" && <Badge variant="filled">키노트</Badge>}
-        {session.tags.slice(0, 2).map((tag) => (
-          <Badge key={tag.id} className="gap-1 text-caption2">
-            <TagIcon nameEn={tag.nameEn} />
-            {tag.name}
-          </Badge>
-        ))}
-      </div>
-      <h4 className="text-subheadline font-semibold break-keep">{session.title}</h4>
-      {session.speakers.length > 0 && (
-        <p className="text-footnote text-secondary-label break-keep">
-          {session.speakers.map((s) => (s.affiliation ? `${s.name} · ${s.affiliation}` : s.name)).join(", ")}
-        </p>
-      )}
-      {spansRows && <p className="text-caption text-secondary-label tabular-nums">{range}</p>}
-    </article>
   );
 }

@@ -60,12 +60,13 @@ export function activityCardProps(activity: Activity, now: number) {
 /**
  * 펼친 프로그램 안의 활동 카드 한 장 (contract "발견 카드 리뉴얼 — 2026-10-19", iOS `ActivityCard`): grouped-background tile inside
  * the program card, 활동명 and the status capsule on top, the tag chip line (분야 1개 + 얻을 수 있는 것), then `모집`·`활동`·`장소` label/value rows. While recruitment is not past
- * (`recruitmentActive`) the `모집` value is teal semibold on a mint band. The name link stretches over the whole card; `action` (the 내 활동
- * `+`/check, later the heart) sits beside the capsules above it, so it stays a separate control.
+ * (`recruitmentActive`) the `모집` value is teal semibold on a mint band. The name link stretches over the whole card; `action` (the heart
+ * and the 내 활동 `+`/check) sits beside the capsules above it, so they stay separate controls.
  */
 export function ActivityCard({
   id,
   name,
+  subtitle,
   status,
   recruitmentLabel,
   recruitmentDday,
@@ -79,6 +80,8 @@ export function ActivityCard({
 }: {
   id: number;
   name: string;
+  /** A line under the name (the program on `/favorites`, where cards are not grouped by program). */
+  subtitle?: string;
   status: ActivityStatus;
   /** 모집 기간 문구; 없으면(모집 정보 없음 포함) `모집 일정 미정`. */
   recruitmentLabel: string;
@@ -95,7 +98,7 @@ export function ActivityCard({
   /** Tag chip line under the name (contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음"): the first 분야, then 얻을 수 있는 것. None hides the line. */
   fieldTag?: Tag;
   traitTags?: Tag[];
-  /** A control at the top right (the 내 활동 toggle); none on the progress page's header card. */
+  /** Controls at the top right (the heart and the 내 활동 toggle), rendered above the stretched link; none on the progress page's header card. */
   action?: ReactNode;
 }) {
   const rows: [string, string, boolean, string?][] = [
@@ -106,11 +109,14 @@ export function ActivityCard({
   return (
     <div className="relative flex flex-col gap-2 rounded-[14px] bg-background px-3 pt-3 pb-2.5 transition-opacity has-[a[data-card-link]:active]:opacity-70">
       <span className="flex items-start gap-2.5">
-        <h3 className="flex-1 text-subheadline font-semibold break-keep">
-          <Link href={`/activities/${id}`} data-card-link className="after:absolute after:inset-0 after:rounded-[14px] after:content-['']">
-            {name}
-          </Link>
-        </h3>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <h3 className="text-subheadline font-semibold break-keep">
+            <Link href={`/activities/${id}`} data-card-link className="after:absolute after:inset-0 after:rounded-[14px] after:content-['']">
+              {name}
+            </Link>
+          </h3>
+          {subtitle && <span className="text-footnote text-secondary-label break-keep">{subtitle}</span>}
+        </span>
         {/* 시작 D-n left of the 모집 예정 capsule (contract "모집 예정 시작 D-day"; the detail puts it right of the status badge). */}
         {startDday && (
           <Badge variant="tinted" className="text-caption2 tabular-nums">
@@ -122,7 +128,7 @@ export function ActivityCard({
             {STATUS_BADGE[status]}
           </Badge>
         )}
-        {action && <span className="relative z-10 -my-1.5 -mr-1 flex">{action}</span>}
+        {action && <span className="relative z-10 -my-1.5 -mr-1 flex items-center gap-1">{action}</span>}
       </span>
       <TagChipRow field={fieldTag} traits={traitTags} />
       <dl className="flex flex-col gap-[3px] text-footnote">

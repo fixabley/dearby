@@ -1,7 +1,7 @@
 // Signed-in account routes of the `/api/*` proxy (contract native-v1.md "웹 로그인"): a fixed allowlist, the access token from the
 // session cookie as Bearer, one refresh on 401, and validated bodies both ways. Nothing here is reachable without the cookies.
 import { z } from "zod";
-import { TOKEN, readGuestCookie } from "./guest-upstream";
+import { TOKEN, acceptLanguage as acceptLanguageHeader, readGuestCookie } from "./guest-upstream";
 import { callAsAccount, clearedSessionCookies, withCookies } from "./session";
 import {
   activityInfoPageSchema,
@@ -31,7 +31,7 @@ import {
   walletSaveBodySchema,
   walletSchema,
 } from "./account-models";
-import { activityId, favoriteSessionListSchema, myActivityListSchema, myActivitySchema, statusPickSchema } from "./models";
+import { activityId, favoriteSessionListSchema, favoritesSchema, myActivityListSchema, myActivitySchema, statusPickSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
@@ -133,10 +133,26 @@ type Route = {
   /** Forward the browser's `Accept-Language` (알림의 활동·프로그램 이름). */
   acceptLanguage?: boolean;
 };
+const NUMERIC_ID = /^[1-9]\d{0,17}$/;
+const noContent: Route = { parse: () => undefined, noContent: true };
 /** `METHOD path` → how the request and response are validated. `:id` is a passkey credential id, `:provider` apple|google. */
 function route(method: string, segments: string[], url?: URL): Route | undefined {
   const path = segments.join("/");
   if (method === "GET" && path === "me") return { parse: (json) => meSchema.parse(json) };
+  // 즐겨찾기·세션 찜 (contract "즐겨찾기(하트)", "트랙·세션 시간표", web "웹 화면 — 2단계 A"): PUT without a body keeps the API's default
+  // notify level; DELETE is idempotent. Both answer 204.
+  if (method === "GET" && path === "me/favorites") return { parse: (json) => favoritesSchema.parse(json), acceptLanguage: true };
+  if (segments.length === 4 && segments[0] === "me" && segments[1] === "favorites" && ["programs", "activities"].includes(segments[2]) && NUMERIC_ID.test(segments[3])) {
+    if (method === "PUT") return { ...noContent, body: "empty" };
+    if (method === "DELETE") return noContent;
+  }
+  // Opening a favorited program turns its `새 모집` off.
+  if (method === "POST" && segments.length === 5 && path.startsWith("me/favorites/programs/") && segments[4] === "seen" && NUMERIC_ID.test(segments[3]))
+    return { ...noContent, body: "empty" };
+  if (segments.length === 3 && segments[0] === "me" && segments[1] === "session-favorites" && NUMERIC_ID.test(segments[2])) {
+    if (method === "PUT") return { ...noContent, body: "empty" };
+    if (method === "DELETE") return noContent;
+  }
   if (method === "DELETE" && path === "me") return { parse: () => undefined, noContent: true };
   // 2단계 C: the whole profile (1단계 returned only the consent fields; `/api/auth/session` keeps its own reduced read).
   if (method === "GET" && path === "profile") return { parse: (json) => profileSchema.parse(json) };
@@ -161,7 +177,7 @@ function route(method: string, segments: string[], url?: URL): Route | undefined
     if (segments.length === 5 && segments[3] === "schedules" && activityId(segments[4]) !== undefined && method === "PUT")
       return { body: "statusPick", parse: (json) => myActivitySchema.parse(json) };
   }
-  // 찜한 세션, read only (the 오늘 내 행사 card shows the next favorited session; 찜 itself stays in the apps).
+  // 내 시간표 목록 (contract "트랙·세션 시간표"; 2단계 A hearts, 2단계 B 오늘 내 행사 card).
   if (method === "GET" && path === "me/session-favorites") return { parse: (json) => favoriteSessionListSchema.parse(json) };
 
   // ── 2단계 C (contract "웹 화면 — 2단계 C"): 프로필·내 명함·받은 명함·알림·연락처 인증 ─────────────────────────────────────
@@ -266,8 +282,7 @@ export async function accountProxy(request: Request, segments: string[]): Promis
   } else if (mutation) body = {};
   // `If-Match` (contract "프로필과 버전 이력"): a version number only; anything else is left out and the API saves unconditionally.
   const ifMatch = spec.ifMatch ? (request.headers.get("if-match")?.match(/^"?(\d{1,9})"?$/)?.[1] ?? undefined) : undefined;
-  const acceptLanguageValue = request.headers.get("accept-language");
-  const acceptLanguage = spec.acceptLanguage && acceptLanguageValue && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(acceptLanguageValue) ? acceptLanguageValue : undefined;
+  const acceptLanguage = spec.acceptLanguage ? acceptLanguageHeader(request.headers.get("accept-language")) : undefined;
   const cookieHeader = request.headers.get("cookie");
   // 비로그인 저장 → 계정 합치기: the guest token comes from this server's cookie, never from the browser body. The guest session stays
   // (the API closes its saves); the browser clears it with the usual `DELETE /api/guest/session`.
@@ -278,7 +293,6 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     body = { guestToken };
   }
   const path = segments.join("/");
-  // `If-Match` crosses as it is (contract "웹에서 쓰는 로그인 기능": the profile PUT's version check); a malformed value is dropped.
   try {
     const result = await callAsAccount(cookieHeader, {
       path,

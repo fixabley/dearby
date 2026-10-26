@@ -13,6 +13,7 @@ import {
 import { accountProxy, isAccountRoute } from "./account-proxy";
 import { readSession } from "./session";
 import {
+  acceptLanguage,
   apiOrigin,
   guestCookie,
   guestProxyKey,
@@ -20,6 +21,7 @@ import {
   TOKEN,
   upstreamFetch,
 } from "./guest-upstream";
+import { accessSecondsLeft, readSession } from "./session";
 
 // PUT /guest/cards/:id may carry the activity the card was exchanged at (contract "명함 교환") and the QR code (contract "명함 QR 코드").
 const guestSaveBody = z
@@ -46,10 +48,6 @@ const headers = {
 };
 function failure(status: number, code: string) {
   return Response.json({ error: { code } }, { status, headers });
-}
-/** The browser's language preference picks ko or en activity text upstream. Anything that is not a plain language list is dropped. */
-function acceptLanguage(value: string | null): string | undefined {
-  return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
 /**
  * Only `q`, `cursor`, `size`, `kind` (프로그램·이벤트 전환), `status` (활동 상태, both), `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
@@ -233,6 +231,14 @@ export async function proxy(
   if (!process.env.DEARBY_API_ORIGIN || (guest && !guestProxyKey()))
     return failure(503, "GUEST_UNAVAILABLE");
   if (!apiOrigin()) return failure(503, "SERVICE_UNAVAILABLE");
+  // 즐겨찾기 `favorited` on public reads (contract "웹 화면 — 2단계 A"): a signed-in browser's access cookie goes up as Bearer so the
+  // API fills `favorited` (it varies on Authorization; this response is already `no-store` and varies on Cookie). The token is sent
+  // only while its `exp` is ahead — the API rejects an expired Bearer even on a public path — and a session whose access token has
+  // lapsed (refresh cookie alone) gets 401 `SIGNED_OUT` like an account route, so the browser refreshes once and retries rather than
+  // seeing every heart unfilled. No session at all reads anonymously.
+  const session = search || activityRoute || timetableRoute ? readSession(request.headers.get("cookie")) : {};
+  const bearer = accessSecondsLeft(session.access) > 0 ? session.access : undefined;
+  if (!bearer && session.refresh) return failure(401, "SIGNED_OUT");
   try {
     const result = await upstreamFetch(path, {
       method,
@@ -247,6 +253,7 @@ export async function proxy(
           ? acceptLanguage(request.headers.get("accept-language"))
           : undefined,
     });
+    if (bearer && result.status === 401) return failure(401, "SIGNED_OUT");
     if (path === "guest/session" && (result.ok || result.status === 401)) {
       return new Response(null, {
         status: 204,

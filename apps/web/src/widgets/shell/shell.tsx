@@ -15,7 +15,8 @@ import { useUnread } from "@/features/notifications/model/unread";
  * a hairline once the page scrolls — whose centre shows the page's large title after it scrolls under the bar. Home-level pages
  * carry the brand on the left; the activity detail and a public card get a back link instead. On the right, signed out: 저장한 명함
  * and `로그인` (contract "웹 로그인"); signed in (contract "웹 화면 — 2단계 C"): the 알림 bell with its unread badge and the 메뉴 button
- * whose dropdown lists 내 활동 · 명함 · 받은 명함 · 프로필 · 알림 · 설정 · 저장한 명함(브라우저) with icons; the 내 활동 glyph link (2단계 B) stays in the bar. Content is 720px max, 16px gutters.
+ * whose dropdown lists 내 활동 · 즐겨찾기 · 명함 · 받은 명함 · 프로필 · 알림 · 설정 · 저장한 명함(브라우저) with icons; the 내 활동 glyph link (2단계 B)
+ * and the 즐겨찾기 heart (2단계 A) stay in the bar as glyphs (labels from `sm`). Content is 720px max, 16px gutters.
  */
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -55,9 +56,10 @@ function backFor(path: string, signedIn: boolean): { href: string; label: string
   if (path.startsWith("/wallet/")) return { href: "/wallet", label: "받은 명함" };
   if (path.startsWith("/mine/")) return { href: "/mine", label: "내 활동" };
 }
-/** The signed-in menu (contract "웹 화면 — 2단계 C" › 상단 바); 즐겨찾기 has no web route yet (contract: 웹은 하트를 두지 않는다). */
+/** The signed-in menu (contract "웹 화면 — 2단계 C" › 상단 바): 내 활동(B)·즐겨찾기(A) first, then this PR's pages and 설정. */
 const MENU: MenuItem[] = [
   { href: "/mine", label: "내 활동", icon: "check-circle" },
+  { href: "/favorites", label: "즐겨찾기", icon: "heart" },
   { href: "/cards/mine", label: "명함", icon: "card" },
   { href: "/wallet", label: "받은 명함", icon: "inbox" },
   { href: "/profile", label: "프로필", icon: "person" },
@@ -142,6 +144,15 @@ function NavBar() {
             )}
             {auth.signedIn ? (
               <>
+                {/* 즐겨찾기 (contract "웹 화면 — 2단계 A"): the account's hearts, next to the account glyph. */}
+                <Link
+                  href="/favorites"
+                  aria-label="즐겨찾기"
+                  aria-current={path === "/favorites" ? "page" : undefined}
+                  className="inline-flex size-11 items-center justify-center text-teal"
+                >
+                  <Icon name={path === "/favorites" ? "heart-fill" : "heart"} />
+                </Link>
                 <Link
                   href="/notifications"
                   aria-label={unread ? `알림, 읽지 않은 알림 ${unread}개` : "알림"}

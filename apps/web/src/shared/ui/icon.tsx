@@ -202,6 +202,8 @@ const paths = {
   ),
   "trend-up": <path d="M3 20h18M4 16l5-5 4 3 7-7m-5 0h5v5" />,
   heart: <path d="M12 20s-7.5-4.5-7.5-10A4.3 4.3 0 0 1 12 7.5a4.3 4.3 0 0 1 7.5 2.5c0 5.5-7.5 10-7.5 10Z" />,
+  // 즐겨찾기됨·찜됨 (contract "즐겨찾기(하트)": iOS `heart.fill`): the same outline, filled.
+  "heart-fill": <path fill="currentColor" d="M12 20s-7.5-4.5-7.5-10A4.3 4.3 0 0 1 12 7.5a4.3 4.3 0 0 1 7.5 2.5c0 5.5-7.5 10-7.5 10Z" />,
   // 계정(person.crop.circle): the signed-in state in the bar (contract "웹 로그인").
   person: (
     <>
