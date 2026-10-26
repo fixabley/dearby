@@ -17,9 +17,9 @@ Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture
 - `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
 - `features/calendar`: 기기 캘린더(EventKit) 읽기 전용 겹침 비교(누를 때만 권한 요청, 기기 안 계산, 화면을 닫으면 버림), 안내/거부/결과 시트, 시간 격자. 미리보기는 `FixtureCalendarEventSource`. `캘린더에 추가`는 미리 채운 시스템 일정 추가 화면(`AddToCalendarSheet`, EventKitUI 브리지; 권한 요청·읽기 없음, 저장은 사용자가 그 화면에서).
 - `entities/activity`: 활동 값 모델(일정 상태 `ScheduleStatus`·겹침 확인 시간 `OverlapCheck` 포함)·페이지와 `GET /v1/activities`(`/:id` 단건 포함) 클라이언트.
-- `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
-- `shared/lib`: 검색어 비교, 마크다운 부분집합 파서 `MarkdownDocument`.
-- `shared/ui`: DearbyStyle 색상(시스템 중립색 별칭 + 라이트/다크 두 값의 청록 액센트 `teal`, 두 모드 같은 채움 `tealFill`과 흰 `onTeal`), DearbyLogo, 마크다운 본문 `DearbyMarkdownText`, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
+- `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView(소개 링크 버튼·이력 행 `CardHistoryRows`)/CardDeck/ContactIcons.
+- `shared/lib`: 검색어 비교.
+- `shared/ui`: DearbyStyle 색상(시스템 중립색 별칭 + 라이트/다크 두 값의 청록 액센트 `teal`, 두 모드 같은 채움 `tealFill`과 흰 `onTeal`), DearbyLogo, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
   정보행, 세그먼트, 시트 헤더, 탭 루트 내비게이션 바 액세서리 `TabRootToolbar`([탭 주 행동] 설정 `SettingsRoute` 링크·알림 버튼·`DearbyMenuItem` 목록의 `더 보기` 메뉴, 비면 숨김), 비스크롤 화면 배치 `CenteredMessage`·`StateGlyph`·`MessageAction(s)`, 내용 로딩 스켈레톤 `dearbySkeleton()`·두 줄 행 `DearbyRowsSkeleton`(계약 "내용 로딩은 스켈레톤"). 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.
 
 프로필과 명함은 앱 수명 동안만 존재합니다. 저장/공개 선택/프리셋/보낸 표시도 메모리뿐입니다.
