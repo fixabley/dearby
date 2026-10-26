@@ -123,7 +123,7 @@ struct AppliedActivity: Identifiable, Equatable {
 /// Builds the track from an activity's application window and `schedules[]` (contract "내 활동 진행 트랙 — 2026-10-18").
 enum ActivityStages {
     static let applicationStageID = "application"
-    private static var seoul: Calendar {
+    static var seoul: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
         return calendar
