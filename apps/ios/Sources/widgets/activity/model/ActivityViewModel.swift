@@ -26,12 +26,24 @@ import Observation
         let stored = (UserDefaults.standard.string(forKey: groupsKey) ?? "").split(separator: ",").compactMap { StatusGroup(rawValue: String($0)) }
         return stored.isEmpty ? [.available] : Set(stored)
     }
-    func setStatusGroups(_ groups: Set<StatusGroup>) {
+    /// The 필터 sheet's `적용` or a chip's × (contract "필터 시트" 2026-10-26): both filters at once, one reload. None chosen falls back to
+    /// `지원 가능`; 종류 outside this side's list are dropped (none on the 이벤트 side). Returns which of the two changed (사용 통계 reports only
+    /// those); nothing changed is no reload. Only a changed value is stored, so the 이벤트 side never overwrites the 프로그램 side's 종류.
+    @discardableResult func applyFilters(groups: Set<StatusGroup>, categories chosen: Set<ActivityCategory>) -> (groups: Bool, categories: Bool) {
         let groups = groups.isEmpty ? [.available] : groups
-        guard groups != statusGroups else { return }
-        statusGroups = groups
-        UserDefaults.standard.set(StatusGroup.allCases.filter(groups.contains).map(\.rawValue).joined(separator: ","), forKey: Self.groupsKey)
+        let chosen = chosen.intersection(kind.categories)
+        let changed = (groups: groups != statusGroups, categories: chosen != categories)
+        guard changed.groups || changed.categories else { return changed }
+        if changed.groups {
+            statusGroups = groups
+            UserDefaults.standard.set(StatusGroup.allCases.filter(groups.contains).map(\.rawValue).joined(separator: ","), forKey: Self.groupsKey)
+        }
+        if changed.categories {
+            categories = chosen
+            UserDefaults.standard.set(categoryList.map(\.rawValue).joined(separator: ","), forKey: Self.categoriesKey(kind))
+        }
         start(query ?? "")
+        return changed
     }
     private static func statuses(_ groups: Set<StatusGroup>) -> [ActivityStatus] { StatusGroup.allCases.filter(groups.contains).flatMap(\.statuses) }
     /// 발견 `프로그램 | 이벤트` (user 2026-10-26): 프로그램 by default; the choice stays on the device (`dearby.discovery.kind`, a new key).
@@ -48,21 +60,13 @@ import Observation
     private static let kindKey = "dearby.discovery.kind"
     private static func storedKind() -> DiscoveryKind { DiscoveryKind(rawValue: UserDefaults.standard.string(forKey: kindKey) ?? "") ?? .program }
     /// 종류 필터 (contract "종류 필터" 2026-10-26): none chosen is every 종류 (미분류 included). Kept per side on the device
-    /// (`dearby.discovery.categories.program|event`, comma-separated codes); switching sides brings back that side's choice.
+    /// (`dearby.discovery.categories.program|event`, comma-separated codes); switching sides brings back that side's choice. The 이벤트 side
+    /// offers no 종류 (`DiscoveryKind.categories`), so its stored choice is left alone and never read or sent.
     private(set) var categories = ActivityViewModel.storedCategories(ActivityViewModel.storedKind())
     private static func categoriesKey(_ kind: DiscoveryKind) -> String { "dearby.discovery.categories.\(kind.rawValue)" }
     private static func storedCategories(_ kind: DiscoveryKind) -> Set<ActivityCategory> {
         let codes = (UserDefaults.standard.string(forKey: categoriesKey(kind)) ?? "").split(separator: ",")
         return Set(codes.compactMap { ActivityCategory(rawValue: String($0)) }.filter(kind.categories.contains))
-    }
-    /// Applies a 종류 choice (this side's 종류 only) and reloads the list; true when it changed.
-    @discardableResult func setCategories(_ chosen: Set<ActivityCategory>) -> Bool {
-        let chosen = chosen.intersection(kind.categories)
-        guard chosen != categories else { return false }
-        categories = chosen
-        UserDefaults.standard.set(categoryList.map(\.rawValue).joined(separator: ","), forKey: Self.categoriesKey(kind))
-        start(query ?? "")
-        return true
     }
     /// The chosen 종류 in contract order, as the requests send them.
     var categoryList: [ActivityCategory] { ActivityCategory.allCases.filter(categories.contains) }
@@ -518,9 +522,10 @@ struct MineServer: Sendable {
 }
 
 /// One program's activities by 활동 상태 (contract "활동 상태" 2026-10-26), each list in display order: 모집 중 (the page groups them by
-/// 활동 종류), 모집 예정 (nearest recruitment start first), 진행 중 and 지난 활동 (모집 마감·모집 정보 없음·종료 whose activity falls within the
-/// last three years — the server's `status` has no window here; an undated one stays), both latest activity start first. `groups` are the ones it was loaded for; an
-/// activity outside them (an older server ignores `status`) is left out.
+/// 활동 종류), 모집 예정 (nearest recruitment start first), 진행·예정 (진행 중·모집 마감·모집 정보 없음, the running ones first, then the nearest
+/// activity start, undated last) and 지난 활동 (종료 whose activity falls within the last three years — the server's `status` has no window
+/// here; an undated one stays, latest activity start first). `groups` are the ones it was loaded for; an activity outside them (an older
+/// server ignores `status`) is left out.
 struct ProgramActivities {
     let groups: Set<StatusGroup>
     /// The 종류 they were read with; empty is every 종류.
@@ -544,7 +549,8 @@ struct ProgramActivities {
         recruiting = byStatus[.recruiting] ?? []
         upcoming = (byStatus[.recruitingUpcoming] ?? [])
             .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
-        inProgress = latestFirst(byStatus[.inProgress] ?? [])
+        inProgress = StatusGroup.inProgress.statuses.flatMap { byStatus[$0] ?? [] }
+            .sorted { ($0.activityStage?.anchor ?? .distantFuture, $0.title) < ($1.activityStage?.anchor ?? .distantFuture, $1.title) }
         past = latestFirst(StatusGroup.past.statuses.flatMap { byStatus[$0] ?? [] }.filter { $0.activityStage?.anchor.map { $0 >= since } ?? true })
     }
 }

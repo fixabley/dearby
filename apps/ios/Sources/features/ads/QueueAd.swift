@@ -8,8 +8,10 @@ import SwiftUI
 /// decision: asked once, before the first request of an ad-enabled build, never at launch; frequency capping and measurement only), no UMP
 /// (Korea only). The unit comes from the build (Info.plist `DearbyAdMobNativeUnitID`): Google's native test
 /// unit in Debug, and empty in a Release build without AdMob IDs, where the SDK is never started and the queue has no ad page.
+/// `enabled` also needs the build flag `DearbyAdsEnabled` (`DEARBY_ADS_ENABLED`, off by default for the initial test period, 2026-10-26): off, the
+/// ad page, the consent sheet, the ATT prompt and the 설정 consent switch are all absent while the code and the SDK stay in the build.
 @MainActor @Observable final class QueueAdLoader: NSObject, NativeAdLoaderDelegate {
-    static let enabled = !unitID.isEmpty
+    static let enabled = !unitID.isEmpty && Bundle.main.object(forInfoDictionaryKey: "DearbyAdsEnabled") as? String == "true"
     private static let unitID = Bundle.main.object(forInfoDictionaryKey: "DearbyAdMobNativeUnitID") as? String ?? ""
     private(set) var nativeAd: NativeAd?
     /// The request failed (사용 통계 `queue_ad_skipped_unloaded` reason `failed`, else `loading`).

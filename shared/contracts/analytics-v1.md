@@ -37,7 +37,7 @@
 | `queue_exit` | 끝 전 닫음 | `position`(마지막으로 본 카드) |
 | `queue_ad_shown` | 대기열 끝 광고 카드가 화면에 보임(열람당 최대 1번, 2026-10-25) | `viewed`(그때까지 본 활동 카드 수) |
 | `att_prompt_result` (선택, iOS만) | 대기열 첫 광고 요청 전 ATT 창에 답함(창을 띄운 경우만) | `status` = `authorized`·`denied`·`restricted` |
-| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없어 광고를 끈 빌드는 보내지 않는다. 광고 미동의 계정에게 그 자리에서 광고 동의 시트를 띄운 열람도 광고를 요청하지 않았으므로 보내지 않는다, 2026-10-26) |
+| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없거나 `DEARBY_ADS_ENABLED`가 꺼져(2026-10-26부터 기본, native-v1.md "광고 끄기") 광고를 끈 빌드는 보내지 않는다. 광고 미동의 계정에게 그 자리에서 광고 동의 시트를 띄운 열람도 광고를 요청하지 않았으므로 보내지 않는다, 2026-10-26) |
 
 도달률 = `queue_card_view(position=n)` 사용자 수 ÷ `queue_open` 사용자 수(n=1…10), 완주율 = `queue_end` ÷ `queue_open`. 광고 카드는 끝 화면 전이므로 광고 카드에서 닫으면 `queue_exit`(`position` = 마지막 활동 카드 번호)를 보내고 완주로 세지 않는다. 광고 노출률 = `queue_ad_shown` ÷ (`queue_ad_shown` + `queue_ad_skipped_unloaded`). 클릭·수익은 AdMob 보고서로 본다([native-v1.md](native-v1.md) "맞춤 대기열 끝 광고").
 
@@ -60,8 +60,8 @@
 | `tab_select` | 하단 탭을 누름(앱 시작 때 첫 탭은 보내지 않음) | `tab` = `discovery`·`my_activity`·`cards`·`profile` |
 | `menu_open` | 탭 안의 주요 메뉴·행을 엶 | `menu` = `my_activity_list`·`favorites`·`queue`·`funnel`·`eligibility`·`interests`·`notifications`·`my_cards`·`received_cards`·`card_create`·`profile_edit`·`history`·`settings`·`notifications_inbox`(알림 목록, 종 버튼)(새 메뉴는 이 목록에 먼저 더한다) |
 | `discovery_mode` | 발견 맨 위 `프로그램 \| 이벤트` 전환을 사용자가 바꿈(앱 시작 때 기억된 값은 보내지 않음, 2026-10-26) | `mode` = `program`·`event` |
-| `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`) |
-| `discovery_category_filter` | 발견 `종류` 다중 선택을 사용자가 바꿈(실제로 바뀐 때만, 기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
+| `discovery_status_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `활동 상태` 묶음이 실제로 바뀜(기억된 값 복원·시트 안 체크만은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태"·"필터 시트") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`; `in_progress`는 2026-10-26 재정의 뒤 `진행·예정`) |
+| `discovery_category_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `종류`가 실제로 바뀜(기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음; 이벤트 모드에는 종류 필터가 없다, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터"·"필터 시트") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
 
 접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
 
@@ -93,8 +93,8 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `home_shortcut_install` | 안내의 `홈 화면에 추가`(`prompt()`)에 사용자가 답함 | `outcome`(`accepted`·`dismissed`) |
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
-| `discovery_status_filter` | 발견 `활동 상태` 다중 선택을 바꿈(앱과 같음) | `groups` |
-| `discovery_category_filter` | 발견 `종류` 다중 선택을 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
+| `discovery_status_filter` | 발견 필터 시트 `적용`·칩 ×·`지난 활동도 보기`로 `활동 상태`를 바꿈(앱과 같음) | `groups` |
+| `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
