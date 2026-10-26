@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type GuestItem, expiryLabel, sessionContextLines } from "@/lib/models";
 import { InstallOffer } from "./install-offer";
+import { useAuth } from "@/features/auth/model/auth-context";
+import { TesterInvite } from "@/features/tester-invite/ui/tester-invite";
 import { useIosHomeScreenApp } from "@/lib/install";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
 import { Failure } from "@/shared/ui/states";
@@ -27,6 +29,7 @@ export function SavedCards() {
   const [notice, setNotice] = useState("");
   const [confirming, setConfirming] = useState(false);
   const homeScreenApp = useIosHomeScreenApp();
+  const auth = useAuth();
   useEffect(() => {
     const controller = new AbortController();
     request<{ items: GuestItem[] }>("/guest/cards", {
@@ -141,6 +144,12 @@ export function SavedCards() {
           </p>
         </div>
       </Card>
+      {/* 비공개 테스트 초대: only while signed out (`signedOut`, not `loading`, so it does not flash for signed-in people). */}
+      {auth.status === "signedOut" && (
+        <div className="mt-2">
+          <TesterInvite variant="line" />
+        </div>
+      )}
       {actionError && (
         <p role="alert" className="mt-3 px-4 text-footnote text-danger">
           {actionError}

@@ -30,7 +30,18 @@ const providerName: Record<Provider, string> = { apple: "애플", google: "구�
  * Apple/Google account (202) asks whether to start a new account or link an existing passkey account — the web cannot check the
  * device's passkeys quietly, so it asks straight away. The body mounts with the sheet, so every opening starts clean.
  */
-export function SignInSheet({ open, onOpenChange, onSignedIn }: { open: boolean; onOpenChange: (open: boolean) => void; onSignedIn: () => void }) {
+export function SignInSheet({
+  open,
+  onOpenChange,
+  onSignedIn,
+  footer,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSignedIn: () => void;
+  /** Composed by the app layer under the notice line (the 비공개 테스트 invite); this feature does not import it. */
+  footer?: React.ReactNode;
+}) {
   const [busy, setBusy] = useState(false);
   return (
     <Sheet
@@ -49,7 +60,7 @@ export function SignInSheet({ open, onOpenChange, onSignedIn }: { open: boolean;
             닫기
           </SheetClose>
         </div>
-        <SignInBody onBusy={setBusy} onSignedIn={onSignedIn} />
+        <SignInBody onBusy={setBusy} onSignedIn={onSignedIn} footer={footer} />
       </SheetContent>
     </Sheet>
   );
@@ -59,7 +70,7 @@ export function SignInSheet({ open, onOpenChange, onSignedIn }: { open: boolean;
  * Nonces are fetched when the body mounts, because the Apple and Google popups must start inside the click, and fetched again
  * after each attempt (each nonce is accepted once).
  */
-function SignInBody({ onBusy, onSignedIn }: { onBusy: (busy: boolean) => void; onSignedIn: () => void }) {
+function SignInBody({ onBusy, onSignedIn, footer }: { onBusy: (busy: boolean) => void; onSignedIn: () => void; footer?: React.ReactNode }) {
   const [running, setRunning] = useState<Action>();
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState<Pending>();
@@ -237,6 +248,7 @@ function SignInBody({ onBusy, onSignedIn }: { onBusy: (busy: boolean) => void; o
         <Button size="lg" variant={social ? "plain" : "filled"} disabled={busy} onClick={() => passkey()}>
           {running === "passkey" ? <Spinner /> : "패스키로 로그인"}
         </Button>
+        {footer}
       </div>
     </div>
   );
