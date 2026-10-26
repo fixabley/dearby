@@ -224,13 +224,13 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
 
 /**
  * 종류 필터 (2026-10-26 사용자 요청), the same idiom as [StatusFilter]: the current kind's [options] as checkbox items with the category icon.
- * Nothing chosen is 전체 (`종류: 전체`); one or two chosen read `부트캠프·동아리`, three or more `부트캠프 외 2`.
+ * The label has the same `종류: ` prefix as the 상태 chip: nothing chosen is `종류: 전체`, one or two `종류: 부트캠프·동아리`, three or more `종류: 부트캠프 외 2`.
  */
 @Composable private fun CategoryFilter(options: List<CategoryOption>, chosen: Set<String>, change: (Set<String>) -> Unit, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     val labels = options.filter { it.code in chosen }.map { it.label }
-    val summary = when {
-        labels.isEmpty() -> "종류: 전체"
+    val summary = "종류: " + when {
+        labels.isEmpty() -> "전체"
         labels.size <= 2 -> labels.joinToString("·")
         else -> "${labels.first()} 외 ${labels.size - 1}"
     }
