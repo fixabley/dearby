@@ -22,6 +22,8 @@ struct ActivityProgressPage: View {
     @State private var calendarDraft: CalendarEventDraft?
     @State private var timetable: TimetableRoute?
     @State private var removing: String?
+    /// The unfolded day rows (contract "하루 시간표"; folded by default).
+    @State private var unfolded: Set<String> = []
     @Environment(\.dismiss) private var dismiss
     private var activity: ActivityModel? { state.activity(activityID) }
     var body: some View {
@@ -49,7 +51,13 @@ struct ActivityProgressPage: View {
                     }
                     if !activities.isEmpty {
                         Section {
-                            ForEach(activities) { stage in stageRow(stage, activity: activity) }
+                            // A day's blocks fold under one date row (contract "하루 시간표" 2026-10-26); the marks stay on the block rows.
+                            ForEach(ActivityStages.fold(activities, periodID: activity.activityStage?.id, now: Date())) { entry in
+                                switch entry {
+                                case .stage(let stage): stageRow(stage, activity: activity)
+                                case .day(let day): dayRow(day, activity: activity)
+                                }
+                            }
                         } header: {
                             header("활동 일정", badge: progress.participating ? "참여 중" : (selection.isEmpty ? progress.badge(now: Date()) : nil),
                                    danger: progress.failed)
@@ -106,8 +114,7 @@ struct ActivityProgressPage: View {
                 // The block's 트랙·세션 시간표 first (user 2026-10-26 "펼쳤을 때 시간표 보기 버튼"): the same sheet as the activity detail.
                 if stage.source.hasTimetable {
                     Button("시간표 보기", systemImage: "tablecells") {
-                        timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: stage.source.id,
-                                                   scheduleTitle: stage.name, date: stage.dateText(now: Date()))
+                        timetable = TimetableRoute(activity: activity, block: stage.source, title: stage.name, date: stage.dateText(now: Date()), now: Date())
                     }
                 }
                 if stage.selection {
@@ -124,6 +131,39 @@ struct ActivityProgressPage: View {
             .accessibilityHint(stage.selection ? "누르면 표시를 고르거나 캘린더에 추가해요" : "누르면 시간표를 보거나 캘린더에 추가해요")
         } else {
             stageLabel(stage, menu: false)
+        }
+    }
+    /// A day with several blocks (contract "하루 시간표"): a `DisclosureGroup` row — the date, `10:00 ~ 17:30 · 블록 4개 · 예정` and the timetable
+    /// glyph when some block has one — folded by default; unfolded, `시간표 보기` (the day as one table), `캘린더에 추가` over the day, then the
+    /// block rows with their own menus.
+    private func dayRow(_ day: ActivityDay, activity: ActivityModel) -> some View {
+        let now = Date()
+        let open = Binding(get: { unfolded.contains(day.id) }, set: { if $0 { unfolded.insert(day.id) } else { unfolded.remove(day.id) } })
+        let word = day.end < now ? "지남" : day.start <= now ? "진행 중" : "예정"
+        return DisclosureGroup(isExpanded: open) {
+            if day.hasTimetable {
+                Button("시간표 보기", systemImage: "tablecells") { timetable = TimetableRoute(activity: activity, day: day, now: now) }
+                    .accessibilityIdentifier("day-timetable-\(day.id)")
+            }
+            Button("캘린더에 추가", systemImage: "calendar.badge.plus") { calendarDraft = day.calendarDraft(activity, link: state.calendarLink(activity.id)) }
+            ForEach(day.stages) { stage in stageRow(stage, activity: activity) }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar").font(.dearby(.subheadline).weight(.semibold)).frame(width: 24)
+                    .foregroundStyle(day.stages.contains { $0.state == .current } ? DearbyStyle.teal
+                                     : day.stages.allSatisfy { $0.state == .past } ? .secondary : Color(.tertiaryLabel))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(day.title).font(.dearby(.body).weight(day.stages.contains { $0.state == .current } ? .semibold : .regular)).foregroundStyle(.primary)
+                    Text(day.summary + " · " + word).font(.dearby(.footnote)).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                if day.hasTimetable {
+                    Image(systemName: "tablecells").font(.dearby(.subheadline)).foregroundStyle(.secondary).accessibilityHidden(true)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel([day.title, day.summary, word, day.hasTimetable ? "시간표 있음" : nil].compactMap { $0 }.joined(separator: ", "))
+            .accessibilityIdentifier("day-\(day.id)")
         }
     }
     private func stageLabel(_ stage: ActivityStage, menu: Bool) -> some View {

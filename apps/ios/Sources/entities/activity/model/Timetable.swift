@@ -42,8 +42,12 @@ struct TimetableSession: Equatable, Identifiable, Sendable {
     let speakers: [Speaker]
     /// 분야 tags in the server's order (at most 5).
     let tags: [Tag]
-    /// A band rather than a card: 쉬는시간·점심.
-    var isBreak: Bool { kind == .breakTime || kind == .meal }
+    /// A 하루 시간표 row standing in for a block (contract "하루 시간표" 2026-10-26), not a server session: a full-width band with the block's
+    /// title, no heart, no sheet. `failed` when the block's timetable could not be loaded. Its `id` is negative and never sent anywhere.
+    var placeholder: Placeholder?
+    enum Placeholder: Sendable { case block, failed }
+    /// A band rather than a card: 쉬는시간·점심, and a placeholder.
+    var isBreak: Bool { kind == .breakTime || kind == .meal || placeholder != nil }
     /// `a.start < b.end && b.start < a.end` (contract "찜 겹침").
     func overlaps(_ other: TimetableSession) -> Bool { start < other.end && other.start < end }
 }

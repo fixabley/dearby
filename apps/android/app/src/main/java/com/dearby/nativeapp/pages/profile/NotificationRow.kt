@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 @Composable fun SessionReminderRow(on: Boolean, inexact: Boolean, toggle: (Boolean) -> Unit, openSettings: () -> Unit) {
     Column {
         ListItem({ Text("세션 이동 알림") }, Modifier.toggleable(on, role = Role.Switch, onValueChange = toggle),
-            supportingContent = { Text("찜한 세션 10분 전에 이 기기에서 알려요") }, trailingContent = { Switch(on, null) },
+            supportingContent = { Text("내 시간표의 세션 10분 전에 이 기기에서 알려요") }, trailingContent = { Switch(on, null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent))
         if (on && inexact) ListItem({ Text("알람 권한이 없어 몇 분 늦을 수 있어요") }, supportingContent = { Text("정확한 시간에 받으려면 알람 및 리마인더를 허용해 주세요") },
             trailingContent = { TextButton(openSettings) { Text("설정 열기") } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))

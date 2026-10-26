@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The track badge (contract "트랙·세션 시간표" 2026-10-26): the track's palette color as an 18% fill with a dot and primary text (contrast in
-/// light and dark), the room after the name. `large` for 나만의 시간표, where the room says where to go.
+/// light and dark), the room after the name. `large` for 내 시간표, where the room says where to go.
 struct TimetableTrackBadge: View {
     let track: TimetableTrack
     var large = false
@@ -31,13 +31,13 @@ enum TimetableText {
     }
 }
 
-/// One session in the table or 나만의 시간표: track badge, up to two 분야 tags, title, speakers and the heart (`heart`/`heart.fill`, `찜`/`찜 해제`).
+/// One session in the table or 내 시간표: track badge, up to two 분야 tags, title, speakers and the heart (`heart`/`heart.fill`, `찜`/`찜 해제`).
 /// 쉬는시간·점심 are a quiet band without a heart. The card opens the session sheet; the heart sits outside the card's button.
 struct TimetableSessionCard: View {
     let session: TimetableSession
     let track: TimetableTrack?
     let zone: String
-    /// Show the time inside the card (나만의 시간표 and the single-track list have no time column).
+    /// Show the time inside the card (내 시간표 and the single-track list have no time column).
     var showsTime = false
     var largeTrack = false
     /// `같은 시간 찜 n개` when the favorite overlaps others (contract "찜 겹침").
@@ -47,17 +47,31 @@ struct TimetableSessionCard: View {
     var body: some View {
         if session.isBreak { band } else { card }
     }
+    /// Also a 하루 시간표 placeholder for a block without a timetable (its title; `불러오지 못했어요` when the load failed).
     private var band: some View {
         HStack(spacing: 8) {
-            Image(systemName: session.kind == .meal ? "fork.knife" : "cup.and.saucer")
-            Text(session.title.isEmpty ? TimetableText.breakLabel(session.kind) : session.title).lineLimit(2)
+            Image(systemName: bandSymbol)
+            Text(bandTitle).lineLimit(2)
             Spacer(minLength: 0)
             if showsTime { Text(TimetableText.range(session, zone: zone)).monospacedDigit() }
         }
         .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary)
         .padding(.horizontal, 12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).frame(minHeight: 44)
         .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 12, style: .continuous))
-        .accessibilityElement(children: .ignore).accessibilityLabel(TimetableText.spoken(session, track: track, zone: zone))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(TimetableText.spoken(session, track: track, zone: zone) + (session.placeholder == .failed ? ", 불러오지 못했어요" : ""))
+    }
+    private var bandSymbol: String {
+        switch (session.placeholder, session.kind) {
+        case (.failed, _): "exclamationmark.triangle"
+        case (_, .meal): "fork.knife"
+        case (_, .breakTime): "cup.and.saucer"
+        default: "calendar"
+        }
+    }
+    private var bandTitle: String {
+        let title = session.title.isEmpty ? TimetableText.breakLabel(session.kind) : session.title
+        return session.placeholder == .failed ? title + " · 불러오지 못했어요" : title
     }
     private var card: some View {
         let favorited = favorites.ids.contains(session.id)

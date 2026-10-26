@@ -29,6 +29,12 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
 import com.dearby.nativeapp.pages.activity.TimetableSheet
+import com.dearby.nativeapp.pages.activity.DayTimetableSheet
+import com.dearby.nativeapp.pages.activity.ScheduleGroup
+import com.dearby.nativeapp.pages.activity.ScheduleItemState
+import com.dearby.nativeapp.pages.activity.dayGroups
+import com.dearby.nativeapp.pages.activity.dayLabel
+import com.dearby.nativeapp.pages.activity.daySummary
 import com.dearby.nativeapp.pages.activity.MySessionsPage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
@@ -71,7 +77,7 @@ import kotlinx.coroutines.delay
     var progressId by remember { mutableStateOf<String?>(null) }
     var stageCalendar by remember { mutableStateOf<Int?>(null) }
     var prompt by remember { mutableStateOf(false) }
-    // 즐겨찾기 › 찜한 세션 (나만의 시간표).
+    // 즐겨찾기 › 내 시간표.
     var mySessions by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     LaunchedEffect(open) { open?.let { show(it, model.takeLinkSource() ?: "my_activity"); consumeOpen() } }
@@ -130,12 +136,16 @@ import kotlinx.coroutines.delay
     // The timetable sheet opened from this detail's block row, from the 진행 단계 page's stage row, or from the today card (the view model is
     // shared by both tabs, so it shows only over its own activity).
     val sheetActivity = activity ?: progressActivity ?: todaySheet?.let(state.known::get)
-    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == (selected ?: progressId ?: todaySheet) }
+    val sheetOwner = selected ?: progressId ?: todaySheet
+    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == sheetOwner }
+    // 하루 시간표 (2026-10-26): the day sheet from a day row's `시간표 보기` or the block sheet's `이 날 전체 보기`.
+    val openDay = sessions?.openDay?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == sheetOwner }
+    val showDay: (ScheduleGroup.Day<*>) -> Unit = { day -> sheetOwner?.let { sessions?.showDay(it, day.day, day.blocks) } }
     // The sheet belongs to this detail or 진행 단계 page: leaving it (back, another activity, the consent screen or a tab switch disposing this
     // route) closes it, so it does not come back on its own the next time the activity is opened.
     DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null); todaySheet = null } }
     val closeTimetable = { sessions?.show(null, null); todaySheet = null }
-    // A 세션 이동 알림 tap (MainActivity → openLinked): once that activity's detail is up, its block's timetable opens on 찜한 세션. After the
+    // A 세션 이동 알림 tap (MainActivity → openLinked): once that activity's detail is up, its block's timetable opens on 내 시간표. After the
     // DisposableEffect above, whose disposal on the detail change would otherwise close the sheet this opens.
     val pendingReminder = sessions?.pending?.collectAsStateWithLifecycle()?.value
     LaunchedEffect(selected, pendingReminder) { val id = selected; if (id != null && pendingReminder != null) sessions?.showPending(id) }
@@ -160,11 +170,11 @@ import kotlinx.coroutines.delay
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, share, openMap,
             addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
-            openTimetable = { sessions?.show(activity.id, it) })
+            openTimetable = { sessions?.show(activity.id, it) }, openDayTimetable = showDay)
         mySessions && mine -> MySessionsPage(sessionEntries, sessionIds, sessionHeart, { show(it, "favorites") }) { mySessions = false }
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { show(progress.id, "my_activity") },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) },
-            openTimetable = { sessions?.show(progress.id, it) })
+            openTimetable = { sessions?.show(progress.id, it) }, openDayTimetable = showDay)
         mine -> MineTab(segment, selectSegment, settings, notify, unread) {
             val openDetail: (String) -> Unit = { show(it, listSource) }
             if (segment == MineSegment.MINE || favorites == null) MyActivitiesPage(state, openDetail, { progressId = it }, explore) { model.apply(it, false) }
@@ -187,8 +197,17 @@ import kotlinx.coroutines.delay
         LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
         val block = sheetActivity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
         val blockTitle = openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: block?.name ?: "세션"
+        // `이 날 전체 보기` when the block's date has other timed blocks in 활동 일정 (the same grouping as the detail's rows).
+        val day = sheetActivity?.schedules?.let { rows -> dayGroups(rows.filterNot { it.selection }) { it.block } }
+            ?.filterIsInstance<ScheduleGroup.Day<ScheduleItemState>>()?.firstOrNull { group -> group.items.any { it.scheduleId == openTimetable.scheduleId } }
         TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
-            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly)
+            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly, viewDay = day?.let { { showDay(it) } })
+    }
+    if (openDay != null && sessions != null) {
+        val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
+        LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
+        DayTimetableSheet(listOfNotNull(sheetActivity?.title, dayLabel(openDay.day)).joinToString(" · "), daySummary(openDay.loads.map { it.block }), openDay.loads,
+            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices)
     }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).

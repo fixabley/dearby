@@ -63,9 +63,9 @@ import kotlinx.coroutines.launch
             var expanded by remember { mutableStateOf(emptySet<String>()) }
             if (state.programs.isEmpty() && state.activityIds.isEmpty() && sessionCount == 0) DearbyEmptyState("하트를 누르면 여기에 모여요", "발견에서 마음에 드는 활동과 프로그램에 하트를 눌러 보세요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
             else FavoritesCalendar(state, open, sessionDays, header = {
-                // Only while there is a 찜한 세션: one row above the month that opens 나만의 시간표.
-                if (sessionCount > 0) ListItem({ Text("찜한 세션 ${sessionCount}개") }, Modifier.clickable(role = Role.Button, onClick = openSessions),
-                    supportingContent = { Text("나만의 시간표 보기") }, leadingContent = { Icon(Icons.Rounded.ViewTimeline, null, tint = MaterialTheme.colorScheme.primary) },
+                // Only while there is a 찜한 세션: one row above the month that opens 내 시간표 (`내 시간표 · 세션 n개`).
+                if (sessionCount > 0) ListItem({ Text("내 시간표 · 세션 ${sessionCount}개") }, Modifier.clickable(role = Role.Button, onClick = openSessions),
+                    supportingContent = { Text("시간순으로 모아 보기") }, leadingContent = { Icon(Icons.Rounded.ViewTimeline, null, tint = MaterialTheme.colorScheme.primary) },
                     trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
             }) {
                 if (state.programs.isEmpty() && undated.isEmpty()) return@FavoritesCalendar
@@ -168,7 +168,7 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
 
 @Composable private fun DayCell(day: LocalDate, today: LocalDate, entries: List<CalendarEntry>, sessions: Boolean, pick: (LocalDate) -> Unit, modifier: Modifier) {
     val marks = entries.mapNotNull { it.mark }.toSet()
-    val name = "${day.monthValue}월 ${day.dayOfMonth}일" + (if (entries.isEmpty()) "" else ", 일정 ${entries.size}개") + if (sessions) ", 찜한 세션 있음" else ""
+    val name = "${day.monthValue}월 ${day.dayOfMonth}일" + (if (entries.isEmpty()) "" else ", 일정 ${entries.size}개") + if (sessions) ", 내 시간표 세션 있음" else ""
     Column(modifier.height(48.dp).clickable(role = Role.Button) { pick(day) }.semantics { contentDescription = name }.alpha(if (day < today) .38f else 1f),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         val isToday = day == today

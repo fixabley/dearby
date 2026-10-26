@@ -74,7 +74,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 ## 구현 메모 (iOS 2026-10-25)
 - 개수·순서 매개변수(`index`, `total`, `position`, `size`, `seen`, `viewed`, `scenes`, `*_count`, `found`)는 숫자로 보낸다. `seen`은 오늘 카드 중 이미 하트를 누른 수(관심 없어요는 카드가 빠져 남지 않는다).
 - `queue_dismiss`의 `reason` = `dismiss`·`less_field`·`hide_program`·`ineligible`(⋯ 선택; 되돌리기 전에 보낸다). `funnel_step`의 하위 분야 화면(분야 하나씩·한 화면 묶음)은 모두 `subfields`.
-- 화면 이름: `discovery`, `activity_detail`, `program_detail`, `queue`, `funnel`, `my_activity`, `activity_progress`, `favorites`, `my_cards`, `received_cards`, `profile`, `settings`, `notifications_inbox`, `timetable`(시간표 모달 시트 — 활동 상세의 일정 행을 눌러 열 때마다, 2026-10-26), `session_favorites`(즐겨찾기 › 찜한 세션), `card_qr`(내 명함 QR 시트 — 앱 구현 시, 2026-10-26 "비공개 테스트 성공 지표"). (`favorites_calendar` 화면·메뉴 값은 2026-10-26 즐겨찾기 목록 보기를 없애며 지웠다. 즐겨찾기는 `favorites` 하나다.)
+- 화면 이름: `discovery`, `activity_detail`, `program_detail`, `queue`, `funnel`, `my_activity`, `activity_progress`, `favorites`, `my_cards`, `received_cards`, `profile`, `settings`, `notifications_inbox`, `timetable`(시간표 모달 시트 — 활동 상세의 일정 행을 눌러 열 때마다, 2026-10-26; 하루 시간표(날짜 행의 `시간표 보기`, 블록 시트의 `이 날 전체 보기`)도 같은 화면 이름이고 시트를 열 때 한 번 — 2026-10-26 "하루 시간표"), `session_favorites`(즐겨찾기 › 내 시간표 — 2026-10-26 표현 변경, 화면 이름은 그대로), `card_qr`(내 명함 QR 시트 — 앱 구현 시, 2026-10-26 "비공개 테스트 성공 지표"). (`favorites_calendar` 화면·메뉴 값은 2026-10-26 즐겨찾기 목록 보기를 없애며 지웠다. 즐겨찾기는 `favorites` 하나다.)
 - `menu_open(history)`는 프로필 이력 입력, `menu_open(notifications)`는 프로필의 `기기 알림이 꺼져 있어요` 행(iOS는 알림 묶음이 프로필 안에 펼쳐져 있다).
 - `push_open`의 `kind`: 지금 푸시 페이로드에 종류가 없어 묶음 알림(`activityId` 없음)만 `summary`로 보내고 나머지는 `kind` 없이 보낸다. 서버가 페이로드에 종류를 넣으면 채운다.
 - `session_reminder_scheduled`(2026-10-26): 찜한 세션 이동 알림은 기기 로컬 알림이라 예약 때만 보내고, 눌러 열릴 때는 `push_open`을 보내지 않는다(상세의 `activity_view`는 source `push`로 간다).
@@ -97,7 +97,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
 | `discovery_status_filter` | 발견 필터 시트 `적용`·칩 ×·`지난 활동도 보기`로 `활동 상태`를 바꿈(앱과 같음) | `groups` |
 | `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
-| `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
+| `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표"). 하루 시간표 모달(날짜 행의 `시간표 보기`·블록 모달의 `이 날 전체 보기`, "하루 시간표")도 열 때 `activity_id`로 한 번 | `activity_id` |
 | `tester_cta_tap` | 비공개 테스트 초대의 링크를 누름 — 공개 명함 저장 버튼 아래·`/saved` 상단(비로그인)·로그인 시트의 `비공개 테스트로 앱 받기`(2026-10-26, [native-v1.md](native-v1.md) "명함 교환" › 받는 사람(웹)). iOS는 버튼이 곧 TestFlight 링크, Android·데스크톱은 시트 안의 단계 링크를 누를 때 보낸다(시트를 여는 것만으로는 보내지 않음) | `platform`(`ios`·`android`·`desktop`, UA 판정), `target`(`testflight`·`play_group`·`play_test`) |
 | `card_received` | 로그인 상태의 공개 명함에서 `내 지갑에 저장`이 201로 성공(이미 있어 200이면 보내지 않음; 2026-10-26 "웹 화면 — 2단계 C") | `activity_id`(교환 활동이 있을 때), `reciprocal` = `yes`·`no` |
 | `card_exchange_completed` | 받은 명함 하나가 새로 맞교환이 됨 — 앱과 같은 규칙으로 "맞교환이던 receipt id 집합"을 브라우저 `localStorage`에 두고 `/wallet`·상세에서 지갑을 읽을 때마다 비교(로그아웃 때 지움) | `activity_id`(있을 때), `via` = `reciprocate`(`내 명함도 건네기` 직후)·`wallet`(그 밖) |
@@ -119,7 +119,7 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 | `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄). 지난 선발 단계 통과 제안(native-v1.md "지난 선발 단계 통과 제안" 2026-10-26)의 `통과로 표시`도 표시한 단계마다 보내며 `via=autopass_prompt`를 더한다(진행 단계 화면에서 고른 것은 `via` 없음) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자), `via`(제안에서만) = `autopass_prompt` |
 | `participation_reached` | 내 활동의 활동이 처음 **참여 중**이 됨 — `via=selection_passed`: 선발 단계가 모두 `통과`로 표시되고 뒤에 활동 단계가 남음(진행 트랙의 `참여 중` 배지와 같은 조건, 표시를 바꾼 직후 판정). `via=no_selection`: 선발 단계가 하나도 없는 활동(모집 슬롯도 `SELECTION` 세부 일정도 없음)을 내 활동에 추가함(`myactivity_add`와 함께; 모집 슬롯이 있는 활동은 컨퍼런스라도 해당하지 않는다 — 운영의 우아콘 2026(id 156)은 `신청 기간`·`입장권 추첨 결과 발송`이 `SELECTION`이다, 2026-10-26 확인). 활동마다 기기에 보냈음을 기록해 한 번만 보낸다(표시를 되돌렸다 다시 통과해도 다시 보내지 않음) | `activity_id`, `via` = `selection_passed`·`no_selection` |
 | `activity_day_action` | 내 활동에 있는 활동의 `ACTIVITY` 일정 블록(활동 기간·`ACTIVITY` 세부 일정)이 진행 중인 날(서울 날짜, 블록 시작일~끝일)에 그 활동에서 한 행동. 탈락 표시한 활동은 보내지 않음. 같은 날 반복해도 매번 보내고, 지표는 사용자 수로 센다 | `activity_id`, `action` = `progress`(진행 단계 화면 열기)·`detail`(활동 상세 열기)·`timetable`(시간표 시트 열기)·`session_favorite`(세션 찜) |
-| `favorite_add` · `favorite_remove`(확장) | `type` = `session`을 더한다: 시간표·찜한 세션에서 세션 하트 | `type` = `session`, `id` = 세션 id, `activity_id`(세션이 속한 활동), `field`·`category`는 그 활동 것 |
+| `favorite_add` · `favorite_remove`(확장) | `type` = `session`을 더한다: 시간표·내 시간표(찜한 세션)에서 세션 하트 | `type` = `session`, `id` = 세션 id, `activity_id`(세션이 속한 활동), `field`·`category`는 그 활동 것 |
 
 - 지표 1 계산: 분모 = 기간 안 `myactivity_add` 사용자 수(활동별 `activity_id`), 단계 = `participation_reached` 사용자 수, 분자 = `activity_day_action` 사용자 수. 유입경로 탐색 `myactivity_add` → `participation_reached` → `activity_day_action`을 `activity_id`·`signed_in=yes`로 걸러 본다. 선발 없는 활동은 두 번째 단계가 추가와 같은 순간이므로 "추가 → 당일 행동"만 뜻이 있다.
 - "활동 일정 시작 시각이 지났고 탈락 표시가 없음"이라는 수동 참석 판정은 앱 이벤트가 아니라 서버 기록(`user_activities`·`user_activity_schedule_statuses`·`schedules.phase`)으로 센다(테스트 계획 "서버 기록으로 대조").

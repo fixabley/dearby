@@ -19,8 +19,8 @@ import org.json.JSONObject
 
 /**
  * One local 세션 이동 알림 (contract "찜한 세션 이동 알림", 2026-10-26): fired at [at] (epoch millis, 10 minutes before the session starts) with [title]
- * `10분 뒤 · {트랙} · {room}` and [body] the session title (a group of 찜 starting at the same instant adds `같은 시간에 찜한 세션 n개` on a second line
- * and follows the session with the smallest id, [sessionId]). A tap opens [activityId]'s timetable sheet for [scheduleId] on 찜한 세션. The contract's
+ * `10분 뒤 · {트랙} · {room}` and [body] the session title (a group of 찜 starting at the same instant adds `같은 시간에 내 시간표 세션 n개` on a second line
+ * and follows the session with the smallest id, [sessionId]). A tap opens [activityId]'s timetable sheet for [scheduleId] on 내 시간표. The contract's
  * identifier `session-<sessionId>` hashed is [code], the alarm's request code and the notification id, so the same reminder set again replaces itself.
  */
 data class Reminder(val at: Long, val sessionId: String, val title: String, val body: String, val activityId: String, val scheduleId: String) {
@@ -74,7 +74,7 @@ object SessionReminders {
             // Numeric ids compare by length first, so `9` < `10`; anything else falls back to text order.
             val lead = group.minWith(compareBy({ it.session.id.length }, { it.session.id }))
             val place = lead.track?.let { listOfNotNull(it.name, it.room).joinToString(" · ") }?.takeIf { it.isNotBlank() }
-            val body = listOfNotNull(lead.session.title, "같은 시간에 찜한 세션 ${group.size}개".takeIf { group.size > 1 }).joinToString("\n")
+            val body = listOfNotNull(lead.session.title, "같은 시간에 내 시간표 세션 ${group.size}개".takeIf { group.size > 1 }).joinToString("\n")
             Reminder(at, lead.session.id, listOfNotNull("10분 뒤", place).joinToString(" · "), body, lead.activityId, lead.scheduleId)
         }
         .sortedBy { it.at }
@@ -106,7 +106,7 @@ object SessionReminders {
         val open = (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return)
             .putExtra(KIND, SESSION_REMINDER).putExtra(ACTIVITY, activityId).putExtra(SCHEDULE, scheduleId).putExtra(SESSION, sessionId)
         val tap = PendingIntent.getActivity(context, code, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        // BigTextStyle so a group's second line (`같은 시간에 찜한 세션 n개`) shows when expanded.
+        // BigTextStyle so a group's second line (`같은 시간에 내 시간표 세션 n개`) shows when expanded.
         val shown = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.dearby_symbol).setContentTitle(title).setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body)).setCategory(NotificationCompat.CATEGORY_REMINDER).setAutoCancel(true).setContentIntent(tap).build()
         NotificationManagerCompat.from(context).notify(code, shown)

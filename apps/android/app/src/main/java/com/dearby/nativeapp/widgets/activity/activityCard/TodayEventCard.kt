@@ -20,7 +20,7 @@ import com.dearby.nativeapp.shared.ui.TealFill
  * 오늘 내 행사 (2026-10-26 사용자 결정): the nearest 진행 중 내 활동 whose 활동 일정 is on today or starts within 7 days. [badge] is `오늘` or
  * `D-n`, [name] the activity, [body] the next 찜 session (`14:50 · 트랙 B · 그랜드볼룸 B · 세션 제목`, `지금 · …` while it runs) or the current/next
  * block, [others] how many more activities qualify (`외 n개`). [scheduleId] is the block whose 트랙·세션 시간표 the card opens, null when the
- * card opens the progress page instead; [favoritesFirst] starts that sheet on 찜한 세션.
+ * card opens the progress page instead; [favoritesFirst] starts that sheet on 내 시간표.
  */
 data class TodayEventState(val activityId: String, val name: String, val badge: String, val body: String, val today: Boolean, val others: Int,
     val scheduleId: String? = null, val favoritesFirst: Boolean = false)
