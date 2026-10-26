@@ -228,7 +228,9 @@ private sealed interface Route {
                         (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
                         route = null
                     }
-                    Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, sessionReminders, setSessionReminders) { route = null }
+                    // Turning 세션 이동 알림 on asks the notification permission once too (contract "찜한 세션 이동 알림").
+                    Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) },
+                        sessionReminders, { on -> if (on) askNotificationsOnce(); setSessionReminders(on) }) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }
                         ConsentPage(profileState.consenting, profileState.consentError,

@@ -43,9 +43,12 @@ data class Reminder(val at: Long, val sessionId: String, val title: String, val 
  */
 object SessionReminders {
     const val CHANNEL = "session_reminder"
-    /** Extras of the launch intent a notification tap sends: the activity and its block whose timetable should open on 찜한 세션. */
-    const val ACTIVITY = "dearby.sessionReminder.activity"
-    const val SCHEDULE = "dearby.sessionReminder.schedule"
+    /** Extras of the launch intent a notification tap sends (the contract's payload keys): [KIND] is [SESSION_REMINDER]; the activity and its block open on 찜한 세션. */
+    const val KIND = "kind"
+    const val SESSION_REMINDER = "session_reminder"
+    const val ACTIVITY = "activityId"
+    const val SCHEDULE = "scheduleId"
+    private const val SESSION = "sessionId"
     private const val ACTION = "com.dearby.nativeapp.SESSION_REMINDER"
     private const val LEAD_MS = 10 * 60_000L
     /** The contract's cap (iOS's 64 pending local notifications): the nearest 60 groups. */
@@ -89,17 +92,19 @@ object SessionReminders {
     }
 
     private fun alarmIntent(context: Context, reminder: Reminder) = Intent(context, SessionReminderReceiver::class.java).setAction(ACTION)
-        .putExtra("sessionId", reminder.sessionId).putExtra("title", reminder.title).putExtra("body", reminder.body).putExtra(ACTIVITY, reminder.activityId).putExtra(SCHEDULE, reminder.scheduleId)
+        .putExtra(SESSION, reminder.sessionId).putExtra("title", reminder.title).putExtra("body", reminder.body).putExtra(ACTIVITY, reminder.activityId).putExtra(SCHEDULE, reminder.scheduleId)
 
-    /** Posts the notification an alarm [intent] carries; a tap starts the app with [ACTIVITY]·[SCHEDULE] extras (MainActivity opens the timetable). */
+    /** Posts the notification an alarm [intent] carries; a tap starts the app with the payload extras (MainActivity opens the timetable). */
     internal fun notify(context: Context, intent: Intent) {
         val title = intent.getStringExtra("title") ?: return
         val activityId = intent.getStringExtra(ACTIVITY) ?: return
         val scheduleId = intent.getStringExtra(SCHEDULE) ?: return
-        val code = "session-${intent.getStringExtra("sessionId") ?: return}".hashCode()
+        val sessionId = intent.getStringExtra(SESSION) ?: return
+        val code = "session-$sessionId".hashCode()
         val body = intent.getStringExtra("body")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
-        val open = (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return).putExtra(ACTIVITY, activityId).putExtra(SCHEDULE, scheduleId)
+        val open = (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return)
+            .putExtra(KIND, SESSION_REMINDER).putExtra(ACTIVITY, activityId).putExtra(SCHEDULE, scheduleId).putExtra(SESSION, sessionId)
         val tap = PendingIntent.getActivity(context, code, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         // BigTextStyle so a group's second line (`같은 시간에 찜한 세션 n개`) shows when expanded.
         val shown = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.dearby_symbol).setContentTitle(title).setContentText(body)

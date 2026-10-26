@@ -181,8 +181,10 @@ class MainActivity : ComponentActivity() {
         // A push tapped while the app was in the background starts it with the message's `data` as extras (`url`, contract "즐겨찾기(하트)·새 모집 푸시 알림").
         intent ?: return
         if (recreated) return
-        // A 세션 이동 알림 tap (features/reminder): the activity opens on 발견 and, once its detail is up, the block's timetable on 찜한 세션.
-        intent.getStringExtra(SessionReminders.ACTIVITY)?.let { id ->
+        // A 세션 이동 알림 tap (features/reminder, payload `kind=session_reminder`): the activity opens on 발견 and, once its detail is up, the block's
+        // timetable on 찜한 세션. Before the push path below, which also carries `activityId`.
+        if (intent.getStringExtra(SessionReminders.KIND) == SessionReminders.SESSION_REMINDER) {
+            val id = intent.getStringExtra(SessionReminders.ACTIVITY) ?: return
             intent.getStringExtra(SessionReminders.SCHEDULE)?.let { sessions.remind(id, it) }
             activityModel.openLinked(id, "push")
             return
