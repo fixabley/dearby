@@ -48,7 +48,7 @@ struct TimetableGrid: Equatable {
     }
 }
 
-/// 나만의 시간표 (contract "트랙·세션 시간표" 2026-10-26 `찜한 세션`): the favorited sessions in time order on one line, with the free time and
+/// 내 시간표 (contract "트랙·세션 시간표" 2026-10-26 `내 시간표(찜한 세션)`): the favorited sessions in time order on one line, with the free time and
 /// the move to another room between them and a warning band before sessions favorited at the same time.
 enum MyTimetable {
     struct Item: Equatable {

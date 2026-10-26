@@ -358,7 +358,7 @@ import SwiftUI
             cardsSegment = .received
             Task { await wallet.view(incoming) }
         case .activity(let id): Task { await activityModel.openLinked(id, source: source) }
-        // The Live Activity's tap (contract "행사 당일 진행 중 표시"): the detail with the block's timetable sheet on 찜한 세션.
+        // The Live Activity's tap (contract "행사 당일 진행 중 표시"): the detail with the block's timetable sheet on 내 시간표.
         case .timetable(let activityID, let scheduleID): Task { await activityModel.openLinkedTimetable(activityID, scheduleID: scheduleID, source: source) }
         case .favorites:
             tab = 1

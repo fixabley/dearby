@@ -10,6 +10,8 @@ import com.dearby.nativeapp.entities.activity.api.parseSessionFavorites
 import com.dearby.nativeapp.entities.activity.model.SessionFavorite
 import com.dearby.nativeapp.entities.activity.model.Session
 import com.dearby.nativeapp.entities.activity.model.Timetable
+import com.dearby.nativeapp.pages.activity.DayBlock
+import com.dearby.nativeapp.pages.activity.DayBlockLoad
 import com.dearby.nativeapp.pages.activity.MyTimetableEntry
 import com.dearby.nativeapp.pages.activity.SessionState
 import com.dearby.nativeapp.pages.activity.TimetableState
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 /**
  * 트랙·세션 시간표 and 세션 찜 (contract "트랙·세션 시간표", 2026-10-26). The open timetable is read without a token; which sessions are
@@ -41,8 +44,13 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
     /** [favoritesOnly] opens the sheet on 내 시간표 (a 세션 이동 알림 tap). */
     data class Open(val activityId: String, val scheduleId: String, val phase: TimetablePhase = TimetablePhase.LOADING, val timetable: TimetableState? = null, val favoritesOnly: Boolean = false)
 
+    /** 하루 시간표 (2026-10-26): one date's timed blocks, each read on its own; [loads] in block order. Open instead of [Open], never with it. */
+    data class OpenDay(val activityId: String, val day: LocalDate, val loads: List<DayBlockLoad>)
+
     private val openFlow = MutableStateFlow<Open?>(null)
     val open = openFlow.asStateFlow()
+    private val dayFlow = MutableStateFlow<OpenDay?>(null)
+    val openDay = dayFlow.asStateFlow()
     private val idsFlow = MutableStateFlow<Set<String>>(emptySet())
     val ids = idsFlow.asStateFlow()
     private val itemsFlow = MutableStateFlow<List<SessionFavorite>?>(null)
@@ -70,9 +78,10 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
         }
     }
 
-    /** Shows the block's timetable; null closes it. */
+    /** Shows the block's timetable; null closes it (and a day sheet). */
     fun show(activityId: String?, scheduleId: String?, favoritesOnly: Boolean = false) {
         timetableJob?.cancel()
+        dayFlow.value = null
         if (activityId == null || scheduleId == null) { openFlow.value = null; return }
         openFlow.value = Open(activityId, scheduleId, favoritesOnly = favoritesOnly)
         timetableJob = viewModelScope.launch {
@@ -87,7 +96,28 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
         }
         load()
     }
-    fun retry() = openFlow.value?.let { show(it.activityId, it.scheduleId, it.favoritesOnly) }
+    fun retry() { openFlow.value?.let { show(it.activityId, it.scheduleId, it.favoritesOnly) }; dayFlow.value?.let { showDay(it.activityId, it.day, it.loads.map { load -> load.block }) } }
+
+    /**
+     * Shows the day's blocks as one table (하루 시간표): every block with a timetable is read at once, each landing in [OpenDay.loads] as it ends
+     * (a 404 is MISSING, drawn as a title row; a failure FAILED). A block without a timetable is MISSING from the start and not fetched.
+     */
+    fun showDay(activityId: String, day: LocalDate, blocks: List<DayBlock>) {
+        timetableJob?.cancel()
+        openFlow.value = null
+        dayFlow.value = OpenDay(activityId, day, blocks.map { DayBlockLoad(it, if (it.hasTimetable && it.scheduleId != null) TimetablePhase.LOADING else TimetablePhase.MISSING, null) })
+        timetableJob = viewModelScope.launch {
+            blocks.filter { it.hasTimetable && it.scheduleId != null }.forEach { block ->
+                launch {
+                    val result = runCatching { withContext(Dispatchers.IO) { fetchTimetable(ApiOrigin.current, activityId, block.scheduleId!!) } }
+                        .onFailure { if (it is CancellationException) throw it; Log.w("Dearby", "Timetable load from ${ApiOrigin.current} failed: ${it.javaClass.simpleName}") }
+                    val (phase, timetable) = result.fold({ (if (it == null) TimetablePhase.MISSING else TimetablePhase.LOADED) to it?.toState() }, { TimetablePhase.FAILED to null })
+                    dayFlow.update { open -> open?.copy(loads = open.loads.map { if (it.block.scheduleId == block.scheduleId) it.copy(phase = phase, timetable = timetable) else it }) }
+                }
+            }
+        }
+        load()
+    }
 
     /** A 세션 이동 알림 was tapped: remember the block until the activity's detail opens (the caller opens that). */
     fun remind(activityId: String, scheduleId: String) { pendingFlow.value = activityId to scheduleId }

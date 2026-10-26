@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.ViewTimeline
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.HourglassEmpty
@@ -39,14 +41,15 @@ import java.time.format.DateTimeFormatter
  * are time slots ([timetableRows]), columns are tracks in `position` order. The whole table scrolls sideways at once while the time column
  * stays put; the sheet only drags vertically, so the sideways scroll and the sheet's vertical nested scroll do not compete. A block without
  * tracks is one column. A tap on a session opens its description and speakers; [heart] is the 찜 tap (the caller opens sign-in or the
- * consent screen when the account is not ready).
+ * consent screen when the account is not ready). [viewDay] (하루 시간표, 2026-10-26) is the small `이 날 전체 보기` under the title when the
+ * block's date has other timed blocks: it swaps this sheet for [DayTimetableSheet].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun TimetableSheet(title: String, range: String?, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit,
     /** 찜 실패 알림: the app's own Snackbar sits under this full-height sheet, so the sheet shows it. */
     notices: SnackbarHostState? = null,
     /** Opens on `내 시간표` (a 세션 이동 알림 tap). */
-    favoritesFirst: Boolean = false) {
+    favoritesFirst: Boolean = false, viewDay: (() -> Unit)? = null) {
     // Keyed so a reminder tap moves an already open sheet to 내 시간표 too.
     var favoritesOnly by remember(favoritesFirst) { mutableStateOf(favoritesFirst) }
     var opened by remember { mutableStateOf<String?>(null) }
@@ -58,6 +61,7 @@ import java.time.format.DateTimeFormatter
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     range?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium) }
+                    viewDay?.let { TextButton(it, contentPadding = PaddingValues(0.dp)) { Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("이 날 전체 보기") } }
                 }
                 IconButton(dismiss) { Icon(Icons.Rounded.Close, "닫기") }
             }
@@ -78,7 +82,8 @@ import java.time.format.DateTimeFormatter
                     val favored = all.filter { it.id in favorites }
                     val overlap: (SessionState) -> Int = { session -> if (session.id in favorites) favored.count { it.overlaps(session) } else 0 }
                     val card: @Composable (SessionState, Modifier) -> Unit = { session, modifier ->
-                        SessionItem(session, tracks, session.id in favorites, overlap(session), { heart(session.id) }, { opened = session.id }, modifier)
+                        if (session.isBlock) BlockBand(session, modifier)
+                        else SessionItem(session, tracks, session.id in favorites, overlap(session), { heart(session.id) }, { opened = session.id }, modifier)
                     }
                     val rows = remember(shown) { timetableRows(shown) }
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
@@ -94,6 +99,30 @@ import java.time.format.DateTimeFormatter
     }
     timetable?.sessions?.firstOrNull { it.id == opened }?.let { session ->
         SessionSheet(session, trackOf(session), session.id in favorites, { heart(session.id) }) { opened = null }
+    }
+}
+
+/**
+ * 하루 시간표 (2026-10-26 사용자 "시간표보기 누르면 지금 여러 트랙 나뉜 시간표처럼"): every timed block of one date as one table, [dayTimetable]'s merge
+ * of [loads] — tracks by name, a block without sessions or whose read failed as a full-width row. [title] is `{활동 이름} · 10월 28일 (수)`.
+ * Loading until every block's read ended; [retry] rereads the day.
+ */
+@Composable fun DayTimetableSheet(title: String, range: String, loads: List<DayBlockLoad>, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit,
+    notices: SnackbarHostState? = null) {
+    val phase = if (loads.any { it.phase == TimetablePhase.LOADING }) TimetablePhase.LOADING else TimetablePhase.LOADED
+    val timetable = remember(loads) { dayTimetable(loads) }
+    TimetableSheet(title, range, phase, timetable, favorites, heart, dismiss, retry, notices)
+}
+
+/** A whole block as one row of the day table (키노트·쉬는시간 without sessions, or a block whose timetable could not be read). */
+@Composable private fun BlockBand(session: SessionState, modifier: Modifier) {
+    val failed = session.kind == BLOCK_FAILED_KIND
+    Surface(modifier, color = if (failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (failed) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(10.dp)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(if (failed) Icons.Rounded.WarningAmber else Icons.Rounded.Event, null, Modifier.size(18.dp))
+            Text("${slot(session.startAt, session.endAt)}  ${session.title}", style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 

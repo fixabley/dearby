@@ -20,6 +20,11 @@ export function readGuestCookie(header: string | null) {
     ?.slice(name.length);
 }
 
+/** The browser's language preference picks ko or en activity text upstream. Anything that is not a plain language list is dropped. */
+export function acceptLanguage(value: string | null): string | undefined {
+  return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
+}
+
 export function guestProxyKey() {
   const secret = process.env.GUEST_PROXY_SECRET;
   return secret && secret.length >= 32 ? secret : undefined;
@@ -63,7 +68,9 @@ export function upstreamFetch(
     query,
     accept = "application/json",
     acceptLanguage,
+    ifMatch,
     revalidate,
+    formData,
   }: {
     method?: string;
     guest?: boolean;
@@ -76,8 +83,12 @@ export function upstreamFetch(
     accept?: string;
     /** Already validated; the API answers activity text in ko or en from it. */
     acceptLanguage?: string;
+    /** Already validated `If-Match` of an account mutation (the profile version check). */
+    ifMatch?: string;
     /** Seconds to keep the response in the data cache (public, cookie-free reads such as Open Graph); otherwise never cached. */
     revalidate?: number;
+    /** Multipart upload (photo, 인증자료): sent as is so the runtime sets the boundary; `body` is ignored then. */
+    formData?: FormData;
   },
 ) {
   const origin = apiOrigin();
@@ -87,14 +98,15 @@ export function upstreamFetch(
   if (guest) headers["X-Guest-Proxy-Key"] = key!;
   if (guest && token) headers["X-Guest-Token"] = token;
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !formData) headers["Content-Type"] = "application/json";
   if (acceptLanguage) headers["Accept-Language"] = acceptLanguage;
+  if (ifMatch) headers["If-Match"] = ifMatch;
   const url = new URL(`/v1/${path}`, origin);
   if (query) url.search = query.toString();
   return fetch(url, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
     ...(revalidate === undefined ? { cache: "no-store" as const } : { next: { revalidate } }),
     redirect: "error",
     signal: AbortSignal.timeout(10_000),

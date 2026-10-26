@@ -211,7 +211,7 @@ struct SettingsPage: View {
                 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("세션 이동 알림")
-                        Text("찜한 세션 10분 전에 이 기기에서 알려요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                        Text("내 시간표의 세션 10분 전에 이 기기에서 알려요").font(.dearby(.footnote)).foregroundStyle(.secondary)
                     }
                 }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-session-reminders")
             }
@@ -222,7 +222,7 @@ struct SettingsPage: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("행사 진행 중 표시")
                         Text(ActivityAuthorizationInfo().areActivitiesEnabled
-                             ? "행사 당일 찜한 세션 진행을 잠금 화면과 Dynamic Island에 보여요"
+                             ? "행사 당일 내 시간표 세션 진행을 잠금 화면과 Dynamic Island에 보여요"
                              : "iOS 설정 › Dearby에서 실시간 현황을 켜면 보여요").font(.dearby(.footnote)).foregroundStyle(.secondary)
                     }
                 }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-live-session")

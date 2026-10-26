@@ -29,3 +29,49 @@ export function analyticsUrl(url: string): string {
 export function setSignedIn(signedIn: boolean) {
   window.gtag?.("set", "user_properties", { signed_in: signedIn ? "yes" : "no" });
 }
+
+/** `screen_view(screen_name)`: the web has no screens, so only the apps' shared names are sent (`card_qr`, analytics-v1.md). */
+export function screenView(name: string) {
+  window.gtag?.("event", "screen_view", { screen_name: name });
+}
+
+const EXCHANGED_KEY = "dearby.exchanged";
+const MILESTONE_KEY = "dearby.exchange_milestone";
+function readIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(EXCHANGED_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+/**
+ * 명함 교환 3회 지표 (analytics-v1.md "비공개 테스트 성공 지표" › 지표 2): compares the wallet with the receipts that were reciprocal
+ * last time, sends `card_exchange_completed` once per newly reciprocal receipt, keeps the `card_exchanges` user property and sends
+ * `card_exchange_milestone` the first time the count reaches 3. Ids stay in this browser only; `clearExchangeMemory` on sign-out.
+ */
+export function noteExchanges(receipts: { id: string; reciprocal: boolean; activityId: number | null }[], via: "reciprocate" | "wallet") {
+  const before = readIds();
+  const now = receipts.filter((receipt) => receipt.reciprocal);
+  for (const receipt of now)
+    if (!before.has(receipt.id)) track("card_exchange_completed", { via, ...(receipt.activityId !== null && { activity_id: receipt.activityId }) });
+  window.gtag?.("set", "user_properties", { card_exchanges: String(now.length) });
+  try {
+    localStorage.setItem(EXCHANGED_KEY, JSON.stringify(now.map((receipt) => receipt.id)));
+    if (now.length >= 3 && !localStorage.getItem(MILESTONE_KEY)) {
+      track("card_exchange_milestone", { count: 3 });
+      localStorage.setItem(MILESTONE_KEY, "1");
+    }
+  } catch {
+    // Storage blocked: the events above were still sent; the next load may repeat `card_exchange_completed`.
+  }
+}
+export function clearExchangeMemory() {
+  try {
+    localStorage.removeItem(EXCHANGED_KEY);
+    localStorage.removeItem(MILESTONE_KEY);
+  } catch {
+    // nothing stored
+  }
+  window.gtag?.("set", "user_properties", { card_exchanges: null });
+}

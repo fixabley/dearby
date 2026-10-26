@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ProfileConsent } from "@/lib/models";
-import { setSignedIn } from "@/shared/lib/analytics";
+import { clearExchangeMemory, setSignedIn } from "@/shared/lib/analytics";
 import { Dialog, DialogActions, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/shared/ui/dialog";
 import { Toast, type Notice } from "@/shared/ui/toast";
 import { clearGuestSession, guestSavedCount, importGuest, logout, session, type Session } from "../api/auth-client";
@@ -17,11 +17,18 @@ export type Auth = {
   consentRequired: boolean;
   openSignIn: () => void;
   openConsent: () => void;
-  /** Runs `action` now when signed in with consent; otherwise asks to sign in (and consent) first and runs it afterwards. */
-  requireAccount: (action: () => void) => void;
+  /** Runs `action` now when signed in with consent; otherwise asks to sign in (and consent) first and runs it afterwards (awaited before `epoch` moves). */
+  requireAccount: (action: () => void | Promise<void>) => void;
   signOut: () => Promise<void>;
   /** The session ended elsewhere (account deleted, refresh refused): forget it here and optionally say why. */
   signedOutLocally: (notice?: string) => void;
+  /**
+   * Counts completed sign-ins (after consent and the deferred action) and sign-outs, so public reads that carry `favorited` reload on a
+   * change — not on page load, and not before the heart that opened the sheet has been saved.
+   */
+  epoch: number;
+  /** A transient notice at the bottom of the screen (shared toast). */
+  notify: (text: string) => void;
 };
 const AuthContext = createContext<Auth | null>(null);
 const signedOut: State = { status: "signedOut", consent: undefined };
@@ -60,13 +67,26 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
   useEffect(() => {
     if (state.status !== "loading") setSignedIn(state.status === "signedIn" && state.consent?.consentRequired === false);
   }, [state]);
+  const [epoch, setEpoch] = useState(0);
+  const status = useRef<Status>("loading");
+  useEffect(() => {
+    status.current = state.status;
+  }, [state.status]);
 
   const notify = useCallback((text: string) => setNotice({ id: Date.now(), text }), []);
-  /** Signed in with consent: run what the person was doing, then ask about the browser's saved cards. */
-  const ready = useCallback(() => {
+  /**
+   * Signed in with consent: run (and await) what the person was doing, move `epoch` so public reads reload with the account, then ask
+   * about the browser's saved cards.
+   */
+  const ready = useCallback(async () => {
     const action = pending.current;
     pending.current = null;
-    action?.();
+    try {
+      await action?.();
+    } catch {
+      // The action reports its own failure.
+    }
+    setEpoch((value) => value + 1);
     guestSavedCount()
       .then((count) => setMoveOffer(count))
       .catch(() => {});
@@ -98,8 +118,11 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
   }, [load, ready]);
   const signedOutLocally = useCallback((message?: string) => {
     pending.current = null;
+    // 명함 교환 지표의 기기 기록은 로그아웃 때 지운다 (analytics-v1.md "비공개 테스트 성공 지표").
+    clearExchangeMemory();
     setSheet("none");
     setMoveOffer(0);
+    if (status.current === "signedIn") setEpoch((value) => value + 1);
     setState(signedOut);
     if (message) setNotice({ id: Date.now(), text: message });
   }, []);
@@ -112,8 +135,11 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
     signedOutLocally();
   }, [signedOutLocally]);
   const requireAccount = useCallback(
-    (action: () => void) => {
-      if (state.status === "signedIn" && state.consent?.consentRequired === false) return action();
+    (action: () => void | Promise<void>) => {
+      if (state.status === "signedIn" && state.consent?.consentRequired === false) {
+        void action();
+        return;
+      }
       pending.current = action;
       setSheet(state.status === "signedIn" && state.consent?.consentRequired ? "consent" : "signIn");
     },
@@ -128,6 +154,8 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
     requireAccount,
     signOut,
     signedOutLocally,
+    epoch,
+    notify,
   };
   return (
     <AuthContext value={value}>

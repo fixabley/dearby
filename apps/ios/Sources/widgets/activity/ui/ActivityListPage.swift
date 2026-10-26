@@ -163,14 +163,13 @@ struct ActivityListPage: View {
             TabRootToolbar()
         }
     }
-    /// The 오늘 내 행사 card pressed (사용 통계 `today_card_tap`): today with a timetable on its block, that block's sheet on `찜한 세션` when any
+    /// The 오늘 내 행사 card pressed (사용 통계 `today_card_tap`): today with a timetable on its block, that block's sheet on `내 시간표` when any
     /// session of it is favorited (else `전체`); otherwise the activity's 진행 단계 on the 내 활동 tab (`showInMine`, as `내 활동으로`).
     private func open(_ event: TodayEvent, now: Date) {
         let block = event.block
         if event.timing == .today, block.hasTimetable {
             report(event, "timetable")
-            timetable = TimetableRoute(activityID: event.activity.id, activityTitle: event.activity.title, scheduleID: block.id,
-                                       scheduleTitle: event.blockTitle, date: block.text(now: now) ?? "",
+            timetable = TimetableRoute(activity: event.activity, block: block, title: event.blockTitle, date: block.text(now: now) ?? "", now: now,
                                        favoritesFirst: sessionFavorites.items.contains { $0.activityID == event.activity.id && $0.scheduleID == block.id })
         } else {
             report(event, "progress")

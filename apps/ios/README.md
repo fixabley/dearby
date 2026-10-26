@@ -139,9 +139,9 @@
 
 ## 행사 당일 진행 중 표시 (2026-10-26, 라이브 액티비티)
 
-계약 native-v1.md "행사 당일 진행 중 표시". 오늘 내 행사 카드가 오늘로 가리키는 활동에 그 날 찜한 세션이 있으면 첫 찜 세션 30분 전부터 마지막 세션 끝까지 라이브 액티비티(잠금 화면·Dynamic Island)를 띄운다. 기기 안에서만 갱신하며 서버·푸시 토큰이 없다.
+계약 native-v1.md "행사 당일 진행 중 표시". 오늘 내 행사 카드가 오늘로 가리키는 활동에 그 날 내 시간표(찜한 세션)가 있으면 첫 세션 30분 전부터 마지막 세션 끝까지 라이브 액티비티(잠금 화면·Dynamic Island)를 띄운다. 기기 안에서만 갱신하며 서버·푸시 토큰이 없다.
 
-- 코드: `features/liveSession/model/LiveSessionModel.swift`(시작·갱신·종료, 계획 저장 `dearby.liveSession.plan`, `BGAppRefreshTask` `io.wid.dearby.liveSession.refresh` 예약), `widgets/activity/model/LiveSessionPlan.swift`(`TodayEvent`+세션 찜 → 계획), `Widgets/`(확장 `DearbyWidgets`: `LiveSessionWidget` 화면, 자체 `Assets.xcassets`에 `DearbySymbol` 사본), 두 타깃이 함께 컴파일하는 `features/liveSession/model/LiveSessionAttributes.swift`. `AppDelegate`가 시작 전 백그라운드 작업을 등록한다. 탭 링크 `dearby://timetable/<activityId>/<scheduleId>`는 `IncomingLink.timetable` → `openLinkedTimetable`(찜한 세션 이동 알림과 같은 시트).
+- 코드: `features/liveSession/model/LiveSessionModel.swift`(시작·갱신·종료, 계획 저장 `dearby.liveSession.plan`, `BGAppRefreshTask` `io.wid.dearby.liveSession.refresh` 예약), `widgets/activity/model/LiveSessionPlan.swift`(`TodayEvent`+세션 찜 → 계획), `Widgets/`(확장 `DearbyWidgets`: `LiveSessionWidget` 화면, 자체 `Assets.xcassets`에 `DearbySymbol` 사본), 두 타깃이 함께 컴파일하는 `features/liveSession/model/LiveSessionAttributes.swift`. `AppDelegate`가 시작 전 백그라운드 작업을 등록한다. 탭 링크 `dearby://timetable/<activityId>/<scheduleId>`는 `IncomingLink.timetable` → `openLinkedTimetable`(세션 이동 알림과 같은 시트, 내 시간표 보기).
 - Info.plist(두 파일 같음): `NSSupportsLiveActivities`, `UIBackgroundModes` `fetch`, `BGTaskSchedulerPermittedIdentifiers`.
 - 설정 › 알림 `행사 진행 중 표시`(기본 켬, `dearby.liveSession.enabled`). 사용 통계 `live_session_shown`(서울 날짜당 1회).
 - 프로젝트: `generate_project.rb`가 확장 타깃(번들 `io.wid.dearby.widgets`, `Widgets/Info.plist`, entitlements의 App Group `group.io.wid.dearby`는 확장에만)을 만들고 앱에 `Embed Foundation Extensions`로 넣는다. SwiftLint 범위에 `Widgets`를 더했다.

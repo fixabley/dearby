@@ -26,6 +26,6 @@ struct LiveSessionAttributes: ActivityAttributes, Hashable {
     /// The block's time zone for the session times.
     let zone: String
 
-    /// A tap opens that block's timetable sheet on 찜한 세션 (`IncomingLink.timetable`).
+    /// A tap opens that block's timetable sheet on 내 시간표 (`IncomingLink.timetable`).
     static func link(activityID: String, scheduleID: String) -> URL? { URL(string: "dearby://timetable/\(activityID)/\(scheduleID)") }
 }

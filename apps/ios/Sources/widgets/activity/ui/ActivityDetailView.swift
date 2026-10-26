@@ -21,10 +21,7 @@ struct ActivityDetailView: View {
                         VStack(alignment: .leading, spacing: 24) {
                             identity(activity)
                             if let eligibility = activity.eligibility { audience(eligibility) }
-                            ActivityInformationView(rows: scheduleRows(activity), canCheckCalendar: !activity.overlapSchedules.isEmpty,
-                                                    checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 },
-                                                    openTimetable: { timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: $0.id,
-                                                                                                   scheduleTitle: $0.title, date: $0.date) })
+                            information(activity)
                             place(activity)
                             source(activity)
                         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
@@ -43,12 +40,12 @@ struct ActivityDetailView: View {
             let from = state.takeLinkSource(activityID) ?? source
             openedFrom = from
             AppAnalytics.event("activity_view", parameters(["source": from]))
-            // A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): its block's timetable opens on 찜한 세션; a block gone from the activity
+            // A tapped 세션 이동 알림 (contract "찜한 세션 이동 알림"): its block's timetable opens on 내 시간표; a block gone from the activity
             // leaves the detail alone.
             if let scheduleID = state.takeLinkTimetable(activityID), let activity,
-               let row = scheduleRows(activity).first(where: { $0.id == scheduleID && $0.hasTimetable }) {
-                timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: row.id, scheduleTitle: row.title,
-                                           date: row.date, favoritesFirst: true)
+               let stage = stages(activity).first(where: { $0.id == scheduleID && $0.source.hasTimetable }) {
+                timetable = TimetableRoute(activity: activity, block: stage.source, title: stage.name, date: stage.dateText(now: state.loadedAt),
+                                           now: state.loadedAt, favoritesFirst: true)
             }
         }
         .toolbar(.visible, for: .navigationBar)
@@ -163,21 +160,44 @@ struct ActivityDetailView: View {
         .controlSize(.large).font(.dearby(.body).weight(.semibold)).tint(DearbyStyle.teal)
         .padding(.horizontal, 20).padding(.bottom, 12).background(Color(.systemBackground))
     }
-    /// The schedule rows in track order: the recruitment (`모집` with the period and a D-day while recruiting when both bounds are known,
-    /// else `모집 마감` with the deadline — contract "모집 날짜 표기 — 2026-10-26"), `schedules[]`, the activity period; each dated one
-    /// can be added to the calendar (the recruitment row as its deadline). `selection` puts the row under `선발 과정` rather than `활동 일정`
-    /// (contract "선발 과정·활동 일정 분리" 2026-10-26; a timetable block always under `활동 일정`).
-    private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
+    /// The track's stages (`지원`, `schedules[]`, the activity period) in order; marks are not shown here.
+    private func stages(_ activity: ActivityModel) -> [ActivityStage] { ActivityStages.build(activity, marks: [:], now: state.loadedAt)?.stages ?? [] }
+    /// `선발 과정`·`활동 일정` (contract "선발 과정·활동 일정 분리" 2026-10-26; a timetable block always under `활동 일정`): the recruitment (`모집` with
+    /// the period and a D-day while recruiting when both bounds are known, else `모집 마감` with the deadline — contract "모집 날짜 표기 — 2026-10-26"),
+    /// `schedules[]`, the activity period; each dated one can be added to the calendar (the recruitment row as its deadline). 활동 일정 folds
+    /// a day's timed blocks under one date row (contract "하루 시간표" 2026-10-26, `ActivityStages.fold`), whose `시간표 보기` opens the day's sheet.
+    private func information(_ activity: ActivityModel) -> some View {
         let now = state.loadedAt
+        let stages = stages(activity)
         let period = activity.applicationStage?.periodText(now: now) == nil ? nil : activity.recruitmentDate(at: now)
-        return (ActivityStages.build(activity, marks: [:], now: now)?.stages ?? []).map { stage in
+        func row(_ stage: ActivityStage) -> ActivityInformationView.Row {
             let application = stage.id == ActivityStages.applicationStageID
             return ActivityInformationView.Row(id: stage.id, title: application ? (period == nil ? "모집 마감" : "모집") : stage.name,
                                                date: application ? period?.text ?? stage.dateText(now: now) : stage.dateText(now: now),
                                                draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)),
-                                               hasTimetable: !application && stage.source.hasTimetable, badge: application ? period?.dday : nil,
-                                               selection: !stage.inActivitySection)
+                                               hasTimetable: !application && stage.source.hasTimetable, badge: application ? period?.dday : nil)
         }
+        let days = ActivityStages.fold(stages.filter(\.inActivitySection), periodID: activity.activityStage?.id, now: now)
+        let entries = days.map { entry -> ActivityInformationView.Entry in
+            switch entry {
+            case .stage(let stage): .row(row(stage))
+            case .day(let day):
+                .day(.init(id: day.id, title: day.title, date: day.summary, draft: day.calendarDraft(activity, link: state.calendarLink(activity.id)),
+                           hasTimetable: day.hasTimetable, rows: day.stages.map(row)))
+            }
+        }
+        return ActivityInformationView(selection: stages.filter { !$0.inActivitySection }.map(row), activity: entries,
+                                       canCheckCalendar: !activity.overlapSchedules.isEmpty, checkCalendar: { showCalendar = true },
+                                       addToCalendar: { calendarDraft = $0 },
+                                       openTimetable: { row in
+                                           guard let stage = stages.first(where: { $0.id == row.id }) else { return }
+                                           timetable = TimetableRoute(activity: activity, block: stage.source, title: row.title, date: row.date, now: now)
+                                       },
+                                       openDayTimetable: { day in
+                                           for case .day(let found) in days where found.id == day.id {
+                                               timetable = TimetableRoute(activity: activity, day: found, now: now)
+                                           }
+                                       })
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.
     @ViewBuilder private func place(_ activity: ActivityModel) -> some View {

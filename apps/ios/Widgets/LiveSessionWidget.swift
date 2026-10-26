@@ -4,7 +4,7 @@ import WidgetKit
 
 /// 행사 당일 진행 중 표시 (contract "행사 당일 진행 중 표시"): the Live Activity's looks. 잠금 화면 and the expanded Dynamic Island show the activity name,
 /// `지금 · 트랙 B · 그랜드볼룸 B · 세션 제목` with `남은 12:30` counting down (`Text(timerInterval:)`, the OS keeps it moving) and `다음 14:50 · …`.
-/// Compact: the app symbol and the remaining time; minimal: the remaining time. A tap opens that block's timetable sheet on 찜한 세션 in the app.
+/// Compact: the app symbol and the remaining time; minimal: the remaining time. A tap opens that block's timetable sheet on 내 시간표 in the app.
 struct LiveSessionWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LiveSessionAttributes.self) { context in

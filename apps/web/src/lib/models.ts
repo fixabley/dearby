@@ -2,15 +2,22 @@ import { z } from "zod";
 
 export const uuid = z.uuid();
 const text = z.string();
-const contact = z.object({
+export const CONTACT_KINDS = ["phone", "email", "kakao", "instagram", "github", "behance"] as const;
+export type ContactKind = (typeof CONTACT_KINDS)[number];
+// 연락처 인증(contract "연락처 인증" 2026-10-26): `verified` is set by the server alone; older responses omit both fields.
+export const contactSchema = z.object({
   id: uuid,
-  kind: z.enum(["phone", "email", "kakao", "instagram", "github", "behance"]),
+  kind: z.enum(CONTACT_KINDS),
   label: text,
   value: text,
+  verified: z.boolean().optional().catch(false),
+  verifiedAt: text.nullable().optional().catch(null),
 });
+export type Contact = z.infer<typeof contactSchema>;
+const contact = contactSchema;
 // 카탈로그 참조(id는 숫자) 또는 직접 입력한 이름. 명함에는 승인된 이력만 실리고 evidence는 없다.
 const activityInfoRef = z.object({ id: z.number().int(), name: text }).nullable();
-const history = z.object({
+export const historySchema = z.object({
   id: uuid,
   kind: z.enum(["organization", "activity"]),
   organization: activityInfoRef,
@@ -28,7 +35,8 @@ const history = z.object({
   approvalReason: text.nullable(),
   verification: z.enum(["unverified", "pending", "verified", "rejected"]),
 });
-export type History = z.infer<typeof history>;
+const history = historySchema;
+export type History = z.infer<typeof historySchema>;
 // Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introLink` is the 소개 링크 next to the name
 // (contract "소개 링크·소개 글 폐지"); the old `introduction` body is no longer shown.
 export const cardSchema = z.object({
@@ -41,14 +49,17 @@ export const cardSchema = z.object({
   contacts: z.array(contact),
   histories: z.array(history),
   createdAt: text,
-  // 명함 사진(contract "프로필 사진"): the proxy fetches `photoUrl` with the same view right and inlines it, because the page drops `code` from its address.
-  photo: z.string().startsWith("data:image/jpeg;base64,").optional(),
+  // "/v1/cards/:id/photo?v=<ms>" or null (contract "프로필 사진"); signed-in lists load it through `/api/cards/:id/photo` (`cardPhotoSrc`).
+  photoUrl: text.nullable().optional().catch(null),
+  // 명함 사진 on the public page: the proxy fetches `photoUrl` with the same view right and inlines it, because the page drops `code` from its address.
+  // Signed-in screens put the same-origin proxy URL here instead.
+  photo: z.string().optional(),
 });
 export type Card = z.infer<typeof cardSchema>;
 // 명함 교환(contract "명함 교환 — 2026-10-19"): where a saved card was exchanged and when the server recalls it.
 // 교환 세션 맥락(contract "교환 세션 맥락", 2026-10-26): optional until the server sends them; absent on older receipts.
 const sessionField = text.nullable().optional().catch(undefined);
-const exchangeContext = z.object({
+export const exchangeContextSchema = z.object({
   activityId: z.number().int().nullable(),
   activityName: text.nullable(),
   programName: text.nullable(),
@@ -57,7 +68,8 @@ const exchangeContext = z.object({
   trackName: sessionField,
   room: sessionField,
 });
-export type ExchangeContext = z.infer<typeof exchangeContext>;
+const exchangeContext = exchangeContextSchema;
+export type ExchangeContext = z.infer<typeof exchangeContextSchema>;
 export const guestItemSchema = z.object({
   card: cardSchema,
   context: exchangeContext,
@@ -126,10 +138,20 @@ export function parseStatusGroups(value: string | undefined): StatusGroup[] {
 export function groupStatuses(groups: StatusGroup[]): ActivityStatus[] {
   return groups.flatMap((group) => STATUS_GROUPS[group].statuses);
 }
+// 일정 상태 (contract "내 활동 서버 저장·일정 상태"): the options a stage can be marked with — the admin's (with an id) or the default
+// 대기·통과·탈락 the server fills in (id null). `kind` drives the track; `name` is what the picker shows.
+export const STATUS_KINDS = ["WAITING", "PASSED", "FAILED", "OTHER"] as const;
+export type StatusKind = (typeof STATUS_KINDS)[number];
+const scheduleStatusSchema = z.object({ id: z.number().int().nullable(), name: text, kind: z.enum(STATUS_KINDS) });
+export type ScheduleStatus = z.infer<typeof scheduleStatusSchema>;
+export const SCHEDULE_KINDS = ["DEADLINE", "ANNOUNCEMENT", "INTERVIEW", "EVENT"] as const;
 // Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
 const scheduleSchema = z.object({
   id: z.number().int(),
   title: text,
+  // 종류 (contract "내 활동 진행 트랙": 마감·발표·면접 or an event); absent on older responses.
+  kind: z.enum(SCHEDULE_KINDS).optional().catch(undefined),
+  statuses: z.array(scheduleStatusSchema).optional().catch([]),
   startAt: text.nullable(),
   endAt: text.nullable(),
   timeZone: text.nullable(),
@@ -198,7 +220,10 @@ export function fieldTagsOf(item: { fieldTags?: Tag[] }): Tag[] {
 export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
   return item.traitTags ?? item.tags ?? [];
 }
-// 트랙·세션 시간표 (contract "트랙·세션 시간표 — 2026-10-26"): `favorited` is dropped, the web has no sign-in.
+// 즐겨찾기·세션 찜 (contract "즐겨찾기(하트)", "트랙·세션 시간표", web since "웹 화면 — 2단계 A"): true only on a signed-in response
+// (the proxy sends the access cookie as Bearer); anonymous and older responses read false.
+const favorited = z.boolean().optional().catch(false);
+// 트랙·세션 시간표 (contract "트랙·세션 시간표 — 2026-10-26").
 const trackSchema = z.object({ id: z.number().int(), name: text, room: text.nullable(), position: z.number().int() });
 export type Track = z.infer<typeof trackSchema>;
 const sessionSchema = z.object({
@@ -211,6 +236,7 @@ const sessionSchema = z.object({
   endAt: text,
   speakers: z.array(z.object({ name: text, affiliation: text.nullable() })),
   tags: z.array(tagSchema).catch([]),
+  favorited,
 });
 export type Session = z.infer<typeof sessionSchema>;
 export const timetableSchema = z.object({
@@ -220,9 +246,85 @@ export const timetableSchema = z.object({
   sessions: z.array(sessionSchema),
 });
 export type Timetable = z.infer<typeof timetableSchema>;
+// 내 활동 (contract "내 활동 서버 저장·일정 상태", web since 2026-10-26 "웹 로그인" 2단계 B): `GET /v1/me/activities` items. A mark on a
+// schedule is the admin status by id or a default one by kind (`statusId` null).
+export const myActivitySchema = z.object({
+  activityId: z.number().int().positive(),
+  createdAt: text,
+  deleted: z.boolean(),
+  statuses: z.array(z.object({ scheduleId: z.number().int(), statusId: z.number().int().nullable(), kind: z.enum(STATUS_KINDS) })),
+});
+export type MyActivity = z.infer<typeof myActivitySchema>;
+export const myActivityListSchema = z.object({ items: z.array(myActivitySchema) });
+/** `PUT /v1/me/activities/{id}/schedules/{scheduleId}` body: an admin status by id or a default one by kind, never both. */
+export const statusPickSchema = z.union([
+  z.object({ statusId: z.number().int().positive() }).strict(),
+  z.object({ kind: z.enum(STATUS_KINDS) }).strict(),
+]);
+export type StatusPick = z.infer<typeof statusPickSchema>;
+// 찜한 세션 (contract "트랙·세션 시간표" › 공개 API `GET /v1/me/session-favorites`): the web reads them only for the 오늘 내 행사 card.
+export const favoriteSessionSchema = z.object({
+  activityId: z.number().int(),
+  activityName: text,
+  scheduleId: z.number().int(),
+  scheduleTitle: text,
+  /** The parent block (start·end·zone), sent since 2026-10-26 (#401): 내 시간표 draws from it without reading the timetable again. */
+  schedule: scheduleSchema,
+  /** The session's track; null for a full-width session. */
+  track: trackSchema.nullable().optional().catch(null),
+  session: sessionSchema,
+  favoritedAt: text,
+});
+export type FavoriteSession = z.infer<typeof favoriteSessionSchema>;
+export const favoriteSessionListSchema = z.object({ items: z.array(favoriteSessionSchema) });
 /** `HH:mm` (24h) of an instant in a zone, for timetable rows. */
 export function clockTime(time: number, timeZone: string): string {
   return koreanParts(time, timeZone, true).time;
+}
+/** `M월 d일 (요일)` of an instant in a zone, with its year when outside the current Seoul year (the `scheduleLabel` rule). */
+export function dayLabel(time: number, timeZone: string, now = Date.now()): string {
+  const parts = koreanParts(time, timeZone, false);
+  return `${parts.year === koreanParts(now, "Asia/Seoul", false).year ? "" : `${parts.year}년 `}${parts.day}`;
+}
+/**
+ * 하루 시간표 (2026-10-26 사용자 "10/28일 누르면 시간표보기 일정추가 이런식으로"): the timed blocks of one Seoul day, folded into
+ * one day row on the activity detail and shown together in the day timetable. `day` is the Seoul `yyyy-MM-dd`, `start`/`end`
+ * the earliest start and latest end, `timeZone` the first block's (they share one in practice).
+ */
+export type ScheduleDay = { day: string; label: string; schedules: Schedule[]; start: number; end: number; timeZone: string };
+/**
+ * Detail schedules with same-day timed blocks folded: a block with both `startAt` and `endAt` on one Seoul day joins that day's
+ * group, which replaces the first such block in server order; a day with a single block stays a plain row, as do all-day,
+ * one-bound, multi-day and undated blocks. Data is untouched — this is display grouping only.
+ */
+export function foldScheduleDays(schedules: Schedule[], now = Date.now()): (Schedule | ScheduleDay)[] {
+  const days = new Map<string, ScheduleDay>();
+  const items: (Schedule | ScheduleDay)[] = [];
+  for (const schedule of schedules) {
+    const start = parseTime(schedule.startAt);
+    const end = parseTime(schedule.endAt);
+    const day = start === undefined || end === undefined ? undefined : calendarDay(start, "Asia/Seoul");
+    if (day === undefined || day !== calendarDay(end!, "Asia/Seoul")) {
+      items.push(schedule);
+      continue;
+    }
+    const group = days.get(day);
+    if (group) {
+      group.schedules.push(schedule);
+      group.start = Math.min(group.start, start!);
+      group.end = Math.max(group.end, end!);
+      continue;
+    }
+    const timeZone = schedule.timeZone ?? "Asia/Seoul";
+    const made: ScheduleDay = { day, label: dayLabel(start!, timeZone, now), schedules: [schedule], start: start!, end: end!, timeZone };
+    days.set(day, made);
+    items.push(made);
+  }
+  return items.map((item) => ("schedules" in item && item.schedules.length === 1 ? item.schedules[0] : item));
+}
+/** `10:00 ~ 17:30 · 블록 4개`: the day row's second line and the day timetable's subtitle. */
+export function scheduleDayRange(day: ScheduleDay): string {
+  return `${clockTime(day.start, day.timeZone)} ~ ${clockTime(day.end, day.timeZone)} · 블록 ${day.schedules.length}개`;
 }
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;
@@ -255,6 +357,9 @@ export const activitySchema = z.object({
   place: placeSchema.nullable().optional().catch(null),
   // 활동 상태 (contract "활동 상태" 2026-10-26); older responses omit it, an unknown value reads as none.
   status: z.enum(ACTIVITY_STATUSES).optional().catch(undefined),
+  favorited,
+  // 시간표 배지 (contract "트랙·세션 시간표"): any block with a timetable; older responses omit it (the blocks' own flags stand in).
+  hasTimetable: z.boolean().optional().catch(undefined),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -288,6 +393,7 @@ export const programSummarySchema = z.object({
   logoUrl: text.nullable().optional().catch(null),
   /** Activities per 활동 상태 in the query's scope, zeros left out (contract "활동 상태"); absent on older responses. */
   statusCounts: z.record(z.string(), z.number().int().nonnegative()).optional().catch(undefined),
+  favorited,
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -295,6 +401,15 @@ export const programPageSchema = z.object({
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 export type ProgramPage = z.infer<typeof programPageSchema>;
+/**
+ * `GET /v1/me/favorites` (contract "즐겨찾기(하트)"): programs most recently favorited first, activities by nearest deadline (past ones
+ * last) — shown in server order. `notifyLevel` and the apps' push settings are not read on the web.
+ */
+export const favoritesSchema = z.object({
+  programs: z.array(z.object({ program: programSummarySchema, favoritedAt: text, newRecruitment: z.boolean().catch(false) })),
+  activities: z.array(z.object({ activity: activitySchema, program: programSummarySchema, favoritedAt: text })),
+});
+export type Favorites = z.infer<typeof favoritesSchema>;
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
 export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);
@@ -358,7 +473,7 @@ export function recruitmentPhrase(application: Schedule | null, now = Date.now()
   return day ? `${day} ${open ? "마감" : "모집 시작"}` : label;
 }
 /** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
-function seoulDay(now: number): string {
+export function seoulDay(now: number): string {
   return calendarDay(now, "Asia/Seoul");
 }
 /** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
@@ -378,7 +493,7 @@ function koreanParts(time: number, timeZone: string, withTime: boolean) {
     time: withTime ? `${part("hour")}:${part("minute")}` : "",
   };
 }
-const DAY = 86_400_000;
+export const DAY = 86_400_000;
 /** Which slot a schedule fills: the end-only suffix is `마감` for recruitment and `까지` for activity periods and detail schedules. */
 export type ScheduleKind = "recruitment" | "activity";
 /**
@@ -450,10 +565,10 @@ export function upcomingStartDday(activity: Activity, now = Date.now()): string 
   return days <= 0 ? "오늘 시작" : `시작 D-${days}`;
 }
 /** `yyyy-MM-dd` of an instant in a zone. */
-function calendarDay(time: number, timeZone: string): string {
+export function calendarDay(time: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
 }
-function parseTime(value: string | null): number | undefined {
+export function parseTime(value: string | null): number | undefined {
   const time = value ? Date.parse(value) : NaN;
   return Number.isNaN(time) ? undefined : time;
 }
@@ -492,6 +607,14 @@ const USERNAME_RULES: Partial<Record<Card["contacts"][number]["kind"], { host?: 
   kakao: { max: 20 },
 };
 
+/**
+ * Same-origin `<img src>` for a card photo a signed-in person may see (own card, received card): the API's
+ * `/v1/cards/:id/photo?v=…` becomes `/api/cards/:id/photo?v=…` (Bearer added by the proxy); anything else → undefined → initial avatar.
+ */
+export function cardPhotoSrc(photoUrl: string | null | undefined): string | undefined {
+  const match = photoUrl?.match(/^\/v1\/(cards\/[0-9a-f-]{36}\/photo\?v=\d{1,18})$/i);
+  return match ? `/api/${match[1]}` : undefined;
+}
 /** The username in a contact value: a profile URL saved before 2026-10-26 gives its first path part, `@` and spaces are dropped. */
 export function contactUsername(contact: Card["contacts"][number]): string | undefined {
   const rule = USERNAME_RULES[contact.kind];

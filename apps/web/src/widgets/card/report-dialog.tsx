@@ -109,8 +109,11 @@ export function ReportCard({ id, code }: { id: string; code?: string }) {
   );
 }
 
-/** 삭제하고 차단하기 for a card saved in this browser: POST guest/blocks recalls the save and refuses this owner's cards later. */
-export function BlockCard({ id, name, blocked }: { id: string; name: string; blocked: () => void }) {
+/**
+ * 삭제하고 차단하기: for a card saved in this browser POST guest/blocks recalls the save and refuses this owner's cards later;
+ * a signed-in wallet passes its own `perform` (POST wallet/blocks, contract "명함 신고·차단" › 차단).
+ */
+export function BlockCard({ id, name, blocked, perform }: { id: string; name: string; blocked: () => void; perform?: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -118,7 +121,8 @@ export function BlockCard({ id, name, blocked }: { id: string; name: string; blo
     setBusy(true);
     setError("");
     try {
-      await mutateGuest("/guest/blocks", "POST", { cardId: id });
+      if (perform) await perform();
+      else await mutateGuest("/guest/blocks", "POST", { cardId: id });
       blocked();
     } catch (error) {
       setError(errorMessage(error));

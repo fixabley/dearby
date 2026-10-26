@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The block whose timetable the activity detail opens in a sheet when its schedule row is pressed.
+/// The block whose timetable the activity detail opens in a sheet when its schedule row is pressed, and the day it belongs to (contract
+/// "하루 시간표" 2026-10-26) when that day has other blocks: the block sheet then offers `이 날 전체 보기`, and a day row opens the sheet on the day.
 struct TimetableRoute: Identifiable {
     let activityID: String
     let activityTitle: String
@@ -8,19 +9,47 @@ struct TimetableRoute: Identifiable {
     let scheduleTitle: String
     /// The block's date and time, as on the schedule row.
     let date: String
-    /// `찜한 세션` first: a tapped 세션 이동 알림 (contract "찜한 세션 이동 알림").
+    /// `내 시간표` first: a tapped 세션 이동 알림 (contract "찜한 세션 이동 알림").
     var favoritesFirst = false
-    var id: String { activityID + "/" + scheduleID }
+    /// The Seoul day with its blocks; nil when the block is alone that day.
+    var day: ActivityDay?
+    /// Opens on the day (the day row's `시간표 보기`).
+    var wholeDay = false
+    var id: String { activityID + "/" + (wholeDay ? day?.id ?? scheduleID : scheduleID) }
+    /// A block's sheet, with the day it shares with other blocks of `activity`'s 활동 일정.
+    init(activity: ActivityModel, block: ActivityStageModel, title: String, date: String, now: Date, favoritesFirst: Bool = false) {
+        activityID = activity.id
+        activityTitle = activity.title
+        scheduleID = block.id
+        scheduleTitle = title
+        self.date = date
+        self.favoritesFirst = favoritesFirst
+        day = ActivityStages.day(of: block.id, in: activity, now: now)
+    }
+    /// A day's sheet (the day row's `시간표 보기`): the first block stands as the route's block.
+    init(activity: ActivityModel, day: ActivityDay, now: Date) {
+        let first = day.stages[0]
+        activityID = activity.id
+        activityTitle = activity.title
+        scheduleID = first.id
+        scheduleTitle = first.name
+        date = first.dateText(now: now)
+        self.day = day
+        wholeDay = true
+    }
 }
 
 /// 시간표 (contract "트랙·세션 시간표" 2026-10-26 모달 시트): the sheet's content, titled `{활동 이름} · {블록 제목}` over the block's time, with
-/// `닫기` and `전체 | 찜한 세션` at the top. 전체 is the table (`TimetableTable`); 찜한 세션 is 나만의 시간표 (`MyTimetableList`). Loads when the
-/// sheet opens; a session opens its own sheet. Read without a token; the hearts follow `SessionFavoritesModel`.
+/// `닫기` and `전체 | 내 시간표` at the top. 전체 is the table (`TimetableTable`); 내 시간표 (찜한 세션, 2026-10-26 사용자 결정) is
+/// `MyTimetableList`. Loads when the sheet opens; a session opens its own sheet. Read without a token; the hearts follow `SessionFavoritesModel`.
+/// 하루 시간표 (contract "하루 시간표" 2026-10-26): on the day (`wholeDay`) the title is `{활동 이름} · {날짜}` over `10:00 ~ 17:30 · 블록 4개`, every
+/// block's timetable is read at once and merged (`DayTimetable.merge`); the block sheet's `이 날 전체 보기` switches in place.
 struct TimetablePage: View {
     let state: ActivityViewModel
     let route: TimetableRoute
     enum Mode: Hashable { case all, favorites }
     @State private var mode: Mode
+    @State private var wholeDay: Bool
     @State private var phase = Phase.loading
     @State private var opened: TimetableSession?
     @Environment(SessionFavoritesModel.self) private var favorites
@@ -30,13 +59,16 @@ struct TimetablePage: View {
         self.state = state
         self.route = route
         _mode = State(initialValue: route.favoritesFirst ? .favorites : .all)
+        _wholeDay = State(initialValue: route.wholeDay && route.day != nil)
     }
+    /// The day shown instead of the block, when on the day.
+    private var day: ActivityDay? { wholeDay ? route.day : nil }
     var body: some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
                 Picker("보기", selection: $mode) {
                     Text("전체").tag(Mode.all)
-                    Text("찜한 세션").tag(Mode.favorites)
+                    Text("내 시간표").tag(Mode.favorites)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.vertical, 8).background(.bar)
                 .accessibilityIdentifier("timetable-mode")
@@ -46,15 +78,21 @@ struct TimetablePage: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
-                        Text(route.activityTitle + " · " + route.scheduleTitle).font(.dearby(.headline)).lineLimit(1)
-                        Text(route.date).font(.dearby(.caption)).foregroundStyle(.secondary).lineLimit(1)
+                        Text(route.activityTitle + " · " + (day?.title ?? route.scheduleTitle)).font(.dearby(.headline)).lineLimit(1)
+                        Text(day?.summary ?? route.date).font(.dearby(.caption)).foregroundStyle(.secondary).lineLimit(1)
                     }
                     .accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
                 }
                 ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
+                // The block's day as one table (contract "하루 시간표"): only while on a block that shares its day.
+                if !wholeDay, route.day != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("이 날 전체 보기") { wholeDay = true }.font(.dearby(.subheadline)).accessibilityIdentifier("timetable-whole-day")
+                    }
+                }
             }
             .analyticsScreen("timetable")
-            .task { if case .loading = phase { await load() } }
+            .task(id: wholeDay) { await load() }
             .sheet(item: $opened) { session in
                 if case .loaded(let timetable) = phase {
                     TimetableSessionSheet(session: session, track: timetable.track(session.trackID), zone: timetable.zone)
@@ -69,7 +107,7 @@ struct TimetablePage: View {
             CenteredMessage(symbol: "calendar", title: "시간표가 없어요", message: "이 일정의 시간표가 지워졌거나 아직 공개되지 않았어요.")
         case .failed:
             CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "시간표를 불러오지 못했어요", message: "연결을 확인한 뒤 다시 시도해 주세요.",
-                            primary: MessageAction("다시 시도") { phase = .loading; Task { await load() } })
+                            primary: MessageAction("다시 시도") { Task { await load() } })
         case .loaded(let timetable):
             switch mode {
             case .all:
@@ -83,10 +121,10 @@ struct TimetablePage: View {
     @ViewBuilder private func favoritesView(_ timetable: Timetable) -> some View {
         let mine = timetable.sessions.filter { favorites.ids.contains($0.id) }
         if favorites.phase == .signedOut {
-            CenteredMessage(symbol: "heart", title: "찜한 세션은 계정에 모여요", message: "로그인하면 듣고 싶은 세션을 찜해 나만의 시간표로 볼 수 있어요.",
+            CenteredMessage(symbol: "heart", title: "내 시간표는 계정에 모여요", message: "로그인하면 듣고 싶은 세션을 찜해 내 시간표로 볼 수 있어요.",
                             primary: MessageAction("로그인") { favorites.signInRequested = true })
         } else if mine.isEmpty {
-            CenteredMessage(symbol: "heart", title: "찜한 세션이 없어요", message: "전체 시간표에서 하트를 누르면 여기에 나만의 시간표로 모여요.")
+            CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요.")
         } else {
             ScrollView {
                 MyTimetableList(items: mine.map { MyTimetable.Item(session: $0, track: timetable.track($0.trackID)) }, zone: timetable.zone) { opened = $0 }
@@ -100,10 +138,36 @@ struct TimetablePage: View {
         return Dictionary(uniqueKeysWithValues: mine.map { session in (session.id, mine.filter { $0.overlaps(session) }.count) })
     }
     private func load() async {
-        do {
-            phase = try await state.timetable(route.activityID, route.scheduleID).map(Phase.loaded) ?? .missing
-        } catch {
-            phase = .failed
+        phase = .loading
+        guard let day else {
+            do {
+                phase = try await state.timetable(route.activityID, route.scheduleID).map(Phase.loaded) ?? .missing
+            } catch {
+                phase = .failed
+            }
+            return
+        }
+        // Every block's timetable at once; a block that has none, lost it (404) or failed is a placeholder row (`DayTimetable`).
+        let blocks = day.stages.map(\.source)
+        let (activityID, state) = (route.activityID, self.state)
+        let outcomes = await withTaskGroup(of: (Int, DayTimetable.Outcome).self, returning: [DayTimetable.Outcome].self) { group in
+            for (index, block) in blocks.enumerated() where block.hasTimetable {
+                group.addTask {
+                    do {
+                        return (index, try await state.timetable(activityID, block.id).map(DayTimetable.Outcome.loaded) ?? .absent)
+                    } catch {
+                        return (index, .failed)
+                    }
+                }
+            }
+            var outcomes = [DayTimetable.Outcome](repeating: .absent, count: blocks.count)
+            for await (index, outcome) in group { outcomes[index] = outcome }
+            return outcomes
+        }
+        if let merged = DayTimetable.merge(activityID: activityID, title: day.title, blocks: zip(blocks, outcomes).map { (block: $0, outcome: $1) }) {
+            phase = .loaded(merged)
+        } else {
+            phase = outcomes.contains(.failed) ? .failed : .missing
         }
     }
 }
@@ -210,8 +274,8 @@ struct TimetableTable: View {
     }
 }
 
-/// 나만의 시간표 (contract "트랙·세션 시간표" 2026-10-26 `찜한 세션`): the favorited sessions in time order, one per line with its time and a large
-/// track·room badge (where to go), the free time and the move between them, and a warning band before sessions favorited at the same time.
+/// 내 시간표 (contract "트랙·세션 시간표" 2026-10-26 `내 시간표(찜한 세션)`): the favorited sessions in time order, one per line with its time and a large
+/// track·room badge (where to go), the free time and the move between them, and a warning band (`같은 시간대에 세션이 겹쳐요`) before sessions favorited at the same time.
 struct MyTimetableList: View {
     let items: [MyTimetable.Item]
     let zone: String
@@ -223,7 +287,7 @@ struct MyTimetableList: View {
                 case .session(let item):
                     TimetableSessionCard(session: item.session, track: item.track, zone: zone, showsTime: true, largeTrack: true) { open(item.session) }
                 case .overlap(let count):
-                    Label("같은 시간에 찜한 세션 \(count)개 · 하나만 들을 수 있어요", systemImage: "exclamationmark.triangle.fill")
+                    Label("같은 시간대에 세션이 겹쳐요", systemImage: "exclamationmark.triangle.fill")
                         .font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.danger)
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(DearbyStyle.danger.opacity(0.12), in: .rect(cornerRadius: 10, style: .continuous))

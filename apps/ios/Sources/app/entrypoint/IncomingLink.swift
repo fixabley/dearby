@@ -15,7 +15,7 @@ enum IncomingLink: Equatable {
     /// which is the calendar only since 2026-10-26, so `view` is not read.
     case favorites
     /// `dearby://timetable/<activityId>/<scheduleId>` (contract "행사 당일 진행 중 표시" 2026-10-26, `LiveSessionAttributes.link`): a tapped
-    /// Live Activity opens that activity's detail with the block's timetable sheet on 찜한 세션, as a tapped 세션 이동 알림 does.
+    /// Live Activity opens that activity's detail with the block's timetable sheet on 내 시간표, as a tapped 세션 이동 알림 does.
     case timetable(activityID: String, scheduleID: String)
 
     init?(url: URL, web: URL) {

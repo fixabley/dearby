@@ -6,14 +6,17 @@ import { cn } from "@/shared/lib/utils";
 import { BrandSymbol } from "@/shared/ui/brand-symbol";
 import { Icon } from "@/shared/ui/icon";
 import { NavTitleProvider, useNavTitle } from "@/shared/ui/nav-title";
+import { DropdownMenu, type MenuItem } from "@/shared/ui/dropdown-menu";
 import { useAuth } from "@/features/auth/model/auth-context";
+import { useUnread } from "@/features/notifications/model/unread";
 
 /**
  * App shell (contract "웹 리디자인 — iOS 앱과 같은 표현" › 셸): an iOS navigation bar — sticky, translucent with a background blur,
  * a hairline once the page scrolls — whose centre shows the page's large title after it scrolls under the bar. Home-level pages
- * carry the brand on the left; the activity detail and a public card get a back link instead. On the right: 저장한 명함 and the
- * sign-in state (contract "웹 로그인": `로그인` opens the sheet; signed in, the account glyph leads to `/settings`). Content is 720px
- * max, 16px gutters.
+ * carry the brand on the left; the activity detail and a public card get a back link instead. On the right, signed out: 저장한 명함
+ * and `로그인` (contract "웹 로그인"); signed in (contract "웹 화면 — 2단계 C"): the 알림 bell with its unread badge and the 메뉴 button
+ * whose dropdown lists 내 활동 · 즐겨찾기 · 명함 · 받은 명함 · 프로필 · 알림 · 설정 · 저장한 명함(브라우저) with icons; the 내 활동 glyph link (2단계 B)
+ * and the 즐겨찾기 heart (2단계 A) stay in the bar as glyphs (labels from `sm`). Content is 720px max, 16px gutters.
  */
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -46,11 +49,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Where the bar's back link goes on a detail page; home-level pages show the brand. */
-function backFor(path: string): { href: string; label: string } | undefined {
+/** Where the bar's back link goes on a detail page; home-level pages show the brand. A public card leads back to the wallet when signed in. */
+function backFor(path: string, signedIn: boolean): { href: string; label: string } | undefined {
   if (path.startsWith("/activities/")) return { href: "/", label: "둘러보기" };
-  if (path.startsWith("/cards/")) return { href: "/saved", label: "저장한 명함" };
+  if (path.startsWith("/cards/") && path !== "/cards/mine") return signedIn ? { href: "/wallet", label: "받은 명함" } : { href: "/saved", label: "저장한 명함" };
+  if (path.startsWith("/wallet/")) return { href: "/wallet", label: "받은 명함" };
+  if (path.startsWith("/mine/")) return { href: "/mine", label: "내 활동" };
 }
+/** The signed-in menu (contract "웹 화면 — 2단계 C" › 상단 바): 내 활동(B)·즐겨찾기(A) first, then this PR's pages and 설정. */
+const MENU: MenuItem[] = [
+  { href: "/mine", label: "내 활동", icon: "check-circle" },
+  { href: "/favorites", label: "즐겨찾기", icon: "heart" },
+  { href: "/cards/mine", label: "명함", icon: "card" },
+  { href: "/wallet", label: "받은 명함", icon: "inbox" },
+  { href: "/profile", label: "프로필", icon: "person" },
+  { href: "/notifications", label: "알림", icon: "bell" },
+  { href: "/settings", label: "설정", icon: "gear" },
+  // 비로그인 저장 목록은 바에서 빠지므로(로그인 뒤 "나중에"로 옮기기를 미룬 사람용) 메뉴 끝에 둔다.
+  { href: "/saved", label: "저장한 명함(브라우저)", icon: "inbox" },
+];
 
 function NavBar() {
   const path = usePathname();
@@ -64,9 +81,10 @@ function NavBar() {
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const back = backFor(path);
-  const savedHere = path === "/saved";
   const auth = useAuth();
+  const back = backFor(path, auth.signedIn);
+  const savedHere = path === "/saved";
+  const unread = useUnread().count;
   return (
     <>
       <div ref={sentinel} aria-hidden="true" className="absolute top-0 h-px w-px" />
@@ -100,25 +118,56 @@ function NavBar() {
             {title}
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1">
-            {!back?.href.startsWith("/saved") && (
+            {/* 내 활동 (web 2단계 B): signed in only — the web keeps no device copy. */}
+            {auth.signedIn && !back?.href.startsWith("/mine") && (
+              <Link
+                href="/mine"
+                aria-label="내 활동"
+                aria-current={path === "/mine" ? "page" : undefined}
+                className="inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
+              >
+                <Icon name="check-circle" size="inline" />
+                <span className="hidden truncate sm:inline">내 활동</span>
+              </Link>
+            )}
+            {!auth.signedIn && !back?.href.startsWith("/saved") && (
               <Link
                 href="/saved"
+                aria-label="저장한 명함"
                 aria-current={savedHere ? "page" : undefined}
                 className="inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
               >
                 <Icon name="inbox" size="inline" />
-                <span className="truncate">저장한 명함</span>
+                {/* Labels from `sm`; phone widths keep the glyphs so three items fit beside the collapsed title. */}
+                <span className="hidden truncate sm:inline">저장한 명함</span>
               </Link>
             )}
             {auth.signedIn ? (
-              <Link
-                href="/settings"
-                aria-label="설정"
-                aria-current={path === "/settings" ? "page" : undefined}
-                className="-mr-2 inline-flex size-11 items-center justify-center text-teal aria-[current=page]:font-semibold"
-              >
-                <Icon name="person" />
-              </Link>
+              <>
+                {/* 즐겨찾기 (contract "웹 화면 — 2단계 A"): the account's hearts, next to the account glyph. */}
+                <Link
+                  href="/favorites"
+                  aria-label="즐겨찾기"
+                  aria-current={path === "/favorites" ? "page" : undefined}
+                  className="inline-flex size-11 items-center justify-center text-teal"
+                >
+                  <Icon name={path === "/favorites" ? "heart-fill" : "heart"} />
+                </Link>
+                <Link
+                  href="/notifications"
+                  aria-label={unread ? `알림, 읽지 않은 알림 ${unread}개` : "알림"}
+                  aria-current={path === "/notifications" ? "page" : undefined}
+                  className="relative inline-flex size-11 items-center justify-center text-teal"
+                >
+                  <Icon name="bell" />
+                  {unread > 0 && (
+                    <span aria-hidden="true" className="absolute top-1 right-0.5 min-w-4 rounded-full bg-teal-fill px-1 text-center text-caption2 font-bold leading-4 text-on-teal">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </Link>
+                <DropdownMenu label="메뉴" icon="menu" items={MENU} current={path} className="-mr-2" />
+              </>
             ) : (
               <button
                 type="button"

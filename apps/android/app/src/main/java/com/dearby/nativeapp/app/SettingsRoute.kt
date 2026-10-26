@@ -6,6 +6,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.core.net.toUri
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.profile.NotificationRow
+import com.dearby.nativeapp.pages.profile.LiveSessionRow
 import com.dearby.nativeapp.pages.profile.SessionReminderRow
 import com.dearby.nativeapp.features.reminder.SessionReminders
 import com.dearby.nativeapp.pages.profile.UsageStatsRow
@@ -34,7 +35,9 @@ import kotlinx.coroutines.launch
  */
 @Composable fun SettingsRoute(model: SettingsViewModel, account: AccountViewModel, profile: ProfileViewModel, notifications: NotificationViewModel?, analytics: Boolean, setAnalytics: (Boolean) -> Unit,
     /** 세션 이동 알림 (device-local, 2026-10-26), shown with the account's notification rows. */
-    sessionReminders: Boolean, setSessionReminders: (Boolean) -> Unit, close: () -> Unit) {
+    sessionReminders: Boolean, setSessionReminders: (Boolean) -> Unit,
+    /** 행사 진행 중 표시 (device-local, 2026-10-26), under it. */
+    liveSession: Boolean, setLiveSession: (Boolean) -> Unit, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     val deletion by profile.deletion.collectAsStateWithLifecycle()
@@ -72,6 +75,7 @@ import kotlinx.coroutines.launch
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
                     runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())) }
             }
+            LiveSessionRow(liveSession, setLiveSession)
         } },
         privacy = {
             UsageStatsRow(analytics, setAnalytics)
