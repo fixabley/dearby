@@ -46,6 +46,9 @@ data class AccountHistory(
     val hasCustomEntry get() = (organization == null && organizationName != null) || (program == null && programName != null) ||
         (activity == null && activityName != null) || (role == null && roleName != null)
 }
+/** 명함 머리의 소속(contract "받은 명함 목록 표시"): 승인된 이력 중 진행 중인 것, 그다음 시작일이 늦은 것의 조직 이름. */
+fun List<AccountHistory>.currentOrganization(): String? = filter { it.isApproved }.sortedWith(compareBy<AccountHistory> { it.endDate != null }.thenByDescending { it.startDate })
+    .firstNotNullOfOrNull { it.organization?.name ?: it.organizationName }?.takeIf { it.isNotBlank() }
 /** A 직무 tag (contract "직무"): picked from the job tree ([job]) or free-typed ([jobName] only, approval pending until an admin accepts it). */
 data class ProfileJob(val id: String, val job: ActivityInfoRef?, val jobName: String?, val approval: String = "approved", val approvalReason: String? = null) {
     val title get() = job?.name ?: jobName.orEmpty()

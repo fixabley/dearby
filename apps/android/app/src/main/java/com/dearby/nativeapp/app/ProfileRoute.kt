@@ -134,7 +134,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) askConsent() else model.save() }, model::revert,
             { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, leaveSetup,
             pickPhoto = { if (state.consentRequired) askConsent() else if (!preparing) pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-            deletePhoto = { if (state.consentRequired) askConsent() else model.deletePhoto() })
+            deletePhoto = { if (state.consentRequired) askConsent() else model.deletePhoto() }, contact = { openContact(context, it) })
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
     eligibilitySheet?.let { sheet ->

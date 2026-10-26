@@ -26,8 +26,12 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.card.cardContent.CardContent
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 import com.dearby.nativeapp.widgets.profile.profileFields.JobTagPicker
 import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
@@ -49,6 +53,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     leaveSetup: () -> Unit = {},
     /** 프로필 사진 (contract "프로필 사진"): opens the system photo picker, then the crop screen; [deletePhoto] after the confirmation below. */
     pickPhoto: () -> Unit = {}, deletePhoto: () -> Unit = {},
+    /** A contact row on the read-mode card opens or copies it (contract "연락처 아이콘·바로가기"). */
+    contact: (ContactState) -> Unit = {},
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
@@ -80,7 +86,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, leaveSetup, Modifier.weight(1f)); return@let }
-                if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation); return@let }
+                if (!state.editing) { ReadOnlyProfile(form.cardState(state.profile?.photoUrl), form.introduction, rows, { edit(true) }, compose, contact, Modifier.weight(1f), recommendation); return@let }
                 Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     PhotoRow(form.name, state.profile?.photoUrl, state.photoBusy, state.photoError, pickPhoto) { confirmPhotoDelete = true }
@@ -145,23 +151,24 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     error?.let { DearbyFieldError(it) }
 }
 
-/** Read mode (contract "프로필 탭은 읽기 모드가 기본"): the same sections as the editor as read-only rows in the card body's idiom; no inputs, no bar. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable private fun ReadOnlyProfile(form: ProfileFormState, rows: List<HistoryRowState>, modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
+/**
+ * Read mode (contract "프로필 탭은 읽기 모드가 기본"; 2026-10-26 사용자 결정 "프로필 보기 모드 = 명함 디자인"): the card face on top (photo, name, 직무, contacts),
+ * then `수정`·`이 내용으로 명함 만들기`, then 소개 and the history rows. No inputs, no bar.
+ */
+@Composable private fun ReadOnlyProfile(card: CardState, introduction: String, rows: List<HistoryRowState>, edit: () -> Unit, compose: () -> Unit, contact: (ContactState) -> Unit,
+                                        modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(form.name.ifBlank { "이름 없음" }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-            if (form.jobs.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { form.jobs.forEach { ExampleBadge(it.title) } }
-            // The introduction as typed: plain text here, no markdown (the card body renders it as markdown).
-            if (form.introduction.isNotBlank()) Text(form.introduction, style = MaterialTheme.typography.bodyLarge)
-        }
-        Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-        val contacts = listOf("phone" to form.phone, "email" to form.email) + form.extras.map { it.kind to it.value }
-        contacts.filter { it.second.isNotBlank() }.forEach { (kind, value) ->
-            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(contactIcon(kind), contactKindName(kind), Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CardContent(card, body = false, onContact = contact)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DearbyOutlineButton(edit, Modifier.weight(1f)) { Text("수정") }
+                DearbyButton(compose, Modifier.weight(1f)) { Text("이 내용으로 명함 만들기", maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
+        }
+        // The introduction as typed: plain text here, no markdown (the card body renders it as markdown).
+        if (introduction.isNotBlank()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("소개", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+            Text(introduction, style = MaterialTheme.typography.bodyLarge)
         }
         Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
         if (rows.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)

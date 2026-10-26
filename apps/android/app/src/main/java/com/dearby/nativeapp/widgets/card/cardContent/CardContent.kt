@@ -19,17 +19,18 @@ import com.dearby.nativeapp.shared.ui.*
 /**
  * 명함 카드 면(contract "명함 표현", 2026-10-18): 흰 바탕·모서리 20·구분선 테두리·안쪽 여백 20. 머리(아바타·이름·직무 칩·소속) →
  * 소개 마크다운 → 연락처 → 활동 이력. 카드는 자기 높이만큼 펼쳐지고 스크롤은 담는 화면이 맡는다. 행동 버튼은 호출자가 카드 바깥에 둔다.
+ * [body] false는 머리와 연락처만 그린다 — 내 프로필 보기 모드가 소개·이력을 카드 아래에 따로 둔다.
  */
-@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, onContact: (ContactState) -> Unit) {
+@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, body: Boolean = true, onContact: (ContactState) -> Unit) {
     Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Header(state)
-            if (state.introduction.isNotBlank()) MarkdownBody(state.introduction)
+            if (body && state.introduction.isNotBlank()) MarkdownBody(state.introduction)
             Section("연락처") {
                 if (state.contacts.isEmpty()) Empty("공개된 연락처가 없어요")
                 else state.contacts.forEach { ContactRow(it) { onContact(it) } }
             }
-            Section("활동 이력") {
+            if (body) Section("활동 이력") {
                 if (state.histories.isEmpty()) Empty("공개된 활동 이력이 없어요")
                 else state.histories.forEach { HistoryRow(it) }
             }
