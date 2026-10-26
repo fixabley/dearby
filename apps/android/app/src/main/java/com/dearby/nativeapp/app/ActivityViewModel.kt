@@ -419,7 +419,8 @@ private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
 private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
 /** One program card's state, for discovery and 즐겨찾기 alike. */
 internal fun ProgramSummary.toState() = ProgramState(id, name, organization, openActivityCount, instant(nearestRecruitmentEndAt), matchedActivityIds.size, instant(latestActivityAt),
-    fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl)
+    fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl,
+    deadlineIsEvent = nearestIsActivityStart)
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(
     // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.

@@ -58,6 +58,8 @@ data class ScheduleItemState(val name: String, val dateText: String, val draft: 
 data class ProgramState(
     val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matchedCount: Int, val latestActivityAt: Instant? = null,
     val upcomingCount: Int = 0, val nearestStart: Instant? = null,
+    /** [deadline] is the activity's own date (no recruitment deadline), so the card says `행사`, not `마감`. */
+    val deadlineIsEvent: Boolean = false,
     /** 분야 (at most 2, relevance order) and 성격 of the program (contract "분야·성격 태그와 아이콘"). */
     val fieldTags: List<TagLabel> = emptyList(), val traitTags: List<TagLabel> = emptyList(),
     /** The program logo URL for the card's 44dp logo slot, or null for the initial avatar (contract "프로그램 로고"). */

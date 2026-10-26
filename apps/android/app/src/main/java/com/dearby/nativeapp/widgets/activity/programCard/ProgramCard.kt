@@ -57,7 +57,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
  * 발견 목록의 프로그램 카드(contract "발견 카드 리뉴얼", One UI 알림 카드 느낌을 Material 3로): `OutlinedCard`(모서리 20, 1dp 선, 그림자 없음). 왼쪽 44dp
  * 로고 자리는 [logoUrl]을 Coil `AsyncImage`로 꽉 채워(Crop, 모서리 14) 보이고 로딩 중·실패·null은 프로그램 이름 첫 글자 아바타다(contract "프로그램 로고"). 가운데 이름(굵게) → 조직 → 분야 1개([fieldTags]의 첫째)와 성격 [traitTags]의
  * 아이콘+글자 칩 한 줄(넘치면 `+n`, 없으면 생략) → 검색이 활동 이름에 맞으면 그 아래 줄에 `맞는 활동 n개`([matchedCount]; contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음"). 오른쪽 위 `Badge`는
- * 모집 중 + 모집 예정 수([openCount] + [upcomingCount]), 그 아래 한 줄은 모집 중이 있으면 `M월 d일 마감`([deadline]), 예정만 있으면 `M월 d일 시작`([nearestStart]),
+ * 모집 중 + 모집 예정 수([openCount] + [upcomingCount]), 그 아래 한 줄은 모집 중이 있으면 `M월 d일 마감`([deadline], 모집 마감이 없는 활동 날짜면 `M월 d일 행사`), 예정만 있으면 `M월 d일 시작`([nearestStart]),
  * 둘 다 없으면 `최근 yyyy.M`([latestActivityAt]). 머리를 누르면 [onToggle]; 펼쳐지면 배지 자리가 `IconButton`(위쪽 화살표, 44dp, `접기`)으로 바뀌고 [content]가
  * 카드 안에 펼쳐진다. 높이는 스프링(`animateContentSize`), 내용은 `expandVertically + fadeIn`(FastOutSlowIn), 화살표는 180° 회전; 애니메이터 배율 0에서는 즉시 바뀐다.
  * 접근성에서는 머리가 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고 칩 줄의 태그 이름은 머리 라벨에 묶인다.
@@ -67,6 +67,8 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
     fieldTags: List<TagLabel>, traitTags: List<TagLabel>, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, logoUrl: String? = null, matchedCount: Int = 0,
     /** `새 모집` badge beside the title (즐겨찾기, contract "즐겨찾기(하트)·새 모집 푸시 알림"). */
     newRecruitment: Boolean = false,
+    /** [deadline] is an activity date, not a recruitment deadline: `M월 d일 행사` instead of `마감`. */
+    deadlineIsEvent: Boolean = false,
     /** The program heart (and its bell) left of the count badge, with their own taps and names. */
     actions: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -78,7 +80,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
     LaunchedEffect(expanded) { rotation.animateTo(if (expanded) 180f else 0f, if (reduceMotion) snap() else spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)) }
     val count = openCount + upcomingCount
     val meta = when {
-        openCount > 0 && deadline != null -> dayFormat.format(deadline) + " 마감"
+        openCount > 0 && deadline != null -> dayFormat.format(deadline) + if (deadlineIsEvent) " 행사" else " 마감"
         openCount == 0 && upcomingCount > 0 && nearestStart != null -> dayFormat.format(nearestStart) + " 시작"
         openCount == 0 && upcomingCount == 0 && latestActivityAt != null -> "최근 " + monthFormat.format(latestActivityAt)
         else -> null

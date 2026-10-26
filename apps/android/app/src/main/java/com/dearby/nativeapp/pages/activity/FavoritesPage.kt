@@ -66,7 +66,7 @@ import kotlinx.coroutines.launch
                     ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
                         program.fieldTags, program.traitTags, program.id in expanded, {
                             if (program.id in expanded) expanded = expanded - program.id else { expanded = expanded + program.id; openProgram(program.id) }
-                        }, Modifier.padding(vertical = 5.dp), logoUrl = program.logoUrl, newRecruitment = row.newRecruitment, actions = { FavoriteActions(hearts, true, program.id, program.title) }) {
+                        }, Modifier.padding(vertical = 5.dp), logoUrl = program.logoUrl, newRecruitment = row.newRecruitment, deadlineIsEvent = program.deadlineIsEvent, actions = { FavoriteActions(hearts, true, program.id, program.title) }) {
                         ProgramBody(program.id, list, open, retryProgram, hearts, plus)
                     }
                 }

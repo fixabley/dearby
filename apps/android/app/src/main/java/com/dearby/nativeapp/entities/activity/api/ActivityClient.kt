@@ -159,6 +159,7 @@ private fun JSONObject.programSummary(api: String): ProgramSummary {
         text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
         text("latestActivityAt"),
         upcomingActivityCount = optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = text("nearestRecruitmentStartAt"),
+        nearestIsActivityStart = optBoolean("nearestIsActivityStart", false),
         tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
     )
 }
