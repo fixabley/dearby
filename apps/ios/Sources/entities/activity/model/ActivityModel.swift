@@ -335,6 +335,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var traitTags: [Tag] = []
     /// The program logo (contract "프로그램 로고" 2026-10-19 밤), already resolved against the API origin; nil without a logo.
     var logoURL: URL? = nil
+    /// An open or upcoming activity of the bundle has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): the collapsed card's `시간표` badge.
+    var hasTimetable = false
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
     var nearestRecruitmentStart: Date? { ActivityModel.instant(nearestRecruitmentStartAt) }

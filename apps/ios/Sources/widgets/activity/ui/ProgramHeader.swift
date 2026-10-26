@@ -23,6 +23,9 @@ struct ProgramHeader<Accessory: View>: View {
     /// The chip line under the organization: the first 분야 tag, then the 성격 tags.
     var fieldTags: [Tag] = []
     var traitTags: [Tag] = []
+    /// An open or upcoming activity has a 트랙·세션 시간표 (`ProgramSummary.hasTimetable`): a `시간표` badge after the name while collapsed
+    /// (expanded, the activity cards carry their own).
+    var hasTimetable = false
     /// Activities whose name matched the search; the card says `맞는 활동 n개` and stays collapsed.
     var matchedCount = 0
     /// `새 모집` (contract "즐겨찾기(하트)·새 모집 푸시 알림"): a badge after the name in the favorites screen.
@@ -69,6 +72,7 @@ struct ProgramHeader<Accessory: View>: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                     if newRecruitment { DearbyBadge(title: "새 모집") }
+                    if showsTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
                 }
                 Text(organization).font(.dearby(.subheadline)).foregroundStyle(.secondary)
                 TagChipLine(field: fieldTags.first, traits: traitTags).padding(.top, 6)
@@ -77,8 +81,9 @@ struct ProgramHeader<Accessory: View>: View {
             Spacer(minLength: 0)
         }.contentShape(Rectangle())
     }
+    private var showsTimetable: Bool { hasTimetable && !expanded }
     private var spokenLabel: String {
-        [name, newRecruitment ? "새 모집" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
+        [name, newRecruitment ? "새 모집" : nil, showsTimetable ? "시간표 있음" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
             .compactMap { $0 }.joined(separator: ", ")
     }
     /// The 44-point logo slot: the image filled and clipped to a 14-point continuous corner; the initial avatar until it loads, on failure or without a URL.

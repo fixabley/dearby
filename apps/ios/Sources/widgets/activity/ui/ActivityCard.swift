@@ -32,10 +32,7 @@ struct ActivityCard<Accessory: View>: View {
                 HStack(alignment: .top, spacing: 10) {
                     Text(title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary)
                         .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
-                    if hasTimetable {
-                        Label("시간표", systemImage: "tablecells").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                            .padding(.horizontal, 8).padding(.vertical, 3).background(DearbyStyle.mint, in: Capsule())
-                    }
+                    if hasTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
                     statusChip
                 }
                 VStack(alignment: .leading, spacing: 3) {

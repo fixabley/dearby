@@ -182,7 +182,7 @@ struct ActivityListPage: View {
             ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
                           nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
-                          fieldTags: program.fieldTags, traitTags: program.traitTags,
+                          fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable,
                           matchedCount: program.matchedActivityIDs.count, eventDates: state.kind == .event, expanded: open) {
                 FavoriteControls(target: .program(program.id))
             } toggle: {

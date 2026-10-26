@@ -47,7 +47,7 @@ enum ActivityClient {
                        nearestIsActivityStart: program.nearestIsActivityStart ?? false,
                        fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
                        traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
-                       logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
+                       logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL }, hasTimetable: program.hasTimetable ?? false)
     }
     /// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `GET /v1/me/favorites`, programs then activities in the server's
     /// order. Nil on 404 (a server without favorites yet). A malformed item is dropped. A 401 throws `RecommendationFailure.unauthorized`.
@@ -109,20 +109,20 @@ enum ActivityClient {
         let data: Data
         do { data = try await send(api, path: "v1/activities/\(activityID)/schedules/\(scheduleID)/timetable", []) } catch ActivityFetchError.notFound { return nil }
         let payload = try JSONDecoder().decode(TimetablePayload.self, from: data)
-        let zone = payload.schedule.timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul"
-        return Timetable(activityID: activityID, scheduleID: scheduleID, scheduleTitle: payload.schedule.title, zone: zone,
-                         tracks: payload.tracks.compactMap(\.value).map { TimetableTrack(id: $0.id, name: $0.name, room: $0.room, position: $0.position) }
-                            .sorted { $0.position < $1.position },
+        return Timetable(activityID: activityID, scheduleID: scheduleID, scheduleTitle: payload.schedule.title, zone: payload.schedule.zone,
+                         tracks: payload.tracks.compactMap(\.value).map(\.track).sorted { $0.position < $1.position },
                          sessions: payload.sessions.compactMap { $0.value?.session }.sorted { $0.start < $1.start })
     }
-    /// 내 시간표 (`GET /v1/me/session-favorites`), session start order. Nil on 404 (a server without session favorites).
+    /// 내 시간표 (`GET /v1/me/session-favorites`), session start order, each with its block's zone and track (2026-10-26 `schedule`·`track`,
+    /// so no timetable is read again; an older response reads as Seoul without a track). Nil on 404 (a server without session favorites).
     static func fetchSessionFavorites(api: URL, bearer: String) async throws -> [FavoriteSession]? {
         let data: Data
         do { data = try await send(api, path: "v1/me/session-favorites", [], bearer: bearer) } catch ActivityFetchError.notFound { return nil }
         return try JSONDecoder().decode(SessionFavoritesPayload.self, from: data).items.compactMap(\.value).compactMap { item in
             item.session.session.map {
                 FavoriteSession(activityID: String(item.activityId), activityName: item.activityName, scheduleID: String(item.scheduleId),
-                                scheduleTitle: item.scheduleTitle, session: $0)
+                                scheduleTitle: item.scheduleTitle, session: $0, track: item.track?.value?.track,
+                                zone: item.schedule?.value?.zone ?? "Asia/Seoul")
             }
         }
     }
@@ -131,7 +131,10 @@ enum ActivityClient {
         _ = try await send(api, path: "v1/me/session-favorites/\(sessionID)", [], method: on ? "PUT" : "DELETE", bearer: bearer)
     }
     private struct TimetablePayload: Decodable {
-        struct Track: Decodable { let id: Int64; let name: String; let room: String?; let position: Int }
+        struct Track: Decodable {
+            let id: Int64; let name: String; let room: String?; let position: Int
+            var track: TimetableTrack { TimetableTrack(id: id, name: name, room: room, position: position) }
+        }
         let schedule: Schedule
         let tracks: [Lenient<Track>]
         let sessions: [Lenient<SessionDTO>]
@@ -150,7 +153,10 @@ enum ActivityClient {
         }
     }
     private struct SessionFavoritesPayload: Decodable {
-        struct Item: Decodable { let activityId: Int64; let activityName: String; let scheduleId: Int64; let scheduleTitle: String; let session: SessionDTO }
+        struct Item: Decodable {
+            let activityId: Int64; let activityName: String; let scheduleId: Int64; let scheduleTitle: String; let session: SessionDTO
+            let schedule: Lenient<Schedule>?; let track: Lenient<TimetablePayload.Track>?
+        }
         let items: [Lenient<Item>]
     }
     private struct InboxPayload: Decodable {
@@ -355,6 +361,8 @@ enum ActivityClient {
         let fieldTags: [TagDTO]?; let traitTags: [TagDTO]?; let tags: [TagDTO]?
         /// Program logo path, or nil without a logo (contract "프로그램 로고" 2026-10-19 밤); absent on older responses.
         let logoUrl: String?
+        /// An open or upcoming activity has a timetable (2026-10-26); absent on older responses.
+        let hasTimetable: Bool?
     }
     private struct TagDTO: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let kind: String?
@@ -371,6 +379,8 @@ enum ActivityClient {
         let recurrence: Lenient<String>?
         /// 트랙·세션 시간표 (2026-10-26); absent on older responses.
         let hasTimetable: Bool?
+        /// The zone session times are shown in: a known `timeZone`, else Seoul (an all-day block's).
+        var zone: String { timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul" }
     }
     private struct StatusDTO: Decodable { let id: Int64?; let name: String; let kind: String }
     private struct OverlapDTO: Decodable { let startTime: String; let endTime: String }
