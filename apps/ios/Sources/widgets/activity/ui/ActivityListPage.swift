@@ -33,10 +33,9 @@ struct ActivityListPage: View {
         @Bindable var state = state
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
-                if state.phase != .loading {
-                    if (state.query ?? "").isEmpty { queueEntry }
-                    statusFilterRow
-                }
+                if state.phase != .loading, (state.query ?? "").isEmpty { queueEntry }
+                // Always on screen: a change reloads the list (`.loading`), and removing the row would close its menu mid-choice.
+                statusFilterRow
                 switch state.phase {
                 case .loading:
                     programsSkeleton
