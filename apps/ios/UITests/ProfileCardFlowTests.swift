@@ -9,7 +9,10 @@ final class ProfileCardFlowTests: DearbyFlowTestCase {
         try requireSignedIn()
         openTab("내 프로필")
         let edit = app.buttons["profile-edit"]
-        guard edit.waitForExistence(timeout: 15) else { throw XCTSkip("저장된 프로필이 없어 첫 프로필 퍼널이 보여요") }
+        guard edit.waitForExistence(timeout: 15) else {
+            snapshot("프로필 탭(수정 버튼 없음)")
+            throw XCTSkip("수정 버튼이 없어요(저장된 프로필이 없어 첫 프로필 퍼널이 보이거나 프로필을 불러오지 못함)")
+        }
         XCTAssertTrue(app.staticTexts["활동 이력"].waitForExistence(timeout: 10), "읽기 모드의 활동 이력 머리글이 없어요")
         XCTAssertTrue(app.buttons["소개 링크 열기"].exists, "명함형 카드의 소개 링크 버튼이 없어요(프로필에 소개 링크가 있어야 해요)")
         snapshot("프로필 보기 위")
@@ -63,7 +66,17 @@ final class ProfileCardFlowTests: DearbyFlowTestCase {
         (hasCards ? newCard : firstCard).tap()
         XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 10), "명함 만들기 화면이 열리지 않았어요")
         let photo = app.descendants(matching: .any)["card-include-photo"].firstMatch
-        XCTAssertTrue(photo.exists || app.staticTexts["프로필에서 사진을 넣을 수 있어요"].exists, "사진 구역이 없어요")
+        let noPhoto = app.staticTexts["프로필에서 사진을 넣을 수 있어요"]
+        let noProfile = app.staticTexts["먼저 프로필을 적어 주세요"]
+        _ = photo.waitForExistence(timeout: 10) || noPhoto.exists || noProfile.exists
+        snapshot("명함 만들기 열림")
+        if noProfile.exists {
+            snapshot("명함 만들기 프로필 없음")
+            app.navigationBars["명함 만들기"].buttons["닫기"].tap()
+            throw XCTSkip("저장된 프로필이 없어 명함 만들기가 프로필부터 적으라고 안내해요")
+        }
+        XCTAssertFalse(app.staticTexts["프로필을 불러오지 못했어요"].exists, "명함 만들기가 프로필을 불러오지 못했어요")
+        XCTAssertTrue(photo.exists || noPhoto.exists, "사진 구역이 없어요")
         XCTAssertTrue(photo.exists, "사진 넣기 토글이 없어요(프로필 사진이 있어야 해요)")
         XCTAssertTrue(app.descendants(matching: .any)["card-include-intro-link"].firstMatch.exists, "소개 링크 넣기 토글이 없어요(프로필에 소개 링크가 있어야 해요)")
         snapshot("명함 만들기")
