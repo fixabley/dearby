@@ -10,7 +10,8 @@ import java.time.temporal.ChronoUnit
  * EVENT). [day] is the Seoul date the badge counts down to and [lastDay] the last Seoul date the step is still on; both
  * are null for an undated step. [windows] are the calendar-comparison windows ([StageSchedule.windows]; empty for 지원).
  * [scheduleId] and [statuses] are the schedule's, for the user's status choice (contract "내 활동 서버 저장·일정 상태"); [statuses] is empty
- * for a step that is not a 선발 단계 (see [selectionStatuses]), which shows only its date and 예정/지남.
+ * for a step that is not a 선발 단계, which shows only its date and 예정/지남. [selection] is that judgment (contract "선발 과정·활동 일정 분리":
+ * the server's `phase`, see [StageSchedule.isSelection]), used to split 선발 과정 from 활동 일정.
  * [eventStart]/[eventEnd]/[allDay] prefill the system "add event" screen (contract "내 캘린더에 추가"): a timed step uses its times
  * (one end missing → a point), a date-only step is all-day from Seoul midnight; null for an undated step. A repeating step
  * (contract "반복 일정과 겹침 결과 묶음") prefills its first occurrence, never all-day, with [recurrence] as the event's RRULE.
@@ -19,7 +20,9 @@ data class Stage(val name: String, val kind: String, val label: String, val date
     val windows: List<ScheduleModel> = emptyList(), val scheduleId: String? = null, val statuses: List<ScheduleStatus> = ScheduleStatus.DEFAULTS,
     val eventStart: Instant? = null, val eventEnd: Instant? = null, val allDay: Boolean = false, val recurrence: String? = null,
     /** The schedule has a 트랙·세션 시간표 (contract "트랙·세션 시간표"). */
-    val hasTimetable: Boolean = false) {
+    val hasTimetable: Boolean = false,
+    /** A 선발 과정 step (`phase = SELECTION`); the 지원 step always, the activity period never. */
+    val selection: Boolean = false) {
     /** Over by [today]: the step's last day has passed. An undated step never ends by itself. */
     fun finished(today: LocalDate) = lastDay != null && lastDay < today
 }
@@ -38,10 +41,11 @@ fun ActivityModel.stages(): List<Stage> {
         val deadline = instant(window.endAt)
         val day = deadline?.atZone(seoul)?.toLocalDate() ?: localDate(window.endDateExclusive)?.minusDays(1)
         Stage("지원", "APPLICATION", "마감", if (day == null) UNDATED else scheduleText(null, window.endAt, null, window.endDateExclusive, recruitment = true), day, day,
-            scheduleId = window.id, statuses = window.statuses.ifEmpty { ScheduleStatus.DEFAULTS },
+            scheduleId = window.id, statuses = window.statuses.ifEmpty { ScheduleStatus.DEFAULTS }, selection = true,
             eventStart = deadline ?: day?.atStartOfDay(seoul)?.toInstant(), eventEnd = deadline ?: day?.plusDays(1)?.atStartOfDay(seoul)?.toInstant(), allDay = deadline == null)
     }
-    val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }).toStage() }
+    // The activity-period slot is always ACTIVITY (contract "선발 과정·활동 일정 분리": 고정), whatever an older API sent.
+    val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }, phase = ACTIVITY).toStage() }
     return listOfNotNull(applying) + stageSchedules.sortedWith(compareBy(nullsLast()) { it.startInstant() }).map { it.toStage() } + listOfNotNull(period)
 }
 
@@ -68,7 +72,9 @@ private fun StageSchedule.toStage(): Stage {
     val label = when (kind) { "DEADLINE" -> "마감"; "ANNOUNCEMENT" -> "발표"; "INTERVIEW" -> "면접"; else -> title }
     // Text by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     val text = scheduleText().ifBlank { UNDATED }
-    val statuses = selectionStatuses(kind, statuses)
+    val selection = isSelection()
+    // Only a 선발 단계 offers 대기·통과·탈락 (the admin's list when set, else the defaults); any other step has no choice.
+    val statuses = if (selection) statuses.ifEmpty { ScheduleStatus.DEFAULTS } else emptyList()
     val windows = windows()
     val repeating = windows.firstOrNull()?.takeIf { Recurrence.parse(recurrence) != null }
     val stage = when {
@@ -80,20 +86,21 @@ private fun StageSchedule.toStage(): Stage {
             startDay.atStartOfDay(seoul).toInstant(), endDay!!.plusDays(1).atStartOfDay(seoul).toInstant(), allDay = true)
         else -> Stage(title, kind, label, text, null, null, emptyList(), id, statuses)
     }
-    return stage.copy(hasTimetable = hasTimetable)
+    return stage.copy(hasTimetable = hasTimetable, selection = selection)
 }
 
 /**
- * 통과 여부는 선발 단계에만 (user 2026-10-26): 서류·신청 마감(DEADLINE, and the 지원 step), 발표(ANNOUNCEMENT) and 면접(INTERVIEW) offer
- * 대기·통과·탈락 (the admin's list when set, else the defaults). Any other schedule (EVENT: 오리엔테이션·행사 당일·세션, the activity period) has
- * no status choice unless the admin set statuses on it (ids present) — the only way an EVENT-kind 코딩테스트 can be marked, as the API has no
- * selection flag.
+ * 선발 과정 or 활동 일정 (contract "선발 과정·활동 일정 분리", 2026-10-26): the server's `phase` decides. An older API without `phase`
+ * falls back to the app's earlier rule (통과 여부는 선발 단계에만): 마감(DEADLINE)·발표(ANNOUNCEMENT)·면접(INTERVIEW) are selection, and so is any
+ * other schedule whose statuses the admin set (ids present) — the only way an EVENT-kind 코딩테스트 was marked before `phase` existed.
  */
-private fun selectionStatuses(kind: String, statuses: List<ScheduleStatus>): List<ScheduleStatus> = when {
-    kind in SELECTION_KINDS -> statuses.ifEmpty { ScheduleStatus.DEFAULTS }
-    statuses.any { it.id != null } -> statuses
-    else -> emptyList()
+fun StageSchedule.isSelection(): Boolean = when (phase) {
+    SELECTION -> true
+    ACTIVITY -> false
+    else -> kind in SELECTION_KINDS || statuses.any { it.id != null }
 }
+private const val SELECTION = "SELECTION"
+private const val ACTIVITY = "ACTIVITY"
 private val SELECTION_KINDS = setOf("DEADLINE", "ANNOUNCEMENT", "INTERVIEW")
 
 private fun localDate(raw: String?): LocalDate? = raw?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
