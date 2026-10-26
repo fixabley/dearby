@@ -178,6 +178,8 @@ export const programSummarySchema = z.object({
   organization: named,
   openActivityCount: z.number().int().nonnegative(),
   nearestRecruitmentEndAt: text.nullable(),
+  /** `nearestRecruitmentEndAt` is an activity start (no recruitment deadline), shown as `행사`; absent on older responses. */
+  nearestIsActivityStart: z.boolean().optional().catch(false),
   matchedActivityIds: z.array(z.number().int()),
   /** Latest activity start among the program's published activities; absent on older responses (contract "마감 숨기기"). */
   latestActivityAt: text.nullable().optional().catch(null),
@@ -198,9 +200,9 @@ export const programPageSchema = z.object({
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 export type ProgramPage = z.infer<typeof programPageSchema>;
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
-export function deadlineLabel(endAt: string | null): string | undefined {
+export function deadlineLabel(endAt: string | null, event = false): string | undefined {
   const day = monthDay(endAt);
-  return day && `${day} 마감`;
+  return day && `${day} ${event ? "행사" : "마감"}`;
 }
 /** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
