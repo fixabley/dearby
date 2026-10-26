@@ -18,6 +18,8 @@ struct ConsentPage: View {
     @State private var confirmingSignOut = false
     /// Right after sign-up: nothing saved yet, so leaving cancels the sign-up instead of signing out.
     private var freshAccount: Bool { state.profile?.version == 0 }
+    /// Agreed to an earlier version before (the profile's `consent` is set): the title says the policy changed (2026-10-26).
+    private var renewal: Bool { state.profile?.consent != nil }
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isPresented) private var isPresented
     private var ready: Bool { privacy && terms && !saving }
@@ -31,9 +33,9 @@ struct ConsentPage: View {
             } header: {
                 VStack(spacing: 12) {
                     StateGlyph(symbol: "checkmark.circle").padding(.bottom, 8)
-                    Text("시작하기 전에 동의가 필요해요").font(.dearby(.title2).bold()).foregroundStyle(.primary).multilineTextAlignment(.center)
+                    Text(renewal ? "개인정보 처리방침이 바뀌었어요" : "시작하기 전에 동의가 필요해요").font(.dearby(.title2).bold()).foregroundStyle(.primary).multilineTextAlignment(.center)
                         .accessibilityAddTraits(.isHeader)
-                    Text("프로필에 적는 이름·연락처·이력을 저장하고 명함으로 보여 주기 위해 필요해요. 동의 내용과 버전은 계정에 기록돼요.")
+                    Text("프로필(이름·연락처·이력, 고른 경우 사진·소개 링크)과 내 활동·즐겨찾기 같은 계정 기록을 저장하는 데 필요해요. 광고 목적 정보 제공은 여기 포함되지 않고 따로 묻는 선택 항목이에요. 동의 내용과 버전은 계정에 기록돼요.")
                         .font(.dearby(.body)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }.frame(maxWidth: .infinity).textCase(nil).padding(.top, 24).padding(.bottom, 16)
             } footer: {

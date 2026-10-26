@@ -55,7 +55,7 @@ class AccountDeletionFlowTest(
         val user = User(UUID.randomUUID(), listOf(UserRole.USER))
         val id = user.id
         jdbc.sql("insert into users (id) values (?)").param(id).update()
-        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-22', '2026-10-22', now())").param(id).update()
+        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-26', '2026-10-22', now())").param(id).update()
         // 지원 자격 정보·추천 설정(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천")
         jdbc.sql("insert into profile_eligibility (user_id, birth_year, consent_version, consented_at, updated_at) values (?, 2003, '2026-10-24', now(), now())").param(id).update()
         jdbc.sql("insert into recommendation_preferences (user_id, categories, completed_at, updated_at) values (?, '{BOOTCAMP}', now(), now())").param(id).update()
