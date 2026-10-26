@@ -378,11 +378,10 @@ struct AccountClient: Sendable {
     private struct StatusInput: Encodable { let statusId: Int64?; let kind: String? }
     private struct ItemsInput: Encodable { let items: [MyActivityImport] }
 
-    /// `POST /v1/cards`·`PUT /v1/cards/:id`: `template` is the app's built-in markdown template the server fills in at publish time.
+    /// `POST /v1/cards`·`PUT /v1/cards/:id`: the server copies the profile introduction as the body (no `template` since 2026-10-26).
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String
-        let template: String
         let contactIds: [String]
         let historyIds: [String]
     }
