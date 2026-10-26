@@ -40,6 +40,11 @@ struct CalendarOverlapState: Identifiable {
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
     }
+    /// `23:00 – 01:00`, naming the end date when it falls on another day (`23:00 – 11월 2일 01:00`).
+    func span(_ from: Date, _ to: Date) -> String {
+        let day = { (date: Date) in ActivityText.format(date, "M월 d일", zone: activity.timeZone) }
+        return "\(time(from)) – \(day(from) == day(to) ? "" : "\(day(to)) ")\(time(to))"
+    }
     static func matches(_ activity: ActivityScheduleModel, _ busy: DateInterval) -> Bool {
         activity.start < activity.end && busy.start < busy.end && activity.start < busy.end && busy.start < activity.end
     }
