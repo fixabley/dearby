@@ -518,6 +518,17 @@ private val seoul: ZoneId = ZoneId.of("Asia/Seoul")
 private fun today(): LocalDate = LocalDate.now(seoul)
 /** When a stage is over for the 자동 통과 제안: its end, else its start (date-only steps end at the next Seoul midnight); null when undated. */
 private fun Stage.end(): Instant? = eventEnd ?: eventStart
+/**
+ * The Seoul date a stage joins in the detail's day grouping (하루 시간표, 2026-10-26): a timed, one-off block inside one Seoul day that is
+ * not the activity period (nor a 선발 단계 without a timetable, which the pages never group). Null keeps the row on its own.
+ */
+private fun Stage.day(): LocalDate? {
+    val start = eventStart?.takeIf { !allDay && recurrence == null && !period && (!selection || hasTimetable) } ?: return null
+    val day = start.atZone(seoul).toLocalDate()
+    // A block with one end only (a point) would be a zero-length row the table drops, so it stays a plain row too.
+    val end = eventEnd?.takeIf { it > start } ?: return null
+    return day.takeIf { end <= day.plusDays(1).atStartOfDay(seoul).toInstant() }
+}
 /** A 찜 session's start in the block's own offset, as the timetable shows it. */
 private val sessionTime: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 /** The system "add event" prefill for one stage (contract "내 캘린더에 추가"): "활동명 · 일정 제목"; null for an undated stage. */
@@ -541,7 +552,7 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
     return ActivityState(
         // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
         id, name, description, organization, program, status, activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable, it.selection && !it.hasTimetable) },
+        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable, it.selection && !it.hasTimetable, it.day()) },
         safeHttpsUrl(officialUrl), applyUrl(now), range ?: period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
         eligibility = eligibility?.lines() ?: emptyList(),
         category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE, categoryCode = category?.name,
@@ -581,7 +592,7 @@ private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDat
             else -> ProgressStatus.UPCOMING
         }
         ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage),
-            stage.scheduleId?.takeIf { stage.hasTimetable }, stage.selection)
+            stage.scheduleId?.takeIf { stage.hasTimetable }, stage.selection, stage.day())
     }
     // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (contract "선발 과정·활동 일정 분리": `phase`) is marked PASSED, none FAILED, and a step is still ahead.
     val selection = stages.indices.filter { stages[it].selection }.map { picks[it] }
