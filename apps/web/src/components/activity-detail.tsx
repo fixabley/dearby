@@ -12,6 +12,7 @@ import {
   applicable,
   recruitmentDate,
   scheduleLabel,
+  upcomingStartDday,
 } from "@/lib/models";
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
@@ -99,6 +100,7 @@ export function ActivityDetail({ id }: { id: number }) {
     );
   // 활동 상태 (contract "활동 상태" 2026-10-26): the server's, else read from the recruitment window (older servers).
   const status = activityStatus(activity, now);
+  const startDday = upcomingStartDday(activity, now);
   const official = httpsUrl(activity.officialUrl);
   // CTA: 마감이 아니면 신청 링크(없으면 공식 안내)로, 마감이면 공식 안내로(contract "신청 확인 조건 완화·공개 applicationUrl").
   const closed = !applicable(status);
@@ -158,6 +160,12 @@ export function ActivityDetail({ id }: { id: number }) {
           <div className="flex flex-wrap gap-1.5">
             {STATUS_BADGE[status] && (
               <Badge variant={statusVariant[status]}>{STATUS_BADGE[status]}</Badge>
+            )}
+            {/* 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26") in the 모집 예정 colours beside the status. */}
+            {startDday && (
+              <Badge variant="tinted" className="text-caption2 tabular-nums">
+                {startDday}
+              </Badge>
             )}
             {activity.category && (
               <Badge>

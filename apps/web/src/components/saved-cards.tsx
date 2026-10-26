@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { type GuestItem, expiryLabel } from "@/lib/models";
+import { type GuestItem, expiryLabel, sessionContextLines } from "@/lib/models";
 import { InstallOffer } from "./install-offer";
 import { useIosHomeScreenApp } from "@/lib/install";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
@@ -74,15 +74,18 @@ export function SavedCards() {
       setBusy(false);
     }
   }
-  // 프로그램 칩과 회수 배지(contract "명함 교환"): 웹 저장은 맞교환이 없어 항상 사라지는 날이 있다.
+  // 프로그램 칩과 회수 배지(contract "명함 교환"): 웹 저장은 맞교환이 없어 항상 사라지는 날이 있다. A receipt with session
+  // fields (교환 세션 맥락) shows `프로그램 · 세션 시간표 · 트랙 · 장소` and the session title instead of the chip.
   function row({ card, context, expiresAt }: GuestItem) {
     const expiry = expiryLabel(expiresAt);
+    const session = sessionContextLines(context);
+    const chip = !session.length && context.programName;
     return (
       <li key={card.id} className="flex items-center">
         <Link
           href={`/cards/${card.id}`}
           className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 active:opacity-70"
-          aria-label={[card.profileName || "이름 미등록", card.job, context.programName, expiry]
+          aria-label={[card.profileName || "이름 미등록", card.job, ...(session.length ? session : [context.programName]), expiry]
             .filter(Boolean)
             .join(", ")}
         >
@@ -96,9 +99,16 @@ export function SavedCards() {
             <span className="text-headline font-semibold">{card.profileName || "이름 미등록"}</span>
             {card.job && <span className="text-subheadline">{card.job}</span>}
             <span className="truncate text-footnote text-secondary-label">{card.name}</span>
-            {(context.programName || expiry) && (
+            {session.length > 0 && (
+              <span className="mt-1 flex flex-col gap-0.5 text-footnote break-keep text-secondary-label">
+                {session.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </span>
+            )}
+            {(chip || expiry) && (
               <span className="mt-1 flex flex-wrap gap-1.5">
-                {context.programName && <Badge>{context.programName}</Badge>}
+                {chip && <Badge>{chip}</Badge>}
                 {expiry && <Badge variant="tinted">{expiry}</Badge>}
               </span>
             )}

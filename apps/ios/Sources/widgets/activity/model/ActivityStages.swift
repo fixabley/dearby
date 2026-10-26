@@ -40,6 +40,8 @@ struct ActivityStage: Identifiable, Equatable {
     var state: State
     /// The marked status as the schedule names it (대기·통과·탈락 or the admin's names).
     var status: ScheduleStatus { mark.status(in: source.statuses) }
+    /// The schedule's 통과 option; nil when the admin's statuses have no `PASSED` kind.
+    var passedOption: ScheduleStatus? { source.statuses.first { $0.kind == .passed } }
     /// The day the stage counts from: its start, or its end when only that is known.
     var anchor: Date? { source.anchor }
     /// For the overlap check (timed, or date-only with an admin time window); empty when the stage cannot be compared.
@@ -75,6 +77,39 @@ struct ActivityProgress: Equatable {
         guard let currentIndex, let current else { return failed ? "\(stages.count)단계 중 탈락 표시" : "\(stages.count)단계 모두 지남" }
         if participating { return "선발 단계 모두 통과, 참여 중" }
         return "\(stages.count)단계 중 \(currentIndex + 1)단계 \(current.name) 진행 중"
+    }
+    /// 지난 선발 단계 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26): the 선발 단계 in track order up to the first dated one that is
+    /// not yet past — the past dated ones and the date-less ones between them; a date-less stage behind a future one is left out. "Past"
+    /// is the instant (end, or start with no end; an all-day stage's `end` is the Seoul midnight that closes it), not the track's Seoul-day
+    /// rule. Only unmarked stages with a 통과 option; empty when no dated stage is past.
+    func autopassCandidates(now: Date) -> [ActivityStage] {
+        var candidates: [ActivityStage] = []
+        var pastDated = false
+        for stage in stages where stage.selection {
+            if let bound = stage.source.end ?? stage.source.start {
+                guard stage.source.allDay ? bound <= now : bound < now else { break }
+                pastDated = true
+            }
+            if stage.mark == .wait, stage.passedOption != nil { candidates.append(stage) }
+        }
+        return pastDated ? candidates : []
+    }
+}
+
+/// 지난 선발 단계 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26): asked once per activity right after it joins 내 활동.
+struct AutopassSuggestion: Identifiable, Equatable {
+    let activity: ActivityModel
+    /// The stages `통과로 표시` marks (`ActivityProgress.autopassCandidates`).
+    let stages: [ActivityStage]
+    /// The 선발 단계 the suggestion leaves alone (not past, not passed): empty means the track reads 참여 중 at once.
+    let remaining: [ActivityStage]
+    var id: String { activity.id }
+    /// `{n}개 단계(지원, 입장권 추첨 결과 발송)가 이미 지났어요. …` with the track's stage names.
+    var message: String {
+        let names = stages.map(\.name).joined(separator: ", ")
+        let outcome = remaining.isEmpty ? "통과로 표시하면 바로 참여 중으로 보여요."
+            : "통과로 표시해요. 남은 단계(\(remaining.map(\.name).joined(separator: ", ")))는 그대로 둬요."
+        return "\(stages.count)개 단계(\(names))가 이미 지났어요. \(outcome)"
     }
 }
 

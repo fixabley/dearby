@@ -71,7 +71,7 @@ OTP 코드는 응답에서 반환하지 않는다. 개발용 메일 수신기는
 | DELETE /v1/guest/cards/:id | 204 | 자기 참조만 제거; 이미 제거·철회된 ID도 멱등 처리 |
 | DELETE /v1/guest/session | 204 | 자기 세션 및 저장 참조 폐기 |
 
-요청 body는 필요 없다. 새 세션 생성 전용 endpoint는 없다. 무쿠키 목록 조회는 Next에서 `{items:[]}`로 처리해 API 호출이나 DB 세션 생성을 하지 않는다. 첫 저장 응답 `guestToken`은 Next 서버만 소비하며 브라우저 JSON/로그에 노출하지 않는다. DB에는 SHA-256 token digest와 card ID 연결만 저장하고 원문 토큰·쿠키·방문자 개인정보를 저장하지 않는다. 회원 wallet과 guest 저장은 서로 독립이며 자동 전환/가져오기를 수행하지 않는다.
+요청 body는 필요 없다. 새 세션 생성 전용 endpoint는 없다. 무쿠키 목록 조회는 Next에서 `{items:[]}`로 처리해 API 호출이나 DB 세션 생성을 하지 않는다. 첫 저장 응답 `guestToken`은 Next 서버만 소비하며 브라우저 JSON/로그에 노출하지 않는다. DB에는 SHA-256 token digest와 card ID 연결만 저장하고 원문 토큰·쿠키·방문자 개인정보를 저장하지 않는다. 회원 wallet과 guest 저장은 서로 독립이며 자동으로 옮기지 않는다. 2026-10-26부터 웹에 로그인한 사용자가 직접 요청하면 `POST /v1/wallet/import-guest`로 게스트 저장을 계정 지갑으로 옮긴다(아래 "웹 로그인").
 
 쿠키 이름은 `__Host-dearby_guest`, `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=34560000`이며 **Domain 속성을 넣지 않는다**. 서버 세션은 자동 만료가 없고 `expiresAt` 응답도 없다. 브라우저 쿠키는 400일이며 요청 시 같은 token의 Max-Age만 갱신한다. 갱신으로 새 token/session을 만들거나 기존 저장을 지우지 않는다. 브라우저 자체 보관 제한·사용자 쿠키 삭제로 접근이 끊길 수 있으며 무제한 쿠키 보관을 보장하지 않는다. 명시적 세션 삭제에서 API 401(이미 폐기)도 웹은 쿠키를 삭제한다. 다른 401을 임의로 새 세션으로 대체하지 않는다.
 
@@ -170,7 +170,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 - RP ID는 `wid.io.kr`(API `WEBAUTHN_RP_ID`). 바꾸면 등록된 패스키를 모두 쓸 수 없다.
 - `https://wid.io.kr/.well-known/apple-app-site-association`에 `webcredentials.apps`(`<TeamID>.<bundle ID>`)를, `https://wid.io.kr/.well-known/assetlinks.json`에 `delegate_permission/common.get_login_creds`(패키지·서명 SHA-256)를 둔다. `wid.io.kr`은 웹(Vercel)이 아니라 운영 ingress(nginx)가 내준다. 유니버설 링크 `/s/*`의 `applinks`는 기존대로 웹 도메인에 둔다.
 - iOS entitlements에 `webcredentials:wid.io.kr`, Android는 Credential Manager를 쓴다.
-- API 허용 origin(`WEBAUTHN_ALLOWED_ORIGINS`)에 iOS의 `https://wid.io.kr`과 Android의 `android:apk-key-hash:<서명 SHA-256의 base64url>`을 넣는다. 웹에서 패스키를 쓰면 웹 origin도 넣는다.
+- API 허용 origin(`WEBAUTHN_ALLOWED_ORIGINS`)에 iOS의 `https://wid.io.kr`과 Android의 `android:apk-key-hash:<서명 SHA-256의 base64url>`을 넣는다. 웹에서 패스키를 쓰면 웹 origin(`https://dearby.wid.io.kr`)도 넣는다(2026-10-26 "웹 로그인"; `.env.prod.example`에는 이미 있다).
 
 ### API
 
@@ -324,7 +324,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
   3. 애플은 Services ID의 Return URL(`https://api.dearby.wid.io.kr/v1/auth/apple/callback`)로 form_post한다. 서버는 토큰을 확인하고 `dearby://auth/apple?code=…`로 돌려보낸다.
   4. 앱은 그 code와 verifier로 `web/exchange`를 부른다.
   - 결과 code는 10분, 한 번만 쓴다. 주소에 토큰을 싣지 않고, verifier가 없는 다른 앱은 code를 바꿔 갈 수 없다.
-- 웹: 사용자 웹은 아직 로그인해서 쓰는 기능이 없다(명함 제작은 앱). 웹 애플 로그인은 웹에 로그인 기능이 생길 때 Apple JS(Services ID, popup)로 `POST /v1/auth/apple`을 쓴다.
+- 웹: 2026-10-26 사용자 결정으로 웹에도 로그인을 만든다. Apple JS(Services ID, popup)로 받은 `id_token`을 `POST /v1/auth/apple`에 보낸다(아래 "웹 로그인"). 그 전까지는 사용자 웹에 로그인해서 쓰는 기능이 없었다.
 - 애플 토큰
   - iOS는 credential의 `authorizationCode`를 함께 보낸다. 웹 방식은 콜백의 `code`를 서버가 쓴다.
   - 서버는 `.p8` 키로 서명한 client secret으로 code를 애플 refresh token으로 바꿔 `user_identities`에 둔다. 아래 "계정 삭제" 때 폐기하기 위해서다.
@@ -676,12 +676,24 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 사용자: 모집 기간이 있으면 "모집 10.1 – 10.20 · D-3"처럼 기간과 D-day 배지만 보이고, 별도의 "10월 20일 마감" 줄은 없앤다. 마감일만 있으면 기존 "10월 20일 마감". 위 "일정 표시 우선순위"의 모집 기간 문구를 이 절이 대체한다(활동 기간·세부 일정 문구는 그대로).
 
 - **모집 기간에 시작·끝이 모두 있으면**: `M.d – M.d`(en dash 앞뒤 공백, **시각은 빼고** 날짜만). 시각 일정은 그 시간대, 종일 일정은 서울 날짜이고 끝은 `endDateExclusive` 하루 전. 오늘(서울) 연도와 다른 날짜만 `yyyy.M.d`(`12.20 – 2027.1.5`). 시작과 끝이 같은 날이면 그 날 하나(`10.20`).
-- **D-day 배지**: 모집 중(열린 활동 판정)일 때만, 서울 날짜로 오늘부터 마지막 날까지 `D-n`, 당일은 `D-DAY`. 모집 예정·마감·확인 필요에는 배지가 없다. 배지는 채운 청록 캡슐(흰 글자)로 문구 바로 뒤에 둔다(강조된 민트 줄 위에서도 보이게).
+- **D-day 배지**: 모집 중(열린 활동 판정)일 때만, 서울 날짜로 오늘부터 마지막 날까지 `D-n`, 당일은 `D-DAY`. 모집 예정·마감·확인 필요에는 이 마감 배지가 없다(모집 예정은 상태 배지 옆에 아래 "모집 예정 시작 D-day"의 `시작 D-n`). 배지는 채운 청록 캡슐(흰 글자)로 문구 바로 뒤에 둔다(강조된 민트 줄 위에서도 보이게).
 - **끝만 있으면**: 기존 문구 그대로(`~ 10월 20일 (화) 18:00 마감`), 배지 없음. 시작만 있거나 구조화 날짜가 없으면(`dateLabel`) 기존 규칙 그대로.
 - **표기 위치**: 발견·즐겨찾기·프로그램 상세의 활동 카드 `모집` 줄(값 + 배지), 앱 활동 상세 `행사 일정`의 모집 행(기간이 있으면 제목 `모집` + 기간 + 배지, 끝만 있으면 지금처럼 `모집 마감` + 마감 문구 — 별도 마감 행은 두지 않는다; `캘린더에 추가`는 마감 시점 그대로), 웹 활동 카드 `모집` 줄, 웹 활동 상세 `모집 기간`, 웹 활동 오픈그래프 이미지(한 시간 캐시라 배지 없이 기간만).
 - **바꾸지 않는 곳**: 접힌 프로그램 카드의 보조 줄(`M월 d일 마감` — `ProgramSummary`에 모집 시작이 없어 기간을 만들 수 없다), 내 활동 진행 트랙의 `지원` 단계(단계 날짜가 곧 마감), 맞춤 대기열 `DEADLINE` 장면(서버 `deadlineText`와 큰 D-day), 알림 문구.
 - 대가: 시각을 빼서 카드·상세에서 마감 시각(예 18:00)이 보이지 않는다. 마감 시각은 공식 안내와 캘린더에 추가한 일정에서 확인한다.
 - iOS·웹 2026-10-26 구현(`ActivityModel.recruitmentDate`, 웹 `recruitmentDate`). Android는 같은 규칙으로 따로 구현한다.
+
+## 모집 예정 시작 D-day — 2026-10-26 사용자 결정
+
+사용자: "모집 예정 활동에 시작 D-5 배지를 보여줘."
+
+- **대상**: 활동 상태가 `RECRUITING_UPCOMING`(모집 예정)이고 모집 시작이 있는 활동. 모집 시작은 `application.startAt`(시각 일정) 또는 `application.startDate`(종일 일정)이다 — 모집 예정 판정 자체가 둘 중 하나로 나므로 둘 다 대상이다. 상태가 없는 옛 서버 응답은 기존 판정(위 "활동 상태")으로 모집 예정이면 같은 규칙.
+- **표기**: `시작 D-n`. n은 **서울 날짜**로 오늘부터 모집 시작 날까지의 날수(시각 일정도 서울 날짜로 센다; 시간대는 보지 않는다). 시작 날이 오늘(서울)이면 `오늘 시작`(0 이하도 같다 — 서버 상태와 기기 시계가 어긋난 경우).
+- **모양**: 기존 `모집 예정` 상태 배지 옆의 별도 미니 캡슐. 모집 중의 `D-n`(마감) 배지와 같은 글자 크기·굵기·숫자 폭(caption2 세미볼드, 고정폭 숫자)이되 색은 모집 예정 배지와 같은 **청록 글자 + 민트 틴트**(iOS `DearbyMiniBadge` 기본, 웹 `Badge variant="tinted"`, Android 마감 D-n과 같은 `Badge`에 `primaryContainer`). 배지 안 보조 글자가 아니라 별도 캡슐로 둔 이유: 모집 중 `D-n`과 같은 컴포넌트를 그대로 쓰고, 세 자리(카드·상세) 모두 한 표현으로 맞춘다.
+- **자리**(iOS·Android·웹 공통): 발견 펼친 활동 카드·즐겨찾기 활동 카드에서는 `모집 예정` 칩 **왼쪽**(제목 줄 오른쪽 끝에 `시작 D-5` → `모집 예정` 순), 활동 상세 머리(상태 배지·종류 칩 줄)에서는 상태 배지 **오른쪽**(`모집 예정` → `시작 D-5` → 종류 칩). iOS는 내 활동 `진행 단계` 화면 위의 활동 카드(발견 카드와 같은 컴포넌트)에도 같이 보인다. 접근성은 자리와 상관없이 상태 뒤에 같은 글자를 읽는다(`… 모집 예정, 시작 D-5 …`; Android는 `모집 예정 · 시작 D-5`).
+- **바꾸지 않는 곳**: 접힌 프로그램 카드 보조 줄은 기존 `M월 d일 시작` 그대로. 활동 상세 `모집 상태` 정보 행·`선발 과정`의 모집 행, 웹 오픈그래프 이미지(한 시간 캐시), 맞춤 대기열, 알림 문구에는 넣지 않는다.
+- **모집 시작이 없으면**(`startAt`·`startDate` 모두 null): 배지만 `모집 예정`. 모집 중·마감·진행 중·종료에는 이 배지가 없다.
+- 2026-10-26 구현: iOS `ActivityModel.upcomingStartDDay`, 웹 `upcomingStartDday`, Android `ApplicationWindow.startCount`(PR #423).
 
 ## 모집 일정 없는 활동은 마감 — 2026-10-26 사용자 결정
 
@@ -902,6 +914,19 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 ### 개인정보
 
 - 지금까지 "신청함·참여 확정·단계 표시는 기기에만"이라고 고지했다. 로그인 사용자는 서버에 저장되므로 `/privacy` 3절과 2절을 고치고 문서 시행일·동의 버전을 `2026-10-22`로 올린다(로그인 사용자는 다음 저장 때 다시 동의). 기기 캘린더 일정은 여전히 서버로 보내지 않는다.
+
+### 지난 선발 단계 통과 제안 — 2026-10-26
+
+사용자: "지난 선발 단계 자동 통과 제안 넣어줘." 우아콘처럼 선발이 끝난 행사를 내 활동에 추가하는 사람은 거의 통과자인데, `신청 기간`·`추첨 결과 발송` 단계가 기본 `대기`로 남아 `참여 중`이 되지 않았다. 자동으로 표시하지 않고 **한 번 묻는다**(표시는 여전히 사용자가 남기는 것).
+
+- **시점**: 활동을 내 활동에 넣는 모든 흐름(`+`, `내 활동에 추가`, 신청 확인 `신청했어요`) 직후. 신청 확인 시트에서 넣었으면 그 시트가 닫힌 뒤 띄운다(두 시트를 한 번에 바꾸지 않는다).
+- **조건·대상**: 그 활동의 선발 단계(`phase: SELECTION`, 옛 서버는 기존 판정)를 트랙 순서로 보아, **첫 미래 날짜 선발 단계 앞까지**의 단계가 대상이다 — 끝 시각(없으면 시작 시각)이 이미 지난 날짜 단계와 그 사이의 날짜 없는 단계(예: 날짜 미정 발표). 미래 단계 뒤의 날짜 없는 단계는 제외. "지남"은 `now` 기준 시각 비교(날짜만인 일정은 끝 날짜 다음 서울 0시, 즉 그 날이 끝나면 지남)로, 트랙의 현재 단계 판정(서울 날짜)과 달리 오늘 오전에 끝난 발표도 지난 것이다. 아직 표시가 없는 단계(기본 `대기`)만 대상이고, 그 일정의 `statuses`에 `PASSED` 종류가 없으면(어드민이 바꿈) 뺀다. 지난 날짜 단계가 하나도 없으면 묻지 않는다.
+- **묻지 않는 경우**: 활동 상태가 `ENDED`(끝난 활동 묶음으로 가므로), 트랙이 이미 끝난 활동(모든 단계가 지남), 대상이 없는 활동, 그리고 **이미 한 번 물은 활동**(묻는 시점에 활동마다 기록, 답과 무관; iOS `UserDefaults` `dearby.mine.autopassAsked` 활동 id 목록 — 시트를 끌어내려도, 빼고 다시 넣어도 다시 묻지 않는다).
+- **시트**: 신청 확인 시트와 같은 배치(iOS `CenteredMessage`, Android Material 시트). 제목 `지난 선발 단계를 통과로 표시할까요?`. 본문은 둘 중 하나 — 대상이 (아직 통과 표시가 없는) 선발 단계 전부면 `{n}개 단계(지원, 입장권 추첨 결과 발송)가 이미 지났어요. 통과로 표시하면 바로 참여 중으로 보여요.`, 남는 선발 단계가 있으면 `{n}개 단계(지원, 서류 발표)가 이미 지났어요. 통과로 표시해요. 남은 단계(면접)는 그대로 둬요.` 단계 이름은 트랙 표기 그대로(모집 슬롯은 `지원`). 버튼 `통과로 표시`(기본·강조, iOS 식별자 `autopass-mark`) / `그대로 두기`(텍스트, `autopass-keep`). 끌어내려 닫으면 `그대로 두기`.
+- **통과로 표시**: 포함된 단계마다 그 일정의 `PASSED` 상태(어드민 지정이면 그 id, 기본이면 `{kind: PASSED}`)를 기존 단계 표시 API `PUT /v1/me/activities/{activityId}/schedules/{scheduleId}`로 하나씩 보낸다. iOS는 먼저 `PUT /v1/me/activities/{activityId}`(멱등)로 추가가 서버에 닿았음을 확인한 뒤 순서대로 보내고, 실패한 단계는 그대로 둔다(기존 실패 안내 뒤 목록을 다시 읽어 성공한 단계는 남는다). 비로그인은 같은 규칙으로 기기 기록(iOS는 지금처럼 모델 메모리, 로그인 때 import).
+- **사용 통계**: 표시한 단계마다 `stage_mark(kind=passed, via=autopass_prompt)`([analytics-v1.md](analytics-v1.md) `stage_mark`). 진행 단계 화면에서 고른 것은 `via` 없음.
+- 구현: iOS `ActivityProgress.autopassCandidates`·`AutopassSuggestion`·`ActivityViewModel.autopass`(`feat/autopass-ios`; 신청 확인 시트와 함께 `promptLayer`의 맨 위 층에서 띄우므로 맞춤 대기열 전체 화면과 그 위 상세 시트에서도 뜬다), Android PR #435(`feat/autopass-android`)가 같은 규칙.
+
 ## 웹 리디자인 — iOS 앱과 같은 표현 — 2026-10-22 사용자 결정
 
 사용자: "웹 리디자인해 줘. iOS랑 비슷했으면 좋겠어. shadcn을 활용해도 좋아." 웹(`apps/web`)의 기능·경로·데이터·프록시는 그대로 두고 표현만 iOS 앱에 맞춘다.
@@ -1107,7 +1132,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **한국어 라벨**: 모집 예정·모집 중·모집 마감·모집 정보 없음·진행 중·종료.
 - **응답**: `Activity.status: string`(위 값, 목록·상세·펼친 활동·즐겨찾기·추천·맞춤 대기열 모두). `ProgramSummary.statusCounts`(위 "발견 프로그램 묶음" API).
 - **필터**: `GET /v1/discovery/programs`와 `GET /v1/activities`에 `status?`(값 쉼표 목록, 대소문자 무시, 모르는 값 400). 발견 묶음에서 `status`가 있으면 `openOnly` 대신 그 상태의 활동으로 묶고 세며(`openActivityCount`·`upcomingActivityCount`·`statusCounts`·`hasTimetable`·`matchedActivityIds`가 그 활동 기준), `RECRUITING`·`RECRUITING_UPCOMING`이 아닌 활동은 최근 3년 창(위 `openOnly=false`와 같다) 안만. 대상자 필터와 함께 써도 같은 상태 기준. 생략하면 기존 `openOnly` 동작(옛 앱 호환). `status=RECRUITING_UPCOMING,RECRUITING`은 `openOnly=true`와 같은 결과다. 서버 파라미터는 enum 단위이고 앱이 아래 묶음을 펼쳐 보낸다.
-- **앱·웹 UI**(iOS·웹 2026-10-26 `feat/status-filter-ios-web`, Android PR #406): `마감 숨기기` 토글 대신 **다중 선택, 세 묶음**: `지원 가능`(`RECRUITING_UPCOMING`+`RECRUITING`, 기본 선택), `진행·예정`(`IN_PROGRESS`+`RECRUITMENT_CLOSED`+`NO_RECRUITMENT`), `지난 활동`(`ENDED`). **묶음 재정의(2026-10-26 사용자 결정 "미정이더라도 모집 중엔 넣지 않아도 활동 일정에 따라 분류")**: 처음에는 `진행 중`(`IN_PROGRESS`)·`지난 활동`(`RECRUITMENT_CLOSED`+`NO_RECRUITMENT`+`ENDED`)이었으나, 판정 순서상 `ENDED`가 먼저이므로 `RECRUITMENT_CLOSED`·`NO_RECRUITMENT`는 **활동이 끝나지 않은 활동**(모집은 닫혔거나 미정이지만 활동은 앞에 있음)이라 `지난 활동`에 넣으면 아직 열리지도 않은 활동이 "지난" 것으로 보였다. 그래서 모집 여부가 아니라 **활동 일정**으로 묶는다: 지원할 수 있음 / 활동이 진행 중이거나 앞에 있음 / 활동이 끝남. 묶음 id는 `available`·`in_progress`·`past`로 **그대로**(저장값·URL·사용 통계 공통, 기억된 선택과 옛 링크가 그대로 통함; `in_progress`는 이제 `진행·예정`의 id). 배지 문구(`모집 마감`·`모집 일정 미정`·`진행 중`·`종료`)는 바뀌지 않는다. 펼친 활동의 `진행·예정` 묶음은 진행 중인 것(활동 시작이 지난 것) 먼저, 그 뒤 활동 시작이 가까운 순, 날짜 없는 것 마지막; `지난 활동`의 최근 3년 창은 `ENDED`에만 남고 `진행·예정`에는 창이 없다(날짜 없는 `NO_RECRUITMENT`도 남는다). 하나도 안 고르면 `지원 가능`으로 되돌린다. 선택 기억: iOS UserDefaults `dearby.discovery.statusGroups`(쉼표 id), 웹 URL `?status=`(기본이면 생략, 검색·`kind` 전환이 유지). **조작은 2026-10-26부터 아래 "필터 시트"**(`필터` 버튼 하나 → 시트, 적용된 묶음은 칩). 그 전(같은 날 오전)에는 iOS 발견 목록 첫 행의 `활동 상태` 시스템 `Menu`(체크 `Toggle`)와 웹 같은 자리의 공개 버튼 + 체크박스 묶음이었고 버튼에 요약(`지원 가능·진행 중`, 셋 다면 `전체`)을 보였다. 프로그램 묶음과 펼친 활동(`GET /v1/activities?programId=&kind=&status=&size=100`, 한 번 요청)에 같은 `status`를 넘기고, 펼친 활동은 서버 `status`로 `모집 중`(종류별 소제목)·`모집 예정`·`진행·예정`·`지난 활동` 묶음으로 보인다. **`GET /v1/activities`의 `status`에는 기간 제한이 없으므로 앱·웹은 `지난 활동`을 활동 시작이 최근 3년 안인 것으로 거르고, 날짜 없는 활동은 남긴다.** 즐겨찾기 프로그램 상세는 세 묶음 모두. **배지**: 모집 예정·모집 중·모집 마감·진행 중·종료를 보이고(진행 중은 시스템 파랑 틴트), `NO_RECRUITMENT`는 배지 없이 날짜 자리(카드 `모집` 줄, 상세 모집 상태·모집 기간)에 `모집 일정 미정`. 신청 CTA(신청 링크·"신청하셨나요?")는 모집 중·모집 예정일 때만이고, 그 밖에는 `공식 안내 보기`. 상태가 없는 옛 서버 응답은 모집 기간으로 모집 중·모집 예정·모집 마감만 가린다. **접힌 프로그램 카드**: 배지 수는 `statusCounts` 합(없으면 옛 `openActivityCount + upcomingActivityCount`), 보조 줄은 기존 순서(`M월 d일 마감` → `M월 d일 시작`)에 모집 중·모집 예정이 없고 진행 중이 있으면 `진행 중 n개`, 그 밖에는 `최근 yyyy.M`. 상태별 수 요약 줄("모집 중 2 · 모집 예정 1")은 넣지 않는다(한 줄 보조 글자에 날짜가 더 쓸모 있고, iOS 보이스오버는 배지 라벨로 상태별 수를 읽는다).
+- **앱·웹 UI**(iOS·웹 2026-10-26 `feat/status-filter-ios-web`, Android PR #406): `마감 숨기기` 토글 대신 **다중 선택, 세 묶음**: `지원 가능`(`RECRUITING_UPCOMING`+`RECRUITING`, 기본 선택), `진행·예정`(`IN_PROGRESS`+`RECRUITMENT_CLOSED`+`NO_RECRUITMENT`), `지난 활동`(`ENDED`). **묶음 재정의(2026-10-26 사용자 결정 "미정이더라도 모집 중엔 넣지 않아도 활동 일정에 따라 분류")**: 처음에는 `진행 중`(`IN_PROGRESS`)·`지난 활동`(`RECRUITMENT_CLOSED`+`NO_RECRUITMENT`+`ENDED`)이었으나, 판정 순서상 `ENDED`가 먼저이므로 `RECRUITMENT_CLOSED`·`NO_RECRUITMENT`는 **활동이 끝나지 않은 활동**(모집은 닫혔거나 미정이지만 활동은 앞에 있음)이라 `지난 활동`에 넣으면 아직 열리지도 않은 활동이 "지난" 것으로 보였다. 그래서 모집 여부가 아니라 **활동 일정**으로 묶는다: 지원할 수 있음 / 활동이 진행 중이거나 앞에 있음 / 활동이 끝남. 묶음 id는 `available`·`in_progress`·`past`로 **그대로**(저장값·URL·사용 통계 공통, 기억된 선택과 옛 링크가 그대로 통함; `in_progress`는 이제 `진행·예정`의 id). 배지 문구(`모집 마감`·`모집 일정 미정`·`진행 중`·`종료`)는 바뀌지 않는다. 펼친 활동의 `진행·예정` 묶음은 진행 중인 것(활동 시작이 지난 것) 먼저, 그 뒤 활동 시작이 가까운 순, 날짜 없는 것 마지막; `지난 활동`의 최근 3년 창은 `ENDED`에만 남고 `진행·예정`에는 창이 없다(날짜 없는 `NO_RECRUITMENT`도 남는다). 하나도 안 고르면 `지원 가능`으로 되돌린다. 선택 기억: iOS UserDefaults `dearby.discovery.statusGroups`(쉼표 id), 웹 URL `?status=`(기본이면 생략, 검색·`kind` 전환이 유지). **조작은 2026-10-26부터 아래 "필터 시트"**(`필터` 버튼 하나 → 시트, 적용된 묶음은 칩). 그 전(같은 날 오전)에는 iOS 발견 목록 첫 행의 `활동 상태` 시스템 `Menu`(체크 `Toggle`)와 웹 같은 자리의 공개 버튼 + 체크박스 묶음이었고 버튼에 요약(`지원 가능·진행 중`, 셋 다면 `전체`)을 보였다. 프로그램 묶음과 펼친 활동(`GET /v1/activities?programId=&kind=&status=&size=100`, 한 번 요청)에 같은 `status`를 넘기고, 펼친 활동은 서버 `status`로 `모집 중`(종류별 소제목)·`모집 예정`·`진행·예정`·`지난 활동` 묶음으로 보인다. **`GET /v1/activities`의 `status`에는 기간 제한이 없으므로 앱·웹은 `지난 활동`을 활동 시작이 최근 3년 안인 것으로 거르고, 날짜 없는 활동은 남긴다.** 즐겨찾기 프로그램 상세는 세 묶음 모두. **배지**: 모집 예정·모집 중·모집 마감·진행 중·종료를 보이고(진행 중은 시스템 파랑 틴트; 모집 예정에 모집 시작이 있으면 옆에 `시작 D-n` — 위 "모집 예정 시작 D-day"), `NO_RECRUITMENT`는 배지 없이 날짜 자리(카드 `모집` 줄, 상세 모집 상태·모집 기간)에 `모집 일정 미정`. 신청 CTA(신청 링크·"신청하셨나요?")는 모집 중·모집 예정일 때만이고, 그 밖에는 `공식 안내 보기`. 상태가 없는 옛 서버 응답은 모집 기간으로 모집 중·모집 예정·모집 마감만 가린다. **접힌 프로그램 카드**: 배지 수는 `statusCounts` 합(없으면 옛 `openActivityCount + upcomingActivityCount`), 보조 줄은 기존 순서(`M월 d일 마감` → `M월 d일 시작`)에 모집 중·모집 예정이 없고 진행 중이 있으면 `진행 중 n개`, 그 밖에는 `최근 yyyy.M`. 상태별 수 요약 줄("모집 중 2 · 모집 예정 1")은 넣지 않는다(한 줄 보조 글자에 날짜가 더 쓸모 있고, iOS 보이스오버는 배지 라벨로 상태별 수를 읽는다).
 - 변경 이력: 2026-10-26 최초(같은 날 "모집 일정이 없으면 마감" 결정과 함께) · 2026-10-26 묶음 재정의(`진행 중`→`진행·예정`에 `RECRUITMENT_CLOSED`·`NO_RECRUITMENT`, `지난 활동`은 `ENDED`만; id 유지).
 
 ## 필터 시트 — 2026-10-26 사용자 결정
@@ -1142,6 +1167,44 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **앱 화면**: 로그인 시트와 시작 화면에 애플 버튼 옆(iOS는 아래)에 `Google로 계속하기`. 구글 브랜드 가이드의 흰 바탕·회색 테두리·"G" 로고 버튼을 따르되 로고 자산은 공식 파일을 받아 `shared/assets/prototype`에 둔 뒤 적용한다(자산이 없는 동안은 글자 버튼). `GOOGLE_SIGN_IN_ENABLED` 같은 별도 플래그는 두지 않고 빌드 값이 비거나 서버가 503이면 숨긴다(애플 버튼의 `appleSignInEnabled` 방식과 같게).
 - **운영 준비(사용자)**: Google Cloud 콘솔 OAuth 클라이언트 세 개 — ① 웹 애플리케이션(리디렉션 URI 없음) → 서버 `GOOGLE_CLIENT_IDS`와 Android `GOOGLE_SERVER_CLIENT_ID`, ② iOS(번들 `io.wid.dearby`) → `GOOGLE_IOS_CLIENT_ID`와 서버 허용 목록, ③ Android(패키지 `io.wid.dearby`, 디버그 keystore SHA-1; 출시 서명 SHA-1은 출시 서명을 정한 뒤). 값은 채팅에 적지 않고 서버 `.env.prod`와 로컬 `~/.dearby-deploy/mobile.env`(`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME`, `GOOGLE_SERVER_CLIENT_ID`)에만 둔다. 기기 설치 빌드는 그 파일을 읽어 넘기고 CI는 값 없이 빌드한다(버튼 숨김).
 - 변경 이력: 2026-10-18 웹 방식(서버 코드 흐름 `web/start`·`callback`·`web/exchange`, `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`, iOS `ASWebAuthenticationSession`·Android Custom Tab, 운영에 설정된 적 없음) [`fe52a2f9`](https://github.com/fixabley/dearby/blob/fe52a2f9/shared/contracts/native-v1.md#구글-로그인--2026-10-18-사용자-결정) → 2026-10-19 구글 개발자 계정 인증 완료로 네이티브 SDK로 교체(웹 방식 엔드포인트·시크릿 삭제) [`416d38ac`](https://github.com/fixabley/dearby/blob/416d38ac/shared/contracts/native-v1.md#구글-로그인--2026-10-19-네이티브-sdk로-전환).
+
+## 웹 로그인 — 2026-10-26 사용자 결정
+
+사용자: "웹도 로그인이랑 관련 기능 추가해줘." 사용자 웹(`https://dearby.wid.io.kr`, Next.js)에 앱과 같은 세 로그인 수단과 로그인 기능(동의·프로필·내 활동·즐겨찾기·세션 찜·알림·받은 명함)을 만든다. 서버 API는 앱이 쓰는 것을 그대로 쓰고, 웹은 지금처럼 same-origin `/api/*` 프록시(`apps/web/src/lib/proxy.ts`, 허용 경로 명시)만 거친다. 이 절은 서버 준비(2026-10-26 PR)와 웹이 따를 규칙이다. 웹 화면은 별도 PR.
+
+### 로그인 수단
+
+- **패스키(WebAuthn)**: 기존 `/v1/auth/passkeys/*`를 그대로 쓴다. RP ID `wid.io.kr`은 웹 origin `dearby.wid.io.kr`의 등록 가능한 상위 도메인이므로 앱에서 만든 패스키를 웹에서, 웹에서 더한 패스키를 앱에서 쓸 수 있다. 서버는 `clientDataJSON.origin`을 `WEBAUTHN_ALLOWED_ORIGINS`와 대조하므로 그 목록에 `https://dearby.wid.io.kr`이 있어야 한다(`.env.prod.example`에는 있고, 운영 `.env.prod` 값은 배포 때 확인한다; 프록시를 거쳐도 origin은 브라우저 값이다). `options`는 WebAuthn 표준 JSON(base64url)이라 `PublicKeyCredential.parseCreationOptionsFromJSON`·`parseRequestOptionsFromJSON`에 그대로 넣고, 결과는 `credential.toJSON()`을 `credential`로 보낸다(구형 브라우저는 같은 형식의 polyfill). 가입은 없고(2026-10-25) "패스키로 로그인"과 설정의 패스키 추가(`registration/options`·`registration`에 Bearer)만 있다. `/v1/auth/**` 중 Bearer를 읽는 경로는 `registration/options` 하나이므로 프록시는 거기에만 토큰을 붙이면 된다.
+- **애플**: Apple JS(`appleid.auth.init({clientId: <Services ID>, scope: "name email", redirectURI, usePopup: true, nonce})`)로 받은 `authorization.id_token`을 `POST /v1/auth/apple`의 `identityToken`으로 보낸다. nonce는 `POST /v1/auth/apple/nonce`의 값을 해시하지 않고 그대로 넣고 `challengeId`를 함께 보낸다. Services ID는 `APPLE_CLIENT_IDS`에 이미 있는 `io.wid.dearby.web`(Android 웹 방식과 같은 것). 처음 인가 때만 오는 `user.name`은 `displayName`으로 보낸다(popup은 서버 콜백을 거치지 않아 서버가 읽을 수 없다). `authorization.code`를 `authorizationCode`로 보내면 서버가 애플 refresh token으로 바꿔 두는데(계정 삭제 때 폐기용), Services ID로 받은 code의 교환에는 서버가 `APPLE_CALLBACK_URL`을 `redirect_uri`로 넣으므로 Apple JS의 `redirectURI`도 그 값(`https://api.dearby.wid.io.kr/v1/auth/apple/callback`)이어야 교환이 된다. Apple JS가 페이지와 다른 호스트의 `redirectURI`를 받는지는 확인하지 않았다; 거절하면 웹은 `authorizationCode`를 보내지 않는다(교환이 안 돼도 로그인은 되고 애플 토큰만 저장되지 않는다는 기존 규칙). 202(처음 보는 계정)는 앱과 같이 "새 계정으로 시작"(`register`) 또는 "기존 계정에 연결"(패스키로 로그인한 뒤 `/me/identities/apple`)을 묻는다(웹은 조용히 패스키를 확인할 수단이 없다).
+- **구글**: Google Identity Services(`google.accounts.id.initialize({client_id, nonce, callback})` + `renderButton`)가 돌려주는 `credential`(ID 토큰)을 `POST /v1/auth/google {idToken, nonce}`에 보낸다. nonce는 `POST /v1/auth/google/nonce`(10분, 1회용)이며 401이나 만료 뒤에는 nonce를 새로 받아 `initialize`를 다시 한다. 서버는 허용 `aud`에 **웹 클라이언트 id**를 더하는 `GOOGLE_WEB_CLIENT_ID`를 읽는다(`dearby.google.web-client-id`, `GOOGLE_CLIENT_IDS`와 합쳐 허용 목록이 된다). 비어 있으면 서버는 그 토큰을 401로 거절하고, 웹은 자기 빌드 값(`NEXT_PUBLIC_GOOGLE_CLIENT_ID`)이 비어 있으면 버튼을 숨긴다 — 두 값은 같아야 한다. 값은 사용자가 Google Cloud에서 만든다(아직 없음): OAuth 클라이언트 "웹 애플리케이션", 승인된 JavaScript 원본 `https://dearby.wid.io.kr`(개발용 `http://localhost:3000`), 리디렉션 URI 없음. 기존 ①(Android `serverClientId`) 클라이언트에 JavaScript 원본을 더해 같은 id를 쓰는 것도 가능하며 그러면 `GOOGLE_WEB_CLIENT_ID`에 같은 값을 넣는다. 202 처리는 애플과 같다.
+- 로그인 고지 한 줄(위 "애플 로그인"의 "로그인 고지")은 웹 로그인 화면에도 둔다.
+
+### 토큰 보관 — 쿠키는 Next 서버만
+
+- 서버 변경은 없다. TokenPair(`accessToken`·`refreshToken`)는 브라우저 JS에 두지 않는다. 로그인 응답을 받은 Next 라우트 핸들러가 두 토큰을 `HttpOnly; Secure; SameSite=Lax; Path=/`인 `__Host-` 쿠키에 넣고(게스트 쿠키와 같은 규칙, Domain 없음), 프록시가 요청마다 쿠키의 access token을 `Authorization: Bearer`로 바꿔 붙인다. 브라우저 응답 JSON·로그에 토큰을 내지 않는다.
+- **refresh 회전**: access token은 1분이고 refresh token은 한 번 쓰면 폐기된다(회전). Next는 인스턴스가 여럿이고 공유 잠금이 없어 프록시가 요청마다 알아서 refresh하면 같은 refresh token을 동시에 두 번 써서 한쪽이 401로 끝난다. 그래서 프록시는 **대신 refresh하지 않고 401을 그대로 돌려준다**. 브라우저는 앱과 같은 규칙으로 전용 라우트 `POST /api/auth/refresh` 하나를 Web Locks로 탭 사이에서 한 번만 부른 뒤 원래 요청을 다시 보낸다. 그 라우트는 쿠키의 refresh token으로 `/v1/auth/refresh`를 부르고 새 쌍을 쿠키에 쓴다. refresh가 401이면 쿠키를 지우고 로그아웃 상태로, 네트워크 오류·5xx면 쿠키를 남기고 그 요청만 실패시킨다.
+- 로그아웃은 `/v1/auth/logout` 뒤 쿠키를 지운다(실패해도 지운다). 계정 삭제(`DELETE /v1/me`) 뒤도 같다.
+- **CSRF**: 쿠키로 인증하므로 프록시의 mutation(POST·PUT·PATCH·DELETE)은 게스트 저장과 같은 규칙 — `Origin`을 현재 웹 origin과 정확히 대조하고 JSON 또는 custom header를 요구하며 누락·불일치는 거부한다. SameSite만으로 대신하지 않는다.
+- **CORS**: 웹이 same-origin 프록시만 쓰므로 API에 CORS를 열지 않는다(`SecurityConfig`의 `cors { disable() }` 유지). 브라우저가 `api.dearby.wid.io.kr`을 직접 부르는 경로는 없다.
+
+### 비로그인 저장 → 계정 합치기
+
+게스트 쿠키로 저장해 둔 명함이 있는 사람이 로그인하면 웹이 "브라우저에 저장한 명함 n개를 계정으로 옮길까요?"를 묻고, 동의하면 Next가 게스트 쿠키의 토큰을 본문에 넣어 부른다(토큰은 브라우저 JS에 보이지 않는다). 자동으로 옮기지 않는다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/wallet/import-guest | Bearer | `{guestToken}` | 200 `{imported: n}`(새로 만든 Receipt 수). 토큰 형식이 틀리거나 모르는·폐기된 세션은 400 `GUEST_SESSION_INVALID`(Bearer 경로라 401을 쓰지 않는다 — 프록시가 로그인 만료로 오해하지 않게) |
+
+- 세션의 회수 전 저장(철회된 명함 제외)마다 계정 지갑에 Receipt를 만든다. **받은 날은 게스트 저장 시각**(`savedAt`)이고 활동 맥락(`activityId`)도 그대로 옮긴다(활동이 지워졌으면 `null`). 게스트는 저장할 때 QR 코드를 이미 확인했으므로 코드를 다시 요구하지 않는다.
+- 이미 그 명함의 Receipt가 있으면 그대로 둔다(받은 날 유지, 활동이 비어 있었고 게스트 쪽에 있으면 채운다). 내 명함과 내가 차단한 주인의 명함은 건너뛴다. 둘 다 `imported`에 세지 않는다.
+- 옮긴 뒤 그 세션의 저장은 모두 `recalled_at`로 닫아(행은 보존) 게스트 목록이 빈다. 세션 자체는 두므로 다시 부르면 `{imported: 0}`이고, 웹은 쿠키를 지우려면 기존 `DELETE /v1/guest/session`을 따로 부른다. 단방향 30일 회수 규칙은 옮긴 Receipt에도 그대로 적용된다(받은 날 기준이라 옮기기 전 지난 날이 포함된다).
+- 게스트 세션의 요청 제한 카운터는 세지 않고(Bearer 경로), 프록시 키도 보지 않는다.
+
+### 웹에서 쓰는 로그인 기능 — Bearer만으로 되는 것
+
+2026-10-26 점검: 동의(`/v1/me/consents*`), 프로필(`/v1/profile*`, 사진·인증자료 multipart 포함), 내 활동(`/v1/me/activities*`), 즐겨찾기(`/v1/me/favorites*`), 세션 찜(`/v1/me/session-favorites*`), 알림 목록(`/v1/me/notifications*`), 알림 설정(`/v1/me/notification-settings`), 받은 명함·차단(`/v1/wallet*`), 내 명함(`/v1/cards*`), 계정·연결·패스키(`/v1/me`, `/v1/me/identities*`, `/v1/me/passkeys*`)는 모두 `@AuthenticationPrincipal Jwt`만 본다. 프록시는 `If-Match`(프로필 PUT), `Accept-Language`(즐겨찾기·알림·대기열), multipart 본문을 그대로 넘겨야 한다.
+
+- 웹에서 쓰지 않는 것: `PUT /v1/me/push-devices`는 `platform`이 `IOS`·`ANDROID`만이라(웹 푸시 없음) 웹은 부르지 않는다. 맞춤 대기열(`/v1/me/discovery-queue*`)·광고 동의는 앱 전용 화면이다.
 
 ## 대상자 조건(eligibility) — 2026-10-18 사용자 결정
 
@@ -1189,7 +1252,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 ## 명함 교환 — 2026-10-19 사용자 결정
 
-2026-10-18 지운 공유 기능을 대신하는 새 설계. 사용자 결정(2026-10-19): 배부(배포) 단위 관리는 두지 않는다. 받은 명함에는 **어느 프로그램(활동)에서 교환했는지만** 표시한다. **단방향**으로 받은 명함은 받은 날부터 30일 뒤 회수한다. 옛 흐름(제작 → 발행 → 공유 화면)이 부자연스러웠다는 이유로 주인 쪽은 "명함 고르기 → QR 보이기" 한 번으로 끝나야 한다. 발행 스냅샷·`/cards/:id` 공개 조회·비로그인 저장 계약은 그대로다.
+2026-10-18 지운 공유 기능을 대신하는 새 설계. 사용자 결정(2026-10-19): 배부(배포) 단위 관리는 두지 않는다. 받은 명함에는 **어느 프로그램(활동)에서 교환했는지만** 표시한다(2026-10-26부터 그 활동 안의 **일정 블록·세션**까지 서버가 저장 시각으로 자동 판정해 남긴다 — 아래 "교환 세션 맥락"). **단방향**으로 받은 명함은 받은 날부터 30일 뒤 회수한다. 옛 흐름(제작 → 발행 → 공유 화면)이 부자연스러웠다는 이유로 주인 쪽은 "명함 고르기 → QR 보이기" 한 번으로 끝나야 한다. 발행 스냅샷·`/cards/:id` 공개 조회·비로그인 저장 계약은 그대로다.
 
 ### 흐름
 
@@ -1203,17 +1266,33 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 | 경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
-| PUT /v1/wallet/cards/:cardId | Bearer | `{activityId?: number}` | 첫 저장 201 Receipt, 이미 있으면 200 Receipt(받은 날은 유지, 활동이 비어 있었고 새로 왔으면 채운다). 없는/철회된 명함 404, 자기 명함 409 `OWN_CARD` |
-| POST /v1/wallet/cards/:cardId/reciprocate | Bearer | `{myCardId}` | 201 `{reciprocal: true}`. 호출자가 `cardId`를 회수되지 않은 상태로 갖고 있어야 하고(아니면 403), `myCardId`는 호출자의 미철회 명함(아니면 404). 주인의 지갑에 호출자 명함의 Receipt를 같은 활동으로 만든다(이미 있으면 그대로 201) |
+| PUT /v1/wallet/cards/:cardId | Bearer | `{activityId?: number}` | 첫 저장 201 Receipt, 이미 있으면 200 Receipt(받은 날은 유지, 활동이 비어 있었고 새로 왔으면 그때 맥락을 판정해 채운다). `activityId`가 오면 서버가 지금 시각으로 블록·세션까지 판정한다(아래 "교환 세션 맥락"). 없는/철회된 명함 404, 자기 명함 409 `OWN_CARD` |
+| POST /v1/wallet/cards/:cardId/reciprocate | Bearer | `{myCardId}` | 201 `{reciprocal: true}`. 호출자가 `cardId`를 회수되지 않은 상태로 갖고 있어야 하고(아니면 403), `myCardId`는 호출자의 미철회 명함(아니면 404). 주인의 지갑에 호출자 명함의 Receipt를 같은 맥락(활동·블록·세션을 원 Receipt에서 복사, 다시 판정하지 않음)으로 만든다(이미 있으면 그대로 201) |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. 회수된 것·철회된 명함 제외, `seq` 순 |
 | GET /v1/guest/cards | 게스트 토큰 | — | 200 `{items: GuestItem[]}`(2026-10-19부터 `Card[]`가 아니다) |
-| PUT /v1/guest/cards/:id | 게스트 토큰 선택 | `{activityId?: number}` | 기존 응답 그대로(201/200). 활동은 처음 저장할 때만 기록 |
+| PUT /v1/guest/cards/:id | 게스트 토큰 선택 | `{activityId?: number}` | 기존 응답 그대로(201/200). 맥락은 처음 저장할 때만 기록하며 활동이 오면 진행 중 블록까지 판정한다(비로그인은 찜이 없어 세션은 늘 null) |
+| POST /v1/wallet/import-guest | Bearer | `{guestToken}` | 200 `{imported: n}`. 웹 게스트 저장을 계정 지갑으로 옮긴다(2026-10-26 "웹 로그인"). 맥락(활동·블록)은 게스트 저장 때 것을 그대로 옮기고 다시 판정하지 않는다 |
 
-- Receipt: `{id, card, context: {activityId: number|null, activityName: string|null, programName: string|null}, receivedAt, reciprocal: boolean, expiresAt: string|null}`. `expiresAt`은 서버가 계산한 회수 예정 시각(`receivedAt` + 30일), 맞교환이면 `null`. 클라이언트는 다시 계산하지 않는다. 활동 id가 있지만 활동이 지워졋으면 이름은 `null`.
-- GuestItem: `{card, context: {activityId, activityName, programName}, savedAt, expiresAt}`(`expiresAt`은 항상 `savedAt` + 30일).
+- Receipt: `{id, card, context: ExchangeContext, receivedAt, reciprocal: boolean, expiresAt: string|null}`. `expiresAt`은 서버가 계산한 회수 예정 시각(`receivedAt` + 30일), 맞교환이면 `null`. 클라이언트는 다시 계산하지 않는다.
+- GuestItem: `{card, context: ExchangeContext, savedAt, expiresAt}`(`expiresAt`은 항상 `savedAt` + 30일).
+- ExchangeContext(2026-10-26 확장): `{activityId: number|null, activityName: string|null, programName: string|null, scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null}`. id가 있지만 활동·블록·세션이 지워졌으면 그 이름만 `null`(id는 남는다). 전폭 세션(트랙 없음)은 `trackName`·`room`이 `null`. 2026-10-26 전에는 앞의 셋만 있었다.
 - 회수 작업: batch 모듈이 매일 04:00(Asia/Seoul)에 돌린다. 조건은 "회수되지 않았고 받은 날 + 30일 < 지금 이고 맞교환이 아님"(`receipts`), "회수되지 않았고 저장일 + 30일 < 지금"(`guest_cards`). `--recall-now` 플래그로 즉시 실행할 수 있다(`--collect-now`와 같은 방식). 결과는 로그에 건수로 남긴다.
 - 저장: V29. `receipts.recalled_at timestamptz null`, `receipts.context`는 기존 jsonb에 `{"activityId": <number>}`만 쓴다(`label`은 쓰지 않는다). `guest_cards`에 `activity_id bigint null`, `saved_at timestamptz not null default now()`, `recalled_at timestamptz null`. 기존 행의 `saved_at`은 마이그레이션 시각이 되어 30일 뒤 회수된다.
 - `activityId`는 활동의 숫자 id다(`GET /v1/activities/:id`). 모르는 id는 400이 아니라 무시하고 `null`로 저장한다(QR을 만든 뒤 활동이 지워진 경우).
+
+### 교환 세션 맥락 — 2026-10-26
+
+사용자 결정(2026-10-26, 우아콘 10/28 전 반영): 받은 명함에 "어느 프로그램·활동"뿐 아니라 **어느 일정 블록·세션(트랙·방)에서 받았는지**를 서버가 **저장 시각**으로 자동 판정해 남긴다. 사용자는 아무것도 고르지 않는다. 예: `우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B · "비 오는 날…"`.
+
+- **판정 규칙**: `PUT /v1/wallet/cards/:cardId {activityId}`·`PUT /v1/guest/cards/:id {activityId}`에 활동이 오면 서버가 **지금 시각**(`now`)으로 그 활동 안에서 순서대로 고른다.
+  1. 받는 사람(로그인)이 **찜한 세션**(위 "트랙·세션 시간표") 중 `startAt <= now < endAt`인 것 → `sessionId`와 그 세션의 블록 `scheduleId`. 같은 시간에 찜이 여럿이면(다른 트랙) 시작이 빠른 것, 같으면 id가 작은 것 하나. 비로그인(게스트)은 찜이 없어 이 단계가 없다.
+  2. 없으면 **진행 중인 시각 일정 블록** 하나 → `scheduleId`. 후보는 `activitySchedule`·`schedules[]` 중 시작·끝 시각이 있는 시각 일정(`startAt <= now < endAt`)이고 종일 일정·반복 일정·날짜 미정·모집 기간·지운 블록은 뺀다(여러 달짜리 종일 활동 기간이 모든 명함에 붙지 않게). 활동 기간이 세부 블록을 품어 둘 다 맞으면 **창이 짧은 것**(세부 블록), 같으면 id가 작은 것.
+  3. 없으면 활동만(`scheduleId`·`sessionId` null). 모르는 활동 id는 기존처럼 셋 모두 null.
+- 시각 비교는 절대 시각(instant)으로 하므로 블록의 `timeZone`은 판정에 쓰지 않는다(표시는 앱이 블록·세션의 시간대로 한다).
+- **한 번만 판정**: 이미 저장된 Receipt·GuestItem은 다시 저장해도 바꾸지 않는다. 활동이 비어 있다가 나중에 `activityId`가 오면 **그때** 판정한다(그 시각 기준). `reciprocate`는 원 Receipt의 `activityId`·`scheduleId`·`sessionId`를 그대로 복사하고 다시 판정하지 않는다.
+- **저장**: `receipts.context` jsonb에 `{"activityId", "scheduleId", "sessionId"}`(마이그레이션 없음, 옛 행은 둘이 없어 null). `guest_cards`에 `schedule_id bigint null`·`session_id bigint null`(V63, 논리키).
+- **응답**: `Receipt.context`·`GuestItem.context`에 `scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null`을 더한다(위 ExchangeContext). 블록·세션이 지워졌으면 id는 남고 이름만 null(활동과 같은 규칙). 운영자가 블록을 지운(`curated_deleted`) 경우도 지운 것으로 본다. `scheduleId`·`sessionId`는 결정문에는 없고 서버가 더한 것이며 **클라이언트는 지금 읽지 않는다**(뒤에 받은 명함 상세에서 그 블록의 시간표 `GET /v1/activities/:id/schedules/:scheduleId/timetable`를 바로 열 때 쓸 수 있게 둔다).
+- **화면(조율 세션 결정 2026-10-26, iOS #434 구현 기준)**: 받은 명함 **목록 행**은 프로그램 이름 칩을 그대로 두고 그 아래 캡션 한 줄 `프로그램 · 블록(scheduleTitle) · 트랙(trackName) · 방(room)`을 있는 값만 ` · `로 이어 더한다(모두 없으면 캡션 생략). **상세**는 같은 첫 줄에 둘째 줄로 세션 제목(`sessionTitle`, 없으면 생략). 활동 이름은 기존처럼 상세의 `<프로그램> <활동>에서 받음 · <받은 날>` 줄에 있다.
 
 ### 화면
 

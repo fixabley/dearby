@@ -99,11 +99,21 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     func recruitmentDate(at now: Date) -> (text: String?, dday: String?) {
         guard let stage = applicationStage, let period = stage.periodText(now: now) else { return (recruitmentText(at: now), nil) }
         guard status(at: now) == .recruiting, let last = stage.lastDay else { return (period, nil) }
-        var seoul = Calendar(identifier: .gregorian)
-        seoul.timeZone = ActivityText.seoul
-        let days = seoul.dateComponents([.day], from: seoul.startOfDay(for: now), to: seoul.startOfDay(for: last)).day ?? 0
+        let days = Self.seoul.dateComponents([.day], from: Self.seoul.startOfDay(for: now), to: Self.seoul.startOfDay(for: last)).day ?? 0
         return (period, days <= 0 ? "D-DAY" : "D-\(days)")
     }
+    /// 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26"): while 모집 예정 with a known recruitment start, `시작 D-n` in Seoul days
+    /// to the start day, `오늘 시작` on that day. nil for every other status or without a start (the badge stays `모집 예정` alone).
+    func upcomingStartDDay(at now: Date) -> String? {
+        guard status(at: now) == .recruitingUpcoming, let start = upcomingStart else { return nil }
+        let days = Self.seoul.dateComponents([.day], from: Self.seoul.startOfDay(for: now), to: Self.seoul.startOfDay(for: start)).day ?? 0
+        return days <= 0 ? "오늘 시작" : "시작 D-\(days)"
+    }
+    private static let seoul: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = ActivityText.seoul
+        return calendar
+    }()
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         raw.flatMap(seoulDayFormatter.date(from:))

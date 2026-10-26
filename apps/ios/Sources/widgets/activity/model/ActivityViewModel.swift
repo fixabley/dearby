@@ -4,7 +4,7 @@ import Observation
 /// Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): `GET /v1/discovery/programs` with server search (`q`)
 /// and cursor paging, both read with the chosen 활동 상태 (contract "활동 상태" 2026-10-26); an expanded program loads its activities in
 /// those states with `GET /v1/activities?programId=&status=` (the server judges the state) and shows them by state.
-/// Also 내 활동 — the applied activities and their stage marks — and the apply-confirmation prompt, shared with 내 활동 and the detail screen.
+/// Also 내 활동 — the applied activities and their stage marks — and the apply-confirmation and 통과 제안 prompts, shared with 내 활동 and the detail screen.
 /// 내 활동 storage (contract "내 활동 서버 저장" 2026-10-22): signed out, the marks live in this model's memory as before (the app has no
 /// device copy of them); signed in, `signedIn(_:)` uploads those once with `import`, then the server's list replaces them and every
 /// change is sent to `/v1/me/activities…` as it is made. A failed change shows `notice` and reloads the server's list.
@@ -102,6 +102,13 @@ import Observation
     private var opened: String?
     private var leftApp = false
     private var neverAsk: Set<String> = []
+    /// 지난 선발 단계 통과 제안 (contract "지난 선발 단계 통과 제안" 2026-10-26): the sheet up right after an activity joined 내 활동.
+    private(set) var autopass: AutopassSuggestion?
+    /// The suggestion for the activity `신청했어요` added, shown once the `신청하셨나요?` sheet is gone (`applySheetDismissed`): the two
+    /// sheets cannot swap in one transaction.
+    private var pendingAutopass: AutopassSuggestion?
+    /// Activities asked already (device memory): the question comes once per activity, whatever the answer.
+    private static let autopassAskedKey = "dearby.mine.autopassAsked"
     /// `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): the activity the 내 활동 tab should open next; the tab clears it once pushed.
     var showInMine: String?
     /// An `/activities/<id>` universal link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the activity the 발견 tab should push
@@ -187,10 +194,56 @@ import Observation
         ActivityStages.build(activity, marks: stageMarks[activity.id] ?? [:], now: now)
     }
     func markStage(_ activityID: String, _ scheduleID: String, _ mark: StageMark) {
-        stageMarks[activityID, default: [:]][scheduleID] = mark
+        record(activityID, scheduleID, mark, via: nil)
         guard let server, synced, let activity = Int64(activityID), let schedule = Int64(scheduleID) else { return }
         save { _ = try await server.putStatus(activity, schedule, mark.statusID, mark.kind.rawValue) }
     }
+    /// Keeps a mark and sends 사용 통계 `stage_mark` (analytics-v1.md: `activity_id`, `kind`; `via` only from the 통과 제안).
+    private func record(_ activityID: String, _ scheduleID: String, _ mark: StageMark, via: String?) {
+        var parameters = AppAnalytics.activity(activityID, seen[activityID]).merging(["kind": mark.kind.rawValue.lowercased()]) { $1 }
+        if let via { parameters["via"] = via }
+        AppAnalytics.event("stage_mark", parameters)
+        stageMarks[activityID, default: [:]][scheduleID] = mark
+    }
+    /// The 통과 제안 for an activity that just joined 내 활동 (contract "지난 선발 단계 통과 제안" 2026-10-26), remembered as asked; nil
+    /// when it was asked before, the activity is 종료 or its track is over (`끝난 활동`), or no 선발 단계 is past.
+    private func autopassSuggestion(_ id: String) -> AutopassSuggestion? {
+        let now = Date()
+        let asked = UserDefaults.standard.stringArray(forKey: Self.autopassAskedKey) ?? []
+        guard !asked.contains(id), let activity = seen[id], activity.status(at: now) != .ended,
+              let progress = progress(activity, now: now), !progress.ended else { return nil }
+        let stages = progress.autopassCandidates(now: now)
+        guard !stages.isEmpty else { return nil }
+        UserDefaults.standard.set(asked + [id], forKey: Self.autopassAskedKey)
+        let ids = Set(stages.map(\.id))
+        let remaining = progress.stages.filter { $0.selection && !ids.contains($0.id) && $0.mark.kind != .passed }
+        return AutopassSuggestion(activity: activity, stages: stages, remaining: remaining)
+    }
+    /// The `신청하셨나요?` sheet closed: a suggestion `신청했어요` prepared comes up now.
+    func applySheetDismissed() {
+        autopass = pendingAutopass
+        pendingAutopass = nil
+    }
+    /// `통과로 표시`: every suggested stage takes its schedule's 통과 status. Signed in, the add is confirmed first (`PUT` is idempotent) and
+    /// the statuses go one by one; a failed one is left as it was (the usual notice and reload keep the ones that landed).
+    func acceptAutopass() {
+        guard let autopass else { return }
+        self.autopass = nil
+        let marks = autopass.stages.compactMap { stage in stage.passedOption.map { (stage.source.id, StageMark($0)) } }
+        for (scheduleID, mark) in marks { record(autopass.id, scheduleID, mark, via: "autopass_prompt") }
+        guard let server, synced, let activity = Int64(autopass.id) else { return }
+        save {
+            _ = try await server.put(activity)
+            var failure: Error?
+            for (scheduleID, mark) in marks {
+                guard let schedule = Int64(scheduleID) else { continue }
+                do { _ = try await server.putStatus(activity, schedule, mark.statusID, mark.kind.rawValue) } catch { failure = error }
+            }
+            if let failure { throw failure }
+        }
+    }
+    /// `그대로 두기` or the sheet pulled down.
+    func skipAutopass() { autopass = nil }
     /// Shows `text`'s programs from the first page, unless they are already shown or loading.
     func search(_ text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -278,6 +331,7 @@ import Observation
         if appliedIDs.contains(id) { showInMine = id } else {
             AppAnalytics.event("myactivity_add", AppAnalytics.activity(id, seen[id]).merging(["source": source]) { $1 })
             apply(id, true)
+            autopass = autopassSuggestion(id)
         }
     }
     private func start(_ query: String) {
@@ -361,7 +415,7 @@ import Observation
         guard let id = asking?.id else { return }
         asking = nil
         switch answer {
-        case .applied: apply(id, true)
+        case .applied: apply(id, true); pendingAutopass = autopassSuggestion(id)
         case .notYet: break
         case .neverAsk: neverAsk.insert(id)
         }
