@@ -7,4 +7,4 @@ async function handle(
 ) {
   return proxy(request, (await params).path);
 }
-export { handle as GET, handle as PUT, handle as DELETE, handle as POST };
+export { handle as GET, handle as PUT, handle as DELETE, handle as POST, handle as PATCH };
