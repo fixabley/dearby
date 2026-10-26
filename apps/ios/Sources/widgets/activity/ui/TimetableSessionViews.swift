@@ -47,17 +47,31 @@ struct TimetableSessionCard: View {
     var body: some View {
         if session.isBreak { band } else { card }
     }
+    /// Also a 하루 시간표 placeholder for a block without a timetable (its title; `불러오지 못했어요` when the load failed).
     private var band: some View {
         HStack(spacing: 8) {
-            Image(systemName: session.kind == .meal ? "fork.knife" : "cup.and.saucer")
-            Text(session.title.isEmpty ? TimetableText.breakLabel(session.kind) : session.title).lineLimit(2)
+            Image(systemName: bandSymbol)
+            Text(bandTitle).lineLimit(2)
             Spacer(minLength: 0)
             if showsTime { Text(TimetableText.range(session, zone: zone)).monospacedDigit() }
         }
         .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary)
         .padding(.horizontal, 12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).frame(minHeight: 44)
         .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 12, style: .continuous))
-        .accessibilityElement(children: .ignore).accessibilityLabel(TimetableText.spoken(session, track: track, zone: zone))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(TimetableText.spoken(session, track: track, zone: zone) + (session.placeholder == .failed ? ", 불러오지 못했어요" : ""))
+    }
+    private var bandSymbol: String {
+        switch (session.placeholder, session.kind) {
+        case (.failed, _): "exclamationmark.triangle"
+        case (_, .meal): "fork.knife"
+        case (_, .breakTime): "cup.and.saucer"
+        default: "calendar"
+        }
+    }
+    private var bandTitle: String {
+        let title = session.title.isEmpty ? TimetableText.breakLabel(session.kind) : session.title
+        return session.placeholder == .failed ? title + " · 불러오지 못했어요" : title
     }
     private var card: some View {
         let favorited = favorites.ids.contains(session.id)

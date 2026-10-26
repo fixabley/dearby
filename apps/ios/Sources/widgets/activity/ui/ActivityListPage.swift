@@ -169,8 +169,7 @@ struct ActivityListPage: View {
         let block = event.block
         if event.timing == .today, block.hasTimetable {
             report(event, "timetable")
-            timetable = TimetableRoute(activityID: event.activity.id, activityTitle: event.activity.title, scheduleID: block.id,
-                                       scheduleTitle: event.blockTitle, date: block.text(now: now) ?? "",
+            timetable = TimetableRoute(activity: event.activity, block: block, title: event.blockTitle, date: block.text(now: now) ?? "", now: now,
                                        favoritesFirst: sessionFavorites.items.contains { $0.activityID == event.activity.id && $0.scheduleID == block.id })
         } else {
             report(event, "progress")
