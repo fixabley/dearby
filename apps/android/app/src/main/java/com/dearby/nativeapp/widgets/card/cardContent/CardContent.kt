@@ -68,9 +68,9 @@ import com.dearby.nativeapp.shared.ui.*
 @Composable private fun ContactRow(contact: ContactState, open: () -> Unit) {
     val opens = contact.target != null
     val copies = contact.copyText != null
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = opens || copies, onClickLabel = if (copies) "ID 복사" else "열기", role = Role.Button, onClick = open).padding(vertical = 6.dp),
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = opens || copies, onClickLabel = when { copies -> "ID를 복사해요"; contact.kind == "phone" -> "전화를 걸어요"; contact.kind == "email" -> "메일을 보내요"; else -> "링크를 열어요" }, role = Role.Button, onClick = open).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(contactIcon(contact.kind), contact.label.ifBlank { contactKindName(contact.kind) }, Modifier.size(24.dp), tint = contactIconTint(contact.kind))
+        ContactKindIcon(contact.kind, contact.label.ifBlank { contactKindName(contact.kind) })
         Text(contact.value, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         if (opens) Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         else if (copies) Icon(Icons.Rounded.ContentCopy, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
