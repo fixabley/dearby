@@ -147,14 +147,32 @@ struct AccountClient: Sendable {
     }
     /// Multipart upload of one evidence file (max 3 per history, 5MB, image or PDF).
     func uploadEvidence(historyID: String, fileName: String, contentType: String, data: Data, _ session: TokenPair) async throws -> EvidenceMeta {
+        let (body, type) = Self.multipart(fileName: fileName, contentType: contentType, data: data)
+        let (response, _) = try await request("profile/histories/\(historyID)/evidence", method: "POST", raw: body, contentType: type, session: session)
+        do { return try JSONDecoder().decode(EvidenceMeta.self, from: response) } catch { throw AccountError.unavailable }
+    }
+    /// `PUT /v1/profile/photo` (contract "프로필 사진" 2026-10-26): the square crop as JPEG; replaces any earlier photo.
+    func putProfilePhoto(jpeg: Data, _ session: TokenPair) async throws {
+        let (body, type) = Self.multipart(fileName: "photo.jpg", contentType: "image/jpeg", data: jpeg)
+        _ = try await request("profile/photo", method: "PUT", raw: body, contentType: type, session: session)
+    }
+    /// `DELETE /v1/profile/photo`: 204, also when there was none. Cards keep the photo copied at publish.
+    func deleteProfilePhoto(_ session: TokenPair) async throws {
+        _ = try await request("profile/photo", method: "DELETE", session: session)
+    }
+    /// A `photoUrl` from a Profile or Card (`/v1/profile/photo?v=…`, `/v1/cards/:id/photo?v=…[&code=…]`): the bytes, read with the session
+    /// when there is one because the system image loaders cannot send it.
+    func photo(_ photoUrl: String, _ session: TokenPair?) async throws -> Data {
+        let path = photoUrl.hasPrefix("/v1/") ? String(photoUrl.dropFirst(4)) : photoUrl
+        return try await request(path, method: "GET", session: session, headers: ["Accept": "image/jpeg, image/png"]).0
+    }
+    private static func multipart(fileName: String, contentType: String, data: Data) -> (Data, String) {
         let boundary = "dearby-" + UUID().uuidString
         var body = Data()
         body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(fileName.replacingOccurrences(of: "\"", with: ""))\"\r\nContent-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
         body.append(data)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        let (response, _) = try await request("profile/histories/\(historyID)/evidence", method: "POST", raw: body,
-                                              contentType: "multipart/form-data; boundary=\(boundary)", session: session)
-        do { return try JSONDecoder().decode(EvidenceMeta.self, from: response) } catch { throw AccountError.unavailable }
+        return (body, "multipart/form-data; boundary=\(boundary)")
     }
     func deleteEvidence(historyID: String, evidenceID: String, _ session: TokenPair) async throws {
         _ = try await request("profile/histories/\(historyID)/evidence/\(evidenceID)", method: "DELETE", session: session)

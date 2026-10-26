@@ -83,6 +83,21 @@ import Observation
             return nil
         } catch { return message(error, fallback: "파일을 지우지 못했어요. 잠시 후 다시 시도해 주세요.") }
     }
+    /// 프로필 사진 (contract "프로필 사진" 2026-10-26): saved at once, outside the form's 저장; the reload brings the new `photoUrl`.
+    func putPhoto(jpeg: Data) async -> String? {
+        do {
+            try await account.authorized { [client = account.client] in try await client.putProfilePhoto(jpeg: jpeg, $0) }
+            await load()
+            return nil
+        } catch { return message(error, fallback: "사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.") }
+    }
+    func deletePhoto() async -> String? {
+        do {
+            try await account.authorized { [client = account.client] in try await client.deleteProfilePhoto($0) }
+            await load()
+            return nil
+        } catch { return message(error, fallback: "사진을 지우지 못했어요. 잠시 후 다시 시도해 주세요.") }
+    }
     private func message(_ error: Error, fallback: String) -> String {
         switch error as? AccountError {
         case .unauthorized:

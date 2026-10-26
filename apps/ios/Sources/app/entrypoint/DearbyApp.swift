@@ -110,6 +110,8 @@ import SwiftUI
             .environment(favorites)
             // Every tab's bell: the inbox signed in, sign-in otherwise (contract "알림 목록(발견 우상단 종)").
             .environment(\.inboxEntry, InboxEntry(signedIn: accountReady, unread: inbox.unread, signIn: needAccount))
+            // Profile and card photos need the session (contract "프로필 사진"), so every `DearbyPhotoAvatar` reads through the account.
+            .environment(\.photoLoader, PhotoLoader { [account] in try await account.photo($0) })
             // A heart pressed signed out opens the sign-in sheet (contract "즐겨찾기(하트)": 로그인만).
             .onChange(of: favorites.signInRequested) { _, requested in
                 guard requested else { return }
