@@ -32,6 +32,7 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressStatus
 import com.dearby.nativeapp.widgets.activity.progress.StatusOption
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.widgets.activity.progress.stageIcon
+import java.time.LocalDate
 
 /**
  * One applied activity's stages (contract "내 활동 진행 트랙"), compact (2026-10-26 사용자 "활동탐색 카드처럼 깔끔하게", "마진이 너무 크고 경계가
@@ -42,15 +43,18 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
  * A stage row is icon, name and date, with the user's 대기/통과/탈락 on the right only on a 선발 단계 (contract "내 활동 서버 저장·일정 상태",
  * the user's own mark, never the organizer's result) and a timetable icon before it when the block has a 트랙·세션 시간표 (2026-10-26 사용자).
  * Tapping a row with actions unfolds them: `시간표 보기` ([openTimetable], the block's sheet) first, then the status choice, `겹치는 시간 확인`
- * ([checkCalendar]) and `캘린더에 추가`. 내 활동에서 빼기 stays a text button at the bottom.
+ * ([checkCalendar]) and `캘린더에 추가`. 내 활동에서 빼기 stays a text button at the bottom. In `활동 일정` the timed blocks of one date fold into a
+ * [DayRow] (하루 시간표, 2026-10-26) whose `시간표 보기` is [openDayTimetable]; the block rows under it keep their marks.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityProgressPage(
     progress: ProgressState, activity: ActivityState, back: () -> Unit, openDetail: () -> Unit,
     mark: (Int, StatusOption) -> Unit, checkCalendar: (Int) -> Unit, remove: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
     openTimetable: (String) -> Unit = {},
+    openDayTimetable: (ScheduleGroup.Day<IndexedValue<ProgressStage>>) -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf<Int?>(null) }
+    var expandedDay by remember { mutableStateOf<LocalDate?>(null) }
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("진행 단계", back)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -63,12 +67,22 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
             val badge: @Composable () -> Unit = { if (progress.badge.isNotEmpty() && !progress.participating) ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed) }
             if (selection.isNotEmpty()) {
                 SectionHeading("선발 과정", badge)
-                StageCard(selection, expanded, { expanded = it }, mark, checkCalendar, addToCalendar, openTimetable)
+                StageCard { StageRows(selection, expanded, { expanded = it }, mark, checkCalendar, addToCalendar, openTimetable) }
                 Text(PROGRESS_NOTE, Modifier.padding(horizontal = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
             if (activityStages.isNotEmpty()) {
                 SectionHeading("활동 일정") { if (progress.participating) ExampleBadge("참여 중", accent = true) else if (selection.isEmpty()) badge() }
-                StageCard(activityStages, expanded, { expanded = it }, mark, checkCalendar, addToCalendar, openTimetable)
+                val row: @Composable (List<IndexedValue<ProgressStage>>) -> Unit = { rows -> StageRows(rows, expanded, { expanded = it }, mark, checkCalendar, addToCalendar, openTimetable) }
+                StageCard {
+                    dayGroups(activityStages) { (_, stage) -> stage.day?.let { dayBlock(stage.timetableId, stage.name, stage.draft!!, stage.timetableId != null) } }.forEachIndexed { position, group ->
+                        if (position > 0) HorizontalDivider()
+                        when (group) {
+                            is ScheduleGroup.One -> row(listOf(group.item))
+                            is ScheduleGroup.Day -> DayRow(group, expandedDay == group.day, { expandedDay = if (expandedDay == group.day) null else group.day }, { openDayTimetable(group) },
+                                { addToCalendar(group.draft("${activity.title} · ${dayLabel(group.day)}")) }) { row(group.items) }
+                        }
+                    }
+                }
             }
             RemoveFromMineButton(remove, Modifier.align(Alignment.CenterHorizontally))
         }
@@ -81,10 +95,14 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
         trailing()
     }
 
-/** One section's stages as a card of divider-separated [StageRow]s; [expanded] is the unfolded stage's track index. */
-@Composable private fun StageCard(stages: List<IndexedValue<ProgressStage>>, expanded: Int?, expand: (Int?) -> Unit,
+/** One section's card of divider-separated rows. */
+@Composable private fun StageCard(content: @Composable ColumnScope.() -> Unit) =
+    OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface), content = content)
+
+/** Divider-separated [StageRow]s; [expanded] is the unfolded stage's track index. */
+@Composable private fun StageRows(stages: List<IndexedValue<ProgressStage>>, expanded: Int?, expand: (Int?) -> Unit,
     mark: (Int, StatusOption) -> Unit, checkCalendar: (Int) -> Unit, addToCalendar: (CalendarDraft) -> Unit, openTimetable: (String) -> Unit) =
-    OutlinedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Column {
         stages.forEachIndexed { position, (index, stage) ->
             if (position > 0) HorizontalDivider()
             StageRow(stage, expanded == index, { expand(if (expanded == index) null else index) }, { mark(index, it) }, { checkCalendar(index) }, addToCalendar, openTimetable)

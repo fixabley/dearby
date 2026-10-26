@@ -22,7 +22,9 @@ data class Stage(val name: String, val kind: String, val label: String, val date
     /** The schedule has a 트랙·세션 시간표 (contract "트랙·세션 시간표"). */
     val hasTimetable: Boolean = false,
     /** A 선발 과정 step (`phase = SELECTION`); the 지원 step always, the activity period never. */
-    val selection: Boolean = false) {
+    val selection: Boolean = false,
+    /** The activity period (`activitySchedule`), which the day grouping of the detail leaves alone ("하루 시간표", 2026-10-26). */
+    val period: Boolean = false) {
     /** Over by [today]: the step's last day has passed. An undated step never ends by itself. */
     fun finished(today: LocalDate) = lastDay != null && lastDay < today
 }
@@ -45,7 +47,7 @@ fun ActivityModel.stages(): List<Stage> {
             eventStart = deadline ?: day?.atStartOfDay(seoul)?.toInstant(), eventEnd = deadline ?: day?.plusDays(1)?.atStartOfDay(seoul)?.toInstant(), allDay = deadline == null)
     }
     // The activity-period slot is always ACTIVITY (contract "선발 과정·활동 일정 분리": 고정), whatever an older API sent.
-    val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }, phase = ACTIVITY).toStage() }
+    val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }, phase = ACTIVITY).toStage().copy(period = true) }
     return listOfNotNull(applying) + stageSchedules.sortedWith(compareBy(nullsLast()) { it.startInstant() }).map { it.toStage() } + listOfNotNull(period)
 }
 

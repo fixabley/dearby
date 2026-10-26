@@ -18,8 +18,41 @@ data class SessionState(
 ) {
     /** 쉬는시간·점심: drawn as a band, without a heart. */
     val isBreak get() = kind == "BREAK" || kind == "MEAL"
+    /** A 하루 시간표 row standing for a whole block (no sessions, or its timetable could not be read): a band without a heart or a detail. */
+    val isBlock get() = kind == BLOCK_KIND || kind == BLOCK_FAILED_KIND
     /** Contract "찜 겹침": `a.startAt < b.endAt && b.startAt < a.endAt`. */
     fun overlaps(other: SessionState) = startAt.toInstant() < other.endAt.toInstant() && other.startAt.toInstant() < endAt.toInstant()
+}
+internal const val BLOCK_KIND = "BLOCK"
+internal const val BLOCK_FAILED_KIND = "BLOCK_FAILED"
+
+/**
+ * One timed block of a day (하루 시간표, 2026-10-26 사용자 "10/28일 누르면 시간표보기"): the detail's or 진행 단계's row as the day sheet reads it.
+ * [scheduleId] is null for a 진행 단계 row without a timetable (it is drawn by [title] alone). Times are Seoul.
+ */
+data class DayBlock(val scheduleId: String?, val title: String, val startAt: OffsetDateTime, val endAt: OffsetDateTime, val hasTimetable: Boolean)
+/** A block's timetable read for the day sheet; a block without one is MISSING from the start and never fetched. */
+data class DayBlockLoad(val block: DayBlock, val phase: TimetablePhase, val timetable: TimetableState?)
+
+/**
+ * The day's blocks as one table: tracks are the union of every block's tracks **by name** (first seen first; a block's track id maps to
+ * the first track of that name, whose room stands for all), sessions keep their heart. A block without a timetable (키노트·쉬는시간, or 404)
+ * is one full-width row with its title; a block whose read failed is `{title} · 불러오지 못했어요`.
+ */
+fun dayTimetable(loads: List<DayBlockLoad>): TimetableState {
+    val tracks = mutableListOf<TrackState>()
+    val sessions = loads.flatMap { (block, phase, timetable) ->
+        if (timetable == null || timetable.sessions.isEmpty()) {
+            val failed = phase == TimetablePhase.FAILED
+            return@flatMap listOf(SessionState("block:${block.scheduleId ?: block.startAt}", null, if (failed) BLOCK_FAILED_KIND else BLOCK_KIND,
+                if (failed) "${block.title} · 불러오지 못했어요" else block.title, null, block.startAt, block.endAt, emptyList(), emptyList()))
+        }
+        val merged = timetable.tracks.associate { track ->
+            track.id to (tracks.firstOrNull { it.name == track.name } ?: track.also { tracks += it }).id
+        }
+        timetable.sessions.map { it.copy(trackId = it.trackId?.let { id -> merged[id] ?: id }) }
+    }.sortedBy { it.startAt.toInstant() }
+    return TimetableState("", tracks, sessions)
 }
 
 /**

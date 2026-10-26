@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
+import java.time.LocalDate
 
 /**
  * [openLink] opens the CTA link: the application link (`applicationUrl`, else the official page) until recruitment is closed, then the
@@ -34,6 +35,8 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
     hearts: FavoriteHearts = FavoriteHearts(),
     /** A block row with a 트랙·세션 시간표 (contract "트랙·세션 시간표"): opens the block's timetable sheet by its schedule id. */
     openTimetable: (String) -> Unit = {},
+    /** A day row's `시간표 보기` (하루 시간표, 2026-10-26): every timed block of that date as one table. */
+    openDayTimetable: (ScheduleGroup.Day<ScheduleItemState>) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         // Share sends the Dearby link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). 추가 left the bar for the `+` beside the heart
@@ -101,7 +104,7 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                 if (activityRows.isNotEmpty() || selection.isEmpty()) {
                     ScheduleHeading("활동 일정")
                     Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
-                    ScheduleRows(activityRows, addToCalendar, openTimetable)
+                    DayGroupedRows(activity.title, activityRows, addToCalendar, openTimetable, openDayTimetable)
                 }
                 // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침"); it needs one comparable schedule — timed,
                 // or date-only with the admin's overlap-check time (contract "겹침 확인 시간", 2026-10-22). Otherwise one line says why not.
@@ -142,6 +145,22 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 
 @Composable private fun ScheduleHeading(title: String) =
     Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+
+/**
+ * 활동 일정 rows with the timed blocks of one date folded into a [DayRow] (2026-10-26 사용자 "10/28일 누르면 시간표보기 일정추가"): unfolded, the
+ * day offers `시간표 보기` (when a block has one) and `캘린더에 추가` over the whole range, then its block rows as [ScheduleRows].
+ */
+@Composable private fun DayGroupedRows(activityTitle: String, items: List<ScheduleItemState>, addToCalendar: (CalendarDraft) -> Unit, openTimetable: (String) -> Unit,
+    openDay: (ScheduleGroup.Day<ScheduleItemState>) -> Unit) = Column {
+    var expanded by remember { mutableStateOf<LocalDate?>(null) }
+    dayGroups(items) { it.block }.forEach { group ->
+        when (group) {
+            is ScheduleGroup.One -> ScheduleRows(listOf(group.item), addToCalendar, openTimetable)
+            is ScheduleGroup.Day -> DayRow(group, expanded == group.day, { expanded = if (expanded == group.day) null else group.day }, { openDay(group) },
+                { addToCalendar(group.draft("$activityTitle · ${dayLabel(group.day)}")) }) { ScheduleRows(group.items, addToCalendar, openTimetable) }
+        }
+    }
+}
 
 /** Plain rows; a block with sessions (`hasTimetable`) opens its 시간표 as a modal on tap (2026-10-26 사용자), `시간표` + chevron on the right. */
 @Composable private fun ScheduleRows(items: List<ScheduleItemState>, addToCalendar: (CalendarDraft) -> Unit, openTimetable: (String) -> Unit) = Column {
