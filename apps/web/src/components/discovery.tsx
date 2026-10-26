@@ -38,7 +38,8 @@ import { Segmented } from "@/shared/ui/segmented";
 import { MultiSelect } from "@/shared/ui/multi-select";
 import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
-import { groupByCategory } from "@/lib/category";
+import { categoryLabels, groupByCategory } from "@/lib/category";
+import { CategoryIcon } from "@/shared/ui/category-icon";
 
 /**
  * 프로그램 | 이벤트 (contract "프로그램·이벤트 전환"): the server's `kind` filter — 이벤트 is 컨퍼런스·워크샵·밋업·강연, 프로그램 every other
@@ -512,6 +513,13 @@ function ProgramRow({
           >
             <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              {/* 종류 줄 (contract "종류 아이콘 라벨" 2026-10-26): read first; none for 미분류 or an unknown code. */}
+              {program.category && categoryLabels[program.category] && (
+                <span className="flex items-center gap-1 text-caption text-secondary-label">
+                  <CategoryIcon code={program.category} />
+                  {categoryLabels[program.category]}
+                </span>
+              )}
               <span className="text-headline font-semibold break-keep">{program.name}</span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
               <TagChipRow field={fieldTagsOf(program)[0]} traits={traitTagsOf(program)} className="mt-1.5" />
@@ -577,6 +585,7 @@ function ProgramsLoading() {
         <Card key={key} className="flex items-start gap-3 p-4">
           <Skeleton className="size-11 rounded-[14px]" />
           <div className="flex flex-1 flex-col gap-2 pt-1">
+            <Skeleton className="h-3 w-1/5" />
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-3.5 w-1/3" />
           </div>

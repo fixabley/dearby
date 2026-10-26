@@ -15,6 +15,7 @@ import {
 } from "@/lib/models";
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
+import { CategoryIcon } from "@/shared/ui/category-icon";
 import { errorMessage, request, RequestError } from "@/lib/client";
 import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
@@ -142,7 +143,12 @@ export function ActivityDetail({ id }: { id: number }) {
             {STATUS_BADGE[status] && (
               <Badge variant={statusVariant[status]}>{STATUS_BADGE[status]}</Badge>
             )}
-            {activity.category && <Badge>{categoryLabel(activity.category)}</Badge>}
+            {activity.category && (
+              <Badge>
+                <CategoryIcon code={activity.category} />
+                {categoryLabel(activity.category)}
+              </Badge>
+            )}
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>
           <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>
