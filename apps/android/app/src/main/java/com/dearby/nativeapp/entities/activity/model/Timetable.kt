@@ -17,5 +17,5 @@ data class Session(
 ) {
 }
 
-/** One `GET /v1/me/session-favorites` item (내 시간표, session start order). */
-data class SessionFavorite(val activityId: String, val activityName: String, val scheduleId: String, val scheduleTitle: String, val session: Session)
+/** One `GET /v1/me/session-favorites` item (내 시간표, session start order); [track] is null for a session that spans every track. */
+data class SessionFavorite(val activityId: String, val activityName: String, val scheduleId: String, val scheduleTitle: String, val session: Session, val track: Track?)
