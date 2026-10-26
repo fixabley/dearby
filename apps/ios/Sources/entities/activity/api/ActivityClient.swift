@@ -7,8 +7,11 @@ enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
     /// `open` asks the server for currently open activities only (contract "열린 활동 판정 일원화"): the client never re-judges them.
     /// Tags are a search condition only: `q` matching a tag name is the server's rule, and `tagIds` is never sent (2026-10-19 밤).
-    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false) async throws -> ActivityPage {
+    /// `kind` (발견 `프로그램 | 이벤트`) keeps an expanded program to that side's activities.
+    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false,
+                      kind: DiscoveryKind? = nil) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
+        if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
         if open { items.append(URLQueryItem(name: "open", value: "true")) }
