@@ -236,3 +236,10 @@ fun contactKindName(kind: String) = when (kind) {
 /** 표시 행(명함 면·받은 명함·내 프로필 카드)의 왼쪽 아이콘: [contactIcon]을 24, 보조색으로. */
 @Composable fun ContactKindIcon(kind: String, contentDescription: String, modifier: Modifier = Modifier) =
     Icon(contactIcon(kind), contentDescription, modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+
+/** `시간표` with the timeline icon, the same mark the activity card shows (contract "트랙·세션 시간표"). */
+@Composable fun TimetableMark(modifier: Modifier = Modifier) =
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+        Text("시간표", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+    }

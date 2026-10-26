@@ -125,7 +125,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
                             ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent, eventDates = state.kind == DiscoveryKind.EVENT,
+                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent, timetable = program.hasTimetable, eventDates = state.kind == DiscoveryKind.EVENT,
                                 actions = { FavoriteActions(hearts, true, program.id, program.title) }) { ProgramBody(program.id, state, open, retryProgram, hearts, plus) }
                         }
                         if (state.nextCursor != null) item(key = "more") {
@@ -246,7 +246,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
 @Composable private fun Card(activity: ActivityState, open: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable,
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable, deadlineCount = activity.deadlineCount,
         actions = { FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { plus(activity.id) } })
 
 /** Activity row used by My Activities. */

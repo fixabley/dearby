@@ -54,7 +54,15 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                 }
                 HorizontalDivider()
                 InfoRow("모집 상태", activity.status, Icons.Rounded.Event)
-                activity.period?.let { InfoRow("모집 기간", it, Icons.Rounded.Event) }
+                // 모집 날짜 표기 (user 2026-10-26): a full window is a range with the deadline time and a D-day badge, and carries the deadline's
+                // `캘린더에 추가` since its own `모집 마감` row is gone from 행사 일정; a deadline alone keeps `~ 10월 20일 (화) 마감`.
+                (activity.periodDetail ?: activity.period)?.let { period ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.weight(1f)) { InfoRow("모집 기간", period, Icons.Rounded.Event) }
+                        activity.deadlineCount?.let { ExampleBadge(it, accent = true) }
+                        activity.deadlineDraft?.let { draft -> IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "모집 마감 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } }
+                    }
+                }
                 InfoRow("개최 일시", activity.date.ifEmpty { "미확인" }, Icons.Rounded.Schedule)
                 InfoRow("장소", activity.location ?: "미확인", Icons.Rounded.Place)
                 InfoRow("프로그램", activity.program, Icons.Rounded.Badge)

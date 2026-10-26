@@ -13,6 +13,8 @@ import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.entities.activity.model.scheduleText
+import com.dearby.nativeapp.entities.activity.model.rangeText
+import com.dearby.nativeapp.entities.activity.model.deadlineCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
@@ -432,26 +434,35 @@ private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
 /** One program card's state, for discovery and 즐겨찾기 alike. */
 internal fun ProgramSummary.toState() = ProgramState(id, name, organization, openActivityCount, instant(nearestRecruitmentEndAt), matchedActivityIds.size, instant(latestActivityAt),
     fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl,
-    deadlineIsEvent = nearestIsActivityStart)
+    deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable)
 
-private fun ActivityModel.toState(now: Instant) = ActivityState(
-    // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
-    id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-    stages().map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
-    safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
-    eligibility = eligibility?.lines() ?: emptyList(),
-    category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
-    sortKey = sortKey,
-    fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
-    place = place,
-    applicationUrl = safeHttpsUrl(applicationUrl),
-    overlapCheckable = schedules.isNotEmpty(),
-    hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
-)
+private fun ActivityModel.toState(now: Instant): ActivityState {
+    val status = statusLabel(now)
+    // 모집 날짜 표기 (user 2026-10-26): a window with both ends is a range plus a D-day badge, without a separate `모집 마감` line.
+    val range = application?.rangeText()
+    val stages = stages()
+    val deadline = stages.firstOrNull { it.kind == "APPLICATION" }?.takeIf { range != null }
+    return ActivityState(
+        // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
+        id, name, description, organization, program, status, activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
+        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
+        safeHttpsUrl(officialUrl), applyUrl(now), range ?: period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
+        eligibility = eligibility?.lines() ?: emptyList(),
+        category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
+        sortKey = sortKey,
+        fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
+        place = place,
+        applicationUrl = safeHttpsUrl(applicationUrl),
+        overlapCheckable = schedules.isNotEmpty(),
+        hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
+        periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
+        deadlineDraft = deadline?.let { draft(it) },
+    )
+}
 /**
  * The stage track with the user's [marks] (by schedule id): a PASSED status makes the stage past, the earliest other stage not
  * over by [today] is current, a FAILED status or no current stage ends the activity. No stages at all leaves an empty track.
- * A stage without a choice shows its first waiting status.
+ * A stage without a choice shows its first waiting status; a stage that is not a 선발 단계 has no options, so an old mark on it is ignored.
  */
 private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDate): ProgressState {
     val stages = stages()
@@ -472,8 +483,8 @@ private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDat
         }
         ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage))
     }
-    // 참여 중 (2026-10-22, 참여 확정 replaced): every selection stage before the activity period is marked PASSED.
-    val selection = if (activitySchedule != null) picks.dropLast(1) else picks
+    // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (one with status choices) before the activity period is marked PASSED.
+    val selection = (if (activitySchedule != null) stages.indices.toList().dropLast(1) else stages.indices.toList()).filter { options[it].isNotEmpty() }.map { picks[it] }
     val participating = selection.isNotEmpty() && selection.all { it?.passed == true }
     val badge = when { stages.isEmpty() -> ""; failedAt != null -> shown[failedAt].selected?.name ?: "탈락"; current == null -> "지남"; participating -> "참여 중"; else -> stageBadge(stages[current], today) }
     return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })

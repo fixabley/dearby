@@ -120,10 +120,11 @@ data class ActivityModel(
     /**
      * Only `application` against [now] (2026-10-14 rule; 2026-10-19 "열린 활동 판정 일원화" adds date-only windows). A timed
      * window compares instants, an all-day window compares Seoul dates (`startDate ≤ today < endDateExclusive`); a missing
-     * bound is open on that side. No application, or a value that cannot be read, is unknown.
+     * bound is open on that side. No application or one without any date is 모집 마감 (user 2026-10-26: an activity without a recruitment
+     * schedule counts as closed whatever its kind, as the server does); only a value that cannot be read is unknown.
      */
     fun statusLabel(now: Instant): String {
-        val window = application ?: return UNKNOWN
+        val window = application ?: return CLOSED
         if (window.startAt != null || window.endAt != null) {
             val start = window.startAt?.let { instant(it) ?: return UNKNOWN }
             val end = window.endAt?.let { instant(it) ?: return UNKNOWN }
@@ -133,7 +134,7 @@ data class ActivityModel(
                 else -> OPEN
             }
         }
-        if (window.startDate == null && window.endDateExclusive == null) return UNKNOWN
+        if (window.startDate == null && window.endDateExclusive == null) return CLOSED
         val today = now.atZone(SEOUL).toLocalDate()
         val start = window.startDate?.let { date(it) ?: return UNKNOWN }
         val endExclusive = window.endDateExclusive?.let { date(it) ?: return UNKNOWN }
@@ -144,7 +145,7 @@ data class ActivityModel(
         }
     }
     /**
-     * Applying is over (2026-10-19 밤 "신청 확인 조건 완화", same rule as iOS): the recruitment deadline passed, or, with no window to
+     * Applying is over (2026-10-19 밤 "신청 확인 조건 완화", same rule as iOS): the recruitment deadline passed (or there is none), or, with an unreadable window to
      * judge by, the activity itself ended (its end, else its start, is behind [now]). Open, upcoming and unknown-but-not-ended still ask.
      */
     fun isClosed(now: Instant) = when (statusLabel(now)) {
@@ -205,6 +206,8 @@ data class ProgramSummary(
     val logoUrl: String? = null,
     /** The 4:5 cover (contract "맞춤 대기열": `/v1/programs/{id}/cover?v=`) as an absolute URL, or null. */
     val coverUrl: String? = null,
+    /** A 모집 중·모집 예정 activity of this kind has a 트랙·세션 시간표 (contract "트랙·세션 시간표", 2026-10-26); false on an older API. */
+    val hasTimetable: Boolean = false,
 )
 
 /** One icon-and-text line: an activity's 핵심 세 줄 (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`) or an ELIGIBILITY scene item. */

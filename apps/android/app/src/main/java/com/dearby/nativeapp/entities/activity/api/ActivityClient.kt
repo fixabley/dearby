@@ -107,10 +107,14 @@ fun parseTimetable(body: JSONObject) = Timetable(
     body.optJSONArray("sessions")?.objects()?.mapNotNull { runCatching { it.session() }.getOrNull() }.orEmpty(),
 )
 
-/** `GET /v1/me/session-favorites` → `{items: [{activityId, activityName, scheduleId, scheduleTitle, session}]}`; an unreadable item is skipped. */
+/**
+ * `GET /v1/me/session-favorites` → `{items: [{activityId, activityName, scheduleId, scheduleTitle, track, session}]}`; `track` (2026-10-26) is null for a
+ * session spanning every track. An unreadable item is skipped.
+ */
 fun parseSessionFavorites(body: JSONObject): List<SessionFavorite> = body.optJSONArray("items")?.objects()?.mapNotNull { item ->
     runCatching {
-        SessionFavorite(item.get("activityId").toString(), item.optString("activityName"), item.get("scheduleId").toString(), item.optString("scheduleTitle"), item.getJSONObject("session").session())
+        SessionFavorite(item.get("activityId").toString(), item.optString("activityName"), item.get("scheduleId").toString(), item.optString("scheduleTitle"), item.getJSONObject("session").session(),
+            item.optJSONObject("track")?.let { Track(it.get("id").toString(), it.getString("name"), it.text("room"), it.optInt("position")) })
     }.getOrNull()
 }.orEmpty()
 
@@ -197,6 +201,7 @@ private fun JSONObject.programSummary(api: String): ProgramSummary {
         upcomingActivityCount = optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = text("nearestRecruitmentStartAt"),
         nearestIsActivityStart = optBoolean("nearestIsActivityStart", false),
         tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
+        hasTimetable = optBoolean("hasTimetable", false),
     )
 }
 
