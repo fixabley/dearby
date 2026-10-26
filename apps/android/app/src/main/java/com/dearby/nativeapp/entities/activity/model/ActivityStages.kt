@@ -9,7 +9,8 @@ import java.time.temporal.ChronoUnit
  * One step of an applied activity (contract "내 활동 진행 트랙"). [label] is the badge word (마감·발표·면접, or the title for
  * EVENT). [day] is the Seoul date the badge counts down to and [lastDay] the last Seoul date the step is still on; both
  * are null for an undated step. [windows] are the calendar-comparison windows ([StageSchedule.windows]; empty for 지원).
- * [scheduleId] and [statuses] are the schedule's, for the user's status choice (contract "내 활동 서버 저장·일정 상태").
+ * [scheduleId] and [statuses] are the schedule's, for the user's status choice (contract "내 활동 서버 저장·일정 상태"); [statuses] is empty
+ * for a step that is not a 선발 단계 (see [selectionStatuses]), which shows only its date and 예정/지남.
  * [eventStart]/[eventEnd]/[allDay] prefill the system "add event" screen (contract "내 캘린더에 추가"): a timed step uses its times
  * (one end missing → a point), a date-only step is all-day from Seoul midnight; null for an undated step. A repeating step
  * (contract "반복 일정과 겹침 결과 묶음") prefills its first occurrence, never all-day, with [recurrence] as the event's RRULE.
@@ -67,7 +68,7 @@ private fun StageSchedule.toStage(): Stage {
     val label = when (kind) { "DEADLINE" -> "마감"; "ANNOUNCEMENT" -> "발표"; "INTERVIEW" -> "면접"; else -> title }
     // Text by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     val text = scheduleText().ifBlank { UNDATED }
-    val statuses = statuses.ifEmpty { ScheduleStatus.DEFAULTS }
+    val statuses = selectionStatuses(kind, statuses)
     val windows = windows()
     val repeating = windows.firstOrNull()?.takeIf { Recurrence.parse(recurrence) != null }
     val stage = when {
@@ -81,5 +82,18 @@ private fun StageSchedule.toStage(): Stage {
     }
     return stage.copy(hasTimetable = hasTimetable)
 }
+
+/**
+ * 통과 여부는 선발 단계에만 (user 2026-10-26): 서류·신청 마감(DEADLINE, and the 지원 step), 발표(ANNOUNCEMENT) and 면접(INTERVIEW) offer
+ * 대기·통과·탈락 (the admin's list when set, else the defaults). Any other schedule (EVENT: 오리엔테이션·행사 당일·세션, the activity period) has
+ * no status choice unless the admin set statuses on it (ids present) — the only way an EVENT-kind 코딩테스트 can be marked, as the API has no
+ * selection flag.
+ */
+private fun selectionStatuses(kind: String, statuses: List<ScheduleStatus>): List<ScheduleStatus> = when {
+    kind in SELECTION_KINDS -> statuses.ifEmpty { ScheduleStatus.DEFAULTS }
+    statuses.any { it.id != null } -> statuses
+    else -> emptyList()
+}
+private val SELECTION_KINDS = setOf("DEADLINE", "ANNOUNCEMENT", "INTERVIEW")
 
 private fun localDate(raw: String?): LocalDate? = raw?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

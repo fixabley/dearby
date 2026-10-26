@@ -451,7 +451,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
 /**
  * The stage track with the user's [marks] (by schedule id): a PASSED status makes the stage past, the earliest other stage not
  * over by [today] is current, a FAILED status or no current stage ends the activity. No stages at all leaves an empty track.
- * A stage without a choice shows its first waiting status.
+ * A stage without a choice shows its first waiting status; a stage that is not a 선발 단계 has no options, so an old mark on it is ignored.
  */
 private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDate): ProgressState {
     val stages = stages()
@@ -472,8 +472,8 @@ private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDat
         }
         ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage))
     }
-    // 참여 중 (2026-10-22, 참여 확정 replaced): every selection stage before the activity period is marked PASSED.
-    val selection = if (activitySchedule != null) picks.dropLast(1) else picks
+    // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (one with status choices) before the activity period is marked PASSED.
+    val selection = (if (activitySchedule != null) stages.indices.toList().dropLast(1) else stages.indices.toList()).filter { options[it].isNotEmpty() }.map { picks[it] }
     val participating = selection.isNotEmpty() && selection.all { it?.passed == true }
     val badge = when { stages.isEmpty() -> ""; failedAt != null -> shown[failedAt].selected?.name ?: "탈락"; current == null -> "지남"; participating -> "참여 중"; else -> stageBadge(stages[current], today) }
     return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })

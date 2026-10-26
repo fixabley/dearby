@@ -76,15 +76,16 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
                 ExampleBadge(chipText(stage), accent = current, danger = stage.selected?.failed == true)
             }
             Text(stage.dateText, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            // Segmented buttons up to four choices (Material 3 guidance); an admin list longer than that wraps as filter chips.
-            if (stage.options.size <= 4) SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            // Segmented buttons up to four choices (Material 3 guidance); an admin list longer than that wraps as filter chips. A stage
+            // that is not a 선발 단계 has no options (통과 여부는 선발 단계에만, 2026-10-26) and shows only its date and 예정/지남.
+            if (stage.options.isNotEmpty() && stage.options.size <= 4) SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 stage.options.forEachIndexed { index, option ->
                     SegmentedButton(stage.selected == option, { mark(option) }, SegmentedButtonDefaults.itemShape(index, stage.options.size),
                         colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer, activeBorderColor = MaterialTheme.colorScheme.primary, inactiveBorderColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                         Text(option.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-            } else FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            } else if (stage.options.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 stage.options.forEach { option -> FilterChip(stage.selected == option, { mark(option) }, { Text(option.name) }) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
