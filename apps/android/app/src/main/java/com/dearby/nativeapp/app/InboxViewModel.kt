@@ -36,11 +36,11 @@ class InboxViewModel(private val account: AccountViewModel) : ViewModel() {
     val state = mutable.asStateFlow()
     private var groups: List<InboxGroup> = emptyList()
     private var job: Job? = null
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private val signedIn get() = account.ready.value
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+            account.ready.map { if (it) AccountPhase.SIGNED_IN else AccountPhase.SIGNED_OUT }.collect { phase ->
                 groups = emptyList()
                 mutable.value = InboxViewState()
                 if (phase == AccountPhase.SIGNED_IN) refreshCount()
@@ -103,7 +103,7 @@ class InboxViewModel(private val account: AccountViewModel) : ViewModel() {
         val cards = groups.map { group ->
             InboxCard(group.program.id, group.program.name, group.program.organization, group.program.logoUrl, group.unread,
                 group.items.map { InboxRow(it.id, it.activityId, it.activityName, kindLabel(it.kind), received(it.createdAt, now), !it.read) },
-                group.items.mapNotNull { it.createdAt }.maxOrNull())
+                group.items.mapNotNull { it.createdAt }.maxOrNull(), group.program.category?.label, group.program.category?.name)
         }
         val (recent, older) = cards.partition { it.latest != null && Duration.between(it.latest, now).toDays() < 7 }
         mutable.update { it.copy(phase = if (keepPhase && it.phase != InboxPhase.LOADED) it.phase else InboxPhase.LOADED, recent = recent, older = older, nextCursor = next) }

@@ -21,6 +21,12 @@ import com.dearby.nativeapp.entities.activity.model.QueueItem
 import com.dearby.nativeapp.entities.activity.model.QueueScene
 import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
+import com.dearby.nativeapp.entities.activity.model.Session
+import com.dearby.nativeapp.entities.activity.model.SessionFavorite
+import com.dearby.nativeapp.entities.activity.model.Speaker
+import com.dearby.nativeapp.entities.activity.model.Timetable
+import com.dearby.nativeapp.entities.activity.model.Track
+import java.time.OffsetDateTime
 import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.entities.activity.model.TagKind
 import com.dearby.nativeapp.entities.activity.model.instant
@@ -34,23 +40,25 @@ import org.json.JSONObject
 
 /**
  * `GET /v1/activities` (contract "활동 조회"): [query] searches name and description, [cursor] is the previous
- * page's `nextCursor`, [programId] narrows to one program (contract "발견 프로그램 묶음"), [open] asks the server for
- * open activities only (contract "열린 활동 판정 일원화", 2026-10-19: the client never judges openness itself). Transport or
- * parsing failure throws, never an empty page. Call off the main thread.
+ * page's `nextCursor`, [programId] narrows to one program (contract "발견 프로그램 묶음"), [status] to the activities in those states (contract
+ * "활동 상태", comma-joined enum values; the client never judges states itself). Transport or parsing failure throws, never an empty page.
+ * Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, open: Boolean = false): ActivityPage =
-    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, if (open) "open" to "true" else null)))
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, status: String? = null, kind: String? = null, category: String? = null): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, status?.let { "status" to it }, kind?.let { "kind" to it }, category?.let { "category" to it })))
 
 /**
  * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
  * count, nearest deadline (UTC ISO 8601 or null) and the activities whose name matched [query]. [participationType] is
- * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text. [openOnly] false
- * (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last three years, open ones first.
+ * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text. [status] (contract "활동 상태",
+ * comma-joined enum values) groups and counts by those states instead of `openOnly`; states other than 모집 중·모집 예정 only within three years.
  * [query] also matches tag names (contract "태그 칩 줄 제거", 2026-10-19 밤: tags are a search condition only; the app sends no tag filter).
- * The program logo path is resolved against [api] (contract "프로그램 로고").
+ * The program logo path is resolved against [api] (contract "프로그램 로고"). [kind] `program`|`event` (contract "프로그램·이벤트 전환", 2026-10-26)
+ * narrows to that kind's activities on both this call and [fetchActivities]; a server without it ignores the parameter and lists everything.
+ * [category] (contract "활동 종류(category)") is a comma-joined list of category codes on both calls; null = every kind.
  */
-fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, openOnly: Boolean = true): ProgramPage =
-    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, if (openOnly) null else "openOnly" to "false")), api)
+fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, status: String? = null, kind: String? = null, category: String? = null): ProgramPage =
+    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, status?.let { "status" to it }, kind?.let { "kind" to it }, category?.let { "category" to it })), api)
 
 private fun get(api: String, path: String, params: List<Pair<String, String>>): String {
     val query = params.joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }
@@ -85,6 +93,39 @@ fun fetchActivity(api: String, id: String): ActivityModel? = try {
     parseActivity(JSONObject(get(api, "activities/$id", emptyList())))
 } catch (e: NotFound) { null }
 
+/**
+ * `GET /v1/activities/:id/schedules/:scheduleId/timetable` (contract "트랙·세션 시간표"), read without a token: the hearts come from
+ * `GET /v1/me/session-favorites`. Null when the block has no timetable or is gone (404); other failures throw. Call off the main thread.
+ */
+fun fetchTimetable(api: String, activityId: String, scheduleId: String): Timetable? = try {
+    parseTimetable(JSONObject(get(api, "activities/$activityId/schedules/$scheduleId/timetable", emptyList())))
+} catch (e: NotFound) { null }
+
+/** Tracks are put in `position` order; an unreadable session is skipped. */
+fun parseTimetable(body: JSONObject) = Timetable(
+    body.get("activityId").toString(), body.optJSONObject("schedule")?.optString("title").orEmpty(),
+    body.optJSONArray("tracks")?.objects()?.mapNotNull { runCatching { Track(it.get("id").toString(), it.getString("name"), it.text("room"), it.optInt("position")) }.getOrNull() }.orEmpty().sortedBy { it.position },
+    body.optJSONArray("sessions")?.objects()?.mapNotNull { runCatching { it.session() }.getOrNull() }.orEmpty(),
+)
+
+/**
+ * `GET /v1/me/session-favorites` → `{items: [{activityId, activityName, scheduleId, scheduleTitle, track, session}]}`; `track` (2026-10-26) is null for a
+ * session spanning every track. An unreadable item is skipped.
+ */
+fun parseSessionFavorites(body: JSONObject): List<SessionFavorite> = body.optJSONArray("items")?.objects()?.mapNotNull { item ->
+    runCatching {
+        SessionFavorite(item.get("activityId").toString(), item.optString("activityName"), item.get("scheduleId").toString(), item.optString("scheduleTitle"), item.getJSONObject("session").session(),
+            item.optJSONObject("track")?.let { Track(it.get("id").toString(), it.getString("name"), it.text("room"), it.optInt("position")) })
+    }.getOrNull()
+}.orEmpty()
+
+private fun JSONObject.session() = Session(
+    get("id").toString(), get("scheduleId").toString(), if (isNull("trackId") || !has("trackId")) null else get("trackId").toString(), text("kind") ?: "TALK",
+    getString("title"), text("description"), OffsetDateTime.parse(getString("startAt")), OffsetDateTime.parse(getString("endAt")),
+    optJSONArray("speakers")?.objects()?.mapNotNull { runCatching { Speaker(it.getString("name"), it.text("affiliation")) }.getOrNull() }.orEmpty(),
+    tags("tags"),
+)
+
 fun parseActivities(json: String): ActivityPage {
     val body = JSONObject(json)
     return ActivityPage(body.getJSONArray("items").objects().map(::parseActivity), body.text("nextCursor"))
@@ -112,6 +153,7 @@ private fun parseActivity(activity: JSONObject): ActivityModel {
         activity.text("applicationUrl"),
         activity.text("hook"),
         activity.highlights("highlights"),
+        activity.text("status"),
     )
 }
 
@@ -120,7 +162,7 @@ private fun JSONObject.stageSchedule() = StageSchedule(
     optString("title"), text("kind") ?: "EVENT", text("startAt")?.takeIf { instant(it) != null }, text("endAt")?.takeIf { instant(it) != null },
     text("timeZone") ?: "Asia/Seoul", text("startDate"), text("endDateExclusive"), text("dateLabel").orEmpty(),
     idText(), statuses(), optJSONObject("overlapCheck")?.text("startTime"), optJSONObject("overlapCheck")?.text("endTime"),
-    text("recurrence"),
+    text("recurrence"), optBoolean("hasTimetable", false), text("phase"),
 )
 
 /** Contract "내 활동 서버 저장·일정 상태": `statuses [{id?, name, kind}]`; an unreadable entry is skipped, none → the defaults downstream. */
@@ -159,7 +201,11 @@ private fun JSONObject.programSummary(api: String): ProgramSummary {
         text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
         text("latestActivityAt"),
         upcomingActivityCount = optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = text("nearestRecruitmentStartAt"),
+        nearestIsActivityStart = optBoolean("nearestIsActivityStart", false),
         tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
+        hasTimetable = optBoolean("hasTimetable", false),
+        statusCounts = optJSONObject("statusCounts")?.let { counts -> counts.keys().asSequence().associateWith { counts.optInt(it, 0) }.filterValues { it > 0 } }.orEmpty(),
+        category = ActivityCategory.fromCode(text("category")),
     )
 }
 

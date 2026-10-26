@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.profile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,11 +33,12 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
  * First profile entry, Toss-style accordion (2026-10-17 user decision): sections stack in order, only one is open, and
  * answered sections collapse to a tall row that reopens on tap. Fields are Material 3 `OutlinedTextField`s at their default size
  * (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤); the tab bar is hidden meanwhile (DearbyApp). Shown until the profile is saved once.
+ * `이전` and system back reopen the section before the open one with every answer kept (contract "뒤로 가기"). On the first section that slot is `나중에`, and
+ * back does the same: after "프로필은 나중에 프로필 탭에서 만들 수 있어요" [later] shows 발견, still signed in, the answers kept in the view model.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfileSetupPage(
     form: ProfileFormState, saving: Boolean, error: String?, jobSearch: PickerSearchState, searchJobs: (String) -> Unit,
-    change: (ProfileFormState) -> Unit, save: () -> Unit, modifier: Modifier = Modifier,
+    change: (ProfileFormState) -> Unit, save: () -> Unit, later: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val sections = SetupStep.entries
     var open by remember { mutableStateOf(SetupStep.NAME) }
@@ -46,21 +48,27 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val errors = form.errors()
     fun errorOf(step: SetupStep) = when (step) { SetupStep.NAME -> errors.name; SetupStep.PHONE -> errors.phone; SetupStep.EMAIL -> errors.email; else -> null }
     val allReached = reached.size == sections.size
+    val following = sections.getOrNull(open.ordinal + 1)
+    // 다음 opens the section right after the open one, even after 이전 (never skipping one left empty); on the last section it saves,
+    // and an empty required section opens again with its red message instead of a silent failure.
     fun next() {
         tried = true
         if (errorOf(open) != null) return
         tried = false
-        val unreached = sections.firstOrNull { it !in reached }
-        when {
-            unreached != null -> { reached = reached + unreached; open = unreached }
-            else -> save()
-        }
+        if (following != null) { reached = reached + following; open = following; return }
+        val missing = sections.firstOrNull { errorOf(it) != null }
+        if (missing != null) { open = missing; tried = true } else save()
     }
     fun reopen(step: SetupStep) { tried = false; open = step }
+    val previous = sections.getOrNull(open.ordinal - 1)
+    var leaving by remember { mutableStateOf(false) }
+    BackHandler(!saving) { if (previous != null) reopen(previous) else leaving = true }
+    if (leaving) AlertDialog({ leaving = false }, title = { Text("프로필 만들기를 그만할까요?") }, text = { Text("프로필은 나중에 프로필 탭에서 만들 수 있어요.") },
+        confirmButton = { TextButton({ leaving = false; later() }) { Text("나중에 하기") } }, dismissButton = { TextButton({ leaving = false }) { Text("계속 만들기") } })
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
         Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             sections.filter { it in reached }.forEach { step ->
                 if (step == open) OpenSection(step, form, tried, errorOf(step), jobSearch, searchJobs, change, focus, ::next)
                 else DoneRow(step, valueOf(step, form)) { reopen(step) }
@@ -69,17 +77,19 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-        Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp)) {
-            DearbyButton(::next, Modifier.fillMaxWidth(), enabled = !saving) {
+        Row(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (previous != null) DearbyOutlineButton({ reopen(previous) }, Modifier.weight(1f), enabled = !saving) { Text("이전") }
+            else DearbyOutlineButton({ leaving = true }, Modifier.weight(1f), enabled = !saving) { Text("나중에") }
+            DearbyButton(::next, Modifier.weight(1f), enabled = !saving) {
                 if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
-                else Text(if (allReached) "프로필 저장" else "다음")
+                else Text(if (following == null) "프로필 저장" else "다음")
             }
         }
     }
 }
 
 private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
-    SetupStep.NAME -> form.name; SetupStep.JOBS -> form.jobsText; SetupStep.PHONE -> form.phone; SetupStep.EMAIL -> form.email; SetupStep.INTRODUCTION -> form.introduction
+    SetupStep.NAME -> form.name; SetupStep.JOBS -> form.jobsText; SetupStep.PHONE -> form.phone; SetupStep.EMAIL -> form.email
 }
 
 /** The question for the open section with its one control: a default-size `OutlinedTextField` (label, supporting text, error) or the job picker. */
@@ -113,10 +123,6 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
                 SetupField("이메일", form.email, { change(form.copy(email = it)) }, "name@example.com", shownError, null, focus,
                     KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction, leadingIcon = contactIcon("email"), required = true)
             }
-            SetupStep.INTRODUCTION -> {
-                Question("처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)")
-                SetupField("소개", form.introduction, { change(form.copy(introduction = it)) }, "예: 커뮤니티 운영과 행사 기획을 해요", shownError, null, focus, minLines = 3)
-            }
         }
     }
 }
@@ -124,9 +130,9 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
 /** One floating-label field (shared `DearbyField`, contract "플로팅 라벨·필수 표시"); contact steps add [leadingIcon] (contract "연락처 행은 라벨 대신 왼쪽 아이콘"); single-line fields answer Next with the section's `next`. */
 @Composable private fun SetupField(
     label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, error: String?, hint: String?, focus: FocusRequester,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1, leadingIcon: ImageVector? = null, required: Boolean = false,
-) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, minLines = minLines, focusRequester = focus,
-    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next, leadingIcon = leadingIcon, required = required)
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, leadingIcon: ImageVector? = null, required: Boolean = false,
+) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, focusRequester = focus,
+    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = ImeAction.Next, leadingIcon = leadingIcon, required = required)
 
 /** An answered section: label and value on a row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {

@@ -159,6 +159,17 @@ native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`PO
 - **어드민 화면**: 활동 편집기 안의 `일정` 탭(또는 상세의 `일정 편집` 버튼)에 두 가지 보기. ① **달력 보기**: 월 달력(Ant `Calendar`)에 모집 기간·활동 기간을 바탕 띠로, 세부 일정을 날짜 칸의 칩으로 그린다. 날짜 칸을 누르면 그 날짜가 채워진 `일정 추가` 폼이 열리고, 칩을 누르면 편집 폼이 열린다(끌어서 옮기기는 두지 않는다). ② **목록 보기**: 시각 순 표에 제목·종류·상태·기간·원문·사유, 행마다 편집·삭제. 폼은 기존 기간 블록(날짜/시각 전환, 시작 선택 비움 가능, 사유)을 재사용한다.
 - 공개 API·앱은 바뀌지 않는다(세부 일정은 이미 `schedules[]`로 내려가고 진행 트랙이 쓴다).
 
+### 선발 과정·활동 일정(phase) — 2026-10-26 사용자 결정
+
+native-v1.md "선발 과정·활동 일정 분리"의 어드민 쪽.
+
+- 응답 Schedule(어드민·공개 공통)에 `phase: SELECTION|ACTIVITY`. 늘 값이 있다: 모집 기간(`application`)은 `SELECTION`, 활동 기간(`activitySchedule`)은 `ACTIVITY`로 고정이고, 세부 일정은 저장값(`schedules.phase`, V62) 또는 저장값이 없을 때 서버 판정(`kind`가 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`이거나 일정 상태를 지정했으면 `SELECTION`, 아니면 `ACTIVITY`).
+- 어드민 응답에만 `phaseSource: STORED|RESOLVED`(2026-10-26, 어드민 PR #419 보충). `STORED`는 운영자·수집기가 저장한 값(`schedules.phase`가 있음), `RESOLVED`는 저장값이 없어 서버가 판정한 값. 모집·활동 기간 행은 V62가 채웠으므로 `STORED`다. 공개 응답에는 없다.
+- 입력: ScheduleItemInput에 `phase?: SELECTION|ACTIVITY`(대소문자 무시, 모르는 값 400). POST에서 생략하면 저장하지 않고 위 판정을 쓴다. PATCH에서 생략하면 저장값을 유지하고, **JSON `null`을 보내면 저장값을 지워 자동 판정(`RESOLVED`)으로 되돌린다**(`overlapCheck`처럼 생략과 null을 구분). 문자열·null 외의 값은 400. 고치면 기존 규칙대로 `curated`라 재수집이 덮어쓰지 않는다. 모집·활동 기간 행에 `phase`를 보내면 400(겹침 확인 시간·반복 규칙만 보내는 요청이 아니므로 기존 슬롯 규칙).
+- 기존 행: V62는 슬롯 행과 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW` 세부 일정만 채우고 `EVENT` 등은 null로 남긴다. null인 `EVENT` 일정은 상태를 지정하면 저절로 `SELECTION`이 된다(위 판정). 운영자가 `phase`를 직접 정한 행은 그 값이 상태 지정보다 우선이다. 코딩테스트·과제처럼 선발인 `EVENT`는 상태를 지정하거나 `phase`를 `SELECTION`으로 둔다.
+- 수집: 수집기 제출 `schedules[].phase`(모르면 null → 저장하지 않고 판정). 재수집은 `curated` 세부 일정을 덮어쓰지 않으므로 운영자가 정한 값이 남는다. 큐레이션 가져오기(`--import-curation`)의 `schedules[]` 항목도 `phase?`를 받는다.
+- **어드민 화면**(어드민 웹 담당): 세부 일정 폼에 `선발 과정 / 활동 일정` 선택(기본은 응답 값), 목록 보기에 `구분` 열. 모집·활동 기간 블록에는 두지 않는다.
+
 ### 일정 상태·겹침 확인 시간 — 2026-10-22 사용자 결정
 
 native-v1.md "내 활동 서버 저장·일정 상태·겹침 확인 시간"의 어드민 쪽. 응답 Schedule(어드민·공개 공통)에 `statuses: [{id: number|null, name, kind: WAITING|PASSED|FAILED|OTHER}]`(어드민 지정 행을 순서대로, 없으면 기본 `대기`·`통과`·`탈락`, id null)과 `overlapCheck: {startTime, endTime}|null`(서울 `HH:mm`)이 더해진다.
@@ -271,7 +282,9 @@ native-v1.md "반복 일정과 겹침 결과 묶음"의 어드민 쪽. Schedule 
 
 ## 명함 신고 — 2026-10-22
 
-native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.
+native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할. 2026-10-26 `GET /v1/admin/card-reports/:id/photo` → 신고 시점 명함 사진(`image/jpeg`, `no-store`, 사진 없던 명함이면 404, native-v1.md "프로필 사진"). 어드민 웹 신고 상세의 스냅샷 옆 표시는 아직 없다.
+
+보유 기간(2026-10-25 사용자 결정): 신고 기록은 신고일(`createdAt`)로부터 1개월이 지나면 상태(`OPEN` 포함)와 관계없이 지운다. batch가 매일 04:00(한국 시간) 명함 회수와 함께 지우고 지운 수를 로그에 남긴다. 그래서 목록·`reportCount`는 최근 1개월 신고만 센다. 어드민 웹 신고 화면 머리말에 이 기간을 적는다.
 
 ## 조직 로고 — 2026-10-22
 
@@ -282,11 +295,23 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
 - `AdminOrganization.logoUrl: string|null`. `AdminProgram`에 `logoUrl`(프로그램 자체 로고, 지금 그대로)과 `effectiveLogo: {url, source: PROGRAM|ORGANIZATION, organizationId: number|null, organizationName: string|null}|null`(계승 결과).
 - 어드민 웹: 조직 편집에 로고 올리기·지우기·미리보기(프로그램 로고 편집기와 같은 모양). 프로그램 편집의 로고 자리는 자체 로고가 없을 때 계승한 로고를 흐리게 보여 주고 "<조직 이름> 로고를 쓰는 중"이라고 적는다. 프로그램 목록 로고 열도 계승 로고를 보여 준다.
 
+## 트랙·세션 시간표 — 2026-10-26
+
+native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정 블록(활동 기간 또는 세부 일정, 모집 기간 제외) 하나에 딸린다.
+
+- `GET /v1/admin/activities/:id/schedules/:scheduleId/timetable` → `{scheduleId, tracks: [{id, name, room, position}], sessions: [{id, trackId, track, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[]}]}`(없으면 빈 목록, `track`은 tracks 순번). 게시 전 활동도 된다.
+- `PUT` 같은 경로 `{tracks: [{id?, name, room?}], sessions: [{id?, track?, kind, title, description?, startAt, endAt, speakers?: [{name, affiliation?}], tagIds?}]}` → 같은 응답. **통째로 바꾼다**: `id`가 있으면 그 트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다(그 세션의 찜도 지워짐). `track`은 요청 `tracks` 순번(0부터), 없으면 전폭 세션. 트랙 0개면 단일 진행. 빈 목록 둘이면 시간표를 지운다.
+- 400: 모집 기간·반복·날짜 미정 블록, 블록 시간 밖 세션, 끝 ≤ 시작, 같은 트랙(또는 전폭) 세션 시간 겹침, 트랙 이름 중복, 순번 밖 `track`, 다른 블록의 id, 없는 태그, 개수·길이 한도(트랙 20, 세션 300, 연사 10, 태그 5). 404: 없거나 지운 블록.
+- 세부 일정 블록에 시간표를 붙이면 그 블록은 `curated = true`가 된다(재수집이 지우지 않게, 세션 id 유지).
+- 일정 응답(`application`·`activitySchedule`·`schedules[]`)에 `hasTimetable`.
+- 화면(다음 단계): 일정 탭의 블록 행마다 `시간표` 버튼 → 트랙 목록(이름·방·순서)과 세션 표(시작·끝·트랙·종류·제목·연사·태그) 편집.
+- 가져오기(아래 "운영 데이터 가져오기"): `activities[].timetables: [{scheduleId|scheduleRef, overwrite?, tracks: [{name, room?}], sessions: [{track?, kind, title, startAt, endAt, speakers?, tagNames?, description?}]}]`. 세션이 이미 있으면 `overwrite`일 때만 바꾼다(이때 기존 세션 id가 바뀌어 찜이 지워진다). 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 검증은 위 PUT과 같다.
+
 ## 운영 데이터 가져오기 — 2026-10-22
 
 운영 서비스 토큰이 없어, 조사로 모은 대상자 조건·태그·장소·로고를 batch 일회성 명령으로 넣는다. 어드민 편집과 같은 검증(대상자 조건 strict 파서와 검색용 펼침, 로고 PNG·JPEG·WebP 1MB 이하)을 거친다.
 
-- 실행: `docker compose -f compose.prod.yaml --env-file .env.prod run --rm -v <호스트 폴더>:/import:ro batch --import-curation=/import/curation.json [--apply]`. 기본은 dry run(항목별 계획만 로그로 남기고 쓰지 않음), `--apply`면 항목마다 트랜잭션 하나로 쓴다. 끝나면 프로세스가 끝난다. 실패한 항목은 그 항목만 건너뛰고 이유를 남긴다.
+- 실행: `docker compose -f compose.prod.yaml --env-file .env.prod run --rm -v <호스트 폴더>:/import:ro batch --import-curation=/import/curation.json [--apply]`. 기본은 dry run(항목별 계획과 활동별 일정 요약만 로그로 남기고 쓰지 않음: 쓰기 경로를 부르지 않고, 항목을 읽기 전용 트랜잭션에서 돌린 뒤 되돌려 실수로 쓰려 해도 DB가 거부한다, 2026-10-26), `--apply`면 항목마다 트랜잭션 하나로 쓴다. 끝나면 프로세스가 끝난다. 실패한 항목은 그 항목 전체를 되돌려 건너뛰고 이유를 남긴다. 일회성 옵션(`--import-curation`·`--collect-now`·`--build-queues-now`·`--send-push-now`·`--backfill-hooks-now`·`--recall-now`)으로 띄운 프로세스는 `@Scheduled` 정기 작업(자정 수집·매시 알림·04:00 회수)을 켜지 않는다(2026-10-26, `dearby.scheduling.enabled=false`를 기본값으로 넣음).
 - 파일: `{activities: [{id, overwrite?, eligibility?, tagNames?, tagNameEn?, tagKind?, tagParent?, place?: {name, address, lat, lng}}], programs: [{id, overwrite?, tagNames?, tagNameEn?, tagKind?, tagParent?}], organizationLogos: [{organizationId, file, overwrite?}], programLogos: [{programId, file, overwrite?}], programCovers: [{programId|programKey, file, sourcePage?, sourceImage?, overwrite?}]}`(커버는 2026-10-24, 350KB 이하·출처는 https, 켠 상태로 넣는다). `file`은 JSON 파일 기준 상대 경로, 형식은 확장자(png·jpg·jpeg·webp)로 정한다. `eligibility`는 native-v1.md "대상자 조건" JSON.
 - 규칙: 빈 것만 채운다(항목의 `overwrite: true`면 바꾼다). 활동의 `curated_fields`에 있는 필드(`eligibility`·`tags`·`place`)는 overwrite여도 건드리지 않는다. 채운 값은 운영자 지정으로 남기지 않는다(수집이 같은 필드를 다시 갱신할 수 있다). `tagNames`는 사전의 한글·영문 이름(띄어쓰기·대소문자 무시)으로 찾고, 없는 이름은 `tagNameEn: {"<한글>": "<영문>"}`에 영문이 있을 때만 새 태그로 만든다(없으면 건너뜀). 새 태그의 종류는 `tagKind: {"<이름>": "FIELD"|"TRAIT"}`(기본 TRAIT), `tagParent: {"<하위 분야>": "<상위 분야>"}`는 그 항목 `tagNames`의 분야 태그에 상위 분야(사전의 최상위 분야 태그)를 단다(어긋나면 그 항목 오류). 프로그램 태그는 `tagNames` 순서가 `program_tags.position`(native-v1.md "분야·성격 태그와 아이콘", 2026-10-24). 장소는 넷 다 있어야 하고 활동 기간 행의 `address_line1`(이름)·`address_line2`(주소)·`lat`·`lng`에 쓴다.
 - 카탈로그 추가(2026-10-22 보완, 프로그램 등록·초안 정리도 같은 명령으로): 파일에 `organizations: [{key, name, nameEn?, parentId?|parentKey?}]`, `newPrograms: [{key, name, nameEn?, organizationId?|organizationKey, category?, collection?: {officialUrl, allowedHosts, renderPages?, intervalDays?, enabled?}}]`, `activities[].publish`·`activities[].dismiss`, 로고의 `organizationKey`·`programKey`.
@@ -294,5 +319,6 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
   - 조직: 같은 상위 조직 아래 같은 이름(띄어쓰기·대소문자 무시)이 있으면 그것을 쓰고(`reused`), 없으면 어드민 조직 만들기와 같은 검증(core `CatalogWrites`)으로 만든다.
   - 새 프로그램: 같은 조직에 같은 이름이 있으면 건너뛴다. 어드민 프로그램 만들기·수집 설정 PUT과 같은 검증(https 공식 주소 — 허용 호스트에 적은 호스트는 http — ·주소 토큰·허용 호스트), `category`는 프로그램 기본 종류.
   - `publish: true`: 어드민 게시와 같다(상태만 PUBLISHED, 이미 게시면 건너뜀). `dismiss: true`: 어드민 활동 삭제와 같다(수집 출처를 `dismissed_activity_sources`에 남기고 `DRAFT_DISMISSED` 피드백) — 게시된 활동은 지우지 않고 건너뛴다. 지우는 항목의 다른 필드는 보지 않는다.
+  - 세부 일정 블록(2026-10-26, 수집된 조각 일정을 "큰 블록 + 시간표"로 정리): `activities[].schedules: [{id, delete: true} | {id, title?, kind?, status?, phase?(null은 자동 판정으로), startAt?, endAt?, startDate?, endDate?, timeZone?, dateLabel?, note?} | {ref, title, kind?(기본 EVENT), phase?, startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}]`(`phase`는 2026-10-26 아래 "선발 과정·활동 일정(phase)"). 위 "세부 일정 편집기"의 DELETE·PATCH·POST와 같은 검증·의미다: 지우면 `curated_deleted`(재수집이 되살리지 않고, 붙은 세션은 블록과 함께 숨는다), 고치거나 만든 블록은 `curated`. 모집·활동 기간 행·없는 일정·바뀔 것이 없는 고치기는 건너뛴다. 같은 제목·시각의 보이는 세부 일정이 이미 있으면 만들지 않고 그 블록을 `ref`로 쓴다(다시 실행해도 같다). 순서는 지우기 → 고치기 → 만들기 → `timetables`이고, `timetables[].scheduleRef`로 같은 항목에서 만든 블록을 가리킨다(dry run은 새 블록 시각으로 시간표를 검증). 한 동작이라도 검증에 걸리면 그 활동 항목 전체를 건너뛴다. 게시 여부와 상관없이 적용된다(재수집은 게시 활동 일정을 덮어쓰지 않으므로 게시 활동 정리는 이 경로나 어드민으로 한다). 시간표 세션 제목만 고치는 별도 동작은 없다: 그 블록 시간표 전체를 `overwrite: true`로 다시 보낸다(세션 id가 바뀌어 그 블록의 세션 찜이 지워진다).
   - dry run에서는 새 조직·프로그램이 없으므로 그 아래 항목은 계획만 보인다. `--apply`가 끝나면 로그 `New program ids: …`.
 - 특정 프로그램만 수집: `--collect-now=<programId,…>`(비우면 전부). 주기·하루 한 번 규칙은 그대로다.

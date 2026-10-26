@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Play screenshots on the connected REAL device (adb; AGENTS.md: no emulators). Installs the Debug build against the production
 # API, opens each `dearbyScreenshot` scene (app/ScreenshotScene.kt) and saves PNGs where fastlane supply reads them.
-# 명함·설정·내 활동(로그인 시) need an account: sign in once in this Debug install first; reinstalling keeps the app data.
+# 맞춤 대기열(queue)·즐겨찾기 캘린더(favorites)·명함·설정·내 활동(로그인 시) need an account: sign in once in this Debug install first; reinstalling keeps the app data.
 # Usage: bash apps/android/scripts/capture_screenshots.sh   (WAIT=<seconds per scene>, SCENES="discover detail" to narrow,
 #        SIZE=<w>x<h> logical display size while capturing, default 1080x2160 because Play refuses a long side over twice the short)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 WAIT="${WAIT:-8}"
-SCENES="${SCENES:-discover discover-expanded detail mine cards settings}"
+SCENES="${SCENES:-discover discover-expanded queue detail mine favorites cards settings}"
 SIZE="${SIZE:-1080x2160}"
 OUT=fastlane/metadata/android/ko-KR/images/phoneScreenshots
 PACKAGE=io.wid.dearby

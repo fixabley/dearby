@@ -29,18 +29,20 @@ const history = z.object({
   verification: z.enum(["unverified", "pending", "verified", "rejected"]),
 });
 export type History = z.infer<typeof history>;
-// Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introduction` is rendered markdown (the card body).
+// Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introLink` is the 소개 링크 next to the name
+// (contract "소개 링크·소개 글 폐지"); the old `introduction` body is no longer shown.
 export const cardSchema = z.object({
   id: uuid,
   name: text,
   description: text,
   profileName: text,
   job: text,
-  introduction: text,
-  // Optional web-width body (contract "웹 버전"); the API omits it when the card has none.
+  introLink: text.nullable().optional(),
   contacts: z.array(contact),
   histories: z.array(history),
   createdAt: text,
+  // 명함 사진(contract "프로필 사진"): the proxy fetches `photoUrl` with the same view right and inlines it, because the page drops `code` from its address.
+  photo: z.string().startsWith("data:image/jpeg;base64,").optional(),
 });
 export type Card = z.infer<typeof cardSchema>;
 // 명함 교환(contract "명함 교환 — 2026-10-19"): where a saved card was exchanged and when the server recalls it.
@@ -64,6 +66,46 @@ export function expiryLabel(expiresAt: string, now = Date.now()): string {
   const days = Math.ceil((time - now) / 86_400_000);
   return days <= 0 ? "오늘 사라져요" : `${days}일 뒤 사라져요`;
 }
+/** 활동 상태 (contract "활동 상태" 2026-10-26): the server judges it in Seoul time; the web only shows it. */
+export const ACTIVITY_STATUSES = [
+  "RECRUITING_UPCOMING",
+  "RECRUITING",
+  "RECRUITMENT_CLOSED",
+  "NO_RECRUITMENT",
+  "IN_PROGRESS",
+  "ENDED",
+] as const;
+export type ActivityStatus = (typeof ACTIVITY_STATUSES)[number];
+/** Badge text; 모집 정보 없음 has none (its date reads `모집 일정 미정`). */
+export const STATUS_BADGE: Record<ActivityStatus, string | undefined> = {
+  RECRUITING_UPCOMING: "모집 예정",
+  RECRUITING: "모집 중",
+  RECRUITMENT_CLOSED: "모집 마감",
+  NO_RECRUITMENT: undefined,
+  IN_PROGRESS: "진행 중",
+  ENDED: "종료",
+};
+/** 모집 중·모집 예정: the recruitment row stands out and the CTA applies. */
+export function applicable(status: ActivityStatus | undefined): boolean {
+  return status === "RECRUITING" || status === "RECRUITING_UPCOMING";
+}
+/** 발견 상태 필터의 세 묶음 (contract "활동 상태"): ids are the `?status=` URL values and the GA `groups` values. */
+export const STATUS_GROUPS = {
+  available: { label: "지원 가능", statuses: ["RECRUITING_UPCOMING", "RECRUITING"] },
+  in_progress: { label: "진행 중", statuses: ["IN_PROGRESS"] },
+  past: { label: "지난 활동", statuses: ["RECRUITMENT_CLOSED", "NO_RECRUITMENT", "ENDED"] },
+} as const satisfies Record<string, { label: string; statuses: readonly ActivityStatus[] }>;
+export type StatusGroup = keyof typeof STATUS_GROUPS;
+export const STATUS_GROUP_IDS = Object.keys(STATUS_GROUPS) as StatusGroup[];
+/** `?status=` as groups in display order; nothing valid → `지원 가능`. */
+export function parseStatusGroups(value: string | undefined): StatusGroup[] {
+  const ids = new Set(value?.split(","));
+  const groups = STATUS_GROUP_IDS.filter((id) => ids.has(id));
+  return groups.length ? groups : ["available"];
+}
+export function groupStatuses(groups: StatusGroup[]): ActivityStatus[] {
+  return groups.flatMap((group) => STATUS_GROUPS[group].statuses);
+}
 // Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
 const scheduleSchema = z.object({
   id: z.number().int(),
@@ -84,6 +126,8 @@ const scheduleSchema = z.object({
     ])
     .nullable()
     .catch(null),
+  // 이 블록에 세션이 하나라도 있음(contract "트랙·세션 시간표"); older responses omit it.
+  hasTimetable: z.boolean().optional().catch(false),
 });
 export type Schedule = z.infer<typeof scheduleSchema>;
 const named = z.object({ id: z.number().int(), name: text });
@@ -132,6 +176,32 @@ export function fieldTagsOf(item: { fieldTags?: Tag[] }): Tag[] {
 export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
   return item.traitTags ?? item.tags ?? [];
 }
+// 트랙·세션 시간표 (contract "트랙·세션 시간표 — 2026-10-26"): `favorited` is dropped, the web has no sign-in.
+const trackSchema = z.object({ id: z.number().int(), name: text, room: text.nullable(), position: z.number().int() });
+export type Track = z.infer<typeof trackSchema>;
+const sessionSchema = z.object({
+  id: z.number().int(),
+  // null = 모든 트랙에 걸친 전폭 세션(키노트·쉬는시간·점심).
+  trackId: z.number().int().nullable(),
+  kind: z.enum(["TALK", "KEYNOTE", "BREAK", "MEAL", "OTHER"]).catch("OTHER"),
+  title: text,
+  startAt: text,
+  endAt: text,
+  speakers: z.array(z.object({ name: text, affiliation: text.nullable() })),
+  tags: z.array(tagSchema).catch([]),
+});
+export type Session = z.infer<typeof sessionSchema>;
+export const timetableSchema = z.object({
+  activityId: z.number().int(),
+  schedule: scheduleSchema,
+  tracks: z.array(trackSchema),
+  sessions: z.array(sessionSchema),
+});
+export type Timetable = z.infer<typeof timetableSchema>;
+/** `HH:mm` (24h) of an instant in a zone, for timetable rows. */
+export function clockTime(time: number, timeZone: string): string {
+  return koreanParts(time, timeZone, true).time;
+}
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;
 export const activitySchema = z.object({
@@ -161,6 +231,8 @@ export const activitySchema = z.object({
   // 활동 장소 (contract "활동 장소 — 2026-10-19"): the collected phrase and the curated place; older responses omit both.
   location: text.nullable().optional().catch(null),
   place: placeSchema.nullable().optional().catch(null),
+  // 활동 상태 (contract "활동 상태" 2026-10-26); older responses omit it, an unknown value reads as none.
+  status: z.enum(ACTIVITY_STATUSES).optional().catch(undefined),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -174,8 +246,12 @@ export const programSummarySchema = z.object({
   name: text,
   nameEn: text.nullable(),
   organization: named,
+  /** 프로그램 기본 종류 code (contract "활동 종류"), null when unset; absent on older responses. */
+  category: text.nullable().optional().catch(null),
   openActivityCount: z.number().int().nonnegative(),
   nearestRecruitmentEndAt: text.nullable(),
+  /** `nearestRecruitmentEndAt` is an activity start (no recruitment deadline), shown as `행사`; absent on older responses. */
+  nearestIsActivityStart: z.boolean().optional().catch(false),
   matchedActivityIds: z.array(z.number().int()),
   /** Latest activity start among the program's published activities; absent on older responses (contract "마감 숨기기"). */
   latestActivityAt: text.nullable().optional().catch(null),
@@ -188,6 +264,8 @@ export const programSummarySchema = z.object({
   traitTags: splitTags,
   /** `/v1/programs/{id}/logo?v=…` on the API origin, null without a logo; absent on older responses (contract "프로그램 로고", 2026-10-19 밤). */
   logoUrl: text.nullable().optional().catch(null),
+  /** Activities per 활동 상태 in the query's scope, zeros left out (contract "활동 상태"); absent on older responses. */
+  statusCounts: z.record(z.string(), z.number().int().nonnegative()).optional().catch(undefined),
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -216,17 +294,23 @@ export function activityId(value: string): number | undefined {
   const id = Number(value);
   return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(id) ? id : undefined;
 }
+/** The status to show: the server's, else (an older server) one read from the recruitment window alone. */
+export function activityStatus(activity: Activity, now = Date.now()): ActivityStatus {
+  if (activity.status) return activity.status;
+  const { open, label } = recruitment(activity.application, now);
+  return open ? "RECRUITING" : label === "모집 예정" ? "RECRUITING_UPCOMING" : "RECRUITMENT_CLOSED";
+}
 /** Recruitment state comes only from the application period; a missing bound is open on that side. */
 export function recruitment(
   application: Schedule | null,
   now = Date.now(),
 ): { open: boolean; label: string } {
-  if (!application) return { open: false, label: "모집 여부 확인 필요" };
+  // 모집 일정이 없는 활동은 종류와 상관없이 마감 (user 2026-10-26, contract "모집 일정 없는 활동은 마감").
+  if (!application) return { open: false, label: "모집 마감" };
   // Date-only windows compare Seoul days: before the start → 예정, before the exclusive end → 중, otherwise 마감
   // (contract "열린 활동 판정 일원화"). Timed windows compare instants; a missing end or start is open on that side.
   if (!application.startAt && !application.endAt) {
-    if (!application.startDate && !application.endDateExclusive)
-      return { open: false, label: "모집 여부 확인 필요" };
+    if (!application.startDate && !application.endDateExclusive) return { open: false, label: "모집 마감" };
     const today = seoulDay(now);
     if (application.startDate && today < application.startDate) return { open: false, label: "모집 예정" };
     if (application.endDateExclusive && today >= application.endDateExclusive) return { open: false, label: "모집 마감" };
@@ -253,7 +337,7 @@ export function recruitmentPhrase(application: Schedule | null, now = Date.now()
 }
 /** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
 function seoulDay(now: number): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
+  return calendarDay(now, "Asia/Seoul");
 }
 /** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
 function koreanParts(time: number, timeZone: string, withTime: boolean) {
@@ -302,6 +386,38 @@ export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now
   if (timed && from.year === to.year && from.day === to.day) return `${text(from)} ~ ${to.time}`;
   return `${text(from)} ~ ${text(to)}`;
 }
+/**
+ * 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): with both bounds of the recruitment window, the period as `M.d – M.d` (no
+ * times; one day alone when both fall on it; a bound outside the current Seoul year as `yyyy.M.d`) and, while 모집 중, a `D-n`/`D-DAY`
+ * badge counted in Seoul days to the last day (a date-only end is exclusive). Otherwise the `scheduleLabel` text without a badge
+ * (an end alone stays `~ M월 d일 (요일) 마감`).
+ */
+export function recruitmentDate(application: Schedule | null, now = Date.now()): { text: string; dday?: string } {
+  if (!application) return { text: "" };
+  const startAt = parseTime(application.startAt);
+  const endAt = parseTime(application.endAt);
+  const timed = startAt !== undefined || endAt !== undefined;
+  const endDateExclusive = parseTime(application.endDateExclusive);
+  const [start, last] = timed
+    ? [startAt, endAt]
+    : [parseTime(application.startDate), endDateExclusive === undefined ? undefined : endDateExclusive - DAY];
+  if (start === undefined || last === undefined || last < start)
+    return { text: scheduleLabel(application, "recruitment", now) };
+  const timeZone = timed ? (application.timeZone ?? "Asia/Seoul") : "UTC";
+  const thisYear = seoulDay(now).slice(0, 4);
+  const short = (time: number) => {
+    const [year, month, day] = calendarDay(time, timeZone).split("-");
+    return `${year === thisYear ? "" : `${year}.`}${Number(month)}.${Number(day)}`;
+  };
+  const text = short(start) === short(last) ? short(start) : `${short(start)} – ${short(last)}`;
+  if (!recruitment(application, now).open) return { text };
+  const days = Math.round((Date.parse(calendarDay(last, timeZone)) - Date.parse(seoulDay(now))) / DAY);
+  return { text, dday: days <= 0 ? "D-DAY" : `D-${days}` };
+}
+/** `yyyy-MM-dd` of an instant in a zone. */
+function calendarDay(time: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
+}
 function parseTime(value: string | null): number | undefined {
   const time = value ? Date.parse(value) : NaN;
   return Number.isNaN(time) ? undefined : time;
@@ -333,6 +449,25 @@ export function safeWebUrl(value: string | null): string | undefined {
     /* Untrusted or missing source URLs are displayed without a link. */
   }
 }
+/** GitHub·Instagram·Behance·카카오톡 take a username only (contract "연락처 아이콘·바로가기" 2026-10-26, same table as the apps and the API). */
+const USERNAME_RULES: Partial<Record<Card["contacts"][number]["kind"], { host?: string; max: number }>> = {
+  github: { host: "github.com", max: 39 },
+  instagram: { host: "instagram.com", max: 30 },
+  behance: { host: "behance.net", max: 64 },
+  kakao: { max: 20 },
+};
+
+/** The username in a contact value: a profile URL saved before 2026-10-26 gives its first path part, `@` and spaces are dropped. */
+export function contactUsername(contact: Card["contacts"][number]): string | undefined {
+  const rule = USERNAME_RULES[contact.kind];
+  if (!rule) return;
+  let text = contact.value.trim();
+  const prefix = rule.host && new RegExp(`^(https?://)?((www|m)\\.)?${rule.host.replace(".", "\\.")}/`, "i").exec(text);
+  if (prefix) text = text.slice(prefix[0].length).split(/[/?#]/)[0];
+  const id = text.replace(/[\s@]/g, "");
+  return id && id.length <= rule.max && /^[A-Za-z0-9._-]+$/.test(id) ? id : undefined;
+}
+
 export function contactHref(
   contact: Card["contacts"][number],
 ): string | undefined {
@@ -343,6 +478,11 @@ export function contactHref(
     return `mailto:${contact.value}`;
   if (contact.kind === "phone" && /^\+?[\d\s()-]+$/.test(contact.value))
     return `tel:${contact.value.replace(/[\s()-]/g, "")}`;
-  if (!["email", "phone"].includes(contact.kind))
-    return safeWebUrl(contact.value);
+  const host = USERNAME_RULES[contact.kind]?.host;
+  if (host) {
+    const id = contactUsername(contact);
+    return id && `https://${contact.kind === "behance" ? "www." : ""}${host}/${id}`;
+  }
+  // 카카오톡 ID has no public link; an open-chat URL saved before 2026-10-26 still opens.
+  if (contact.kind === "kakao") return safeWebUrl(contact.value);
 }

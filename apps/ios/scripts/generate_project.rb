@@ -7,9 +7,11 @@ Dir.glob('Sources/**/*.swift').sort.each { |file| app.source_build_phase.add_fil
 # Remote packages: the Google sign-in SDK (contract "구글 로그인 — 2026-10-19 네이티브 SDK로 전환") and Firebase Analytics without the
 # advertising identifier (analytics-v1.md 2026-10-25; `FirebaseAnalyticsCore` is 12.0's rename of `FirebaseAnalyticsWithoutAdIdSupport`).
 # Firebase is pinned exactly: the generated project and its Package.resolved are not tracked, so every build resolves again.
+# The Google Mobile Ads SDK (맞춤 대기열 끝 광고, non-personalised) is pinned exactly for the same reason.
 {
   'https://github.com/google/GoogleSignIn-iOS' => [{ 'kind' => 'upToNextMajorVersion', 'minimumVersion' => '10.0.0' }, 'GoogleSignIn'],
-  'https://github.com/firebase/firebase-ios-sdk' => [{ 'kind' => 'exactVersion', 'version' => '13.1.1' }, 'FirebaseAnalyticsCore']
+  'https://github.com/firebase/firebase-ios-sdk' => [{ 'kind' => 'exactVersion', 'version' => '13.1.1' }, 'FirebaseAnalyticsCore'],
+  'https://github.com/googleads/swift-package-manager-google-mobile-ads' => [{ 'kind' => 'exactVersion', 'version' => '13.11.0' }, 'GoogleMobileAds']
 }.each do |url, (requirement, product_name)|
   package = project.new(Xcodeproj::Project::Object::XCRemoteSwiftPackageReference)
   package.repositoryURL = url
@@ -30,12 +32,27 @@ validate.always_out_of_date = '1'
 app.build_phases.move(validate, 0)
 resources = project.main_group.new_group('Resources')
 app.resources_build_phase.add_file_reference(resources.new_file('Resources/Assets.xcassets'))
+# App-level privacy manifest (required-reason APIs, collected data); the SDKs carry their own.
+app.resources_build_phase.add_file_reference(resources.new_file('Resources/PrivacyInfo.xcprivacy'))
 # Pretendard copies of shared/assets/fonts/pretendard; also listed in UIAppFonts.
 Dir.glob('Resources/Fonts/*.otf').sort.each { |file| app.resources_build_phase.add_file_reference(resources.new_file(file)) }
 # Firebase configuration (gitignored; CI writes it from IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64, device builds copy ~/.dearby-deploy's).
 # Without it the app builds and 사용 통계 is off (`AppAnalytics.start`).
 firebase_config = 'Config/GoogleService-Info.plist'
 app.resources_build_phase.add_file_reference(resources.new_file(firebase_config)) if File.exist?(firebase_config)
+# 맞춤 대기열 끝 광고 (AdMob, native-v1.md): Debug uses Google's sample app and native test unit. Release takes ADMOB_IOS_APP_ID and
+# ADMOB_IOS_QUEUE_NATIVE_UNIT_ID from the environment (CI: the repository variables of those names); without both the unit is empty, the app
+# never starts the SDK and the ad page is left out. GADApplicationIdentifier still gets the sample app ID then, because the SDK aborts at launch when it is missing.
+# UI flow tests (XCUITest, 2026-10-26 사용자 결정): run by hand on a real iPhone only (README "UI 흐름 테스트"). The target sits in its own
+# `DearbyUITests` scheme; the `Dearby` scheme that CI builds and archives (native.yml, ios-testflight.yml) does not contain it.
+uitests = project.new_target(:ui_test_bundle, 'DearbyUITests', :ios, '18.0')
+uitests.add_dependency(app)
+ui_sources = project.main_group.new_group('UITests')
+Dir.glob('UITests/**/*.swift').sort.each { |file| uitests.source_build_phase.add_file_reference(ui_sources.new_file(file)) }
+admob_test_app = 'ca-app-pub-3940256099942544~1458002511'
+admob_release = [ENV.fetch('ADMOB_IOS_APP_ID', ''), ENV.fetch('ADMOB_IOS_QUEUE_NATIVE_UNIT_ID', '')]
+admob_release = [admob_test_app, ''] if admob_release.any?(&:empty?)
+admob = { 'Debug' => [admob_test_app, 'ca-app-pub-3940256099942544/3986624511'], 'Release' => admob_release }
 project.targets.each do |target|
   target.build_configurations.each do |config|
     config.build_settings.merge!({
@@ -52,6 +69,7 @@ project.targets.each do |target|
         'PROVISIONING_PROFILE_SPECIFIER' => ENV['DEARBY_RELEASE_PROFILE'], 'DEVELOPMENT_TEAM' => ENV.fetch('DEARBY_TEAM_ID')
       })
     end
+    config.build_settings['TEST_TARGET_NAME'] = 'Dearby' if target == uitests
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',
@@ -65,7 +83,8 @@ project.targets.each do |target|
         # Google sign-in: the iOS OAuth client ID and its reversed form (com.googleusercontent.apps.<id>) from the build
         # environment; empty hides the button. Local device builds read them from ~/.dearby-deploy/mobile.env (README).
         'GOOGLE_IOS_CLIENT_ID' => ENV.fetch('GOOGLE_IOS_CLIENT_ID', ''),
-        'GOOGLE_IOS_URL_SCHEME' => ENV.fetch('GOOGLE_IOS_URL_SCHEME', '')
+        'GOOGLE_IOS_URL_SCHEME' => ENV.fetch('GOOGLE_IOS_URL_SCHEME', ''),
+        'ADMOB_APP_ID' => admob[config.name][0], 'ADMOB_NATIVE_UNIT_ID' => admob[config.name][1]
       })
       # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds; aps-environment is development in Debug and
       # production in Release (contract "즐겨찾기(하트)·새 모집 푸시 알림": the App ID and the store profile need Push Notifications).
@@ -84,3 +103,8 @@ scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(app)
 scheme.set_launch_target(app)
 scheme.save_as(project.path, 'Dearby', true)
+ui_scheme = Xcodeproj::XCScheme.new
+ui_scheme.add_build_target(app)
+ui_scheme.add_test_target(uitests)
+ui_scheme.set_launch_target(app)
+ui_scheme.save_as(project.path, 'DearbyUITests', true)

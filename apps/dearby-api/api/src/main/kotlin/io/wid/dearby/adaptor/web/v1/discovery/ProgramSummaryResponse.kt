@@ -15,6 +15,7 @@ data class ProgramSummaryResponse(
     val organization: ReferenceResponse,
     val openActivityCount: Int,
     val nearestRecruitmentEndAt: OffsetDateTime?,
+    val nearestIsActivityStart: Boolean, // 폐지 예정, 항상 false(2026-10-26: nearestRecruitmentEndAt은 모집 마감만). 옛 앱 호환으로 남긴다
     val matchedActivityIds: List<Long>,
     val upcomingActivityCount: Int, // 모집 예정 활동 수(native-v1.md "마감 숨기기")
     val nearestRecruitmentStartAt: OffsetDateTime?, // 모집 예정 활동의 가장 이른 모집 시작, 없으면 null
@@ -26,6 +27,8 @@ data class ProgramSummaryResponse(
     val brandColor: String?, // 로고(계승 포함) 대표색 "#RRGGBB", 커버가 없을 때 그라데이션. 없으면 null
     val coverUrl: String?, // 대기열 커버 경로 `/v1/programs/{id}/cover?v=…`(native-v1.md "맞춤 대기열"), 없거나 꺼졌으면 null
     val logoUrl: String?, // 프로그램 로고 경로 `/v1/programs/{id}/logo?v=…`(native-v1.md "프로그램 로고"), 없으면 null
+    val statusCounts: Map<String, Int>, // 조회 범위 안 게시 활동의 상태별 수(0인 상태는 빠진다)(native-v1.md "활동 상태")
+    val hasTimetable: Boolean, // 모집 중·모집 예정 활동(필터 반영) 중 하나라도 시간표가 있으면 true(접힌 카드 "시간표" 배지, native-v1.md "트랙·세션 시간표")
     val favorited: Boolean, // 로그인 사용자가 즐겨찾기했는지(native-v1.md "즐겨찾기(하트)"). 비로그인은 false
 ) {
     companion object {
@@ -36,6 +39,7 @@ data class ProgramSummaryResponse(
             organization = ReferenceResponse(summary.organizationId, language.pick(summary.organizationName, summary.organizationNameEn)),
             openActivityCount = summary.openActivityCount,
             nearestRecruitmentEndAt = summary.nearestRecruitmentEndAt,
+            nearestIsActivityStart = false,
             matchedActivityIds = summary.matchedActivityIds,
             upcomingActivityCount = summary.upcomingActivityCount,
             nearestRecruitmentStartAt = summary.nearestRecruitmentStartAt,
@@ -47,6 +51,8 @@ data class ProgramSummaryResponse(
             brandColor = summary.brandColor,
             coverUrl = summary.coverUrl,
             logoUrl = summary.logoUrl,
+            statusCounts = summary.statusCounts.mapKeys { it.key.name },
+            hasTimetable = summary.hasTimetable,
             favorited = summary.id in favorites.programs,
         )
     }

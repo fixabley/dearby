@@ -7,7 +7,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Store screenshots only (apps/android/scripts/capture_screenshots.sh): a Debug launch with the extra `dearbyScreenshot` set to
- * `discover`, `discover-expanded`, `detail`, `mine`, `cards` or `settings` opens that screen. [MainActivity] reads the extra only when
+ * `discover`, `discover-expanded`, `detail`, `mine`, `cards`, `settings`, `queue` or `favorites` opens that screen. [MainActivity] reads the extra only when
  * `BuildConfig.DEBUG`, so a release build never gets here.
  */
 const val SCREENSHOT_EXTRA = "dearbyScreenshot"

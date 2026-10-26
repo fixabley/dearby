@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,8 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
     activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
     openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
     hearts: FavoriteHearts = FavoriteHearts(),
+    /** A block row with a 트랙·세션 시간표 (contract "트랙·세션 시간표"): opens the block's timetable sheet by its schedule id. */
+    openTimetable: (String) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         // Share sends the Dearby link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). 추가 left the bar for the `+` beside the heart
@@ -41,7 +44,9 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
         // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
+                // 모집 일정 미정 has no badge (contract "활동 상태"); it is the 모집 기간 value below.
+                val undated = activity.noRecruitment
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { if (!undated) ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it, icon = categoryIcon(activity.categoryCode)) } }
                 Row(verticalAlignment = Alignment.Top) {
                     Text(activity.title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
                     FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { if (activity.applied) viewInMine() else addToMine() }
@@ -51,8 +56,16 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                     Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 }
                 HorizontalDivider()
-                InfoRow("모집 상태", activity.status, Icons.Rounded.Event)
-                activity.period?.let { InfoRow("모집 기간", it, Icons.Rounded.Event) }
+                if (!undated) InfoRow("모집 상태", activity.status, Icons.Rounded.Event)
+                // 모집 날짜 표기 (user 2026-10-26): a full window is a range with the deadline time and a D-day badge, and carries the deadline's
+                // `캘린더에 추가` since its own `모집 마감` row is gone from 선발 과정; a deadline alone keeps `~ 10월 20일 (화) 마감`.
+                (activity.periodDetail ?: activity.period ?: activity.status.takeIf { undated })?.let { period ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.weight(1f)) { InfoRow("모집 기간", period, Icons.Rounded.Event) }
+                        activity.deadlineCount?.let { ExampleBadge(it, accent = true) }
+                        activity.deadlineDraft?.let { draft -> IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "모집 마감 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } }
+                    }
+                }
                 InfoRow("개최 일시", activity.date.ifEmpty { "미확인" }, Icons.Rounded.Schedule)
                 InfoRow("장소", activity.location ?: "미확인", Icons.Rounded.Place)
                 InfoRow("프로그램", activity.program, Icons.Rounded.Badge)
@@ -76,14 +89,19 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                     Text("대상", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                     EligibilityChips(activity.eligibility)
                 }
+                // 선발 과정 (모집 마감 + SELECTION schedules) and 활동 일정 (the activity period + ACTIVITY schedules, every timetable block) as two
+                // headed groups (contract "선발 과정·활동 일정 분리", 2026-10-26); an empty group is left out. Each dated row has `캘린더에 추가`.
+                val (selection, activityRows) = activity.schedules.partition { it.selection }
                 HorizontalDivider()
-                Text("행사 일정", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-                Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
-                // 모집 마감, each schedule and the activity period as plain rows, each dated one with `캘린더에 추가` (contract "내 캘린더에 추가").
-                Column { activity.schedules.forEach { item ->
-                    ListItem({ Text(item.name) }, supportingContent = { Text(item.dateText) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        trailingContent = item.draft?.let { draft -> { IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "${item.name} 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } } })
-                } }
+                if (selection.isNotEmpty()) {
+                    ScheduleHeading("선발 과정")
+                    ScheduleRows(selection, addToCalendar, openTimetable)
+                }
+                if (activityRows.isNotEmpty() || selection.isEmpty()) {
+                    ScheduleHeading("활동 일정")
+                    Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
+                    ScheduleRows(activityRows, addToCalendar, openTimetable)
+                }
                 // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침"); it needs one comparable schedule — timed,
                 // or date-only with the admin's overlap-check time (contract "겹침 확인 시간", 2026-10-22). Otherwise one line says why not.
                 if (activity.overlapCheckable) {
@@ -118,6 +136,26 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                 DearbyButton({ openLink(url) }, Modifier.fillMaxWidth().semantics { contentDescription = "$label, 외부 브라우저로 열려요" }) { Text(label) }
             }
         }
+    }
+}
+
+@Composable private fun ScheduleHeading(title: String) =
+    Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+
+/** Plain rows; a block with sessions (`hasTimetable`) opens its 시간표 as a modal on tap (2026-10-26 사용자), `시간표` + chevron on the right. */
+@Composable private fun ScheduleRows(items: List<ScheduleItemState>, addToCalendar: (CalendarDraft) -> Unit, openTimetable: (String) -> Unit) = Column {
+    items.forEach { item ->
+        val timetableId = item.scheduleId?.takeIf { item.hasTimetable }
+        val calendarButton: (@Composable () -> Unit)? = item.draft?.let { draft -> { IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "${item.name} 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } } }
+        ListItem({ Text(item.name) }, if (timetableId == null) Modifier else Modifier.clickable(role = Role.Button, onClickLabel = "시간표 보기") { openTimetable(timetableId) },
+            supportingContent = { Text(item.dateText) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            trailingContent = if (timetableId == null) calendarButton else { {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    calendarButton?.invoke()
+                    TimetableMark()
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } })
     }
 }
 

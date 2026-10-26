@@ -52,15 +52,17 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     val changed get() = mutable.value.let { it.form != null && it.profile != null && profile(it.form) != profile(ProfileFormState.from(it.profile)) }
 
     fun load() = viewModelScope.launch {
-        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); return@launch }
+        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); account.consentKnown(null); return@launch }
         if (mutable.value.profile == null) mutable.update { it.copy(phase = ProfilePhase.LOADING) }
         try {
             val stored = account.authorized { account.client.profile(it) }
             // A reload resets the form unless an edit is pending.
             mutable.update { it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null,
                 consentRequired = stored.consentRequired, consentError = null) }
+            account.consentKnown(!stored.consentRequired)
         } catch (e: AccountException) {
             mutable.update { ProfileViewState(if (e.error == AccountError.UNAUTHORIZED) ProfilePhase.SIGNED_OUT else ProfilePhase.FAILED) }
+            account.consentKnown(null)
         }
     }
     /** 개인정보 동의 (contract "개인정보 동의"): records both versions, then reloads so the profile (or the setup funnel) can start. */
@@ -108,8 +110,35 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
                 mutable.update { it.copy(profile = saved, form = ProfileFormState.from(saved), saving = false, editing = false) }
             } catch (e: AccountException) {
                 // 403 CONSENT_REQUIRED (contract "개인정보 동의"): the consent screen comes back instead of an error line.
-                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; return@launch }
+                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; account.consentKnown(false); return@launch }
                 mutable.update { it.copy(saving = false, error = message(e, "저장하지 못했어요. 잠시 후 다시 시도해 주세요.")) }
+            }
+        }
+    }
+
+    // --- 프로필 사진 (contract "프로필 사진"): saved on its own right away, like evidence; 403 CONSENT_REQUIRED brings the consent screen back.
+    /** Uploads the cropped square; [done] runs once the server has it (the crop screen closes). */
+    fun uploadPhoto(jpeg: ByteArray, done: () -> Unit) = photo("사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.") {
+        val url = account.authorized { account.client.uploadProfilePhoto(jpeg, it) }
+        account.photos.put(url, jpeg)
+        mutable.update { it.copy(profile = it.profile?.copy(photoUrl = url)) }
+        done()
+    }
+    fun deletePhoto() = photo("사진을 지우지 못했어요. 잠시 후 다시 시도해 주세요.") {
+        account.authorized { account.client.deleteProfilePhoto(it) }
+        mutable.update { it.copy(profile = it.profile?.copy(photoUrl = null)) }
+    }
+    fun dismissPhotoError() = mutable.update { it.copy(photoError = null) }
+    /** The picked file could not be opened as an image. */
+    fun photoFailed(message: String) = mutable.update { it.copy(photoError = message) }
+    private fun photo(fallback: String, call: suspend () -> Unit) {
+        if (mutable.value.photoBusy) return
+        mutable.update { it.copy(photoBusy = true, photoError = null) }
+        viewModelScope.launch {
+            try { call(); mutable.update { it.copy(photoBusy = false) } }
+            catch (e: AccountException) {
+                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(photoBusy = false, consentRequired = true) }; account.consentKnown(false); return@launch }
+                mutable.update { it.copy(photoBusy = false, photoError = message(e, fallback)) }
             }
         }
     }
@@ -216,14 +245,14 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         } catch (e: AccountException) { versionsState.update { it.copy(restoring = false, error = message(e, "되돌리지 못했어요. 잠시 후 다시 시도해 주세요.")) } }
     }
 
-    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. */
-    fun deleteAccount() {
+    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. The passkey cleanup hint only when the account [hadPasskeys]. */
+    fun deleteAccount(hadPasskeys: Boolean) {
         if (deletionState.value.deleting) return
         deletionState.value = DeletionState(deleting = true)
         viewModelScope.launch {
             val notice = try {
                 account.deleteAccount()
-                "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요."
+                if (hadPasskeys) "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요." else "계정을 삭제했어요."
             } catch (e: AccountException) {
                 if (e.error == AccountError.UNAUTHORIZED) "로그인이 만료됐어요. 다시 로그인해 주세요." else "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
             }
@@ -242,7 +271,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     /** `PUT /v1/profile` body. Empty added contacts are left out. */
     private fun profile(form: ProfileFormState): AccountProfile {
         val labels = ProfileContactKinds.associate { (kind, label, _) -> kind to label }
-        return AccountProfile(form.name.trim(), "", form.introduction.trim(),
+        return AccountProfile(form.name.trim(), "", form.introLink.trim().ifEmpty { null },
             listOf(AccountContact(form.phoneId, "phone", "전화번호", form.phone.trim()), AccountContact(form.emailId, "email", "이메일", form.email.trim())) +
                 form.extras.filter { it.value.isNotBlank() }.map { AccountContact(it.id, it.kind, labels[it.kind] ?: it.kind, it.value.trim()) },
             form.histories, form.version, form.jobs)

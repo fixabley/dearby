@@ -42,6 +42,12 @@
 - 트랙은 페이지가 따로 지원하는 별개 기수로 소개할 때만 별도 활동이다(예: 웹·모바일 10기와 AI Tech 8기를 따로 모집하면 둘).
 - roundKey는 그 기수의 식별자다. 같은 기수를 다른 페이지나 다른 날에 다시 만나도 같아야 하므로 기수·연도(·트랙)만 쓴다(예: "10기", "2026", "10기-웹모바일", "8기-AITech"). 페이지 이름이나 단계 이름을 넣지 않는다.
 - schedules[].kind: 서류·신청 마감은 DEADLINE, 결과 발표는 ANNOUNCEMENT, 면접은 INTERVIEW, 테스트·챌린지·교육·행사·세션은 EVENT. 모르면 EVENT.
+- schedules[].phase(native-v1.md "선발 과정·활동 일정 분리"): 붙기 전의 선발 단계(서류 접수·마감, 코딩테스트·과제·문제 해결력 테스트, 면접, 결과·합격자 발표 등 합격자 OT 전까지)는 SELECTION, 붙은 뒤의 활동(OT·오리엔테이션, 세션·교육·과정 단계, 행사 본 일정, 수료·데모데이)은 ACTIVITY. 본문만으로 확실하지 않으면 null로 둔다(서버가 kind로 판정한다: 마감·발표·면접은 선발, 그 밖은 활동). 컨퍼런스처럼 선발이 없는 행사의 일정은 ACTIVITY.
+- 컨퍼런스·행사의 강연 일정은 **큰 블록**을 schedules로 뽑는다(예: 우아콘 "오전 세션 10:50~12:30", "쉬는시간 12:30~13:50", "오후 세션 13:50~17:30"). 여러 날이면 날마다 블록을 따로 둔다. 강연 하나하나를 schedules로 넣지 않는다.
+- 하위 시간표: 블록 안의 세션 목록(트랙·시간·제목·연사)이 본문에 있으면 그 블록의 `timetable`에 넣는다(native-v1.md "트랙·세션 시간표"). 블록에 시작·끝 시각(startAt·endAt)이 있어야 한다. 없으면 timetable은 null.
+  - tracks: 같은 시간에 따로 진행되는 트랙(강연장)을 본문 표기 순서대로 {name, room}(room은 본문에 강연장·방 이름이 있을 때만). 트랙 구분이 없으면(한 줄로 진행) 빈 배열이다.
+  - sessions: {track, kind, title, startAt, endAt, speakers, tags, description}. track은 tracks의 name 그대로, 모든 트랙에 걸친 세션(키노트·쉬는시간·점심)과 트랙이 없는 시간표의 세션은 null. kind는 일반 강연 TALK, 키노트 KEYNOTE, 쉬는시간 BREAK, 점심·식사 MEAL, 그 밖 OTHER. title은 본문 표기 그대로(서버가 제목이 본문에 있는지 확인한다). startAt·endAt은 시각까지 있는 ISO 8601 오프셋 형식이고 블록 시간 안이어야 한다. speakers는 {name, affiliation}(소속이 없으면 null), tags는 "분야 태그 사전" 이름 그대로 최대 5개(없으면 빈 배열), description은 본문의 세션 소개가 있을 때만.
+  - 같은 트랙의 세션끼리, 전폭 세션과 다른 세션은 시간이 겹치지 않는다. 시간이 하나라도 불확실하거나 규칙에 맞지 않으면 서버가 그 블록의 시간표만 버린다(활동·일정은 저장된다).
 - 본문에 적힌 내용만 쓴다. 추측하지 않는다. 모르는 값은 null로 둔다.
 - 시각은 본문에 시각까지 있을 때만 ISO 8601 오프셋 형식(예: 2026-10-08T19:00:00+09:00)으로 쓴다(recruitmentStartAt·recruitmentEndAt, schedules[].startAt·endAt).
 - 두 기간을 구분한다. **모집 기간**(recruitmentStartAt·EndAt 또는 recruitmentStartDate·EndDate)은 지원서·신청을 받는 기간이다(본문의 모집·접수·지원·신청·원서·마감 낱말이 붙은 날짜). **활동 기간**(dateLabel·startDate·endDate)은 교육·과정·행사·운영이 실제로 진행되는 기간이다(교육 기간·과정 기간·행사 일시·운영 기간·개최일). 같은 날짜를 두 기간에 함께 넣지 않는다. 본문에 모집 기간만 있으면 모집 기간 필드만 채우고 dateLabel은 빈 문자열, startDate·endDate는 null로 둔다. 본문에 활동 기간만 있으면 모집 기간 필드는 모두 null이다. 어느 쪽인지 알 수 없는 날짜는 모집 기간에 넣지 않는다.

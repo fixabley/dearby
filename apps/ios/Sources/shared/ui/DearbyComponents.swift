@@ -6,10 +6,29 @@ struct DearbyBadge: View {
     var danger = false
     /// Quiet colouring for a neutral notice such as `3일 뒤 사라져요`.
     var quiet = false
+    /// An SF Symbol before the title (활동 상세의 종류 칩).
+    var systemImage: String?
     var body: some View {
-        Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(danger ? DearbyStyle.danger : quiet ? DearbyStyle.quiet : DearbyStyle.teal)
+        Group {
+            if let systemImage { Label(title, systemImage: systemImage) } else { Text(title) }
+        }
+        .font(.dearby(.caption).weight(.semibold)).foregroundStyle(danger ? DearbyStyle.danger : quiet ? DearbyStyle.quiet : DearbyStyle.teal)
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(danger ? DearbyStyle.danger.opacity(0.1) : quiet ? DearbyStyle.muted : DearbyStyle.mint, in: Capsule())
+    }
+}
+/// The small capsule beside a card title or a date (`시간표`, `D-3`): caption2 semibold teal on mint, with an optional SF Symbol;
+/// `filled` is white on the teal fill (a countdown, readable on a mint row too).
+struct DearbyMiniBadge: View {
+    let title: String
+    var systemImage: String?
+    var filled = false
+    var body: some View {
+        Group {
+            if let systemImage { Label(title, systemImage: systemImage) } else { Text(title) }
+        }
+        .font(.dearby(.caption2).weight(.semibold)).monospacedDigit().foregroundStyle(filled ? DearbyStyle.onTeal : DearbyStyle.teal)
+        .padding(.horizontal, 8).padding(.vertical, 3).background(filled ? DearbyStyle.tealFill : DearbyStyle.mint, in: Capsule())
     }
 }
 struct DearbyAvatar: View {

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.activity.api.parseQueue
+import com.dearby.nativeapp.features.ads.QueueAd
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.QueueItem
@@ -18,12 +19,14 @@ import com.dearby.nativeapp.pages.queue.QueueReaction
 import com.dearby.nativeapp.pages.queue.QueueSceneState
 import com.dearby.nativeapp.pages.queue.QueueUndo
 import com.dearby.nativeapp.pages.queue.QueueViewState
+import com.dearby.nativeapp.shared.config.ConsentVersions
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -37,8 +40,15 @@ import kotlinx.coroutines.launch
  * shows; a failed read (404 before the server ships it included) is the queue screen's retry state. Signed out there is no queue (contract
  * "비로그인에서 만들기·추천을 막음", 2026-10-25: the entry opens sign-in), and the old device reactions are neither read nor written.
  * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. The ♥ and `+` belong to 즐겨찾기 and 내 활동 (QueueRoute).
+ * 맞춤 대기열 끝 광고 (contract "맞춤 대기열 끝 광고(AdMob, 비개인화)", 2026-10-25): [ads] is requested once the queue has loaded and its page
+ * follows the last activity as soon as it arrives; leaving the last activity before that ends the chance for this view (no wait, no retry).
+ * 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25) comes first, read after the queue is shown: `GET …/consents/ad-third-party`;
+ * agreed loads the ad. Otherwise (2026-10-26 사용자 결정) nothing is asked or requested until the last activity card is swiped past, where the ad
+ * would go: then [adConsentAsk] holds the account id while the sheet asks over the end page — unless this device already remembers a decline for
+ * this account and version. Agreeing saves it and starts the SDK only; this view goes on without an ad, the next one shows it. A failed read or
+ * `PUT` means no ad.
  */
-class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
+class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd, private val device: DevicePreferences) : ViewModel() {
     private val mutable = MutableStateFlow(QueueViewState())
     val state = mutable.asStateFlow()
     private var items: List<QueueItem> = emptyList()
@@ -47,14 +57,19 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     private var pending: Pending? = null
     private var undoSerial = 0
     private var job: Job? = null
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private var consentJob: Job? = null
+    private val asking = MutableStateFlow<String?>(null)
+    /** The account to ask once the last activity is passed (not agreed, no remembered decline). */
+    private var askAtEnd: String? = null
+    val adConsentAsk: StateFlow<String?> = asking.asStateFlow()
+    private val signedIn get() = account.ready.value
     private val client get() = account.client
 
     private data class Pending(val before: List<QueueItem>, val item: QueueItem, val reaction: QueueReaction)
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { reset() }
+            account.ready.collect { reset() }
         }
     }
 
@@ -65,6 +80,9 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
 
     fun open() {
         mutable.value = QueueViewState()
+        adDecided = false
+        ads.clear()
+        stopAd()
         load(refill = false)
     }
     fun retry() = load(refill = false)
@@ -79,12 +97,15 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
                 val got = parseQueue(body, ApiOrigin.current)
                 if (refill && got.isEmpty()) return@launch mutable.update { it.copy(loading = false, refilling = false, exhausted = true) }
                 items = got
+                // 더 받기 starts a new run of cards without the ad, which this view already had its chance at.
+                if (refill) { mutable.update { it.copy(ad = false) }; ads.clear() }
                 if (!refill) {
                     ended = false; viewed.clear()
                     val seen = body.optJSONArray("seen")?.length() ?: body.optInt("seen", 0)
                     Analytics.event("queue_open", "size" to got.size.toString(), "seen" to seen.toString())
                 }
                 show(0, move = true) { it.copy(loading = false, refilling = false, failed = false, exhausted = false) }
+                if (!refill && got.isNotEmpty()) startAd()
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Discovery queue load failed: ${e.javaClass.simpleName}")
                 mutable.update { it.copy(loading = false, refilling = false, failed = true) }
@@ -92,12 +113,51 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
         }
     }
     private fun show(index: Int, move: Boolean, change: (QueueViewState) -> QueueViewState = { it }) = mutable.update {
-        change(it).copy(cards = items.map(::card), index = index.coerceIn(0, items.size), moves = if (move) it.moves + 1 else it.moves)
+        change(it).copy(cards = items.map(::card), index = index.coerceIn(0, items.size + if (it.ad) 1 else 0), moves = if (move) it.moves + 1 else it.moves)
     }
     fun page(index: Int) {
         mutable.update { it.copy(index = index) }
-        if (index == items.size && items.isNotEmpty() && !ended) { ended = true; Analytics.event("queue_end", "viewed" to viewed.size.toString()) }
+        if (index >= items.size && items.isNotEmpty() && !adDecided) {
+            adDecided = true
+            val ask = askAtEnd
+            askAtEnd = null
+            // Asking for the consent here is not a skipped ad: no `queue_ad_skipped_unloaded` (analytics-v1).
+            if (ask != null) asking.value = ask
+            else if (state.value.ad) Analytics.event("queue_ad_shown")
+            else if (ads.requested) Analytics.event("queue_ad_skipped_unloaded", "reason" to if (ads.failed) "failed" else "loading")
+        }
+        if (index == state.value.end && items.isNotEmpty() && !ended) { ended = true; Analytics.event("queue_end", "viewed" to viewed.size.toString()) }
     }
+    private var adDecided = false
+
+    /** Never asks or reads in a build without ads; the consent read runs beside the cards, which are already on screen. */
+    private fun startAd() {
+        if (!QueueAd.enabled) return
+        consentJob = viewModelScope.launch {
+            try {
+                if (account.authorized { client.adConsent(it) }) return@launch loadAd()
+                val id = account.authorized { client.me(it) }.id
+                if (!device.adConsentDeclined(id, ConsentVersions.AD) && !adDecided) askAtEnd = id
+            } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w("Dearby", "Ad consent read failed: ${e.javaClass.simpleName}") }
+        }
+    }
+    private fun loadAd() { if (!adDecided) ads.load { if (!adDecided) mutable.update { it.copy(ad = true) } } }
+    /** `동의하고 계속`: the SDK starts only after the server has the consent; this view has passed the ad's place, so the next one shows it. */
+    fun agreeAd() {
+        asking.value ?: return
+        asking.value = null
+        viewModelScope.launch {
+            try { account.authorized { client.agreeAdConsent(ConsentVersions.AD, it) }; ads.start() }
+            catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w("Dearby", "Ad consent save failed: ${e.javaClass.simpleName}") }
+        }
+    }
+    /** `동의하지 않음` or the sheet dismissed: remembered on this device only; nothing starts and nothing is sent. */
+    fun declineAd() {
+        val id = asking.value ?: return
+        asking.value = null
+        device.declineAdConsent(id, ConsentVersions.AD)
+    }
+    private fun stopAd() { consentJob?.cancel(); asking.value = null; askAtEnd = null }
 
     // analytics-v1 "맞춤 대기열 도달": positions count from 1 in today's queue.
     private var ended = false
@@ -108,8 +168,13 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     fun cardViewed(id: String) { if (viewed.add(id)) Analytics.event("queue_card_view", "position" to position(id), *card(id)) }
     /** The ♥ turned a card into a favorite. */
     fun liked(id: String) = Analytics.event("queue_like", "position" to position(id), *card(id))
-    /** The queue closed by the user before its end page. */
-    fun exit() { if (!ended && items.isNotEmpty()) Analytics.event("queue_exit", "position" to (state.value.index + 1).coerceAtMost(items.size).toString()) }
+    /** The queue closed by the user (`queue_exit` before its end page; on the ad page the position is the last activity's); the ad goes with it. */
+    fun exit() {
+        if (!ended && items.isNotEmpty()) Analytics.event("queue_exit", "position" to (state.value.index + 1).coerceAtMost(items.size).toString())
+        stopAd()
+        ads.clear()
+    }
+    override fun onCleared() = ads.clear()
 
     /** The activity behind a card, for 즐겨찾기 and `+` (the ♥ is the 즐겨찾기 heart; the server records LIKE/UNLIKE from it, 2026-10-25). */
     fun model(id: String) = items.firstOrNull { it.activity.id == id }?.activity

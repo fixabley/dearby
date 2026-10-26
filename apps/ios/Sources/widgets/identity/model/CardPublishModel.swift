@@ -10,31 +10,44 @@ import Observation
     private(set) var phase = Phase.loading
     let account: AccountViewModel
     let prefill: PublishedCard?
-    init(account: AccountViewModel, prefill: PublishedCard? = nil) {
+    /// The account's card names when a new card is made, so an unnamed one gets its own default name.
+    let taken: Set<String>
+    init(account: AccountViewModel, prefill: PublishedCard? = nil, taken: Set<String> = []) {
         self.account = account
         self.prefill = prefill
+        self.taken = taken
     }
     /// Signed in: start from the saved profile. Signed out: nothing to edit until sign-in.
+    /// The sheet's `.task` can be cancelled while the request runs (the transport then reports it as `unavailable`): a cancelled load leaves the
+    /// skeleton for the next one instead of the failure screen. A first failure is retried once after a moment (a dropped connection on the
+    /// sheet's first request); the failure screen with `다시 시도` shows only when that fails too.
     func load() async {
         guard account.session != nil else { phase = .editing; return }
         phase = .loading
-        do {
-            let stored = try await account.authorized { [client = account.client] in try await client.profile($0) }
-            if draft == nil || draft?.profile != stored { draft = CardDraft(profile: stored, prefill: prefill) }
-            phase = .editing
-        } catch AccountError.unauthorized {
-            phase = .editing
-        } catch {
-            phase = .failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")
+        for attempt in 0..<2 {
+            do {
+                let stored = try await account.authorized { [client = account.client] in try await client.profile($0) }
+                if draft == nil || draft?.profile != stored { draft = CardDraft(profile: stored, prefill: prefill) }
+                phase = .editing
+                return
+            } catch AccountError.unauthorized {
+                phase = .editing
+                return
+            } catch {
+                if Task.isCancelled { return }
+                if attempt == 0 { try? await Task.sleep(for: .milliseconds(600)) }
+                if Task.isCancelled { return }
+            }
         }
+        phase = .failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")
     }
     func publish() async {
         guard let draft else { await load(); return }
         if let problem = draft.problem { phase = .failed(problem); return }
         phase = .publishing
         do {
-            let published = try await account.authorized { [client = account.client, editingID = prefill?.id] in
-                if let editingID { try await client.updateCard(editingID, draft.card, $0) } else { try await client.publish(draft.card, $0) }
+            let published = try await account.authorized { [client = account.client, editingID = prefill?.id, taken] in
+                if let editingID { try await client.updateCard(editingID, draft.card(), $0) } else { try await client.publish(draft.card(taken: taken), $0) }
             }
             phase = .published(published)
         } catch AccountError.unauthorized {

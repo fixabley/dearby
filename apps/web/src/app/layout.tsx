@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/widgets/shell/shell";
+import { GoogleAnalytics } from "@/shared/ui/google-analytics";
+import { VercelAnalytics } from "@/shared/ui/vercel-analytics";
 import { siteOpenGraph, WEB_ORIGIN } from "@/lib/preview";
 import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "dearby · 탐색", template: "%s · dearby" },
   description: "새로운 활동을 발견하고, 받은 공개 명함을 저장하세요.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Dearby", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Dearby 명함함", statusBarStyle: "default" },
   // 오픈그래프 공통 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the image is `opengraph-image.tsx`.
   metadataBase: WEB_ORIGIN,
   openGraph: siteOpenGraph,
@@ -21,6 +23,9 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
+// 사용 통계 only on the production deployment (preview builds also run with NODE_ENV=production); GA also needs a measurement id.
+const production = process.env.VERCEL_ENV === "production";
+const gaId = production ? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() : undefined;
 export default function RootLayout({
   children,
 }: {
@@ -30,6 +35,8 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <Shell>{children}</Shell>
+        {gaId && <GoogleAnalytics id={gaId} />}
+        {production && <VercelAnalytics />}
       </body>
     </html>
   );

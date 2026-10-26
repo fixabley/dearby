@@ -9,8 +9,16 @@ import io.wid.dearby.domain.ScheduleTime
 import io.wid.dearby.domain.StoryTexts
 import io.wid.dearby.domain.collection.CollectedRecurrence
 import io.wid.dearby.domain.ScheduleKind
+import io.wid.dearby.domain.SchedulePhase
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.CollectedSchedule
+import io.wid.dearby.domain.collection.CollectedTimetable
+import io.wid.dearby.domain.timetable.SessionInput
+import io.wid.dearby.domain.timetable.SessionKind
+import io.wid.dearby.domain.timetable.Speaker
+import io.wid.dearby.domain.timetable.TimetableInput
+import io.wid.dearby.domain.timetable.TimetableRules
+import io.wid.dearby.domain.timetable.TrackInput
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.OffsetDateTime
@@ -64,7 +72,13 @@ object ActivityVerifier {
                     val (dayStart, dayEnd) = if (scheduleStart == null && scheduleEnd == null) dates(schedule.startDate, schedule.endDate) else null to null
                     // 반복은 시각 일정에만 둔다(수집기는 겹침 확인 시간을 만들지 않는다). 틀린 규칙은 그 필드만 버린다
                     val rule = scheduleStart?.let { recurrence(schedule.recurrence, ScheduleTime.Timed(it.toZonedDateTime(), scheduleEnd?.toZonedDateTime()), null) }
-                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd, rule)
+                    val time = when {
+                        scheduleStart != null || scheduleEnd != null -> ScheduleTime.Timed(scheduleStart?.toZonedDateTime(), scheduleEnd?.toZonedDateTime())
+                        dayStart != null || dayEnd != null -> ScheduleTime.AllDay(dayStart ?: dayEnd!!, (dayEnd ?: dayStart!!).plusDays(1))
+                        else -> null
+                    }
+                    val timetable = schedule.timetable?.let { timetable(it, time, rule != null, page) }
+                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd, rule, timetable, phase(schedule.phase))
                 },
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
@@ -100,12 +114,43 @@ object ActivityVerifier {
 
     private fun compact(text: String) = normalize(text).replace(" ", "").lowercase()
 
+    // 하위 시간표(native-v1.md "트랙·세션 시간표"): 블록 시간 안·같은 트랙 겹침 없음(어드민과 같은 규칙)이고 세션 제목이 모두 원문에 있을 때만.
+    // 어긋나면 시간표만 버리고 일정·활동은 저장한다. 빈 시간표는 없는 것으로 본다
+    private fun timetable(extracted: ExtractedTimetable, time: ScheduleTime?, recurring: Boolean, page: FetchedPage): CollectedTimetable? {
+        if (extracted.sessions.isEmpty()) return null
+        val text = compact(page.text)
+        if (extracted.sessions.any { compact(it.title) !in text }) return null
+        val trackNames = extracted.tracks.map { it.name.trim() }
+        val sessions = extracted.sessions.map { session ->
+            val start = parse(session.startAt) ?: return null
+            val end = parse(session.endAt) ?: return null
+            val track = session.track?.trim()?.ifEmpty { null }?.let { name -> trackNames.indexOf(name).takeIf { it >= 0 } ?: return null }
+            SessionInput(
+                id = null,
+                track = track,
+                kind = SessionKind.entries.firstOrNull { it.name.equals(session.kind?.trim(), ignoreCase = true) } ?: SessionKind.TALK,
+                title = session.title,
+                description = session.description,
+                startAt = start,
+                endAt = end,
+                speakers = session.speakers.filter { it.name.isNotBlank() }.map { Speaker(it.name, it.affiliation) },
+                tagIds = emptyList(),
+            )
+        }
+        val input = TimetableInput(extracted.tracks.map { TrackInput(null, it.name, it.room) }, sessions)
+        val validated = runCatching { TimetableRules.validate(input, TimetableRules.window(time, recurring)) }.getOrNull() ?: return null
+        return CollectedTimetable(validated, extracted.sessions.map { s -> s.tags.map { it.trim() }.filter { it.isNotEmpty() } })
+    }
+
     // 규칙이 허용 부분집합이고 일정과 맞을 때만(native-v1.md "반복 일정과 겹침 결과 묶음"). 아니면 null
     private fun recurrence(text: String?, time: ScheduleTime, overlapCheck: OverlapCheck?): Recurrence? =
         Recurrence.parseOrNull(text)?.takeIf { runCatching { it.requireFits(time, overlapCheck) }.isSuccess }
 
     // 모델이 준 일정 종류. 모르거나 어긋나면 행사(EVENT)로 본다
     private fun kind(value: String?): ScheduleKind = ScheduleKind.entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) } ?: ScheduleKind.EVENT
+
+    // 모르는 값은 null(서버가 읽을 때 kind 규칙으로 판정한다, native-v1.md "선발 과정·활동 일정 분리")
+    private fun phase(value: String?): SchedulePhase? = SchedulePhase.entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) }
 
     // 공백·마크다운 기호 차이는 무시한다
     private fun normalize(text: String) = text.replace(Regex("[*_`#>]"), "").replace(Regex("\\s+"), " ").trim()

@@ -6,7 +6,7 @@ import SwiftUI
 /// Info.plist turns off IDFV, ad personalisation signals, ad network registration and automatic screen reporting). Events and user properties
 /// carry ids and codes only — never a user id, 지원 자격 values, names, contacts or card contents. `start()` runs once at launch and only when the
 /// build bundles `GoogleService-Info.plist` (gitignored, written by CI from a secret); without it every call is a no-op. Collection follows the
-/// profile's `사용 통계 보내기` (on by default, kept on the device).
+/// 설정 `개인정보` `사용 통계 보내기` (on by default, kept on the device).
 @MainActor enum AppAnalytics {
     /// `사용 통계 보내기`, read with `@AppStorage(AppAnalytics.enabledKey)`; missing means on.
     static let enabledKey = "dearby.analytics.enabled"

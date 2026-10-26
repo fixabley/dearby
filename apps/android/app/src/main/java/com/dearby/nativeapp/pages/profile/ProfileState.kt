@@ -8,6 +8,10 @@ import com.dearby.nativeapp.entities.account.model.ActivityInfoRef
 import com.dearby.nativeapp.entities.account.model.ProfileJob
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.ProfileVersionDetail
+import com.dearby.nativeapp.entities.account.model.currentOrganization
+import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 import com.dearby.nativeapp.widgets.profile.profileFields.JobTag
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
 import com.dearby.nativeapp.widgets.profile.profileFields.historyPeriod
@@ -26,6 +30,8 @@ data class ProfileViewState(
     val consentRequired: Boolean = false, val consenting: Boolean = false, val consentError: String? = null,
     /** 직무 tag picker search (setup funnel and editor). */
     val jobSearch: PickerSearchState = PickerSearchState(),
+    /** 프로필 사진 (contract "프로필 사진"): its own upload/delete, saved at once and not part of 저장. */
+    val photoBusy: Boolean = false, val photoError: String? = null,
 ) {
     /** Never saved yet: the setup funnel replaces the editor and the tab bar hides. */
     val settingUp get() = phase == ProfilePhase.LOADED && profile?.version == 0
@@ -37,12 +43,17 @@ fun ProfileFormState.errors() = ProfileErrors(
     phone = when { phone.isBlank() -> "전화번호를 입력해 주세요."; !ContactRules.validPhone(phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."; else -> null },
     email = when { email.isBlank() -> "이메일을 입력해 주세요."; !ContactRules.validEmail(email) -> "이메일 주소를 확인해 주세요."; else -> null },
 )
+/** 보기 모드 맨 위의 명함 면(contract "프로필 사진" 2026-10-26 사용자 결정): 사진·이름과 소개 링크·직무·소속·연락처. 이력은 [historyCards]로 카드 아래에 따로 그린다. */
+fun ProfileFormState.cardState(photoUrl: String?) = CardState("profile", name.ifBlank { "이름 없음" }, jobsText, "", "", introLink.trim().ifEmpty { null },
+    (listOf(ContactState(phoneId, "phone", "", phone), ContactState(emailId, "email", "", email)) + extras.map { ContactState(it.id, it.kind, "", it.value) }).filter { it.value.isNotBlank() },
+    emptyList(), histories.currentOrganization(), photoUrl)
 /** First profile entry: accordion sections in this order; completed ones collapse to a row that reopens on tap. */
-enum class SetupStep(val label: String) { NAME("이름"), JOBS("직무"), PHONE("전화번호"), EMAIL("이메일"), INTRODUCTION("소개") }
+enum class SetupStep(val label: String) { NAME("이름"), JOBS("직무"), PHONE("전화번호"), EMAIL("이메일") }
 
 /** The in-place edit form: required phone and email, added contacts by kind, 직무 tags, histories from the step funnel, and the version for `If-Match`. */
 data class ProfileFormState(
-    val name: String, val jobs: List<ProfileJob>, val introduction: String, val phone: String, val email: String,
+    /** [introLink] is the 소개 링크 field as typed; blank means none. */
+    val name: String, val jobs: List<ProfileJob>, val introLink: String, val phone: String, val email: String,
     val extras: List<ProfileExtraContact>, val histories: List<AccountHistory>, val version: Int, val phoneId: String, val emailId: String,
 ) {
     companion object {
@@ -50,8 +61,8 @@ data class ProfileFormState(
         fun from(profile: AccountProfile): ProfileFormState {
             val phone = profile.contacts.firstOrNull { it.kind == "phone" }
             val email = profile.contacts.firstOrNull { it.kind == "email" }
-            return ProfileFormState(profile.name, profile.jobs, profile.introduction, phone?.value.orEmpty(), email?.value.orEmpty(),
-                profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, it.value) },
+            return ProfileFormState(profile.name, profile.jobs, profile.introLink.orEmpty(), phone?.value.orEmpty(), email?.value.orEmpty(),
+                profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, ContactRules.shown(it.kind, it.value)) }, // a profile URL saved before 2026-10-26 reads as its username
                 profile.histories, profile.version, phone?.id ?: UUID.randomUUID().toString(), email?.id ?: UUID.randomUUID().toString())
         }
     }
@@ -143,22 +154,31 @@ data class HistoryDraft(
 /** One history as the profile list shows it; computed outside the composable so pages render State only. */
 data class HistoryRowState(val id: String, val title: String, val detail: String, val verified: Boolean, val approvalTag: String?, val saved: Boolean)
 fun AccountHistory.rowState(saved: Boolean) = HistoryRowState(id, chain.joinToString(" · "),
-    listOf(roleTitle, periodText(startDate, endDate)).filter { it.isNotEmpty() }.joinToString(" · "), isVerified,
-    if (hasCustomEntry || !isApproved) when (approval) { "approved" -> "승인됨"; "rejected" -> "거절됨"; else -> "승인 대기" } else null, saved)
+    listOf(roleTitle, periodText(startDate, endDate)).filter { it.isNotEmpty() }.joinToString(" · "), isVerified, approvalTag, saved)
+/** 직접 입력했거나 승인 전인 이력의 승인 상태 태그, 나머지는 null. */
+private val AccountHistory.approvalTag get() = if (hasCustomEntry || !isApproved) when (approval) { "approved" -> "승인됨"; "rejected" -> "거절됨"; else -> "승인 대기" } else null
 /** `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`. */
 fun periodText(start: String, end: String?): String {
     val month = { text: String -> text.take(7).replace('-', '.') }
     return "${month(start)} – ${end?.let(month) ?: "진행 중"}"
 }
 /** A saved version as the detail screen shows it (no entity types in the rendering code). */
-data class VersionDetailView(val version: Int, val createdAt: String, val name: String, val job: String, val introduction: String,
-    val contacts: List<Pair<String, String>>, val histories: List<HistoryRowState>)
-fun ProfileVersionDetail.view() = VersionDetailView(version, createdAt, profile.name, profile.job, profile.introduction,
-    profile.contacts.map { it.label to it.value }, profile.histories.map { it.rowState(true) })
+data class VersionDetailView(val version: Int, val createdAt: String, val name: String, val job: String,
+    val contacts: List<Pair<String, String>>, val histories: List<CardHistoryState>)
+fun ProfileVersionDetail.view() = VersionDetailView(version, createdAt, profile.name, profile.job,
+    profile.contacts.map { it.label to it.value }, profile.histories.historyCards())
+/** 내 프로필 이력을 명함 이력 행(`CardHistoryRow`)으로(contract "내 프로필 활동 이력 = 명함 이력"): 승인 대기·거절은 태그로 남긴다. */
+fun List<AccountHistory>.historyCards() = map {
+    CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, periodText(it.startDate, it.endDate), it.isVerified, it.description, it.approvalTag)
+}
 
 /** The funnel sheet: which draft is open, whether the history exists on the server (evidence can be attached), and the picker search. */
 data class FunnelState(val draft: HistoryDraft, val saved: Boolean, val step: HistoryDraft.Step, val tried: Boolean = false,
-    val search: PickerSearchState = PickerSearchState(), val evidenceBusy: Boolean = false, val evidenceError: String? = null)
+    val search: PickerSearchState = PickerSearchState(), val evidenceBusy: Boolean = false, val evidenceError: String? = null,
+    /** The draft as opened; leaving with other answers asks first (contract "뒤로 가기"). Evidence is already on the server, so it does not count. */
+    val original: HistoryDraft = draft) {
+    val edited get() = draft.copy(evidence = original.evidence, verification = original.verification) != original
+}
 data class PickerSearchState(val query: String = "", val items: List<ActivityInfoItem> = emptyList(), val loading: Boolean = false, val failed: Boolean = false)
 
 /** 변경 이력 screens. */

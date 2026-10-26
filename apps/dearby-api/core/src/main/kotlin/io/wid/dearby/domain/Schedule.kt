@@ -17,6 +17,9 @@ data class Schedule(
     val overlapCheck: OverlapCheck? = null, // 겹침 확인 시간(native-v1.md "겹침 확인 시간"). 없으면 null
     val statuses: List<ProgressStatus> = ProgressStatus.DEFAULTS, // 고를 수 있는 진행 상태. 어드민 지정이 없으면 기본 세 개
     val recurrence: Recurrence? = null, // RRULE: 반복 일정(native-v1.md "반복 일정과 겹침 결과 묶음"). 없으면 null
+    val hasTimetable: Boolean = false, // 하위 시간표(세션)가 붙어 있다(native-v1.md "트랙·세션 시간표")
+    val phase: SchedulePhase = SchedulePhase.ACTIVITY, // 선발 과정·활동 일정(native-v1.md "선발 과정·활동 일정 분리"). 저장값이 없으면 읽을 때 판정해 채운다
+    val storedPhase: SchedulePhase? = null, // 운영자·수집기가 저장한 값(admin-v1.md "phaseSource"). null이면 phase는 자동 판정이다
 ) {
     // TRANSP: 마감·발표 같은 시점 일정과 종일 일정은 TRANSPARENT(겹침 계산 제외)
     val occupiesTime: Boolean get() = kind.occupiesTime && time !is ScheduleTime.AllDay

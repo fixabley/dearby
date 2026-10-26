@@ -6,6 +6,7 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.application.activity.StoredSchedule
+import io.wid.dearby.application.activity.ScheduleItemPatch
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.application.activity.ActivityCreation

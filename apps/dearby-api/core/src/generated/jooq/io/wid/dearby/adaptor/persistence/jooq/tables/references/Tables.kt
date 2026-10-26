@@ -13,9 +13,11 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
+import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReportPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -38,6 +40,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfilePhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
@@ -55,12 +58,16 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserAdConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
@@ -69,6 +76,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserSessionFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
@@ -116,6 +124,11 @@ val ACTIVITY_TAGS: ActivityTags = ActivityTags.ACTIVITY_TAGS
 val APPLE_SIGN_IN_STATES: AppleSignInStates = AppleSignInStates.APPLE_SIGN_IN_STATES
 
 /**
+ * The table <code>public.business_card_photos</code>.
+ */
+val BUSINESS_CARD_PHOTOS: BusinessCardPhotos = BusinessCardPhotos.BUSINESS_CARD_PHOTOS
+
+/**
  * The table <code>public.business_cards</code>.
  */
 val BUSINESS_CARDS: BusinessCards = BusinessCards.BUSINESS_CARDS
@@ -129,6 +142,11 @@ val CARD_BLOCKS: CardBlocks = CardBlocks.CARD_BLOCKS
  * The table <code>public.card_qr_codes</code>.
  */
 val CARD_QR_CODES: CardQrCodes = CardQrCodes.CARD_QR_CODES
+
+/**
+ * The table <code>public.card_report_photos</code>.
+ */
+val CARD_REPORT_PHOTOS: CardReportPhotos = CardReportPhotos.CARD_REPORT_PHOTOS
 
 /**
  * The table <code>public.card_reports</code>.
@@ -241,6 +259,11 @@ val PROFILE_HISTORIES: ProfileHistories = ProfileHistories.PROFILE_HISTORIES
 val PROFILE_JOBS: ProfileJobs = ProfileJobs.PROFILE_JOBS
 
 /**
+ * The table <code>public.profile_photos</code>.
+ */
+val PROFILE_PHOTOS: ProfilePhotos = ProfilePhotos.PROFILE_PHOTOS
+
+/**
  * The table <code>public.profile_versions</code>.
  */
 val PROFILE_VERSIONS: ProfileVersions = ProfileVersions.PROFILE_VERSIONS
@@ -326,9 +349,24 @@ val REFRESH_TOKENS: RefreshTokens = RefreshTokens.REFRESH_TOKENS
 val ROLES: Roles = Roles.ROLES
 
 /**
+ * The table <code>public.schedule_session_tags</code>.
+ */
+val SCHEDULE_SESSION_TAGS: ScheduleSessionTags = ScheduleSessionTags.SCHEDULE_SESSION_TAGS
+
+/**
+ * The table <code>public.schedule_sessions</code>.
+ */
+val SCHEDULE_SESSIONS: ScheduleSessions = ScheduleSessions.SCHEDULE_SESSIONS
+
+/**
  * The table <code>public.schedule_statuses</code>.
  */
 val SCHEDULE_STATUSES: ScheduleStatuses = ScheduleStatuses.SCHEDULE_STATUSES
+
+/**
+ * The table <code>public.schedule_tracks</code>.
+ */
+val SCHEDULE_TRACKS: ScheduleTracks = ScheduleTracks.SCHEDULE_TRACKS
 
 /**
  * The table <code>public.schedules</code>.
@@ -354,6 +392,11 @@ val USER_ACTIVITIES: UserActivities = UserActivities.USER_ACTIVITIES
  * The table <code>public.user_activity_schedule_statuses</code>.
  */
 val USER_ACTIVITY_SCHEDULE_STATUSES: UserActivityScheduleStatuses = UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES
+
+/**
+ * The table <code>public.user_ad_consents</code>.
+ */
+val USER_AD_CONSENTS: UserAdConsents = UserAdConsents.USER_AD_CONSENTS
 
 /**
  * The table <code>public.user_consents</code>.
@@ -394,6 +437,11 @@ val USER_ORG_AFFINITY: UserOrgAffinity = UserOrgAffinity.USER_ORG_AFFINITY
  * The table <code>public.user_roles</code>.
  */
 val USER_ROLES: UserRoles = UserRoles.USER_ROLES
+
+/**
+ * The table <code>public.user_session_favorites</code>.
+ */
+val USER_SESSION_FAVORITES: UserSessionFavorites = UserSessionFavorites.USER_SESSION_FAVORITES
 
 /**
  * The table <code>public.user_taste</code>.

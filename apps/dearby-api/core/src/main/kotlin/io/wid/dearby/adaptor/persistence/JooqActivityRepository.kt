@@ -43,9 +43,12 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             condition.after?.let { add(ACTIVITIES.ID.gt(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+            condition.kind?.let { add(OpenActivityConditions.kind(it)) }
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             // 열린 활동만(발견 묶음과 같은 규칙)
             if (condition.openOnly) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.open(OffsetDateTime.now(ZoneOffset.UTC)))))
+            // 활동 상태 필터(발견 묶음과 같은 판정)
+            condition.statuses?.let { add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.statusIn(it, OffsetDateTime.now(ZoneOffset.UTC))))) }
             // 활동 이력 후보만(7일 미만 행사 제외, 이력 쓰기 검사와 같은 규칙)
             if (condition.forHistory) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.historyEligible)))
         }
@@ -94,8 +97,10 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
                 ActivityContact(it.id!!, it.activityId!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!)
             }
         val tags = TagRows.ofActivities(dsl, ids)
-        val statuses = progressStatusesOf(dsl, schedules.values.flatten().map { it.id!! })
-        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id], statuses) }
+        val scheduleIds = schedules.values.flatten().map { it.id!! }
+        val statuses = progressStatusesOf(dsl, scheduleIds)
+        val timetables = TimetableRows.scheduleIdsWithSessions(dsl, scheduleIds)
+        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id], statuses, timetables) }
     }
 
     private fun toActivity(
@@ -104,8 +109,9 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         contacts: List<ActivityContact>,
         tags: Pair<List<Tag>, List<Tag>>?, // 태그 전부(사전 순)와 분야 태그 순서
         statuses: Map<Id, List<ProgressStatus>>,
+        timetables: Set<Id>, // 시간표가 붙은 일정 id
     ): Activity {
-        fun toSchedule(row: SchedulesRecord) = row.toSchedule(statuses[row.id].orEmpty())
+        fun toSchedule(row: SchedulesRecord) = row.toSchedule(statuses[row.id].orEmpty(), row.id in timetables)
         val bySlot = schedules.groupBy { it.slot }
         val activitySchedule = bySlot[SLOT_ACTIVITY]?.single()?.let(::toSchedule)
             ?: error("Activity ${row.id} has no ACTIVITY schedule")

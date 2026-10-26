@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -31,6 +33,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -47,7 +50,7 @@ import androidx.compose.ui.unit.dp
  * 테두리 없음, 여러 줄([minLines] ≥ 2)은 그 줄 수 높이)이고 포커스·값에 따라 모양이 바뀌지 않는다. [label]은 비어 있고 포커스가 없으면 칸 안에 placeholder처럼(`bodyLarge` 보조색)
  * 보이고, 포커스가 가거나 값이 있으면 `animateFloatAsState`(동작 줄이기면 즉시)로 작아지며 칸 **위 왼쪽(바깥)**으로 올라간다(0.75배 ≈ `bodySmall`, 보조색·포커스 시 청록·오류 시 빨강).
  * 행은 처음부터 라벨 줄 20 + 간격 4 + 칸 높이를 차지해 레이아웃이 튀지 않는다. [required]면 라벨 끝에 빨간 `*`, 접근성 이름에 ", 필수"(2026-10-19 "필수예요." 도움말 규칙은 대체됨).
- * [placeholder]는 포커스가 있고 비었을 때만 칸 안에 보이는 보기(형식 안내). [leadingIcon](연락처 행)은 칸 안 왼쪽 24 보조색. 라벨 글자는 접근성에서 지우고 필드의
+ * [placeholder]는 포커스가 있고 비었을 때만 칸 안에 보이는 보기(형식 안내). [prefix]는 라벨이 떠 있을 때 값 앞에 보이는 고정 글자(사용자명 칸의 `github.com/`, 보조색). [leadingIcon](연락처 행)은 칸 안 왼쪽 24 보조색. 라벨 글자는 접근성에서 지우고 필드의
  * `contentDescription`이 유일한 이름이다. 행 어디를 눌러도 필드에 포커스가 간다. [imeAction]: 마지막 칸 `Done`은 포커스를 지워 키보드를 내리고, 중간 칸 `Next`는 아래 칸으로,
  * 여러 줄은 `Default`(줄바꿈). [keyboardActions]를 넘기면 그 동작이 우선한다. 도움말·오류 문장은 칸 아래 `bodyMedium`([error]가 있으면 빨강; 칸에 테두리가 없어 라벨 색과 이 문장이 오류 표시다).
  */
@@ -55,12 +58,18 @@ import androidx.compose.ui.unit.dp
     label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String? = null, error: String? = null, hint: String? = null,
     minLines: Int = 1, imeAction: ImeAction = if (minLines > 1) ImeAction.Default else ImeAction.Done, keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions? = null, focusRequester: FocusRequester? = null, readOnly: Boolean = false, trailingIcon: (@Composable () -> Unit)? = null,
-    leadingIcon: ImageVector? = null, required: Boolean = false,
+    leadingIcon: ImageVector? = null, required: Boolean = false, prefix: String? = null,
 ) {
     val requester = focusRequester ?: remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val colors = MaterialTheme.colorScheme
     var focused by remember { mutableStateOf(false) }
+    // The text field only brings its cursor line into view; while focused, keep the whole row (label, box, hint) above the keyboard and any bar under the
+    // scroll area as the keyboard slides in. The inset is read in the flow, so the rows are not recomposed per frame.
+    val rowInView = remember { BringIntoViewRequester() }
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    LaunchedEffect(focused) { if (focused) snapshotFlow { ime.getBottom(density) }.collect { rowInView.bringIntoView() } }
     val floating = focused || value.isNotEmpty()
     val reduceMotion = rememberReduceMotion()
     val progress by animateFloatAsState(if (floating) 1f else 0f, if (reduceMotion) snap() else tween(200), label = "floatingLabel")
@@ -72,7 +81,7 @@ import androidx.compose.ui.unit.dp
     // Where the label rests inside the box: after the box padding (and the leading icon); it floats to the box's top-left corner, above it.
     val restX = FIELD_PADDING + if (leadingIcon == null) 0.dp else ICON_SIZE + ICON_GAP
     val restY = LABEL_LINE + LABEL_GAP + FIELD_PADDING_VERTICAL
-    Column(modifier.fillMaxWidth().pointerInput(requester) { detectTapGestures { requester.requestFocus() } }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier.fillMaxWidth().bringIntoViewRequester(rowInView).pointerInput(requester) { detectTapGestures { requester.requestFocus() } }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(Modifier.fillMaxWidth()) {
             Column {
                 Spacer(Modifier.height(LABEL_LINE + LABEL_GAP))
@@ -82,7 +91,10 @@ import androidx.compose.ui.unit.dp
                             .semantics { contentDescription = if (required) "$label, 필수" else label },
                         readOnly = readOnly, textStyle = restStyle.copy(color = colors.onSurface), keyboardOptions = keyboardOptions.copy(imeAction = imeAction), keyboardActions = actions,
                         singleLine = !multiline, minLines = minLines, cursorBrush = SolidColor(colors.primary)) { inner ->
-                        Box { if (value.isEmpty() && focused && placeholder != null) Text(placeholder, color = colors.onSurfaceVariant, style = restStyle); inner() }
+                        Row {
+                            if (prefix != null && floating) Text(prefix, Modifier.clearAndSetSemantics {}, color = colors.onSurfaceVariant, style = restStyle)
+                            Box { if (value.isEmpty() && focused && placeholder != null) Text(placeholder, color = colors.onSurfaceVariant, style = restStyle); inner() }
+                        }
                     }
                 }
             }

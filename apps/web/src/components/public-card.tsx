@@ -10,6 +10,7 @@ import {
   RequestError,
   saveFailure,
 } from "@/lib/client";
+import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
 import { SkeletonGroup } from "@/shared/ui/skeleton";
 import { Icon } from "@/shared/ui/icon";
@@ -17,6 +18,7 @@ import { BottomBar } from "@/shared/ui/bottom-bar";
 import { Button } from "@/shared/ui/button";
 import { CardCodeRequired, MissingCard } from "@/widgets/card/missing-card";
 import { PublicCardBody, PublicCardBodySkeleton } from "@/widgets/card/public-card-body";
+import { InstallOffer } from "./install-offer";
 import { BlockCard, ReportCard } from "@/widgets/card/report-dialog";
 /**
  * `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card.
@@ -51,6 +53,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
     })
       .then((found) => {
         setCard(found);
+        track("card_view", activity === undefined ? {} : { activity_id: activity });
         request<{ items: GuestItem[] }>("/guest/cards", { signal: controller.signal })
           .then((list) => setStored(list.items.some((item) => item.card.id.toLowerCase() === id)))
           .catch(() => {});
@@ -64,7 +67,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
         else setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [id, code, attempt]);
+  }, [id, code, activity, attempt]);
   // The exchange place is decoration: a missing or deleted activity leaves the line out.
   useEffect(() => {
     if (activity === undefined) return;
@@ -93,6 +96,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
         throw new Error("COOKIE_UNAVAILABLE");
       setSaved(true);
       setStored(true);
+      track("card_save_browser");
     } catch (error) {
       const failure = saveFailure(error);
       if (error instanceof RequestError && error.status === 403) {
@@ -134,6 +138,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
           <ReportCard id={id} code={code} />
           {stored && <BlockCard id={id} name={card.name} blocked={() => router.push("/saved")} />}
         </div>
+        {saved && <InstallOffer place="card" />}
         <p className="mt-3 px-4 text-footnote text-secondary-label">
           이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은 30일 뒤 사라져요. 쿠키를 삭제하거나 다른 브라우저를
           사용하면 기존 목록에 접근할 수 없어요.
@@ -150,7 +155,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
           </p>
         )}
         <Button asChild size="lg">
-          <a href={appLink}>
+          <a href={appLink} onClick={() => track("card_open_app")}>
             <Icon name="card" size="inline" />
             Dearby 앱에 저장
           </a>
@@ -161,8 +166,10 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
               <Icon name="check-circle" size="inline" />
               명함을 저장했어요.
             </p>
+            {/* A full page load, not client navigation: iOS then reads the manifest with this session's one-time code
+                (홈 화면 세션 잇기) when the list is added to the home screen. */}
             <Button asChild size="lg" variant="tinted">
-              <Link href="/saved">저장한 명함 보기</Link>
+              <a href="/saved">저장한 명함 보기</a>
             </Button>
           </>
         ) : (

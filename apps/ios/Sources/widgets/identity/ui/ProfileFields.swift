@@ -8,7 +8,7 @@ struct ProfileExtraContact: Identifiable, Equatable {
 }
 
 /// 프로필 연락처 섹션(폼 `Section`). 전화번호·이메일은 필수 행이고, 그 밖의 종류는 `연락처 추가` 행에서 골라 붙이고 왼쪽으로 밀어 지운다.
-/// 행은 왼쪽에 종류 아이콘(`ContactModel.symbol(kind:)`)을 둔 플로팅 라벨 `DearbyFormRow`이고 종류 이름이 라벨(비면 placeholder 자리)이다(계약 "연락처 행은 라벨 대신 왼쪽 아이콘"·"플로팅 라벨" 2026-10-20);
+/// 행은 왼쪽에 종류 아이콘(`ContactModel.glyph(kind:)`, 브랜드 네 종류는 단색 마크)을 둔 플로팅 라벨 `DearbyFormRow`이고 종류 이름이 라벨(비면 placeholder 자리)이다(계약 "연락처 행은 라벨 대신 왼쪽 아이콘"·"플로팅 라벨" 2026-10-20);
 /// 행 어디를 눌러도 그 필드에 포커스가 간다(`focus`의 값은 `phone`·`email`·추가 연락처의 id).
 /// 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 행으로 보이며 오류는 footer에 둔다.
 struct ProfileContactFields: View {
@@ -21,18 +21,22 @@ struct ProfileContactFields: View {
     /// 시트에서 고른 종류. 화면이 새 항목을 `extras`에 넣는다.
     let add: (String) -> Void
     @State private var choosing = false
+    /// A kind was picked: once the sheet is gone its new row takes the focus (and the keyboard).
+    @State private var added = false
     static let kinds: [(kind: String, label: String)] = [("kakao", "카카오톡"), ("instagram", "Instagram"), ("github", "GitHub"), ("behance", "Behance")]
     var body: some View {
         Section {
-            DearbyFormRow(label: "전화번호", symbol: ContactModel.symbol(kind: "phone"), required: true, text: $phone, focus: focus, value: "phone") {
+            DearbyFormRow(label: "전화번호", symbol: ContactModel.glyph(kind: "phone"), required: true, text: $phone, focus: focus, value: "phone") {
                 $0.keyboardType(.phonePad).textContentType(.telephoneNumber)
             }
-            DearbyFormRow(label: "이메일", symbol: ContactModel.symbol(kind: "email"), required: true, text: $email, focus: focus, value: "email") {
+            DearbyFormRow(label: "이메일", symbol: ContactModel.glyph(kind: "email"), required: true, text: $email, focus: focus, value: "email") {
                 $0.keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
             }
             ForEach($extras) { $item in
                 let label = Self.kinds.first { $0.kind == item.kind }?.label ?? item.kind
-                DearbyFormRow(label: label, symbol: ContactModel.symbol(kind: item.kind), text: $item.value, focus: focus, value: item.id) {
+                // Username kinds take the username only; a pasted URL is reduced to it (contract "연락처 사용자명 입력" 2026-10-26).
+                let value = Binding { $item.wrappedValue.value } set: { $item.wrappedValue.value = ContactModel.sanitizedUsername(kind: item.kind, $0) }
+                DearbyFormRow(label: label, symbol: ContactModel.glyph(kind: item.kind), prefix: ContactModel.usernamePrefix(kind: item.kind), text: value, focus: focus, value: item.id) {
                     $0.textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 .swipeActions {
@@ -42,12 +46,14 @@ struct ProfileContactFields: View {
             Button { choosing = true } label: {
                 Label("연락처 추가", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }
-            .sheet(isPresented: $choosing) {
+            .sheet(isPresented: $choosing, onDismiss: {
+                if added { added = false; focus.wrappedValue = extras.last?.id }
+            }) {
                 NavigationStack {
                     List(Self.kinds, id: \.kind) { option in
-                        Button { choosing = false; add(option.kind) } label: {
+                        Button { added = true; choosing = false; add(option.kind) } label: {
                             Label { Text(option.label).foregroundStyle(DearbyStyle.ink) } icon: {
-                                Image(systemName: ContactModel.symbol(kind: option.kind)).foregroundStyle(.secondary)
+                                DearbyGlyphView(glyph: ContactModel.glyph(kind: option.kind))
                             }.font(.dearby(.body)).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
                         }
                     }

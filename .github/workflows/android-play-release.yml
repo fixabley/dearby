@@ -33,6 +33,9 @@ jobs:
       # Origins come from repository variables; signing and Play credentials from repository secrets. Nothing lives in the repo.
       DEARBY_API_ORIGIN: ${{ vars.DEARBY_API_ORIGIN }}
       GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+      # 맞춤 대기열 끝 광고: AdMob ids (not secret; both or the release shows no ad).
+      ADMOB_ANDROID_APP_ID: ${{ vars.ADMOB_ANDROID_APP_ID }}
+      ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID: ${{ vars.ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -79,6 +82,7 @@ jobs:
         run: |
           # The Google button is hidden without it; warn instead of failing so a build without Google sign-in stays possible.
           test -n "$GOOGLE_SERVER_CLIENT_ID" || echo "::warning::GOOGLE_SERVER_CLIENT_ID is empty; the release hides Google sign-in."
+          test -n "$ADMOB_ANDROID_APP_ID" -a -n "$ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID" || echo "::warning::ADMOB_ANDROID_APP_ID or ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID is empty; the release shows no queue ad."
           printf '%s' "$UPLOAD_JKS" | base64 --decode > "$RUNNER_TEMP/upload.jks"
           # Version code: monotonic above the manual first upload (1); a re-run of the same run reuses it and Play refuses the duplicate.
           {
@@ -100,6 +104,12 @@ jobs:
           jarsigner -verify "$aab" | grep -q "jar verified" || { echo "AAB is not signed"; exit 1; }
           echo "AAB_PATH=$PWD/$aab" >> "$GITHUB_ENV"
           echo "versionCode $ANDROID_VERSION_CODE → $PLAY_TRACK ($PLAY_RELEASE_STATUS)" >> "$GITHUB_STEP_SUMMARY"
+      # Kept for a manual upload in Play Console (the first release of an app, or when the API is refused).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: ${{ env.AAB_PATH }}
+          retention-days: 7
       - name: Upload to Play
         run: bundle exec fastlane android release
       - name: Clean up signing material

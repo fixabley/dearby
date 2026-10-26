@@ -2,7 +2,10 @@ import SwiftUI
 
 /// Step-by-step history entry: one question per screen with progress, then a summary with evidence (contract "이력").
 /// Each step is an inset-grouped `Form` section whose header is the question and whose footer carries the error
-/// (contract "폼은 플랫폼 기본 컴포넌트"). `onDone` hands the draft back to the profile form; evidence uploads go straight to
+/// (contract "폼은 플랫폼 기본 컴포넌트"). Steps are pushed on the page's own navigation stack, so the system back button and the edge
+/// swipe go to the previous question with the answers kept (contract "뒤로 가기", as the 추천 funnel). The root (the first question, or a saved
+/// history's summary) has 닫기, which asks before dropping changes; pulling the sheet down is off while there are changes.
+/// `onDone` hands the draft back to the profile form; evidence uploads go straight to
 /// the server for saved histories. The page owns the search focus of its pickers and the description row's focus so the keyboard 완료 clears both.
 struct HistoryFunnelPage: View {
     @State var draft: HistoryDraft
@@ -10,31 +13,43 @@ struct HistoryFunnelPage: View {
     /// True when the history already exists on the server, so evidence can be attached now.
     let saved: Bool
     let onDone: (HistoryDraft) -> Void
-    @State private var step: HistoryDraft.Step
+    /// The first question, or the summary when the history is opened saved; later steps are pushed on `path`.
+    private let root: HistoryDraft.Step
+    private let original: HistoryDraft
+    @State private var path: [HistoryDraft.Step] = []
     @State private var tried = false
+    @State private var discarding = false
     @FocusState private var searchFocused: Bool
     @FocusState private var field: String?
     @Environment(\.dismiss) private var dismiss
     init(draft: HistoryDraft, state: ProfileModel, saved: Bool, startAtSummary: Bool = false, onDone: @escaping (HistoryDraft) -> Void) {
         _draft = State(initialValue: draft)
+        original = draft
         self.state = state
         self.saved = saved
         self.onDone = onDone
-        _step = State(initialValue: startAtSummary ? .summary : .kind)
+        root = startAtSummary ? .summary : .kind
     }
     private var steps: [HistoryDraft.Step] { draft.steps }
-    private var index: Int { steps.firstIndex(of: step) ?? 0 }
-    private var stepError: String? { tried ? draft.error(at: step) : nil }
+    /// Evidence is uploaded as it is picked, so only the answers count as changes.
+    private var edited: Bool {
+        var compared = draft
+        compared.evidence = original.evidence
+        compared.verification = original.verification
+        return compared != original
+    }
     var body: some View {
-        VStack(spacing: 0) {
-            ProgressView(value: Double(index + 1), total: Double(steps.count)).padding(.horizontal, 20).padding(.top, 8)
-                .accessibilityLabel("\(index + 1) / \(steps.count) 단계")
-            Form { content }
-                .font(.dearby(.body))
-                .safeAreaInset(edge: .bottom) { bar }
+        NavigationStack(path: $path) {
+            page(root)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { if edited { discarding = true } else { dismiss() } } } }
+                .navigationDestination(for: HistoryDraft.Step.self) { page($0) }
         }
-        .dearbyDismissKeyboard { searchFocused = false; field = nil }.background(Color(.systemGroupedBackground)).navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+        .interactiveDismissDisabled(edited)
+        .confirmationDialog("작성 중인 내용을 버릴까요?", isPresented: $discarding, titleVisibility: .visible) {
+            Button("버리기", role: .destructive) { dismiss() }
+            Button("취소", role: .cancel) {}
+        }
+        .onChange(of: path) { _, _ in tried = false }
         // Un-picking an activity drops the organization and program it brought along, so a typed activity asks for them fresh.
         .onChange(of: draft.activity) { _, next in
             guard draft.isActivity, next == nil else { return }
@@ -42,7 +57,20 @@ struct HistoryFunnelPage: View {
             draft.program = nil; draft.programName = ""
         }
     }
-    @ViewBuilder private var content: some View {
+    private func page(_ step: HistoryDraft.Step) -> some View {
+        let index = steps.firstIndex(of: step) ?? 0
+        return VStack(spacing: 0) {
+            ProgressView(value: Double(index + 1), total: Double(steps.count)).padding(.horizontal, 20).padding(.top, 8)
+                .accessibilityLabel("\(index + 1) / \(steps.count) 단계")
+            Form { content(step) }
+                .font(.dearby(.body))
+                .safeAreaInset(edge: .bottom) { bar(step) }
+        }
+        .dearbyDismissKeyboard { searchFocused = false; field = nil }.background(Color(.systemGroupedBackground))
+        .navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
+    }
+    @ViewBuilder private func content(_ step: HistoryDraft.Step) -> some View {
+        let stepError = tried ? draft.error(at: step) : nil
         switch step {
         case .kind:
             Section {
@@ -93,7 +121,8 @@ struct HistoryFunnelPage: View {
                 Text("\(draft.roleTitle) · \(draft.summaryLine)").font(.dearby(.footnote)).foregroundStyle(.secondary)
                 if !draft.description.isEmpty { Text(draft.description).padding(.top, 4) }
             }.padding(.vertical, 4).accessibilityElement(children: .combine)
-            Button { step = .kind } label: { Text("내용 고치기").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
+            // Back to the first question: pushed over a saved history's summary, else the root itself.
+            Button { path = root == .summary ? [.kind] : [] } label: { Text("내용 고치기").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
         } header: {
             Text("이력").font(.dearby(.subheadline))
         } footer: {
@@ -112,23 +141,21 @@ struct HistoryFunnelPage: View {
             } header: { Text("인증자료").font(.dearby(.subheadline)) } footer: { Text(hint).font(.dearby(.subheadline)) }
         }
     }
-    private var bar: some View {
-        HStack(spacing: 10) {
-            if index > 0 && step != .summary {
-                Button { step = steps[index - 1] } label: { Text("이전").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+    /// `다음`/`완료` only: the previous question is the navigation bar's back.
+    private func bar(_ step: HistoryDraft.Step) -> some View {
+        Button {
+            tried = true
+            guard draft.error(at: step) == nil else { return }
+            tried = false
+            if step == .summary {
+                onDone(draft)
+                dismiss()
+            } else if let next = steps.drop(while: { $0 != step }).dropFirst().first {
+                // A saved history's summary is the root: going back to it pops the edited questions.
+                if next == root { path = [] } else { path.append(next) }
             }
-            Button {
-                tried = true
-                guard draft.error(at: step) == nil else { return }
-                tried = false
-                if step == .summary {
-                    onDone(draft)
-                    dismiss()
-                } else {
-                    step = steps[index + 1]
-                }
-            } label: { Text(step == .summary ? "완료" : "다음").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill)
-        }.controlSize(.large).font(.dearby(.body).weight(.semibold)).padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
+        } label: { Text(step == .summary ? "완료" : "다음").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill)
+            .controlSize(.large).font(.dearby(.body).weight(.semibold)).padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }
     private func question(_ text: String) -> some View {
         Text(text).font(.dearby(.title3).bold()).foregroundStyle(.primary)

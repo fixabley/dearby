@@ -23,6 +23,9 @@ data class ScheduleResponse(
     val statuses: List<ProgressStatusResponse>, // 고를 수 있는 진행 상태(어드민 지정 또는 기본 세 개, id null)
     val overlapCheck: OverlapCheckResponse?, // 겹침 확인 시간(서울 HH:mm). 없으면 null
     val recurrence: String?, // 반복 규칙(RRULE 본문, 접두사 없음). 없으면 null
+    val phase: SchedulePhase, // 선발 과정(SELECTION)·활동 일정(ACTIVITY). 늘 값이 있다(native-v1.md "선발 과정·활동 일정 분리")
+    val phaseSource: PhaseSource, // STORED: 운영자·수집기가 저장한 값, RESOLVED: 서버 자동 판정(admin-v1.md "phaseSource")
+    val hasTimetable: Boolean, // 하위 시간표가 있으면 true(native-v1.md "트랙·세션 시간표")
 ) {
     companion object {
         fun from(schedule: Schedule): ScheduleResponse {
@@ -46,6 +49,9 @@ data class ScheduleResponse(
                 statuses = schedule.statuses.map { ProgressStatusResponse(it.id, it.name, it.kind) },
                 overlapCheck = schedule.overlapCheck?.let(OverlapCheckResponse::from),
                 recurrence = schedule.recurrence?.rule,
+                phase = schedule.phase,
+                phaseSource = if (schedule.storedPhase != null) PhaseSource.STORED else PhaseSource.RESOLVED,
+                hasTimetable = schedule.hasTimetable,
             )
         }
     }
@@ -59,3 +65,5 @@ data class OverlapCheckResponse(val startTime: String, val endTime: String) {
         fun from(check: OverlapCheck) = OverlapCheckResponse(check.startTime.format(HH_MM), check.endTime.format(HH_MM))
     }
 }
+
+enum class PhaseSource { STORED, RESOLVED }

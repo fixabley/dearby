@@ -15,6 +15,27 @@ data class CalendarOverlapState(val activity: CalendarWindowState, val busy: Bus
     val start get() = maxOf(activity.start, busy.start)
     val end get() = minOf(activity.end, busy.end)
 }
+/**
+ * The overlap timeline's visible window and axis (contract "반복 일정과 겹침 결과 묶음"): up to an hour of the activity before the overlap
+ * and 30 minutes after it, snapped in the activity's zone to the first step of [TimelineSteps] that keeps it to at most six intervals (about
+ * six labels). Blocks are clamped to the window, so an event that began the day before still shows.
+ */
+data class TimelineAxisState(val start: Long, val end: Long, val step: Long) {
+    val ticks get() = (start..end step step).toList()
+}
+private val TimelineSteps = listOf(15, 30, 60, 120, 180, 240, 360, 720).map { it * 60_000L }
+fun timelineAxis(overlap: CalendarOverlapState): TimelineAxisState {
+    val from = maxOf(overlap.activity.start, overlap.start - 3_600_000L)
+    val to = overlap.end + 1_800_000L
+    val zone = ZoneId.of(overlap.activity.zone)
+    // Local midnight, so a two-hour step lands on 08:00·10:00 in the activity's zone rather than on UTC multiples.
+    val midnight = Instant.ofEpochMilli(from).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+    val axes = TimelineSteps.map { step ->
+        val start = midnight + Math.floorDiv(from - midnight, step) * step
+        TimelineAxisState(start, start - Math.floorDiv(start - to, step) * step, step)
+    }
+    return axes.firstOrNull { (it.end - it.start) / it.step <= 6 } ?: axes.last()
+}
 /** Where the comparison stands: asking for the permission, refused, or compared against the device calendar. */
 sealed interface CalendarAccessState {
     data object Asking : CalendarAccessState
@@ -43,7 +64,7 @@ fun compareCalendar(schedules: List<ScheduleModel>, source: BusyTimeSource): Lis
 }
 
 /**
- * One row of the result (contract "반복 일정과 겹침 결과 묶음"): the overlaps of one device event, earliest first. [rule] is the
+ * One device event's overlaps, earliest first, counted once in the result's summary (contract "반복 일정과 겹침 결과 묶음"). [rule] is the
  * event's RRULE; an event with several overlapping occurrences repeats even when its rule could not be read.
  */
 data class OverlapGroupState(val title: String?, val rule: String?, val overlaps: List<CalendarOverlapState>) {

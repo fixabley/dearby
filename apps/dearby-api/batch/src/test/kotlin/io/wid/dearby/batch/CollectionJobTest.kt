@@ -10,6 +10,10 @@ import io.wid.dearby.batch.application.UrlGuard
 import io.wid.dearby.batch.application.StoryBackfillService
 import io.wid.dearby.batch.application.ExtractedActivity
 import io.wid.dearby.batch.application.ExtractedSchedule
+import io.wid.dearby.batch.application.ExtractedSession
+import io.wid.dearby.batch.application.ExtractedSpeaker
+import io.wid.dearby.batch.application.ExtractedTimetable
+import io.wid.dearby.batch.application.ExtractedTrack
 import io.wid.dearby.batch.application.FetchedPage
 import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
@@ -477,8 +481,8 @@ class CollectionJobTest(
     fun `운영자가 지운 세부 일정은 다시 수집해도 되살아나지 않고, 운영자가 고친 일정과 같은 수집 일정은 다시 넣지 않는다`() {
         officialSetting()
         Fakes.extractedSchedules = listOf(
-            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접", recurrence = "FREQ=DAILY;COUNT=2"),
-            ExtractedSchedule(title = "결과 발표", kind = "ANNOUNCEMENT", startAt = null, endAt = null, dateLabel = "11월 20일 발표", startDate = "2026-11-20", endDate = "2026-11-20"),
+            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접", recurrence = "FREQ=DAILY;COUNT=2", phase = "selection"),
+            ExtractedSchedule(title = "결과 발표", kind = "ANNOUNCEMENT", startAt = null, endAt = null, dateLabel = "11월 20일 발표", startDate = "2026-11-20", endDate = "2026-11-20", phase = "TEST"),
         )
         try {
             assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
@@ -486,22 +490,68 @@ class CollectionJobTest(
             assertEquals(listOf("1차 면접", "결과 발표"), detailTitles(activityId))
             // 시각 세부 일정의 반복 규칙은 그대로 저장한다(native-v1.md "반복 일정과 겹침 결과 묶음")
             assertEquals(listOf("FREQ=DAILY;COUNT=2"), jdbc.sql("select recurrence from schedules where activity_id = ? and title = '1차 면접'").param(activityId).query(String::class.java).list())
+            // 선발·활동(native-v1.md "선발 과정·활동 일정 분리"): 수집기가 준 값은 저장하고, 모르는 값은 비워 두어 읽을 때 판정한다
+            fun phases() = jdbc.sql("select title || '=' || coalesce(phase, '-') from schedules where activity_id = ? and slot is null and not curated_deleted").param(activityId).query(String::class.java).list().sortedBy { it.toString() }
+            assertEquals(listOf("1차 면접=SELECTION", "결과 발표=-"), phases())
             // 모집·활동 기간 행은 다시 수집해도 제자리에서 고쳐 id가 그대로다(일정 상태·사용자 선택·겹침 확인 시간이 id에 묶임, native-v1.md "내 활동 서버 저장")
             fun slotIds() = jdbc.sql("select id from schedules where activity_id = ? and slot is not null order by slot").param(activityId).query(Long::class.java).list()
             val slotsBefore = slotIds()
             jdbc.sql("update schedules set overlap_start_time = '10:00', overlap_end_time = '17:00' where activity_id = ? and slot = 'ACTIVITY'").param(activityId).update()
             // 어드민이 1차 면접을 지우고(curated_deleted) 결과 발표에 사유를 달아 고쳤다(curated)
             jdbc.sql("update schedules set curated_deleted = true where activity_id = ? and title = '1차 면접'").param(activityId).update()
-            jdbc.sql("update schedules set curated = true, curated_note = '공식 일정표 확인' where activity_id = ? and title = '결과 발표'").param(activityId).update()
+            jdbc.sql("update schedules set curated = true, curated_note = '공식 일정표 확인', phase = 'ACTIVITY' where activity_id = ? and title = '결과 발표'").param(activityId).update()
             assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
             assertEquals(slotsBefore, slotIds())
             assertEquals(1, jdbc.sql("select count(*) from schedules where activity_id = ? and slot = 'ACTIVITY' and overlap_start_time = '10:00'").param(activityId).query(Int::class.java).single())
             // 보이는 세부 일정은 운영자가 고친 결과 발표 하나뿐이고(수집된 같은 일정은 다시 넣지 않음), 지운 1차 면접은 표시된 행으로만 남는다
             assertEquals(listOf("결과 발표"), detailTitles(activityId))
+            assertEquals(listOf("결과 발표=ACTIVITY"), phases()) // 운영자가 정한 phase는 재수집이 덮어쓰지 않는다
             assertEquals(listOf("공식 일정표 확인"), jdbc.sql("select curated_note from schedules where activity_id = ? and title = '결과 발표'").param(activityId).query(String::class.java).list())
             assertEquals(1, jdbc.sql("select count(*) from schedules where activity_id = ? and title = '1차 면접' and curated_deleted").param(activityId).query(Int::class.java).single())
         } finally {
             Fakes.extractedSchedules = emptyList()
+        }
+    }
+
+    @Test
+    fun `큰 일정 블록의 하위 시간표는 원문에 있고 블록 안일 때만 저장하고, 붙은 블록은 재수집이 지우지 않아 세션 id가 남는다`() {
+        officialSetting()
+        val tagName = jdbc.sql("select name from tags order by id limit 1").query(String::class.java).single()
+        Fakes.pageExtra = " 오전 세션 10:50~12:30 키노트 · 트랙1 첫 세션 · 트랙2 첫 세션 오후 세션 13:50~17:30"
+        fun session(track: String?, kind: String, title: String, start: String, end: String) =
+            ExtractedSession(track, kind, title, "2026-11-29T$start:00+09:00", "2026-11-29T$end:00+09:00", listOf(ExtractedSpeaker("김연사", "우아한형제들")), listOf(tagName, "사전에 없는 분야"))
+        Fakes.extractedSchedules = listOf(
+            ExtractedSchedule(
+                title = "오전 세션", kind = "EVENT", startAt = "2026-11-29T10:50:00+09:00", endAt = "2026-11-29T12:30:00+09:00", dateLabel = "10:50~12:30",
+                timetable = ExtractedTimetable(
+                    listOf(ExtractedTrack("Track 1", "A홀"), ExtractedTrack("Track 2")),
+                    listOf(session(null, "KEYNOTE", "키노트", "10:50", "11:30"), session("Track 1", "TALK", "트랙1 첫 세션", "11:40", "12:20"), session("Track 2", "TALK", "트랙2 첫 세션", "11:40", "12:20")),
+                ),
+            ),
+            // 원문에 없는 세션 제목이 있으면 그 블록의 시간표만 버리고 일정은 저장한다
+            ExtractedSchedule(
+                title = "오후 세션", kind = "EVENT", startAt = "2026-11-29T13:50:00+09:00", endAt = "2026-11-29T17:30:00+09:00", dateLabel = "13:50~17:30",
+                timetable = ExtractedTimetable(emptyList(), listOf(session(null, "TALK", "원문에 없는 세션", "14:00", "14:40"))),
+            ),
+        )
+        try {
+            assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
+            val activityId = jdbc.sql("select id from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Long::class.java).single()
+            assertEquals(listOf("오전 세션", "오후 세션"), detailTitles(activityId))
+            fun sessions() = jdbc.sql("select s.id, s.title, t.name from schedule_sessions s join schedules b on b.id = s.schedule_id left join schedule_tracks t on t.id = s.track_id where b.activity_id = ? order by s.start_at, s.id")
+                .param(activityId).query { rs, _ -> Triple(rs.getLong(1), rs.getString(2), rs.getString(3)) }.list()
+            val before = sessions()
+            assertEquals(listOf("키노트" to null, "트랙1 첫 세션" to "Track 1", "트랙2 첫 세션" to "Track 2"), before.map { it.second to it.third })
+            // 세션 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 시간표가 붙은 블록만 운영자 지정(curated)이 된다
+            assertEquals(listOf(tagName), jdbc.sql("select t.name from schedule_session_tags st join tags t on t.id = st.tag_id where st.session_id = ?").param(before[1].first).query(String::class.java).list())
+            assertEquals(listOf("오전 세션" to true, "오후 세션" to false), jdbc.sql("select title, curated from schedules where activity_id = ? and slot is null order by start_at").param(activityId).query { rs, _ -> rs.getString(1) to rs.getBoolean(2) }.list())
+            // 다시 수집해도 시간표가 붙은 블록은 지웠다 다시 넣지 않아 세션 id(찜)가 그대로이고, 같은 블록이 두 번 생기지 않는다
+            assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
+            assertEquals(before, sessions())
+            assertEquals(listOf("오전 세션", "오후 세션"), detailTitles(activityId))
+        } finally {
+            Fakes.extractedSchedules = emptyList()
+            Fakes.pageExtra = ""
         }
     }
 
@@ -765,6 +815,126 @@ class CollectionJobTest(
 
     // 운영 데이터 가져오기(admin-v1.md "운영 데이터 가져오기 — 2026-10-22"): dry run은 쓰지 않고, apply는 빈 것만 운영자 지정 없이 채운다
     @Test
+    fun `운영 데이터 가져오기는 일정 블록에 시간표를 dry run에서 검증만 하고 apply에서 빈 블록에만 붙인다`() {
+        val activityId = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+        val block = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, '가져오기 오전 세션', 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-29T10:00:00+09:00', '2026-11-29T12:00:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activityId).query(Long::class.java).single()
+        val tagName = jdbc.sql("select name from tags order by id limit 1").query(String::class.java).single()
+        val file = Files.createTempDirectory("curation-timetable").resolve("curation.json")
+        fun write(sessionEnd: String) = Files.writeString(file, json.writeValueAsString(mapOf("activities" to listOf(mapOf(
+            "id" to activityId,
+            "timetables" to listOf(mapOf(
+                "scheduleId" to block,
+                "tracks" to listOf(mapOf("name" to "Track 1", "room" to "A홀")),
+                "sessions" to listOf(
+                    mapOf("kind" to "KEYNOTE", "title" to "키노트", "startAt" to "2026-11-29T10:00:00+09:00", "endAt" to "2026-11-29T10:40:00+09:00"),
+                    mapOf("track" to 0, "kind" to "TALK", "title" to "세션", "startAt" to "2026-11-29T11:00:00+09:00", "endAt" to sessionEnd,
+                        "speakers" to listOf(mapOf("name" to "김연사")), "tagNames" to listOf(tagName, "없는태그")),
+                ),
+            )),
+        )))))
+        fun count() = jdbc.sql("select count(*) from schedule_sessions where schedule_id = ?").param(block).query(Int::class.java).single()
+        try {
+            // 블록 밖 세션은 그 항목만 건너뛴다(이유가 남는다)
+            write("2026-11-29T12:30:00+09:00")
+            assertEquals(listOf("SKIP"), curationImport.import(file, apply = false).map { it.action })
+            write("2026-11-29T11:40:00+09:00")
+            assertEquals(listOf("timetable SET 트랙 1개, 세션 2개"), curationImport.import(file, apply = false).map { "${it.field} ${it.action} ${it.detail}" })
+            assertEquals(0, count())
+            curationImport.import(file, apply = true)
+            assertEquals(2, count())
+            assertEquals(listOf(tagName), jdbc.sql("select t.name from schedule_session_tags x join tags t on t.id = x.tag_id join schedule_sessions s on s.id = x.session_id where s.schedule_id = ?").param(block).query(String::class.java).list())
+            assertEquals(true, jdbc.sql("select curated from schedules where id = ?").param(block).query(Boolean::class.java).single())
+            // 이미 세션이 있으면 overwrite가 아닐 때 건너뛴다
+            assertEquals(listOf("SKIP 이미 있음: 세션 2개"), curationImport.import(file, apply = true).map { "${it.action} ${it.detail}" })
+        } finally {
+            jdbc.sql("delete from schedules where id = ?").param(block).update()
+        }
+    }
+
+    @Test
+    fun `운영 데이터 가져오기는 세부 일정을 지우고 고치고 큰 블록을 만들어 시간표를 붙이며, dry run은 아무것도 쓰지 않고 일회성 실행은 스케줄을 끈다`() {
+        val activityId = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+        fun insert(title: String) = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, ?, 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-29T10:00:00+09:00', '2026-11-29T10:40:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activityId).param(title).query(Long::class.java).single()
+        val before = jdbc.sql("select id from schedules where activity_id = ?").param(activityId).query(Long::class.java).list()
+        val stale = insert("키노트 (수집 조각)")
+        val broken = insert("Keynote ??�")
+        val slot = jdbc.sql("select id from schedules where activity_id = ? and slot = 'ACTIVITY'").param(activityId).query(Long::class.java).single()
+        val file = Files.createTempDirectory("curation-schedules").resolve("curation.json")
+        fun write(blockEnd: String) = Files.writeString(file, json.writeValueAsString(mapOf("activities" to listOf(mapOf(
+            "id" to activityId,
+            "schedules" to listOf(
+                mapOf("ref" to "morning", "title" to "오전 세션", "startAt" to "2026-11-29T10:00:00+09:00", "endAt" to blockEnd),
+                mapOf("id" to stale, "delete" to true),
+                mapOf("id" to broken, "title" to "키노트"),
+                mapOf("id" to slot, "delete" to true),
+            ),
+            "timetables" to listOf(mapOf(
+                "scheduleRef" to "morning",
+                "tracks" to listOf(mapOf("name" to "Track 1")),
+                "sessions" to listOf(
+                    mapOf("kind" to "KEYNOTE", "title" to "키노트", "startAt" to "2026-11-29T10:00:00+09:00", "endAt" to "2026-11-29T10:40:00+09:00"),
+                    mapOf("track" to 0, "kind" to "TALK", "title" to "첫 세션", "startAt" to "2026-11-29T11:00:00+09:00", "endAt" to "2026-11-29T11:40:00+09:00"),
+                ),
+            )),
+        )))))
+        fun state() = jdbc.sql("select id || '|' || title || '|' || curated || '|' || curated_deleted || '|' || sequence from schedules where activity_id = ? order by id").param(activityId).query(String::class.java).list() +
+            jdbc.sql("select count(*) from schedule_sessions s join schedules b on b.id = s.schedule_id where b.activity_id = ?").param(activityId).query(String::class.java).single()
+        fun summary(lines: List<CurationImportService.Line>) = lines.map { "${it.target.substringAfter("activity $activityId")} ${it.field} ${it.action} ${it.detail}".trim() }
+        try {
+            val untouched = state()
+            // 검증 오류(끝이 시작보다 앞선 블록)는 그 활동 항목 전체를 건너뛰고 이유를 남긴다
+            write("2026-11-29T09:00:00+09:00")
+            assertEquals(listOf("- SKIP schedule morning: 끝 시각이 시작 시각보다 앞섭니다"), summary(curationImport.import(file, apply = false)))
+            assertEquals(listOf("- SKIP schedule morning: 끝 시각이 시작 시각보다 앞섭니다"), summary(curationImport.import(file, apply = true)))
+            assertEquals(untouched, state())
+
+            // dry run: 계획만 나오고(새 블록의 시간표도 블록 시각으로 검증) DB는 그대로다
+            write("2026-11-29T12:00:00+09:00")
+            val plan = listOf(
+                "schedule $slot schedule-delete SKIP 모집·활동 기간 행은 바꾸지 않습니다",
+                "schedule $stale schedule-delete SET 키노트 (수집 조각)",
+                "schedule $broken schedule-edit SET Keynote ??� → 키노트",
+                "schedule morning schedule-create SET 오전 세션 | 2026-11-29T10:00+09:00~2026-11-29T12:00+09:00",
+                "schedule morning timetable SET 트랙 1개, 세션 2개",
+            )
+            assertEquals(plan, summary(curationImport.import(file, apply = false)).sortedBy { if ("morning" in it) "z$it" else it })
+            assertEquals(untouched, state())
+
+            // apply: 지운 일정은 curated_deleted(재수집이 되살리지 않음), 고친 일정·새 블록은 curated, 새 블록에 세션이 붙는다
+            curationImport.import(file, apply = true)
+            assertEquals(listOf("오전 세션", "키노트"), detailTitles(activityId).filter { it == "오전 세션" || it == "키노트" })
+            assertEquals(true, jdbc.sql("select curated_deleted from schedules where id = ?").param(stale).query(Boolean::class.java).single())
+            assertEquals("키노트|true", jdbc.sql("select title || '|' || curated from schedules where id = ?").param(broken).query(String::class.java).single())
+            val block = jdbc.sql("select id from schedules where activity_id = ? and title = '오전 세션' and curated and not curated_deleted").param(activityId).query(Long::class.java).single()
+            assertEquals(listOf("키노트", "첫 세션"), jdbc.sql("select title from schedule_sessions where schedule_id = ? order by start_at").param(block).query(String::class.java).list())
+
+            // 다시 실행해도 같은 블록을 또 만들지 않고 아무것도 바꾸지 않는다
+            val applied = state()
+            assertEquals(emptyList(), curationImport.import(file, apply = true).filter { it.action == "SET" })
+            assertEquals(applied, state())
+        } finally {
+            jdbc.sql("delete from schedules where activity_id = ? and not (id = any(?))").param(activityId).param(before.toTypedArray()).update()
+        }
+
+        // 일회성 실행 옵션이 있으면 @Scheduled 작업을 등록하지 않는다(상시 컨테이너는 옵션 없이 떠서 스케줄이 켜진다)
+        assertTrue(oneOffRun(arrayOf("--import-curation=/data/curation.json")))
+        assertTrue(oneOffRun(arrayOf("--recall-now")))
+        assertTrue(oneOffRun(arrayOf("--spring.profiles.active=prod", "--collect-now=12,15")))
+        assertFalse(oneOffRun(emptyArray()))
+        assertFalse(oneOffRun(arrayOf("--spring.profiles.active=prod")))
+    }
+
+    @Test
     fun `운영 데이터 가져오기는 dry run에서 쓰지 않고 apply에서 빈 조건·태그·장소·로고만 채운다`() {
         val source = "'01b773dc-5e13-4d14-a182-9642b47d596e'"
         val activityId = jdbc.sql("select id from activities where source_id = $source").query(Long::class.java).single()
@@ -910,15 +1080,34 @@ class CollectionJobTest(
 
     // 명함 회수(native-v1.md "명함 교환"): batch가 매일 04:00에 부르는 RecallService. 규칙 자체는 api 모듈의 CardFlowTest·GuestFlowTest가 확인한다
     @Test
-    fun `회수는 30일이 지난 비로그인 저장을 빼고 그 안의 것은 남긴다`() {
+    fun `회수는 30일이 지난 비로그인 저장을 빼고 그 안의 것은 남기며 1개월이 지난 신고와 1년이 지났거나 세션이 없는 비로그인 차단을 지운다`() {
         jdbc.sql("insert into guest_sessions (digest, created_at) values ('old-session-digest', now()), ('new-session-digest', now())").update()
         jdbc.sql("insert into guest_cards (session_digest, card_id, saved_at) values ('old-session-digest', gen_random_uuid(), now() - interval '31 days'), ('new-session-digest', gen_random_uuid(), now())").update()
+        // 신고 보유 기간(native-v1.md "명함 신고·차단"): 신고일로부터 1개월. 열린 신고도 지운다
+        jdbc.sql(
+            """insert into card_reports (id, card_id, reason, card_snapshot, status, created_at) values
+               (gen_random_uuid(), gen_random_uuid(), 'SPAM', '{}', 'OPEN', now() - interval '1 month 1 day'),
+               (gen_random_uuid(), gen_random_uuid(), 'SPAM', '{}', 'RESOLVED', now() - interval '1 month 1 day'),
+               (gen_random_uuid(), gen_random_uuid(), 'OTHER', '{}', 'OPEN', now() - interval '27 days')""",
+        ).update()
+        // 비로그인 차단 보유 기간(native-v1.md "명함 신고·차단"): 차단일로부터 1년, 세션이 지워졌으면 바로. 로그인 차단은 그대로
+        jdbc.sql(
+            """insert into card_blocks (id, blocker_user_id, blocker_guest_digest, blocked_user_id, name, created_at) values
+               (gen_random_uuid(), null, 'new-session-digest', gen_random_uuid(), 'guest-old', now() - interval '1 year 1 day'),
+               (gen_random_uuid(), null, 'new-session-digest', gen_random_uuid(), 'guest-recent', now() - interval '11 months'),
+               (gen_random_uuid(), null, 'deleted-session-digest', gen_random_uuid(), 'guest-no-session', now()),
+               (gen_random_uuid(), gen_random_uuid(), null, gen_random_uuid(), 'user-old', now() - interval '2 years')""",
+        ).update()
 
         val report = recall.recall()
 
-        assertEquals(RecallService.Report(receipts = 0, guestCards = 1), report)
+        assertEquals(RecallService.Report(receipts = 0, guestCards = 1, reports = 2, guestBlocks = 2), report)
         assertEquals(listOf("old-session-digest"), jdbc.sql("select session_digest from guest_cards where recalled_at is not null").query(String::class.java).list())
+        assertEquals(listOf("OTHER"), jdbc.sql("select reason from card_reports").query(String::class.java).list())
+        assertEquals(listOf("guest-recent", "user-old"), jdbc.sql("select name from card_blocks order by name").query(String::class.java).list())
         jdbc.sql("delete from guest_sessions where digest in ('old-session-digest', 'new-session-digest')").update()
+        jdbc.sql("delete from card_reports").update()
+        jdbc.sql("delete from card_blocks").update()
     }
 
     // 맞춤 대기열 잡(native-v1.md "맞춤 대기열"): 로고 대표색 채우기 → 바뀐 활동·태그만 임베딩(날짜·URL·연락처 없는 글) → 새 모델은 다 만든 뒤 넘김 → 사용자 대기열

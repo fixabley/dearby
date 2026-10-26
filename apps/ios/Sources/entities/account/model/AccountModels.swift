@@ -179,7 +179,8 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var name: String
     var job: String
     var jobs: [ProfileJob]
-    var introduction: String
+    /// 소개 링크 (contract "소개 링크·소개 글 폐지" 2026-10-26): one https page shown beside the name; nil when none. Replaces the introduction.
+    var introLink: String?
     var contacts: [AccountContact]
     var histories: [AccountHistory]
     var version = 0
@@ -187,27 +188,30 @@ struct AccountProfile: Codable, Equatable, Sendable {
     /// (missing on older servers → false). Never sent back.
     var consent: ProfileConsent? = nil
     var consentRequired = false
-    init(name: String, job: String = "", jobs: [ProfileJob] = [], introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
-        self.name = name; self.job = job; self.jobs = jobs; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
+    /// `/v1/profile/photo?v=<ms>` or nil (contract "프로필 사진" 2026-10-26); read with the session, never sent back, absent from versions.
+    var photoUrl: String? = nil
+    init(name: String, job: String = "", jobs: [ProfileJob] = [], introLink: String? = nil, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
+        self.name = name; self.job = job; self.jobs = jobs; self.introLink = introLink; self.contacts = contacts; self.histories = histories; self.version = version
     }
-    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version, consent, consentRequired }
+    private enum CodingKeys: String, CodingKey { case name, job, jobs, introLink, contacts, histories, version, consent, consentRequired, photoUrl }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         job = try c.decodeIfPresent(String.self, forKey: .job) ?? ""
         jobs = try c.decodeIfPresent([ProfileJob].self, forKey: .jobs) ?? []
-        introduction = try c.decodeIfPresent(String.self, forKey: .introduction) ?? ""
+        introLink = try c.decodeIfPresent(String.self, forKey: .introLink)
         contacts = try c.decodeIfPresent([AccountContact].self, forKey: .contacts) ?? []
         histories = try c.decodeIfPresent([AccountHistory].self, forKey: .histories) ?? []
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 0
         consent = try c.decodeIfPresent(ProfileConsent.self, forKey: .consent)
         consentRequired = try c.decodeIfPresent(Bool.self, forKey: .consentRequired) ?? false
+        photoUrl = try c.decodeIfPresent(String.self, forKey: .photoUrl)
     }
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(name, forKey: .name)
         try c.encode(jobs, forKey: .jobs)
-        try c.encode(introduction, forKey: .introduction)
+        try c.encode(introLink, forKey: .introLink)
         try c.encode(contacts, forKey: .contacts)
         try c.encode(histories, forKey: .histories)
     }
@@ -265,19 +269,19 @@ struct ExchangeContext: Decodable, Equatable, Sendable {
     let activityName: String?
     let programName: String?
 }
-/// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
-/// `template` comes only on owner reads (the built-in template the card was published with).
+/// A published card snapshot from `POST /v1/cards`. `introLink` is the profile's 소개 링크 copied at publish (nil when left out or none).
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String
     let profileName: String
     let job: String
-    var introduction: String? = nil
-    var template: String? = nil
+    var introLink: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
+    /// `/v1/cards/:id/photo?v=<ms>` or nil (contract "프로필 사진 — 명함에 싣기"): the photo copied at publish; absent on servers without it.
+    var photoUrl: String? = nil
 }
 
 /// A blocked card owner (contract "명함 신고·차단"); `name` is the card's name when blocked.
@@ -302,10 +306,21 @@ enum CardReportReason: String, CaseIterable, Identifiable, Sendable {
 extension AccountProfile {
     /// Sample values for a loading profile (`dearbySkeleton`, contract "내용 로딩은 스켈레톤" 2026-10-22); never shown unredacted or sent.
     static let placeholder = AccountProfile(
-        name: "이름", job: "직무", introduction: "자기소개 한두 줄이 여기에 보여요.",
+        name: "이름", job: "직무",
         contacts: [AccountContact(id: "p", kind: "phone", label: "", value: "010-0000-0000"),
                    AccountContact(id: "e", kind: "email", label: "", value: "name@example.com")],
         histories: [AccountHistory(id: "h1", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2026-01-01"),
                     AccountHistory(id: "h2", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2025-03-01",
                                    endDate: "2025-12-31")])
+}
+extension TokenPair {
+    /// The access token's `sub` (the account id), read without verifying the JWT: only a device-side key, e.g. a refused 광고 동의 per account.
+    var subject: String? {
+        let parts = accessToken.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var payload = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+        guard let data = Data(base64Encoded: payload), let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return object["sub"] as? String
+    }
 }

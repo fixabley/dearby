@@ -1,6 +1,7 @@
 package io.wid.dearby.application.program
 
 import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.InvalidInputException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -56,7 +57,7 @@ class ProgramSummaryService(
         }
     }
 
-    // 대상자 필터(native-v1.md "대상자 조건"): 열린 활동을 1차(SQL)·2차(JSON op) 판정으로 거른 뒤 그 활동들로 묶음을 만든다.
+    // 대상자 필터(native-v1.md "대상자 조건"): 열린 활동(status가 있으면 그 상태의 활동)을 1차(SQL)·2차(JSON op) 판정으로 거른 뒤 그 활동들로 묶음을 만든다.
     // 열린 활동 수·가장 가까운 마감·검색어 일치도 모두 걸러진 활동 기준이다
     private fun filteredSummaries(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary> {
         val filter = condition.eligibility!!
@@ -71,6 +72,8 @@ class ProgramSummaryService(
             val organization = organizationById[program.organizationId] ?: return@mapNotNull null
             val matchedIds = if (q == null) emptyList() else activities.filter { matches(it.name, it.nameEn) }.map { it.id }.sorted()
             if (q != null && matchedIds.isEmpty() && !matches(program.name, program.nameEn, organization.name, organization.nameEn)) return@mapNotNull null
+            val recruiting = activities.filter { it.status == ActivityStatus.RECRUITING }
+            val upcoming = activities.filter { it.status == ActivityStatus.RECRUITING_UPCOMING }
             ProgramSummary(
                 id = program.id,
                 name = program.name,
@@ -78,12 +81,16 @@ class ProgramSummaryService(
                 organizationId = organization.id,
                 organizationName = organization.name,
                 organizationNameEn = organization.nameEn,
-                openActivityCount = activities.size,
-                nearestRecruitmentEndAt = activities.mapNotNull { it.recruitmentEndAt }.minOrNull(),
+                openActivityCount = recruiting.size,
+                nearestRecruitmentEndAt = recruiting.mapNotNull { it.recruitmentEndAt }.minOrNull(),
+                upcomingActivityCount = upcoming.size,
+                nearestRecruitmentStartAt = upcoming.mapNotNull { it.recruitmentStartAt }.minOrNull(),
+                statusCounts = activities.groupingBy { it.status }.eachCount(),
                 matchedActivityIds = matchedIds,
                 category = program.category,
+                hasTimetable = activities.any { it.hasTimetable },
             )
-        }.sortedWith(compareBy<ProgramSummary, OffsetDateTime?>(nullsLast()) { it.nearestRecruitmentEndAt }.thenBy { it.name }.thenBy { it.id })
+        }.sortedWith(compareBy<ProgramSummary, OffsetDateTime?>(nullsLast()) { summary -> byProgram.getValue(summary.id).filter { it.status == ActivityStatus.RECRUITING }.mapNotNull { it.sortKey }.minOrNull() }.thenBy { it.name }.thenBy { it.id })
     }
 
     companion object {

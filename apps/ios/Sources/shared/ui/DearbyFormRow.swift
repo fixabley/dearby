@@ -7,17 +7,20 @@ import SwiftUI
 /// `TextField`는 행이 만들고(`text`, `multiline`), 키보드·자동 완성·제출 같은 수식어는 `configure`로 받는다.
 struct DearbyFormRow<Value: Hashable, Field: View>: View {
     let label: String
-    var symbol: String?
+    var symbol: DearbyGlyph?
+    /// Fixed text before the value (a username field's `github.com/`), shown while the label is floated.
+    var prefix: String?
     var required = false
     @Binding var text: String
     var multiline = false
     var focus: FocusState<Value?>.Binding
     let value: Value
     let configure: (TextField<Text>) -> Field
-    init(label: String, symbol: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
+    init(label: String, symbol: DearbyGlyph? = nil, prefix: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
          focus: FocusState<Value?>.Binding, value: Value, configure: @escaping (TextField<Text>) -> Field) {
         self.label = label
         self.symbol = symbol
+        self.prefix = prefix
         self.required = required
         _text = text
         self.multiline = multiline
@@ -33,7 +36,7 @@ struct DearbyFormRow<Value: Hashable, Field: View>: View {
         VStack(alignment: .leading, spacing: 4) {
             Color.clear.frame(height: 20)
             HStack(spacing: 12) {
-                if let symbol { Image(systemName: symbol).font(.dearby(.title3)).foregroundStyle(.secondary).frame(width: 24).accessibilityHidden(true) }
+                if let symbol { DearbyGlyphView(glyph: symbol) }
                 box
             }
         }
@@ -43,11 +46,14 @@ struct DearbyFormRow<Value: Hashable, Field: View>: View {
         .onTapGesture { focus.wrappedValue = value }
     }
     private var box: some View {
-        configure(TextField("", text: $text, axis: multiline ? .vertical : .horizontal))
-            .lineLimit(multiline ? 3 : 1, reservesSpace: multiline)
-            .font(.dearby(.body)).foregroundStyle(.primary)
-            .focused(focus, equals: value)
-            .accessibilityLabel(required ? "\(label), 필수" : label)
+        HStack(spacing: 0) {
+            if let prefix, floated { Text(prefix).font(.dearby(.body)).foregroundStyle(.secondary).accessibilityHidden(true) }
+            configure(TextField("", text: $text, axis: multiline ? .vertical : .horizontal))
+                .lineLimit(multiline ? 3 : 1, reservesSpace: multiline)
+                .font(.dearby(.body)).foregroundStyle(.primary)
+                .focused(focus, equals: value)
+                .accessibilityLabel(required ? "\(label), 필수" : label)
+        }
             .padding(.horizontal, 12).padding(.vertical, 11).frame(minHeight: 44)
             .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
@@ -63,10 +69,26 @@ struct DearbyFormRow<Value: Hashable, Field: View>: View {
     }
 }
 
+/// Row-leading glyph in a 24 column, secondary color: an SF Symbol, or a template image asset (a brand mark, drawn 20 so it sits like the symbols).
+enum DearbyGlyph: Equatable { case system(String), asset(String) }
+
+struct DearbyGlyphView: View {
+    let glyph: DearbyGlyph
+    @ScaledMetric(relativeTo: .title3) private var assetSide: CGFloat = 20
+    var body: some View {
+        Group {
+            switch glyph {
+            case .system(let name): Image(systemName: name).font(.dearby(.title3))
+            case .asset(let name): Image(name).renderingMode(.template).resizable().scaledToFit().frame(width: assetSide, height: assetSide)
+            }
+        }.foregroundStyle(.secondary).frame(width: 24).accessibilityHidden(true)
+    }
+}
+
 extension DearbyFormRow where Field == TextField<Text> {
-    init(label: String, symbol: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
+    init(label: String, symbol: DearbyGlyph? = nil, prefix: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
          focus: FocusState<Value?>.Binding, value: Value) {
-        self.init(label: label, symbol: symbol, required: required, text: text, multiline: multiline, focus: focus, value: value) { $0 }
+        self.init(label: label, symbol: symbol, prefix: prefix, required: required, text: text, multiline: multiline, focus: focus, value: value) { $0 }
     }
 }
 
@@ -130,7 +152,7 @@ private struct DearbyFormRowGallery: View {
             Section("기본 정보") {
                 DearbyFormRow(label: "이름", required: true, text: $name, focus: $focus, value: "name") { $0.textContentType(.name) }
                 DearbyFormRow(label: "소개", text: $note, multiline: true, focus: $focus, value: "note")
-                DearbyFormRow(label: "전화번호", symbol: "phone", required: true, text: $phone, focus: $focus, value: "phone") { $0.keyboardType(.phonePad) }
+                DearbyFormRow(label: "전화번호", symbol: .system("phone"), required: true, text: $phone, focus: $focus, value: "phone") { $0.keyboardType(.phonePad) }
                 DearbyValueRow(label: "직무", value: "")
                 DearbyCheckRow(isOn: $agreed) { Text("개인정보 수집·이용에 동의합니다. 여러 줄이 되는 라벨도 행 전체가 눌려요.") }
             }

@@ -88,9 +88,6 @@ val httpTransport: Transport = object : Transport {
 
 /** Owner API (contract native-v1): passkey sign-in, profile and card publishing. */
 class AccountClient(private val api: String, private val transport: Transport = httpTransport) {
-    /** Passkey sign-up; the account is made when [register] succeeds. The server names the passkey (`Dearby 사용자`). */
-    suspend fun registrationOptions() = send("POST", "auth/passkeys/registration/options", JSONObject()).toPasskeyChallenge()
-    suspend fun register(challengeId: String, credential: String) = send("POST", "auth/passkeys/registration", passkeyBody(challengeId, credential)).toSession()
     // The contract has no request body; an explicit {} keeps HttpURLConnection from sending a bodiless POST.
     suspend fun authenticationOptions() = send("POST", "auth/passkeys/authentication/options", JSONObject()).toPasskeyChallenge()
     suspend fun authenticate(challengeId: String, credential: String) = send("POST", "auth/passkeys/authentication", passkeyBody(challengeId, credential)).toSession()
@@ -142,12 +139,22 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun restoreProfile(version: Int, session: AccountSession) = send("POST", "profile/versions/$version/restore", JSONObject(), session).toProfile()
     /** Multipart upload of one evidence file (max 3 per history, 5MB, image or PDF). */
     suspend fun uploadEvidence(historyId: String, fileName: String, contentType: String, bytes: ByteArray, session: AccountSession): EvidenceMeta {
-        val boundary = "dearby-" + java.util.UUID.randomUUID()
-        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"${fileName.replace("\"", "")}\"\r\nContent-Type: $contentType\r\n\r\n"
-        val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
-        val text = request(HttpRequest("POST", "$api/v1/profile/histories/$historyId/evidence", session.accessToken, null, body, "multipart/form-data; boundary=$boundary"))
+        val text = upload("POST", "profile/histories/$historyId/evidence", fileName, contentType, bytes, session)
         return try { JSONObject(text).toEvidence() } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
+    /** 프로필 사진 (contract "프로필 사진"): the square JPEG the crop screen made; replaces any earlier one. Returns the new `photoUrl`. */
+    suspend fun uploadProfilePhoto(jpeg: ByteArray, session: AccountSession): String {
+        val text = upload("PUT", "profile/photo", "photo.jpg", "image/jpeg", jpeg, session)
+        return try { JSONObject(text).getString("photoUrl") } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
+    }
+    /** 204, also when there was none. Cards already made keep their own copy. */
+    suspend fun deleteProfilePhoto(session: AccountSession) { request("DELETE", "profile/photo", null, session) }
+    /**
+     * A photo by its API path (`photoUrl`, e.g. `/v1/profile/photo?v=…`, `/v1/cards/:id/photo?v=…`): the profile one needs the owner's [session];
+     * a card's has the card's read permission (owner, holder or `?code=`). Asks for an image, not the JSON the other calls accept.
+     */
+    suspend fun photo(path: String, session: AccountSession?): ByteArray =
+        exchange(HttpRequest("GET", api + path, session?.accessToken, null, headers = mapOf("Accept" to "image/jpeg, image/*"))).bytes ?: throw AccountException(AccountError.UNAVAILABLE)
     suspend fun deleteEvidence(historyId: String, evidenceId: String, session: AccountSession) { request("DELETE", "profile/histories/$historyId/evidence/$evidenceId", null, session) }
     /**
      * Picker searches for the history steps (organizations, programs, roles need a session; activities are public). Activities go with `forHistory=true`
@@ -159,14 +166,14 @@ class AccountClient(private val api: String, private val transport: Transport = 
         parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
         return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
     }
-    /** `POST /v1/cards`: [template] is the built-in markdown the server fills in at publish time. */
-    suspend fun publish(name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("POST", "cards", JSONObject().put("name", name).put("description", description).put("template", template)
-            .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    /** `POST /v1/cards`: the server copies the chosen data and, with [includePhoto]·[includeIntroLink], the profile photo and 소개 링크 (contract "프로필 사진", "소개 링크·소개 글 폐지"). */
+    suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean, includeIntroLink: Boolean, session: AccountSession): PublishedCard =
+        send("POST", "cards", cardBody(name, description, contactIds, historyIds, includePhoto, includeIntroLink), session).toPublishedCard()
     /** 이 명함 고치기 (`PUT /v1/cards/:id`, contract "명함 고치기는 같은 명함을 수정", 2026-10-20): same body and validation as [publish]; the snapshot behind the same id is rebuilt from the current profile (200 Card, `id`·`createdAt` kept). Owner only; a withdrawn card is 404. */
-    suspend fun updateCard(id: String, name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("PUT", "cards/$id", JSONObject().put("name", name).put("description", description).put("template", template)
-            .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    suspend fun updateCard(id: String, name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean, includeIntroLink: Boolean, session: AccountSession): PublishedCard =
+        send("PUT", "cards/$id", cardBody(name, description, contactIds, historyIds, includePhoto, includeIntroLink), session).toPublishedCard()
+    private fun cardBody(name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean, includeIntroLink: Boolean) =
+        JSONObject().put("name", name).put("description", description).put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)).put("includePhoto", includePhoto).put("includeIntroLink", includeIntroLink)
     /** 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 with no body. */
     suspend fun deleteCard(id: String, session: AccountSession) { request("DELETE", "cards/$id", null, session) }
     /** Your non-withdrawn cards in creation order, so the newest is last. */
@@ -226,6 +233,12 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun saveEligibilityProfile(profile: EligibilityProfile, session: AccountSession) { request("PUT", "me/eligibility-profile", profile.toPutJson(), session) }
     /** Removes the values and the consent record. */
     suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
+    // 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25): `agreed` is true only for the current version.
+    suspend fun adConsent(session: AccountSession) = send("GET", "me/consents/ad-third-party", null, session).getBoolean("agreed")
+    /** 400 `CONSENT_VERSION` when [version] is not the current one. */
+    suspend fun agreeAdConsent(version: String, session: AccountSession) { request("PUT", "me/consents/ad-third-party", JSONObject().put("version", version), session) }
+    /** 204, also when there was none. */
+    suspend fun withdrawAdConsent(session: AccountSession) { request("DELETE", "me/consents/ad-third-party", null, session) }
     /** The server uses the saved settings and 지원 자격 정보; signed out is 401 (contract "비로그인에서 만들기·추천을 막음", 2026-10-25). */
     suspend fun recommendations(session: AccountSession, size: Int = 10): RecommendationPage =
         send("GET", "discovery/recommendations?size=$size", null, session).toRecommendations(api)
@@ -245,6 +258,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
         request("PUT", "me/favorites/$kind/$id", notifyLevel?.let { JSONObject().put("notifyLevel", it) } ?: JSONObject(), session)
     }
     suspend fun deleteFavorite(kind: String, id: String, session: AccountSession) { request("DELETE", "me/favorites/$kind/$id", null, session) }
+    // 세션 찜 (contract "트랙·세션 시간표", 2026-10-26): idempotent 204s; the list is the raw `{items}` for `parseSessionFavorites`.
+    suspend fun sessionFavorites(session: AccountSession) = send("GET", "me/session-favorites", null, session)
+    suspend fun saveSessionFavorite(id: String, session: AccountSession) { request("PUT", "me/session-favorites/$id", null, session) }
+    suspend fun deleteSessionFavorite(id: String, session: AccountSession) { request("DELETE", "me/session-favorites/$id", null, session) }
     /** The program was opened from 즐겨찾기: its `새 모집` badge goes. */
     suspend fun seenFavoriteProgram(id: String, session: AccountSession) { request("POST", "me/favorites/programs/$id/seen", JSONObject(), session) }
     /** This device's FCM token with its IANA [timeZone] (the server sends at 8 in the morning there). The token is never logged. */
@@ -276,12 +293,20 @@ class AccountClient(private val api: String, private val transport: Transport = 
         val text = request(method, path, body, session, headers)
         return try { JSONObject(text) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
+    /** One `file` part (multipart/form-data). */
+    private suspend fun upload(method: String, path: String, fileName: String, contentType: String, bytes: ByteArray, session: AccountSession): String {
+        val boundary = "dearby-" + java.util.UUID.randomUUID()
+        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"${fileName.replace("\"", "")}\"\r\nContent-Type: $contentType\r\n\r\n"
+        val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
+        return request(HttpRequest(method, "$api/v1/$path", session.accessToken, null, body, "multipart/form-data; boundary=$boundary"))
+    }
     private suspend fun request(method: String, path: String, body: JSONObject?, session: AccountSession?, headers: Map<String, String> = emptyMap()): String =
         request(HttpRequest(method, "$api/v1/$path", session?.accessToken, body?.toString(), headers = headers))
-    private suspend fun request(http: HttpRequest): String {
+    private suspend fun request(http: HttpRequest): String = exchange(http).body
+    private suspend fun exchange(http: HttpRequest): HttpResponse {
         val response = try { transport.send(http) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
         return when (response.status) {
-            in 200..299 -> response.body
+            in 200..299 -> response
             // RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
             400 -> throw AccountException(AccountError.BAD_REQUEST, runCatching { JSONObject(response.body).optString("detail").ifBlank { null } }.getOrNull())
             401 -> throw AccountException(AccountError.UNAUTHORIZED)

@@ -10,6 +10,8 @@ import org.springframework.security.oauth2.jwt.Jwt
 import java.util.UUID
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.ActivityStatus
+import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.eligibility.EligibilityFilter
@@ -33,8 +35,10 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService, p
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) participationType: String?,
         @RequestParam(required = false) category: String?, // 활동 종류 코드 하나 또는 쉼표 목록(native-v1.md "활동 종류")
+        @RequestParam(required = false) kind: String?, // program|event, 생략하면 전부(native-v1.md "발견 프로그램·이벤트 전환")
         @RequestParam(required = false) tagIds: String?, // 태그 id 쉼표 목록, 모두 가진 활동만(native-v1.md "태그")
         @RequestParam(defaultValue = "true") openOnly: Boolean, // false면 최근 3년 안에 활동이 있었던 프로그램까지(native-v1.md "모집 중인 프로그램만 보기")
+        @RequestParam(required = false) status: String?, // 활동 상태 쉼표 목록(native-v1.md "활동 상태"). 있으면 openOnly 대신 쓴다
         @RequestParam(defaultValue = "0") cursor: Int,
         @RequestParam(defaultValue = ProgramSummaryService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)
@@ -46,7 +50,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService, p
             ParticipationType.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
                 ?: throw InvalidInputException("participationType은 REGISTRATION 또는 SELECTION입니다")
         }
-        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), openOnly = openOnly, tagIds = TagIds.parse(tagIds)))
+        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), kind = DiscoveryKind.parse(kind), openOnly = openOnly, tagIds = TagIds.parse(tagIds), statuses = ActivityStatus.parseList(status)))
         val mine = jwt?.let { favorites.ids(UUID.fromString(it.subject)) } ?: FavoriteIds.NONE
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(ProgramSummaryPageResponse(page.items.map { ProgramSummaryResponse.from(it, language, mine) }, page.nextCursor))

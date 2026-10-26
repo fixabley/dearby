@@ -20,5 +20,12 @@ interface CardRepository {
     // 철회 안 한 내 명함, 만든 순
     fun listByOwner(ownerId: UserId): List<BusinessCard>
 
+    // 지우기: 내용과 사진을 비운다
     fun revoke(id: UUID): Boolean
+
+    // 명함 사진 스냅샷(native-v1.md "프로필 사진"): include면 지금 프로필 사진을 복사하고 아니거나 프로필 사진이 없으면 비운다. 복사한 사진의 버전을 돌려준다
+    fun snapshotPhoto(cardId: UUID, ownerId: UserId, include: Boolean): java.time.OffsetDateTime?
+
+    // 철회 안 한 명함의 사진
+    fun photo(cardId: UUID): ByteArray?
 }

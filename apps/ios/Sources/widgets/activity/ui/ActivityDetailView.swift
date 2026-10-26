@@ -9,6 +9,7 @@ struct ActivityDetailView: View {
     @State private var openedFrom: String?
     @State private var showCalendar = false
     @State private var calendarDraft: CalendarEventDraft?
+    @State private var timetable: TimetableRoute?
     private var activity: ActivityModel? { state.activity(activityID) }
     private var applied: Bool { state.appliedIDs.contains(activityID) }
     var body: some View {
@@ -21,7 +22,9 @@ struct ActivityDetailView: View {
                             identity(activity)
                             if let eligibility = activity.eligibility { audience(eligibility) }
                             ActivityInformationView(rows: scheduleRows(activity), canCheckCalendar: !activity.overlapSchedules.isEmpty,
-                                                    checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 })
+                                                    checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 },
+                                                    openTimetable: { timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: $0.id,
+                                                                                                   scheduleTitle: $0.title, date: $0.date) })
                             place(activity)
                             source(activity)
                         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
@@ -54,6 +57,8 @@ struct ActivityDetailView: View {
             if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
+        // 모달 시트: the table's sideways scrolling does not compete with the detail's vertical scrolling.
+        .timetableSheet($timetable, state: state)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
     }
     private func parameters(_ extra: [String: Any]) -> [String: Any] {
@@ -62,8 +67,9 @@ struct ActivityDetailView: View {
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
-                DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
-                if let category = activity.category { DearbyBadge(title: category.label, quiet: true) }
+                // 활동 상태 (contract "활동 상태" 2026-10-26); 모집 정보 없음 has no badge.
+                if let badge = activity.status(at: state.loadedAt)?.badge { DearbyBadge(title: badge) }
+                if let category = activity.category { DearbyBadge(title: category.label, quiet: true, systemImage: category.systemImage) }
             }
             // 분야·얻을 수 있는 것 (contract "분야·성격 태그와 아이콘" 2026-10-24): every tag as icon and text, empty groups omitted.
             tagGroup("분야", activity.fieldTags)
@@ -75,12 +81,17 @@ struct ActivityDetailView: View {
             }
             Text(activity.organization).font(.headline).foregroundStyle(.secondary)
             Divider()
-            DearbyInfoRow(title: "모집 상태", value: activity.statusLabel(at: state.loadedAt), symbol: "calendar")
+            DearbyInfoRow(title: "모집 상태", value: statusText(activity), symbol: "calendar")
             DearbyInfoRow(title: "개최 일시", value: activity.scheduleText(at: state.loadedAt) ?? "미확인", symbol: "clock")
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)
         }
+    }
+    /// The 모집 상태 row: the status, `모집 일정 미정` for 모집 정보 없음, `모집 여부 확인 필요` without one (an unreadable window, older server).
+    private func statusText(_ activity: ActivityModel) -> String {
+        guard let status = activity.status(at: state.loadedAt) else { return "모집 여부 확인 필요" }
+        return status.badge ?? "모집 일정 미정"
     }
     @ViewBuilder private func tagGroup(_ title: String, _ tags: [Tag]) -> some View {
         if !tags.isEmpty {
@@ -143,12 +154,18 @@ struct ActivityDetailView: View {
         .controlSize(.large).font(.dearby(.body).weight(.semibold)).tint(DearbyStyle.teal)
         .padding(.horizontal, 20).padding(.bottom, 12).background(Color(.systemBackground))
     }
-    /// The `행사 일정` rows in track order: the recruitment deadline (`모집 마감`), `schedules[]`, the activity period; each dated one can
-    /// be added to the calendar.
+    /// The `행사 일정` rows in track order: the recruitment (`모집` with the period and a D-day while recruiting when both bounds are known,
+    /// else `모집 마감` with the deadline — contract "모집 날짜 표기 — 2026-10-26"), `schedules[]`, the activity period; each dated one
+    /// can be added to the calendar (the recruitment row as its deadline).
     private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
-        (ActivityStages.build(activity, marks: [:], now: state.loadedAt)?.stages ?? []).map { stage in
-            ActivityInformationView.Row(id: stage.id, title: stage.id == ActivityStages.applicationStageID ? "모집 마감" : stage.name,
-                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)))
+        let now = state.loadedAt
+        let period = activity.applicationStage?.periodText(now: now) == nil ? nil : activity.recruitmentDate(at: now)
+        return (ActivityStages.build(activity, marks: [:], now: now)?.stages ?? []).map { stage in
+            let application = stage.id == ActivityStages.applicationStageID
+            return ActivityInformationView.Row(id: stage.id, title: application ? (period == nil ? "모집 마감" : "모집") : stage.name,
+                                               date: application ? period?.text ?? stage.dateText(now: now) : stage.dateText(now: now),
+                                               draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)),
+                                               hasTimetable: !application && stage.source.hasTimetable, badge: application ? period?.dday : nil)
         }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.

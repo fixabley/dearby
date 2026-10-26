@@ -1,6 +1,6 @@
 package io.wid.dearby.admin.adaptor.web
 
-import io.wid.dearby.admin.application.ScheduleItemPatch
+import io.wid.dearby.application.activity.ScheduleItemPatch
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.Recurrence
@@ -8,6 +8,7 @@ import tools.jackson.databind.JsonNode
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import io.wid.dearby.domain.ScheduleKind
+import io.wid.dearby.domain.SchedulePhase
 import io.wid.dearby.domain.ScheduleStatus
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -19,6 +20,7 @@ data class ScheduleItemRequest(
     val title: String? = null,
     val kind: String? = null,
     val status: String? = null,
+    val phase: JsonNode? = null, // SELECTION|ACTIVITY(admin-v1.md "선발 과정·활동 일정(phase)"). 생략은 유지, JSON null은 저장값을 지워 자동 판정
     val startAt: String? = null,
     val endAt: String? = null,
     val startDate: String? = null,
@@ -33,6 +35,11 @@ data class ScheduleItemRequest(
         title = title?.trim(),
         kind = kind?.let { value -> ScheduleKind.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) } ?: throw InvalidInputException("kind는 DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT 중 하나입니다") },
         status = status?.let { value -> ScheduleStatus.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) } ?: throw InvalidInputException("status는 TENTATIVE·CONFIRMED·CANCELLED 중 하나입니다") },
+        hasPhase = phase != null,
+        phase = phase?.takeUnless { it.isNull }?.let { node ->
+            val value = node.takeIf { it.isTextual }?.asString()?.trim()
+            SchedulePhase.entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: throw InvalidInputException("phase는 SELECTION·ACTIVITY 또는 null입니다")
+        },
         hasTime = listOf(startAt, endAt, startDate, endDate).any { it != null },
         startAt = startAt?.trim()?.ifEmpty { null }?.let(::dateTime),
         endAt = endAt?.trim()?.ifEmpty { null }?.let(::dateTime),

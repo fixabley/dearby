@@ -8,17 +8,17 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 
 ## 모델
 
-- Profile: `id`, `name`, `job`, `introduction`, `contacts: Contact[]`, `histories: History[]`, `updatedAt`.
-- Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`. kakao value는 URL 또는 ID, label로 구분. 외부 URL 열기는 허용 scheme 검증.
+- Profile: `id`, `name`, `job`, `introLink`(소개 링크; `introduction`은 2026-10-26 폐지 예정), `contacts: Contact[]`, `histories: History[]`, `updatedAt`.
+- Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`. github·instagram·behance·kakao의 value는 사용자명(ID)만이다("연락처 아이콘·바로가기" 절의 사용자명 입력, 2026-10-26; 그 전에 저장된 카카오톡 오픈채팅 URL은 표시·열기 유지). 외부 URL 열기는 허용 scheme 검증.
 - 필수 연락처(2026-10-06 사용자 결정): 프로필은 `phone`과 `email`을 각각 하나 이상 가져야 한다. 나머지 종류는 사용자가 골라 추가한다. `PUT /profile`에서 빠지면 422 `INVALID_INPUT`(필드 `contacts`)이다. phone은 숫자·`+`·`-`·공백만 허용하고 숫자 8~15자리, email은 기본 형식을 검사한다. (2026-10-10 패스키 로그인 전환으로 로그인 이메일이 없어져, 앱이 email을 미리 채우던 규칙은 없앴다.) 명함 발행 때 공개할 연락처를 고르는 방식은 그대로이며, 필수는 프로필 기준이지 명함 공개 의무가 아니다.
 - History: `id`, `title`, `role`, `startDate`(YYYY-MM-DD), `endDate`(nullable), `description`.
 - 활동 이력 날짜 입력(2026-10-06 사용자 결정): 앱 프로필 편집에서 이력마다 시작일(필수)과 종료일(선택, `진행 중`이면 비움)을 날짜 선택기로 입력한다. 연·월만 고르는 경우 일은 1일로 저장한다. 종료일은 시작일보다 앞설 수 없다(API도 422). 표시는 `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`이다.
-- Card: `id`, `ownerId`, `name`(명함 이름), `description`, `profileName`, `job`, `introduction`, `contacts: Contact[]`, `histories: History[]`, `createdAt`. 공개 연락처·이력만 포함. 원본 프로필 전체를 클라이언트에서 가리는 방식 금지.
+- Card: `id`, `ownerId`, `name`(명함 이름), `description`, `profileName`, `job`, `introLink`(`introduction`은 폐지 예정), `contacts: Contact[]`, `histories: History[]`, `createdAt`. 공개 연락처·이력만 포함. 원본 프로필 전체를 클라이언트에서 가리는 방식 금지.
 - ExchangeContext: `{ activityId: string|null, label: string|null }`. 등록 활동, 자유 입력, 둘 다 null 중 하나. 활동 선택은 참가 인증이 아니다.
 - Receipt: `id`, `card: Card`, `context: ExchangeContext`, `receivedAt`, `reciprocal: boolean`.
 - GuestSavedCard (기기 전용): `cardId`, `context`, `savedAt`. 영구 원본은 ID 중심, 오프라인 표시 캐시와 구분. 가져오기 성공 항목만 이관 완료 처리. 실패/미선택 보존.
 
-명함 발행은 현재 공개 선택의 스냅샷이다. 프로필 편집이 기존 발행본에 자동 전파되지 않는다. 이는 공개 범위가 의도치 않게 확대되는 것을 막는 초기 구현 결정이다. 명함 철회는 서버 재조회 시 404이며 이미 전달된 정보 자체의 원격 삭제를 보장하지 않는다. 갱신 정책 확대는 별도 이슈로 추적한다.
+명함 발행은 현재 공개 선택의 스냅샷이다. 프로필 편집이 기존 발행본에 자동 전파되지 않는다. 이는 공개 범위가 의도치 않게 확대되는 것을 막는 초기 구현 결정이다. 명함 철회는 서버 재조회 시 404이고 서버의 명함 내용도 바로 비운다(2026-10-25, 아래 "명함 지우기"). 이미 전달된 정보 자체의 원격 삭제는 보장하지 않는다. 갱신 정책 확대는 별도 이슈로 추적한다.
 
 ## 첫 수직 구현 API
 
@@ -26,11 +26,11 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 | --- | --- | --- |
 | (인증) | 아래 "패스키 로그인"의 `/auth/passkeys/*`, `/auth/refresh`, `/auth/logout`, "애플 로그인"의 `/auth/apple/*` | 2026-10-10 이메일 인증번호(`/auth/challenges`, `/auth/sessions`, `DELETE /auth/session`)를 대체 |
 | GET /profile | 없음 | 200 Profile |
-| PUT /profile | `{name,job,introduction,contacts,histories}` | 200 Profile |
+| PUT /profile | `{name,job,introLink,contacts,histories}` | 200 Profile |
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
 | POST /cards | `{name,description,contactIds,historyIds}` | 201 Card |
 | GET /cards/:id | 없음·비로그인 가능 | 200 Card |
-| PUT /cards/:id | `{name,description,template?,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. `template`을 비우거나 빼면 기존 템플릿 유지 |
+| PUT /cards/:id | `{name,description,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. 본문은 현재 프로필 자기소개로 다시 만든다(아래 "템플릿") |
 | DELETE /cards/:id | 없음·소유자만 | 204 |
 | GET /wallet | 없음 | 200 `{items: Receipt[]}` |
 | POST /wallet/import | `{items:[{cardId,context,savedAt}]}` | 200 `{items:[{cardId,status:"imported"|"alreadySaved"|"failed",receiptId:string|null}]}` |
@@ -113,11 +113,13 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 - 웹: 위 "웹 비로그인 명함 저장" 계약의 서버 게스트 세션(`__Host-dearby_guest` 쿠키)을 그대로 쓴다. 서버 세션은 만료되지 않는다. 브라우저는 쿠키 수명을 최대 400일로 제한하므로, 방문할 때마다 Max-Age를 갱신한다(기존 규칙). 1년 넘게 방문하지 않거나 사용자가 쿠키를 지우면 접근이 끊긴다.
 - 홈 화면 추가: Android Chrome은 바로가기·설치 모두 Chrome과 같은 쿠키를 쓴다. iOS는 '웹 앱으로 열기'가 기본으로 켜져 있고 사이트가 바꿀 수 없어서, 그대로 추가하면 Safari와 쿠키가 분리된다(2026-10-06 iOS 26.5 시뮬레이터 확인). 사용자 결정으로 아래 "홈 화면 세션 잇기"를 둔다. manifest `display`는 Android 설치 버튼을 위해 `standalone`을 유지한다. iOS는 공유 메뉴에서 직접 추가해야 하므로 1번 클릭 설치는 불가하고 안내로 제공한다.
+- 홈 화면 바로가기 안내(2026-10-26 사용자 요청): `/cards/:id`에서 브라우저 저장에 성공하면 카드 아래 작은 안내 카드를, `/saved`에서는 기존 안내 시트를 띄운다. 브라우저가 `beforeinstallprompt`를 주면(Android Chrome·삼성 인터넷) `홈 화면에 추가` 버튼(`prompt()`), 아니면 메뉴 단계(iOS Safari·iOS Chrome: 공유 › 홈 화면에 추가, Android Chrome: ⋮ › 홈 화면에 추가, 삼성 인터넷: ≡ › 현재 페이지 추가 › 홈 화면). `/cards/:id`의 카드는 버튼이 없으면 `저장한 명함 보기`(전체 페이지 이동)에서 추가하라고만 안내한다: 바로가기가 목록을 가리키고, iOS가 저장 뒤 불러온 manifest의 1회용 코드(위 "홈 화면 세션 잇기")를 읽게 하려는 것이다. iOS Chrome으로 만든 홈 화면 앱이 Chrome의 쿠키를 넘겨받는지는 확인되지 않아 "목록이 비어 보이면 Safari에서 저장" 한 줄을 붙인다. 홈 화면에서 연 경우(`display-mode: standalone`)·방금 설치·닫기(이번 방문)·`다시 보지 않기`(localStorage)면 숨긴다. manifest `display`는 위 이유로 `standalone` 그대로이고, 이름은 `Dearby 명함함`이다.
 - 홈 화면 세션 잇기(2026-10-06 사용자 결정): 홈 화면 앱이 처음 열릴 때 1회용 코드로 Safari와 같은 게스트 세션 ID 쿠키를 받는다. 이후 두 곳은 같은 세션을 쓰며, 한쪽에서 세션을 지우면 다른 쪽도 끊긴다.
   - 발급: 웹 manifest는 요청마다 만든다. 게스트 쿠키가 있고 저장한 명함이 1개 이상이면 Next가 `POST /v1/guest/handoffs`(게스트 프록시)로 코드를 받아 `start_url`을 `/saved?handoff=<code>`로 넣는다. 아니면 `/saved`. manifest 응답은 `Cache-Control: private, no-store`와 `Vary: Cookie`이다.
   - API `POST /v1/guest/handoffs`: 기존 토큰 필요, 201 `{code, expiresAt}`. 코드는 32바이트 이상 무작위 base64url, 수명 10분, 1회용. 세션당 유효 코드는 1개이며 새로 발급하면 이전 코드는 무효다. DB에는 코드의 SHA-256 digest·세션·만료·사용 시각과, 발급 요청의 게스트 토큰을 코드에서 파생한 키(HKDF)로 AES-256-GCM 암호화한 값만 둔다. DB만으로는 토큰을 복원할 수 없고, 사용·만료 시 암호문을 지운다.
   - API `POST /v1/guest/handoffs/redeem`: body `{code}`, 게스트 프록시, 토큰 없이 호출. 200 `{guestToken}`(코드로 복호화한, Safari와 같은 토큰). 없음·만료·사용됨·세션 폐기는 모두 404 `NOT_FOUND`(구분하지 않음). 성공하면 즉시 사용 처리한다. 요청 제한은 게스트 카운터와 같고, 실패도 센다.
   - 웹 `/saved?handoff=<code>`: 게스트 쿠키가 없을 때만 교환한다. 성공하면 쿠키를 설정하고, 성공·실패 모두 303으로 쿼리 없는 `/saved`로 보낸다. 이미 쿠키가 있으면 교환하지 않고 바로 보낸다. 페이지는 `Referrer-Policy: no-referrer`를 쓰고, 서버 로그에서 `handoff` 쿼리를 가린다.
+  - 홈 화면 앱의 빈 목록(2026-10-26 사용자 동의): iOS 홈 화면 웹 앱(`display-mode: standalone`·`navigator.standalone`)에서 연 `/saved`가 비어 있으면(코드 만료로 못 이은 경우 등) "브라우저에서 저장한 명함을 불러오지 못했어요"와 "Safari에서 <호스트>/saved를 열면 다시 이어져요", 주소 복사 버튼, Safari에서 연 뒤 바로가기를 다시 추가하라는 안내를 보인다. 홈 화면 앱은 Safari 쿠키가 없어 코드를 다시 받을 수 없고, 코드 유효 시간은 늘리지 않는다. Android는 브라우저와 쿠키를 함께 쓰므로 평소 빈 목록 그대로다.
   - 위험: 코드는 유효 시간 동안 게스트 세션 전체(저장한 명함)를 넘겨받는 열쇠다. 다른 기기에서의 사용을 막을 수 없다. 1회용·10분·digest 저장·요청 제한·manifest 캐시 금지로 줄인다. 마이그레이션은 운영 DB 변경이므로 별도 PR로 사용자 승인 뒤 병합한다.
 - 앱의 게스트 세션·게스트 API는 만들지 않는다. 앱은 `dearby://cards/<id>` 스킴으로 받은 명함을 계정 지갑에 저장한다("명함 교환").
 - 2026-10-03 이전 기기에 남은 앱 저장 데이터는 읽거나 지우거나 이관하지 않는다.
@@ -158,7 +160,10 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ## 패스키 로그인 — 2026-10-10 사용자 결정
 
-계정은 패스키로만 만들고 로그인한다. 이메일 인증번호 로그인은 없앤다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+이메일 인증번호 로그인은 없앤다. 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+
+- **2026-10-25 사용자 결정 — 패스키 가입 제거**: 새 계정은 애플·구글 로그인으로만 만든다. 앱(iOS·Android)의 로그인 화면에서 "새 패스키로 시작"을 없앴고, 시작 화면의 "패스키로 시작하기"는 "패스키로 로그인"이 됐다. 이미 패스키로 만든 계정의 "패스키로 로그인"과 설정의 패스키 추가·이름 바꾸기·삭제(로그인한 계정에 패스키를 더함)는 그대로다. 서버의 Bearer 없는 `registration/options`·`registration`(새 계정 생성)은 이미 배포된 앱 버전이 쓰므로 이번에는 지우지 않는다. 새 클라이언트는 이 경로를 Bearer 없이 부르지 않는다.
+- 변경 이력: 2026-10-10 결정은 "계정은 패스키로만 만들고 로그인한다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다."였다(애플·구글 로그인 추가 뒤에도 패스키 가입은 2026-10-25까지 남아 있었다).
 
 ### 신뢰 당사자와 연결
 
@@ -173,8 +178,8 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 | 메서드·경로 | 인증 | 요청 | 성공 응답 |
 | --- | --- | --- | --- |
-| POST /v1/auth/passkeys/registration/options | 없음 | `{displayName?}` | 200 `{challengeId, options}` |
-| POST /v1/auth/passkeys/registration | 없음 | `{challengeId, credential}` | 201 TokenPair. 이때 계정이 생긴다 |
+| POST /v1/auth/passkeys/registration/options | 없음(가입, 배포된 옛 앱만) 또는 Bearer(패스키 추가) | `{displayName?}` | 200 `{challengeId, options}` |
+| POST /v1/auth/passkeys/registration | 없음(가입, 배포된 옛 앱만) 또는 Bearer(패스키 추가) | `{challengeId, credential}` | 201 TokenPair. Bearer 없으면 이때 계정이 생긴다(2026-10-25부터 새 앱은 쓰지 않음) |
 | POST /v1/auth/passkeys/authentication/options | 없음 | 없음 | 200 `{challengeId, options}` (`allowCredentials`는 비움, 기기에 있는 패스키 중 고름) |
 | POST /v1/auth/passkeys/authentication | 없음 | `{challengeId, credential}` | 200 TokenPair |
 | POST /v1/auth/refresh | 없음 | `{refreshToken}` | 200 TokenPair. 쓴 refresh token은 폐기된다(회전) |
@@ -186,8 +191,9 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ### 앱 동작
 
-- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 "패스키로 시작하기"·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
-- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
+- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 로그인 버튼(애플·구글·"패스키로 로그인", 2026-10-25 전에는 "패스키로 시작하기")·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
+- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. 애플·구글·"패스키로 로그인"을 고른다. 두 플랫폼 모두 애플·구글이 위 주 버튼, "패스키로 로그인"은 그 아래 보조 버튼이다(2026-10-25, Android도 iOS 순서로). 새 계정은 애플·구글로만 만든다(2026-10-25, 이전에는 "새 패스키로 시작"으로 가입했다). 이 기기에 패스키가 없으면 애플·구글로 시작하라고 안내한다.
+- 로그인 시트 맨 위에는 락업 이미지 한 장(가로 워드마크 + 그 아래 캐치프레이즈 "대외활동, 매일 맞춤으로", 원본 `shared/assets/brand/sign-in-lockup.html`, 1240×480 투명 PNG 라이트·다크 두 장)을 둔다. 시트는 두 플랫폼 모두 화면 절반 높이로 고정하고(iOS `.presentationDetents([.medium])`, Android 부분 펼침 없이 본문 높이 화면의 50%; 작은 화면에서는 위쪽 내용이 스크롤되고 버튼은 보인다), 이미지는 높이 96pt/dp·비율 유지(시트의 약 1/4)·글자 배율과 무관한 고정 크기로 시트 높이의 약 1/4, 접근성 라벨 "Dearby, 대외활동, 매일 맞춤으로"(2026-10-25 사용자 요청; 이전에는 심볼 아래 앱 이름 텍스트). 다크 변형은 워드마크 #3FB3B4·문구 밝은 회색. 시작 화면도 두 플랫폼 모두 로그인 시트와 같게 한다(2026-10-25 사용자 승인, 이전에는 심볼 + 앱 이름과 큰 제목 "활동에서 만난 사람과 명함을 주고받아요"): 같은 락업 이미지만 두고(큰 제목·설명 없음), 버튼은 애플 → 구글 → 로그인 고지 한 줄(아래 "애플 로그인"의 "로그인 고지") → "패스키로 로그인"·"둘러보기" 보조(텍스트) 버튼. 로그인 시트도 본문 큰 제목·설명 없이 락업 아래 버튼 묶음이다(애플·구글이 없는 빌드는 "패스키로 로그인" 제목·설명과 주 버튼).
 - access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
 - 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
 - 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.
@@ -201,14 +207,14 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/profile | Bearer | — | 200 Profile. 아직 없으면 빈 프로필(`version` 0) |
-| PUT /v1/profile | Bearer, `If-Match: <version>` 선택 | `{name, jobs[], introduction, contacts[], histories[]}` | 200 Profile(`version`+1). `If-Match`가 현재 버전과 다르면 409 |
+| PUT /v1/profile | Bearer, `If-Match: <version>` 선택 | `{name, jobs[], introLink?, contacts[], histories[]}`(옛 앱의 `introduction`은 받고 무시) | 200 Profile(`version`+1). `If-Match`가 현재 버전과 다르면 409 |
 | GET /v1/profile/versions | Bearer | `cursor?`, `size?` | 200 `{items: [{version, createdAt}], nextCursor}` 최신순 |
 | GET /v1/profile/versions/:n | Bearer | — | 200 `{version, createdAt, profile}` 그때의 프로필 |
 | POST /v1/profile/versions/:n/restore | Bearer | — | 200 Profile. 그 버전 내용으로 새 버전을 만든다(이력은 지우지 않는다) |
 
-- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`. `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
+- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction(폐지 예정, 늘 ""), introLink, contacts: Contact[], histories: History[], version, updatedAt, photoUrl}`. `photoUrl`은 아래 "프로필 사진"(없으면 null, 버전 스냅샷에는 싣지 않는다). `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
 - 직무(2026-10-17 사용자 결정, 이전 "직함" 문자열을 대체): 직무는 조직처럼 계층을 가진 활동 정보이고 프로필은 여러 개를 태그로 둔다. ProfileJob: `{id(클라이언트 UUID), job: {id, name} | null, jobName, approval: approved|pending|rejected, approvalReason}`. PUT에는 `{id, jobId?, jobName?}`를 보낸다(둘 다 보내면 `jobId`). 검색에 없으면 `jobName`만 적는 직접 입력이고 이력과 같은 규칙으로 관리자 승인 전(`pending`)에는 명함 `job`에 들어가지 않는다. 직접 입력 값이 그대로면 승인·거절 결과가 유지되고 바뀌면 다시 `pending`. 최대 10개, 같은 직무 중복 400. 검색은 `GET /v1/jobs`(아래 "이력"의 선택 창 검색과 같은 형식, `q?`, `parentId?`, `rootsOnly?`, `cursor?`, `size?`; 항목에 바로 위 직무 `parent: {id, name}`). V18 이전 버전 스냅샷의 `job` 문자열은 승인된 직접 입력 직무로 읽힌다.
-- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 꾸미기(마크다운 템플릿)는 명함 제작에서 한다(아래 "템플릿").
+- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). 자기소개 글(`introduction`)은 2026-10-26 폐지되어 이름 옆 소개 링크(`introLink`)가 대신한다(아래 "소개 링크·소개 글 폐지").
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
 
@@ -235,30 +241,55 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 - Evidence: `{id, fileName, contentType, size, uploadedAt}`. 파일은 DB에 둔다(bytea). 명함에는 실리지 않는다.
 - 올리면 `verification`이 `pending`이 된다(이미 `verified`면 유지). 건너뛰고 나중에 올릴 수 있다. 다 지워도 `verified`는 유지된다.
 
+### 프로필 사진 — 2026-10-26 사용자 결정
+
+사용자: 프로필 사진을 올릴 수 있게 한다. 보이는 곳은 내 프로필과 명함(명함 면·웹 `/cards/:id`). 명함을 만들 때 "사진 넣기"를 고른다(기본 켬). 자르기는 사용자가 위치·크기를 직접 조절하고 앱이 정사각형으로 잘라 올리며, 화면에는 원형으로 보인다. 선택 항목이며 처리방침에 "프로필 사진(선택)"을 적어야 한다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| PUT /v1/profile/photo | Bearer | multipart `file` | 200 `{photoUrl}`. 있으면 바꾼다. `image/jpeg`·`image/png`만, 5MB, 한 변 4096px까지. 어기거나 읽을 수 없으면 400 |
+| GET /v1/profile/photo | Bearer(본인) | — | 200 `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`. 없으면 404 |
+| DELETE /v1/profile/photo | Bearer | — | 204. 없어도 204 |
+
+- **앱이 올리는 것**: 사용자가 위치·크기를 고른 **정사각형** 크롭을 회전(EXIF 방향)이 적용된 픽셀 그대로, 한 변 1024px 이하로 줄여 JPEG(또는 PNG)로 올린다. HEIC·WebP는 서버가 읽지 못하므로 앱이 JPEG로 바꿔 올린다(iOS 사진 앱 기본 HEIC). 서버는 EXIF 방향을 읽지 않는다.
+- **서버가 하는 것**: 파일 종류(요청 `Content-Type`)·크기를 확인하고 JDK ImageIO로 실제로 풀어 본다(헤더만 맞고 내용이 이미지가 아니거나 CMYK JPEG처럼 읽지 못하면 400). 크기를 먼저 읽어 한 변 4096px을 넘으면 풀지 않고 400. 정사각형이 아니면 가운데 정사각형으로 자른다. 한 변 512px로 줄이고(더 작으면 키우지 않는다) 흰 바탕(투명 PNG)에 JPEG(품질 0.85)로 **다시 인코딩**한다. 픽셀만 새로 쓰므로 EXIF(위치·기기)·ICC 등 메타데이터는 남지 않는다. 원본은 저장하지 않는다.
+- **저장**: V58 `profile_photos(user_id pk → users on delete cascade, data bytea, updated_at timestamptz)`. 인증자료처럼 DB에 두고 사용자당 하나다. 프로필 버전(`profile_versions`)·버전 되돌리기와 무관하다.
+- **`photoUrl`**: `GET`·`PUT /v1/profile`·`restore` 응답과 `PUT /v1/profile/photo` 응답에 `"/v1/profile/photo?v=<바뀐 시각 epoch ms>"` 또는 null. API 경로라 앱이 API base를 붙인다. 사진을 바꾸면 `v`가 바뀌므로 앱은 `v`가 같으면 캐시를 그대로 쓴다. 조회는 Bearer가 필요해 시스템 이미지 로더(`AsyncImage`·Coil 기본)로 바로 못 열고, 앱의 인증 HTTP 클라이언트로 받는다.
+- **동의**: `PUT`·`DELETE`는 다른 프로필 쓰기처럼 현재 버전 필수 동의가 없으면 403 `CONSENT_REQUIRED`("개인정보 동의"). `GET`은 막지 않는다.
+- **계정 삭제**: `users` cascade로 함께 지운다(아래 "계정 삭제").
+- **명함에 싣기**:
+  - 요청: `POST /v1/cards`·`PUT /v1/cards/:id`에 `includePhoto?: boolean`(생략하면 true). 제작 화면의 "사진 넣기" 스위치(기본 켬, 프로필 사진이 없으면 스위치 대신 "프로필에서 사진을 넣을 수 있어요"). 프로필 사진이 없으면 true여도 사진 없는 명함이 된다.
+  - **발행 시점 복사**: 명함은 발행 시점 스냅샷이므로 프로필 사진을 참조하지 않고 그때의 바이트를 명함 쪽에 복사한다. V59 `business_card_photos(card_id pk → business_cards on delete cascade, data bytea)`와 `business_cards.photo_updated_at`(복사한 프로필 사진의 `updated_at`, 없으면 null). 프로필 사진을 바꾸거나 지워도 이미 낸 명함의 사진은 그대로이고, 바꾸려면 명함을 고치거나(`PUT /v1/cards/:id`가 그때 프로필 사진으로 다시 복사, `includePhoto=false`면 비움) 지운다. 앱은 프로필 사진을 지울 때 "이미 만든 명함의 사진은 명함을 고치거나 지워야 바뀌어요" 안내를 둔다(사용자 확인 필요한 결과).
+  - 응답: Card(내 명함 목록·발행·고치기·공개 조회·지갑·게스트 목록)에 `photoUrl: "/v1/cards/:id/photo?v=<ms>" | null`. `GET /v1/cards/:id/photo`는 `GET /v1/cards/:id`와 같은 조회 권한(주인·받은 명함·게스트 저장·유효한 `?code=`, "명함 QR 코드")이고 실패도 같은 403·404다(사진이 없으면 404). `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`.
+  - 명함 지우기·어드민 내리기는 내용과 함께 사진도 바로 지운다(위 "명함 지우기", V56 규칙과 같다).
+  - 웹 `/cards/:id`: 로드 뒤 주소에서 `code`를 지우므로 `<img>`가 코드를 실을 수 없다. 웹 프록시(`/api/cards/:id`)가 명함을 조회할 때 `photoUrl`이 있으면 사진도 같은 권한(코드·게스트 쿠키)으로 받아 응답에 `photo: "data:image/jpeg;base64,…"`로 넣고, 카드 면은 이니셜 원 대신 원형 사진을 그린다. 사진을 못 받으면 이니셜 그대로. `/saved` 목록 행은 이니셜 그대로다. 오픈그래프에는 넣지 않는다("오픈그래프" — 이름·사진 미포함 그대로).
+  - 신고 스냅샷: 사칭·부적절 신고의 근거라 신고 시점 명함 사진도 V59 `card_report_photos(report_id pk → card_reports on delete cascade, data bytea)`에 복사해 둔다(`card_snapshot`과 같은 수명: 신고일 1개월 뒤 삭제, 내 명함에 대한 신고는 계정 삭제 때 삭제). 24시간 안 재신고(기존 신고 200)는 다시 복사하지 않는다. 어드민 `GET /v1/admin/card-reports/:id/photo`(ADMIN, `image/jpeg`, `no-store`, 없으면 404).
+
 ### 명함·지갑
 
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `template`은 앱 내장 기본 템플릿(아래 "템플릿") |
+| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[], includePhoto?}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
-| DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
+| DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- Card: `{id, ownerId, name, description, template, introduction, introLink, profileName, job, contacts: Contact[], histories: History[], photoUrl, createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introLink`는 발행(고치기) 시점 프로필 소개 링크의 복사본(`includeIntroLink: false`면 null), `introduction`은 **폐지 예정**(2026-10-26, 늘 빈 문자열; 아래 "소개 링크·소개 글 폐지"). `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. `photoUrl`(`includePhoto`)은 위 "프로필 사진".
+- **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`introLink`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
 
 ### 템플릿
 
-명함 본문(`introduction`)은 발행할 때 서버가 `template`을 채운 결과다. 사용자가 템플릿을 고치는 UI는 없다.
+**2026-10-26 폐지(사용자 결정).** 템플릿·토큰 채우기는 없다. 같은 날 명함 본문(`introduction`, 프로필 자기소개 복사)도 폐지되었다(아래 "소개 링크·소개 글 폐지") — 아래 본문 관련 줄은 그 전까지의 규칙이다.
 
-- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고, `template`에는 **앱 내장 기본 템플릿** `{{profile.introduction}}` 하나를 그대로 보낸다. 제작 화면은 채운 결과를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그리므로 본문에 다시 넣지 않는다.
-- 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 서버는 발행할 때 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다.
-- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
-- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)과 10,000자·제어 문자 규칙. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
-- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다.
+- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고 `template`을 보내지 않는다. 제작 화면은 자기소개를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그린다.
+- 서버는 `POST`·`PUT /v1/cards`의 `template`을 선택값으로 받고 **무시**한다(이미 배포된 옛 앱이 보내므로 400을 내지 않는다). 응답 Card의 `template`(주인 조회만)은 옛 앱 호환으로 당분간 남기며 새 스냅샷은 빈 문자열이다. DB 열 `business_cards.template`은 이번에 지우지 않는다.
+- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지). 고치면 본문도 그때의 자기소개로 바뀐다.
+- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)으로 렌더한다. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
+- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다. · 2026-10-26 템플릿 폐지(사용자 결정): 앱 내장 템플릿 `{{profile.introduction}}` 하나뿐이라 본문을 자기소개 복사로 바꾸고 앱·서버의 템플릿 코드를 지움. 계기는 Android 앱 템플릿 정규식(`}}` 미이스케이프)이 Android 17 ICU에서 `PatternSyntaxException`으로 명함 만들기를 열자마자 앱을 끝낸 일. 폐지 전 토큰 규칙은 [`2c01befa`](https://github.com/fixabley/dearby/blob/2c01befa/shared/contracts/native-v1.md#템플릿).
 
 ## 애플 로그인 — 2026-10-16 사용자 결정
 
@@ -298,6 +329,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
   - iOS는 credential의 `authorizationCode`를 함께 보낸다. 웹 방식은 콜백의 `code`를 서버가 쓴다.
   - 서버는 `.p8` 키로 서명한 client secret으로 code를 애플 refresh token으로 바꿔 `user_identities`에 둔다. 아래 "계정 삭제" 때 폐기하기 위해서다.
   - 키가 설정되지 않았거나 교환이 실패해도 로그인은 막지 않는다. 다시 로그인하면 새 토큰으로 바꾼다.
+- **로그인 고지(2026-10-25 사용자 결정, 구글 로그인에도 적용)**: 로그인 화면(로그인 시트·시작 화면)의 Apple·Google 버튼 바로 아래에 작은 보조 글씨 한 줄 `로그인하면 계정 식별을 위해 Apple·Google 계정 정보(이메일 등)를 개인정보처리방침에 따라 처리해요.`를 둔다(`개인정보처리방침`은 `https://dearby.wid.io.kr/privacy` 링크). 별도 동의 단계는 아니다(아래 "광고 목적 개인정보 제3자 제공 동의(선택)"의 "동의 시점 원칙(JIT) 점검"). iOS 로그인 시트는 같은 날 본문 큰 제목·설명을 없애고(내비게이션 제목 `로그인`과 락업은 유지) `패스키로 로그인`을 고지 아래 보조(텍스트) 버튼으로 낮춘다.
 
 ## 계정 삭제 — 2026-10-16 사용자 결정
 
@@ -309,7 +341,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - 되돌릴 수 없다. 앱은 내 프로필 탭 맨 아래 "계정 삭제"에서 확인 대화상자("계정을 삭제할까요?" / "명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.")를 거쳐 부른다. 성공하면 저장한 토큰과 메모리의 계정 데이터를 지우고 로그아웃 상태로 돌아간다. 401 뒤 refresh도 거절되면 로그아웃된 것으로 본다.
 - 지우는 것
-  - 사용자, 역할, 연락처, 프로필, 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
+  - 사용자, 역할, 연락처, 프로필, 프로필 사진(2026-10-26), 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
   - refresh token. 이미 발급한 access token은 수명(1분)이 지나면 끝난다.
   - 패스키 user entity와 credential. 기기에 남은 패스키는 앱이 지울 수 없어 안내만 한다(iOS "설정 > 암호", Android "비밀번호 관리자").
   - 외부 로그인 연결
@@ -333,7 +365,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `applicationUrl ?? officialUrl`을 연다(2026-10-19 밤 "신청 확인 조건 완화").
   - 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
-- Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`. 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.
+- Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`(2026-10-26 `hasTimetable` 추가, 아래 "트랙·세션 시간표"; 2026-10-26 `phase: "SELECTION"|"ACTIVITY"` 추가, 아래 "선발 과정·활동 일정 분리"). 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.
 
 ## 태그(얻을 수 있는 것) — 2026-10-19 사용자 결정
 
@@ -349,23 +381,26 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "프로필 입력하기 전에 개인정보동의 필수로 구할 수 있게". 프로필(이름·연락처·이력)을 처음 저장하기 전에 **개인정보 수집·이용 동의**와 **이용약관 동의**를 필수로 받고 서버에 기록한다.
 
-- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(기본 `2026-10-19`, 웹 `/privacy`·`/terms` 시행일과 같다). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
+- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(웹 `/privacy`·`/terms` 시행일과 같다. 처음 `2026-10-19`, 2026-10-22부터 둘 다 `2026-10-22`, 2026-10-26부터 처리방침만 `2026-10-26`(사진·소개 링크·웹 사용 통계·광고 선택 동의 고지 — 약관은 2026-11-01 시행이라 `2026-10-22` 유지)). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
 - 저장: V37 `user_consents(user_id pk → users on delete cascade, privacy_version, terms_version, consented_at timestamptz)`. 계정 삭제와 함께 지워진다.
 - API: `POST /v1/me/consents {privacyVersion, termsVersion}`(Bearer) → 204. 현재 버전과 다르면 400 `CONSENT_VERSION`. `GET /v1/profile` 응답에 `consent: {privacyVersion, termsVersion, consentedAt}|null`과 `consentRequired: boolean`(기록이 없거나 버전이 다르면 true)을 더한다. **`PUT /v1/profile`은 `consentRequired`이면 403 `CONSENT_REQUIRED`**(이력 인증자료 업로드 등 프로필 하위 쓰기도 같다). 명함 발행·받은 명함·활동 신청 표시는 프로필이 있어야 하므로 자연히 뒤에 온다.
 - 앱(iOS·Android): 첫 프로필 퍼널의 첫 단계 앞, 그리고 프로필 화면을 열었을 때 `consentRequired`이면 **동의 화면**을 전체 화면으로 보인다. 제목 "시작하기 전에 동의가 필요해요", 필수 체크 두 개(`개인정보 수집·이용에 동의합니다 (필수)`, `이용약관에 동의합니다 (필수)`), 각 항목의 `보기`는 `https://dearby.wid.io.kr/privacy`·`/terms`를 인앱 브라우저(iOS `SFSafariViewController`, Android Custom Tab)로 연다. 둘 다 체크해야 `동의하고 계속`이 켜지고, 누르면 `POST /v1/me/consents` 뒤 원래 흐름으로 간다. 동의 전에는 프로필 입력 단계로 갈 수 없다. 서버가 403 `CONSENT_REQUIRED`를 돌려주면 같은 화면을 보인다. 로그아웃 상태에서는 보이지 않는다(로그인 뒤 프로필에서).
 - 웹: 프로필 입력이 없으므로 바뀌지 않는다(비로그인 저장 쿠키 안내는 `/privacy`에 이미 있다).
 
 - 2026-10-20: iOS는 동의 화면을 프로필 탭 위의 **시트**로 띄우고 닫을 수 있다(닫으면 미동의, 저장하면 다시 뜸; "터치 영역·검색 경험·시트 닫기" 절). Android는 전체 화면이되 뒤로 가기로 나간다.
+- 2026-10-25 사용자 결정(버그 보고 "약관 동의하지 않고 뒤로가기 눌렀을 때 프로필 생성 퍼널로 넘어가" 뒤): 동의는 프로필 탭이 아니라 **앱 전체**에서 묻는다. 로그인됨 + 현재 버전 필수 동의 없음이면 (1) 앱을 시작할 때·포그라운드로 돌아올 때마다 동의 화면(iOS 앱 루트 시트, Android 전체 화면)을 다시 띄우고, (2) 계정 데이터를 쓰는 기능(프로필·명함 탭은 "동의가 필요해요 / 동의하기" 안내로 대신, 즐겨찾기 하트·알림 목록·맞춤 대기열·추천 설정·지원 자격 정보·명함 만들기·받은 명함 저장 링크)은 그 기능 대신 동의 화면을 띄운다. 발견 둘러보기·활동 상세·내 활동(기기 저장)은 그대로 쓴다. 동의 없이 닫거나 뒤로 가면 **로그인을 유지**하고 다음에 다시 묻는다. 동의하면 하던 곳으로 이어지고, 가입 직후(프로필 버전 0)면 프로필 만들기로 간다. 동의 전에는 앱이 계정 데이터를 서버로 보내거나 동기화하지 않는다(내 활동 서버 저장·즐겨찾기·알림 목록·푸시 토큰·추천 설정·대기열 신호, 사용 통계 `signed_in` 속성은 동의 뒤 `yes`). 동의 화면의 `동의하고 계속` 아래 보조 버튼: 가입 직후 계정은 **`가입 취소`**(확인 "가입을 취소할까요? / 가입을 취소하면 방금 만든 계정이 삭제돼요." 뒤 기존 계정 삭제 `DELETE /v1/me`, Apple 토큰 해지 등 서버 삭제 흐름 그대로, 로그아웃 상태로 그 화면에 남음), 이미 프로필이 있어 새 버전 재동의를 하는 계정은 **`로그아웃`**(계정 삭제는 설정에서만). 서버가 동의를 강제하는 쓰기는 지금 프로필과 그 하위(`PUT /v1/profile`·되돌리기·인증자료 올리기·지우기)뿐이고, 내 활동·즐겨찾기·푸시 기기·알림 설정·추천 설정·대기열 신호는 앱만 막는다(서버 보강은 조율 세션 판단).
+- 2026-10-26: 이전 버전에 동의한 계정(`GET /v1/profile`의 `consent`가 null 아님)에 다시 물을 때는 동의 화면 제목을 `개인정보 처리방침이 바뀌었어요`로 쓴다(처음 동의는 기존 제목). 옛 버전으로 보낸 동의의 400 `CONSENT_VERSION` 문장은 `동의 문서 버전이 바뀌었어요. 앱을 업데이트한 뒤 다시 동의해 주세요.`(옛 앱이 이 문장을 그대로 보인다).
 
 ## 발견 카드 리뉴얼 — 2026-10-19 사용자 결정
 
 사용자: "활동탐색 UI 리뉴얼. One UI 최신 **알림 UI** 애니메이션을 참고해 카드를 리뉴얼. 로고 좌측, 프로그램 이름 상단, 하위 활동 개수 우측, 태그는 프로그램 아래. 누르면 자연스럽게 펼쳐지고, 펼친 뒤 우측에 숫자 대신 화살표 버튼, 누르면 접힘. 활동 카드에는 로고 없이 활동명·모집 일정·활동 일정·활동 장소·모집 중 여부를 우상단에." 시안(https://claude.ai/artifact/TbCWAzRadSgpKm6tp88qE9) 승인("매우 좋아요") + "모집 기간은 지난 게 아니면 강조".
 
-- **프로그램 카드(접힘)**: 둥근 흰 카드(모서리 20, 그림자 없음, 1px 구분선). 왼쪽 **로고 자리** 44: 프로그램 로고가 있으면 그것, 없으면 프로그램 이름 첫 글자의 둥근 아바타(민트 바탕·청록 글자). 프로그램 로고는 `ProgramSummary.logoUrl`(아래 "프로그램 로고" 절, 2026-10-19 밤). 가운데 위 **프로그램 이름**(굵게) → 조직 이름(보조색) → **태그 칩**(최대 3개 + `+n`, 없으면 줄 생략). 오른쪽 위 **활동 개수 배지**: 모집 중 + 모집 예정 수(청록 원형). 그 아래 보조 글자 한 줄: 모집 중이 있으면 `M월 d일 마감`, 예정만 있으면 `M월 d일 시작`, 둘 다 없으면 `최근 yyyy.M`.
+- **프로그램 카드(접힘)**: 둥근 흰 카드(모서리 20, 그림자 없음, 1px 구분선). 왼쪽 **로고 자리** 44: 프로그램 로고가 있으면 그것, 없으면 프로그램 이름 첫 글자의 둥근 아바타(민트 바탕·청록 글자). 프로그램 로고는 `ProgramSummary.logoUrl`(아래 "프로그램 로고" 절, 2026-10-19 밤). 가운데 맨 위 **종류 줄**(2026-10-26 사용자 결정, 아래 "종류 아이콘 라벨") → **프로그램 이름**(굵게) → 조직 이름(보조색) → **태그 칩**(최대 3개 + `+n`, 없으면 줄 생략). 오른쪽 위 **활동 개수 배지**: 모집 중 + 모집 예정 수(청록 원형). 그 아래 보조 글자 한 줄: 모집 중이 있으면 `M월 d일 마감`(모집 마감이 없는 열린 활동뿐이면 `nearestRecruitmentEndAt`이 null; 2026-10-26 오전의 `nearestIsActivityStart` → `M월 d일 행사` 분기(2026-10-26 실기기 점검 "모집 미정인데 행사 날짜를 마감으로 표시")는 같은 날 "모집 일정 없는 활동은 마감"으로 없앴고 서버가 항상 false라 쓰이지 않는다), 예정만 있으면 `M월 d일 시작`, 둘 다 없으면 `최근 yyyy.M`.
 - **펼치기**: 카드 전체를 누르면 펼쳐진다. 펼쳐지면 개수 배지 자리가 **위쪽 화살표 버튼**(44 터치 영역, 접근성 이름 `접기`)으로 바뀌고 누르면 접힌다(카드 머리를 다시 눌러도 접힌다). 애니메이션은 One UI 알림 전개 느낌: 높이는 스프링(Android `animateContentSize(spring(dampingRatio 0.8, stiffness MediumLow))`, iOS `.spring(response 0.35, dampingFraction 0.85)`), 내용은 짧게 페이드 + 위에서 살짝 밀려 들어옴(`expandVertically + fadeIn` / `.opacity + .move(edge: .top)`), 화살표 180° 회전. 동작 줄이기에서는 즉시 전환. 웹은 `grid-template-rows 0fr→1fr` + opacity 전환(320ms, 약간 오버슈트하는 베지어), 동작 줄이기에서 전환 없음.
-- **활동 카드(펼친 안)**: 로고 없음. 왼쪽 위 **활동명**(굵게), 오른쪽 위 **모집 상태 칩**(`모집 중` 청록 채움 / `모집 예정` 민트 / `마감` 회색). 아래 라벨 + 값 세 줄: `모집` 모집 기간 문구(없으면 `미정`), `활동` 활동 기간 문구, `장소` 장소 이름(없으면 줄 생략). **강조 규칙**: 모집이 지나지 않았으면(모집 중·모집 예정) `모집` 줄의 값을 청록 굵은 글씨로 쓰고 줄 전체에 옅은 민트 바탕(모서리 8)을 깐다; 지난 모집은 보조색 그대로. 종류 소제목과 `모집 중`/`모집 예정`/`지난 활동` 묶음 규칙은 그대로(소제목은 작은 보조 글자). 카드를 누르면 활동 상세.
+- **활동 카드(펼친 안)**: 로고 없음. 왼쪽 위 **활동명**(굵게), 오른쪽 위 **모집 상태 칩**(`모집 중` 청록 채움 / `모집 예정` 민트 / `마감` 회색). 아래 라벨 + 값 세 줄: `모집` 모집 기간 문구(없으면 `미정`; 기간과 D-day 배지는 아래 "모집 날짜 표기 — 2026-10-26"), `활동` 활동 기간 문구, `장소` 장소 이름(없으면 줄 생략). **강조 규칙**: 모집이 지나지 않았으면(모집 중·모집 예정) `모집` 줄의 값을 청록 굵은 글씨로 쓰고 줄 전체에 옅은 민트 바탕(모서리 8)을 깐다; 지난 모집은 보조색 그대로. 종류 소제목과 `모집 중`/`모집 예정`/`지난 활동` 묶음 규칙은 그대로(소제목은 작은 보조 글자). 카드를 누르면 활동 상세.
 - **API**: 공개 `Activity`에 `location: string|null`(기존 문구)과 `place: {name, address, lat, lng}|null`(아래 "활동 장소")을 더한다.
 - 색·글꼴은 기존 토큰. 접근성: 프로그램 카드는 `펼침/접힘` 상태를 가진 버튼, 활동 카드는 상태 칩을 라벨에 포함.
+- **종류 아이콘 라벨(2026-10-26 사용자 결정)**: 사용자 "각 프로그램마다 부트캠프 컨퍼런스 같은 것도 아이콘라벨로 해서 카드 좌상단에 추가해줄 수 있을까?". 접힌 프로그램 카드(발견·즐겨찾기·프로그램 상세 머리·알림 목록 머리 — 같은 머리를 쓰는 곳 전부)의 이름 위 작은 한 줄에 `ProgramSummary.category`(프로그램 기본 종류)를 **아이콘 + 종류 이름**(예: 부트캠프)으로 둔다. 캡슐·바탕 없이 caption 보조색(iOS `Label(이름, systemImage:)` `.font(.dearby(.caption))` `.secondary`, Android `labelSmall`/`onSurfaceVariant`, 웹 `text-caption text-secondary-label` + `Icon`). 캡슐로 두지 않는 이유: 바로 아래 태그 칩이 캡슐이라 같은 모양이면 종류가 태그처럼 읽히고 카드 높이도 더 는다. 아이콘은 "아이콘 통일"의 의미별 표의 활동 종류 항목. `category`가 null이거나 모르는 코드면 줄을 그리지 않는다(`미분류`라고 쓰지 않는다). 접근성: 카드 라벨의 맨 앞에 종류 이름("부트캠프, SSAFY, …"). 활동 상세의 종류 칩도 같은 아이콘을 붙인다. 펼친 활동 행에는 넣지 않는다(종류 소제목으로 이미 묶인다).
 
 ## 알림 목록(발견 우상단 종) — 2026-10-25 사용자 결정
 
@@ -386,16 +421,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **`+` 내 활동에 추가(2026-10-25 사용자 "내활동에 추가하는 플로우도 상세보기 우상단에서 제외해주고 하트 옆에 + 아이콘 추가해줘")**: 활동 상세 내비게이션 우상단의 `내 활동에 추가` 동작을 없애고, 활동 하트가 있는 모든 자리(활동 상세 머리, 펼친 활동 행, 맞춤 대기열 오른쪽 줄)에서 하트 바로 옆에 `+` 버튼을 둔다(iOS `plus.circle`/추가됨 `checkmark.circle.fill`, Android `AddCircleOutline`/`CheckCircle`, 접근성 `내 활동에 추가`/`내 활동에 있음`). 누르면 기존 내 활동 추가 흐름(신청 확인 시트 등)을 그대로 연다. 이미 내 활동에 있으면 체크 아이콘이고 누르면 내 활동의 그 항목을 연다. 비로그인에서도 기존 규칙대로 기기 저장으로 동작한다(내 활동은 비로그인 허용). 프로그램에는 `+`를 두지 않는다. 하단 신청 CTA는 그대로.
 - **저장·API**: `user_favorites(user_id, target_type ACTIVITY|PROGRAM, target_id, created_at)` PK(user_id, target_type, target_id), 사용자 삭제 cascade. `GET /v1/me/favorites` → `{programs: [{program: ProgramSummary, favoritedAt, newRecruitment: boolean}], activities: [{activity: Activity, program: ProgramSummary, favoritedAt}]}`(활동은 마감 임박 순, 지난 활동은 뒤). `PUT /v1/me/favorites/{programs|activities}/{id}`·`DELETE` 같은 경로(멱등, 204; 게시되지 않은 활동·없는 프로그램 404). 로그인 응답의 `Activity.favorited`·`ProgramSummary.favorited: boolean`(비로그인 false; 공개 `GET /v1/activities`·`/v1/activities/{id}`·`/v1/discovery/programs`는 Bearer가 오면 채우고 `Vary: Authorization`). 서버 구현(2026-10-25): 프로그램은 즐겨찾기한 최근 순, 게시 활동이 하나도 없는 프로그램과 지워졌거나 게시되지 않은 활동은 목록에서 뺀다(행은 남긴다). 즐겨찾기 활동의 `Activity`는 기존 모양 그대로라 `application`·`activitySchedule`·`schedules`로 캘린더를 그린다.
 - **추천과 하나로**: 활동 하트 = 맞춤 대기열의 `LIKE` 신호(대기열 ♥도 즐겨찾기에 넣고, 즐겨찾기 해제 = `UNLIKE`). 프로그램 하트는 조직 친화도에 프로그램 신호 +0.6(반감기 같음)으로 더한다. 앱은 활동 하트(대기열 ♥ 포함)에 즐겨찾기 API만 부르고 `LIKE`/`UNLIKE` 신호를 따로 보내지 않는다: 서버가 `PUT …/activities/{id}`에서 `LIKE`를 남기고(관심 없어요는 지움, 이미 있으면 시각을 새로 하지 않음) `DELETE`에서 지운다(멱등). 예전 앱이 보내는 `LIKE`·`UNLIKE`·`DISMISS` 신호와 되돌리기도 즐겨찾기에 같이 반영한다.
-- **내 활동 탭 상단 탭**: `내 활동 | 즐겨찾기` 두 칸(iOS 기본 세그먼트 `Picker(.segmented)`, Android Material 3 `PrimaryTabRow`). 즐겨찾기 화면: `프로그램` 묶음(로고·이름·다음 모집 상태, 새 모집이 열렸으면 `새 모집` 배지) → `활동` 묶음(마감 순, 기존 활동 행). 비어 있으면 `하트를 누르면 여기에 모여요`. 밀어서 즐겨찾기 해제(되돌리기 알림).
-- **즐겨찾기 활동 캘린더 보기(2026-10-25 사용자 "즐겨찾기한 활동들은 … 모집기준 날짜순으로 캘린더앱 형식으로도 볼수있게")**: 즐겨찾기 화면 오른쪽 위 보기 전환 `목록 | 캘린더`(마지막 선택을 기기에 기억). 캘린더는 위에 월 달력(iOS `UICalendarView`를 SwiftUI로 감싸 기본 장식 점, Android는 Material 3 색·글꼴의 7열 월 격자 — 같은 역할의 기본 컴포넌트가 없어 직접 그림), 날짜 아래 점: 모집 마감일 청록 채운 점, 모집 시작일 민트 빈 점(같은 날 둘 다면 둘 다). 아래는 시안 "컨퍼런스 일정표"(캔버스 3번)처럼 월별 묶음의 날짜 목록: 왼쪽 큰 날짜 숫자+요일, 오른쪽 활동 이름·프로그램·`마감`/`모집 시작` 라벨, 마감 3일 안이면 빨간 라벨. 달력에서 날짜를 누르면 목록이 그 날로 스크롤되고, 달을 넘기면 그 달 묶음으로. 기준 날짜는 모집 기간(APPLICATION 슬롯)의 시작·끝이고, 모집 기간이 없는 활동(컨퍼런스 등)은 행사 시작일을 `행사` 라벨로 둔다. 날짜를 모르는 활동은 맨 아래 `날짜 미정`. 오늘 이전 날짜는 흐리게. 기기 캘린더에 쓰지 않는다(앱 안 보기만).
+- **내 활동 탭 상단 탭**: `내 활동 | 즐겨찾기` 두 칸(iOS 기본 세그먼트 `Picker(.segmented)`, Android Material 3 `PrimaryTabRow`). 즐겨찾기 화면은 아래 캘린더 보기 하나다(2026-10-26 목록 보기 폐지). 비어 있으면 `하트를 누르면 여기에 모여요`. 즐겨찾기 해제는 하트로 한다(목록과 함께 밀어서 해제·되돌리기 알림도 없앴다).
+- **즐겨찾기 활동 캘린더 보기(2026-10-25 사용자 "즐겨찾기한 활동들은 … 모집기준 날짜순으로 캘린더앱 형식으로도 볼수있게")**: 2026-10-26 사용자 결정으로 보기 전환 `목록 | 캘린더`와 목록 보기를 없애고 캘린더만 둔다(예전에 기기에 저장한 보기 선택은 읽지도 지우지도 않는다). 캘린더는 위에 월 달력(iOS `UICalendarView`를 SwiftUI로 감싸 기본 장식 점, Android는 Material 3 색·글꼴의 7열 월 격자 — 같은 역할의 기본 컴포넌트가 없어 직접 그림), 날짜 아래 점: 모집 마감일 청록 채운 점, 모집 시작일 민트 빈 점(같은 날 둘 다면 둘 다). 아래는 시안 "컨퍼런스 일정표"(캔버스 3번)처럼 월별 묶음의 날짜 목록: 왼쪽 큰 날짜 숫자+요일, 오른쪽 활동 이름·프로그램·`마감`/`모집 시작` 라벨, 마감 3일 안이면 빨간 라벨. 달력에서 날짜를 누르면 목록이 그 날로 스크롤되고, 달을 넘기면 그 달 묶음으로. 기준 날짜는 모집 기간(APPLICATION 슬롯)의 시작·끝이고, 모집 기간이 없는 활동(컨퍼런스 등)은 행사 시작일을 `행사` 라벨로 둔다. 날짜 목록 아래 `날짜 없는 즐겨찾기` 묶음: 즐겨찾기한 프로그램 전부(프로그램은 캘린더에 오르지 않는다; 로고·이름·다음 모집 상태·`새 모집` 배지, 발견처럼 펼쳐 활동을 보고 열면 `새 모집`이 꺼진다)와 날짜를 하나도 모르는 활동(모집 기간도 행사 시작일도 없는 활동, 일정이 모두 날짜 미정일 때)을 발견의 기존 프로그램·활동 행으로 보여 하트·알림 종을 그대로 쓴다. 오늘 이전 날짜는 흐리게. 기기 캘린더에 쓰지 않는다(앱 안 보기만).
 - **새 모집**: 즐겨찾기한 프로그램에 즐겨찾기 이후 게시된 활동이 열린 활동(기존 판정)이 되면 `newRecruitment=true`(사용자가 즐겨찾기 화면에서 그 프로그램을 열면 false로, `POST /v1/me/favorites/programs/{id}/seen` → 204). 서버: `activities.published_at`(처음 게시한 시각) > max(즐겨찾기 시각, 마지막으로 연 시각)이고 지금 열린 활동. 신규 알림도 같은 규칙.
 - **푸시 알림**: 기기 토큰 `push_devices(token PK, user_id, platform IOS|ANDROID, time_zone, app_version, updated_at)`, `PUT /v1/me/push-devices {platform, token, timeZone?, appVersion?}` → 204(`timeZone`은 IANA 이름, 없으면 `Asia/Seoul`, 모르는 이름·플랫폼 400; 같은 토큰을 다른 계정이 올리면 그 계정으로 옮김)·`DELETE /v1/me/push-devices/{token}` → 204(없어도)(로그아웃·알림 끄기). 알림 설정 `GET /v1/me/notification-settings` → `{newRecruitment: boolean}`(기본 true), `PUT` 같은 본문 → 같은 본문. 알림 권한은 앱 시작 때 묻지 않고 **처음 프로그램 하트를 누를 때** 시스템 권한 창을 띄운다(거절하면 다시 묻지 않고 프로필 `알림` 행에서 설정으로 안내). 밤 수집·대기열 배치 뒤 서버가 "즐겨찾기 프로그램의 새 모집"을 사용자·활동마다 한 번만 보낸다: 제목 `{프로그램} 새 모집이 열렸어요`, 본문 `{활동 이름} · {M월 d일 마감}`, 누르면 활동 상세(유니버설 링크 경로 `/activities/{id}`). 하루 최대 3건, 22:00~08:00(서울)에는 보내지 않고 다음 아침으로 미룬다. 보낸 기록 `push_deliveries(user_id, device_token, activity_id, kind, delivery_date, sent_at)`(아래 알림 거리마다 한 번). 프로필 `알림` 행에서 `새 모집 알림` 켜기/끄기(서버 `notification_settings`).
 - **프로그램·활동별 알림 수준(2026-10-25 사용자 "프로그램, 활동 별 알림 설정도 할 수 있게 해줘. 유튜브처럼 모든 활동 일정 + 신규 항목(각 나라별 아침 8시), 혹은 활동 신청일만 알림 처럼 지정")**: 즐겨찾기한 프로그램·활동마다 종 버튼(하트 옆, 즐겨찾기했을 때만 보임; iOS `bell`/`bell.fill`/`bell.slash`, Android `NotificationsNone`/`NotificationsActive`/`NotificationsOff`)을 누르면 유튜브처럼 시트에서 셋 중 하나를 고른다: `전체`(모든 활동 일정 + 신규 항목) · `신청일만`(모집 시작·모집 마감) · `없음`. 기본값은 하트를 누를 때 `신청일만`. 저장: `user_favorites.notify_level ALL|APPLICATION|NONE`, `PUT /v1/me/favorites/{programs|activities}/{id} {notifyLevel?}`(본문 없으면 기본값, 이미 있으면 수준만 바꿈), GET 응답 항목에 `notifyLevel`.
   - 알림 거리(서버가 매일 만든다): 신규 항목 = 즐겨찾기 프로그램에 새로 게시되어 열린 활동(`전체`·`신청일만` 모두, 프로그램 단위). 신청일 = 모집 시작 당일·모집 마감 하루 전·마감 당일. 전체 = 신청일 + 그 밖의 일정(발표·면접·행사·활동 시작 등 `schedules`) 당일. 활동 단위 수준이 프로그램 수준보다 앞선다(활동을 따로 `없음`으로 두면 그 활동은 조용히).
   - 보내는 시각: **사용자 기기 시간대의 아침 8시**에 그날 거리를 보낸다(`push_devices.time_zone` IANA 이름, 앱이 토큰과 함께 보냄; 기기가 여럿이면 각 기기 시간대 8시). 같은 날 거리가 3개를 넘으면 하나로 묶어 `오늘 일정 n개` 알림(누르면 즐겨찾기 캘린더). 앞의 "22:00~08:00 미룸·하루 3건" 규칙은 이것으로 바꾼다.
-  - 프로필 `알림` 행의 `새 모집 알림`은 전체 스위치(`notification-settings.newRecruitment`가 꺼지면 모두 보내지 않음)로 남긴다.
+  - 설정 `알림` 섹션(2026-10-25 프로필에서 옮김)의 `새 모집 알림`은 전체 스위치(`notification-settings.newRecruitment`가 꺼지면 모두 보내지 않음)로 남긴다.
   - 서버 구현(2026-10-25): 배치가 매시 정각에 기기 시간대가 8시인 기기를 골라 보낸다(밤 수집·대기열 잡과 따로). 중복 방지는 기기마다(2026-10-25 사용자 결정): 같은 (사용자, 기기 토큰, 활동, 종류, 그 기기 날짜)는 한 번, 신규는 기기마다 날짜와 상관없이 한 번. 기기 시간대가 여럿이면 기기마다 그 시간대 8시에 그 날짜의 거리를 받고, 3개를 넘으면 묶는 규칙도 기기마다. 신규가 있는 날은 같은 활동의 모집 시작 알림을 따로 보내지 않는다. `push_deliveries`에 `device_token`(V54). 문구: 신규 `{프로그램} 새 모집이 열렸어요`/`{활동} · {M월 d일 마감}`, 모집 시작 `{활동} 모집이 시작됐어요`/`{프로그램} · {M월 d일 마감}`, 마감 전날 `{활동} 내일 마감`, 마감 당일 `{활동} 오늘 마감`, 일정 `{활동} 오늘 {일정 제목}`(본문 `{프로그램}`), 묶음 `오늘 일정 n개`/`{활동} · {활동} 외 n개`. 수동 실행 `--send-push-now`는 기기 시각과 상관없이 지금 보낸다(같은 날 다시 보내지 않음).
-  - **페이로드**: APNs `{"aps":{"alert":{"title","body"},"sound":"default"},"activityId":<number>,"notificationId":<number>,"url":"https://dearby.wid.io.kr/activities/{id}"}`(`apns-push-type: alert`, topic `io.wid.dearby`). FCM HTTP v1 `message{token, notification{title, body}, data{activityId: "<id>", notificationId: "<id>", url: "<같은 url>"}, android{priority: HIGH, notification{channel_id: "new_recruitment"}}}`(data 값은 문자열). 묶음 알림은 `activityId`·`notificationId`가 없고 `url`은 `dearby://favorites?view=calendar`(앱이 즐겨찾기 캘린더를 연다). APNs 410·FCM `UNREGISTERED`면 그 토큰을 지운다.
+  - **페이로드**: APNs `{"aps":{"alert":{"title","body"},"sound":"default"},"activityId":<number>,"notificationId":<number>,"url":"https://dearby.wid.io.kr/activities/{id}"}`(`apns-push-type: alert`, topic `io.wid.dearby`). FCM HTTP v1 `message{token, notification{title, body}, data{activityId: "<id>", notificationId: "<id>", url: "<같은 url>"}, android{priority: HIGH, notification{channel_id: "new_recruitment"}}}`(data 값은 문자열). 묶음 알림은 `activityId`·`notificationId`가 없고 `url`은 `dearby://favorites?view=calendar`(앱이 즐겨찾기 캘린더를 연다; 2026-10-26부터 앱은 `view`를 읽지 않고 `view=list`나 없는 값도 캘린더로 연다). APNs 410·FCM `UNREGISTERED`면 그 토큰을 지운다.
 - **발송 경로와 인증 정보(사용자 준비)**: iOS는 APNs 토큰 인증(.p8 키·Key ID·Team ID, 운영 `.env.prod`에만), Android는 FCM HTTP v1(Firebase 프로젝트, `google-services.json`, 서버 발송 자격). 인증 정보가 없으면 서버는 발송만 건너뛰고(로그 한 줄) 나머지 기능은 동작한다. 배치 환경값: `APNS_KEY_P8`(.p8 PEM 내용 또는 파일 경로)·`APNS_KEY_ID`·`APNS_TEAM_ID`·`APNS_TOPIC`(기본 `io.wid.dearby`)·`APNS_ENV`(`production` 기본, 개발 빌드 토큰은 `development`), `FCM_PROJECT_ID`·`FCM_CREDENTIALS_PATH`(서비스 계정 JSON 파일 경로). 토큰·인증 정보는 로그에 남기지 않는다. 개인정보처리방침에 기기 토큰(플랫폼·시간대·앱 판 포함)·알림 기록을 더한다(계정 삭제 때 함께 지움).
 
 ## 비로그인에서 만들기·추천을 막음 — 2026-10-25 사용자 결정
@@ -403,7 +438,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 사용자: "명함과 프로필, 지원 자격, 관심 분야, 활동 종류 생성은 비로그인 시점에서 지원하지 말아줘" + "오늘의 맞춤대기열도 비로그인 시점에서 제공하지 말아줘". 아래 규칙이 이 문서의 앞선 비로그인 문구(추천 설정 기기 저장, 비로그인 추천 쿼리, 비로그인 대기열)를 대신한다.
 
 - **로그인해야 하는 것**: 명함 만들기·고치기, 프로필 입력·고치기, 지원 자격 정보, 추천 설정 퍼널(관심 분야·활동 종류·얻고 싶은 것), 오늘의 맞춤 대기열과 그 신호.
-- **앱(iOS·Android)**: 비로그인일 때 발견 맨 위 `오늘의 맞춤 대기열` 행은 `로그인하면 나에게 맞는 활동을 골라 드려요` 보조 글자와 함께 보이고, 누르면 기존 로그인 시트를 연다(로그인하면 퍼널 → 대기열 기존 흐름). 퍼널은 비로그인에서 저절로 뜨지 않는다. 명함·프로필 탭의 만들기·편집 버튼과 지원 자격 정보·관심 분야 행은 비로그인에서 로그인 시트를 연다(지금 기기에 쓰던 비로그인 초안 화면은 열지 않는다). 둘러보기·활동 상세·받은 명함 보기(공개 링크)·내 활동(기기 저장)은 그대로.
+- **앱(iOS·Android)**: 비로그인일 때 발견 맨 위 `오늘의 맞춤 대기열` 행은 `로그인하면 나에게 맞는 활동을 골라 드려요` 보조 글자와 함께 보이고, 누르면 기존 로그인 시트를 연다(로그인하면 퍼널 → 대기열 기존 흐름). 퍼널은 비로그인에서 저절로 뜨지 않는다. 명함·프로필 탭의 만들기·편집 버튼은 비로그인에서 로그인 시트를 연다(지금 기기에 쓰던 비로그인 초안 화면은 열지 않는다). 2026-10-25 사용자 "로그인 전엔 추천 기능을 제공하지 않기 때문에, 비로그인일 때 내 프로필에서 추천은 없어도 되는 섹션 같아": 비로그인 내 프로필에는 `추천` 묶음(지원 자격 정보·관심 분야·활동 종류)을 보이지 않는다(로그인하면 다시 보임). 둘러보기·활동 상세·받은 명함 보기(공개 링크)·내 활동(기기 저장)은 그대로.
 - **웹**: 로그인이 없으므로 추천 설정 퍼널, `/queue`, 발견의 `오늘의 맞춤 대기열` 행을 없앤다. 웹 비로그인 명함 저장(받은 명함 보관, `/v1/guest/*`)은 만들기가 아니므로 그대로 둔다.
 - **서버**: `GET /v1/discovery/recommendations`는 로그인만 받는다(비로그인 401). `/v1/me/*`는 원래 로그인만.
 - **기존 기기 데이터**: 비로그인일 때 기기에 저장했던 추천 설정·대기열 반응은 읽지도 지우지도 않고 더 쓰지 않는다(AGENTS.md 기존 기기 데이터 원칙). 로그인할 때 기기 추천 설정을 서버로 올리던 동작도 없앤다.
@@ -472,7 +507,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "배치를 돌릴 때, 사용자가 지정한 조건과 실제 신청한 항목들을 가지고 추론해서 각 사용자별로 10개 정도씩 맞춤대기열을 생성" → "스팀의 맞춤대기열도 참고" → "소개팅앱 카드처럼" → "상하 스와이프로 카드를 넘길 수 있게" → 쇼츠형이되 콘텐츠가 영상이 아니라는 고민 → 스토리형 쇼츠(시안 Q3) → "추천대기열 생성시 벡터필드를 활용" → "지원하거나, 관심표시, 참여한 활동 조직도 가중치에 영향" → "내 활동에 추가도 포함해서 해주세요". 시안: https://claude.ai/artifact/EPFgtMjufqq5aDMea4LN7y (Q3). LLM으로 사용자별 추론은 하지 않는다(개인정보 외부 전송·비용); 사용자 데이터는 서버 밖으로 나가지 않는다.
 
-- **화면(스토리형 쇼츠)**: 발견 목록 맨 위 `오늘의 맞춤 대기열` 한 줄로 들어간다(2026-10-25 사용자 "추천은 없애고 맞춤대기열 진입만 남겨줘": 추천 묶음은 없앴고, 퍼널을 마치지 않았으면 퍼널을 먼저 연다). 전체 화면 세로 페이지(iOS 세로 `ScrollView` + `.scrollTargetBehavior(.paging)`, Android `VerticalPager`, 웹 `scroll-snap-type: y mandatory`), 위로 넘기면 다음 활동. 활동 한 장은 서버가 만든 장면(`scenes`, 2~5개, 아래 "구현 세부")을 4초마다 자동으로 넘긴다(위 진행 막대, 오른쪽 탭 다음·왼쪽 탭 이전 장면). 2026-10-24 사용자 "장면개수는 유동적으로": 한 줄 소개 → 핵심 줄 → 대상 → 혜택 → 마감까지(늘 마지막) 중 내용이 있는 것만. 마지막 장면이 끝나면 카드는 멈춰 있고 다음 활동으로 저절로 넘어가지 않는다(2026-10-24 사용자 "멈춰줘"; 위로 넘기거나 `다음`). 배경은 커버 이미지에 느린 확대·이동(켄 번즈), 글자는 아래에서 차례로 떠오름. 동작 줄이기에서는 움직임 없이 장면만 바뀐다. 오른쪽 버튼 줄: ♥ `관심`(토글), `자세히`, `다음`, `⋯`(시트: `관심 없어요`·`이 분야는 덜 보기`·`이 프로그램 숨기기`·`지원 자격이 안 돼요`, 고른 뒤 `되돌리기` 알림). 두 번 탭은 관심 있어요(하트 효과). 화면 읽기에서는 버튼과 사용자 지정 동작으로 같은 일을 한다. 10장을 다 보면 `오늘 대기열을 다 봤어요` + `더 받기`(남은 후보로 다시 만들기).
+- **화면(스토리형 쇼츠)**: 발견 목록 맨 위 `오늘의 맞춤 대기열` 한 줄로 들어간다(2026-10-25 사용자 "추천은 없애고 맞춤대기열 진입만 남겨줘": 추천 묶음은 없앴고, 퍼널을 마치지 않았으면 퍼널을 먼저 연다). 전체 화면 세로 페이지(iOS 세로 `ScrollView` + `.scrollTargetBehavior(.paging)`, Android `VerticalPager`, 웹 `scroll-snap-type: y mandatory`), 위로 넘기면 다음 활동. 활동 한 장은 서버가 만든 장면(`scenes`, 2~5개, 아래 "구현 세부")을 4초마다 자동으로 넘긴다(위 진행 막대, 오른쪽 탭 다음·왼쪽 탭 이전 장면). 2026-10-24 사용자 "장면개수는 유동적으로": 한 줄 소개 → 핵심 줄 → 대상 → 혜택 → 마감까지(늘 마지막) 중 내용이 있는 것만. 마지막 장면이 끝나면 카드는 멈춰 있고 다음 활동으로 저절로 넘어가지 않는다(2026-10-24 사용자 "멈춰줘"; 위로 넘기거나 `다음`). 배경은 커버 이미지에 느린 확대·이동(켄 번즈), 글자는 아래에서 차례로 떠오름. 동작 줄이기에서는 움직임 없이 장면만 바뀐다. 오른쪽 버튼 줄: ♥ `관심`(토글), `자세히`, `다음`, `⋯`(시트: `관심 없어요`·`이 분야는 덜 보기`·`이 프로그램 숨기기`·`지원 자격이 안 돼요`, 고른 뒤 `되돌리기` 알림). 두 번 탭은 관심 있어요(하트 효과). 화면 읽기에서는 버튼과 사용자 지정 동작으로 같은 일을 한다. 10장을 다 보면 `오늘 대기열을 다 봤어요` + `더 받기`(남은 후보로 다시 만들기). 마지막 카드와 끝 화면 사이의 광고 카드 1장은 아래 "맞춤 대기열 끝 광고(AdMob, 비개인화)" 절(2026-10-25).
 - **콘텐츠**: `activities.hook`(30자 안팎 한 줄 소개)·`activities.highlights`(짧은 문장 3개, `{icon, text}` — icon은 `cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket` 중 하나)를 수집 배치가 활동 설명(공개 정보)으로 만든다. 운영자가 어드민에서 고칠 수 있고 고친 값은 `curated_fields`로 보호한다. 없으면 장면 ①은 활동 이름, ②는 비용·기간·장소에서 만든다.
 - **커버 이미지**: `program_covers(program_id, content_type, data, source_page, source_image, enabled, updated_at)`(세로 4:5, 1080×1350, WebP ≤350KB, 로고와 같은 업로드 검사). 공개 `/v1/programs/{id}/cover?v=`(로고와 같은 캐시 규칙), `ProgramSummary.coverUrl`. 어드민에서 올리기·끄기(주최 측 요청 시 바로 내린다). 없으면 앱이 로고 + 브랜드 색 그라데이션 커버를 그린다. 상표 규칙은 로고와 같다.
 - **신호**: `recommendation_signals(user_id, activity_id, kind, created_at)` — `LIKE`(관심 있어요)·`UNLIKE`(관심 취소, LIKE를 지운다)·`DISMISS`(관심 없어요)·`LESS_FIELD`(분야 덜 보기, tag_id 함께)·`HIDE_PROGRAM`·`INELIGIBLE`·`COMPLETE`(마지막 장면까지 봄)·`SKIP_EARLY`(장면 ①에서 넘김)·`OPEN_DETAIL`. `POST /v1/me/recommendation-signals {activityId, kind, tagId?}`(로그인만, 비로그인은 보내지 않는다). 머문 시간은 저장하지 않는다. 그 밖에 이미 있는 데이터를 신호로 읽는다: `user_activities`(내 활동에 추가), 사용자 일정 상태(지원 단계 `통과`=지원, 활동 단계에 이르고 `탈락`이 없음=참여, `탈락`), 내 활동에서 지움.
@@ -512,6 +547,51 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - 모델(2026-10-24 벤치마크): 기본 `nlpai-lab/KURE-v1`(MIT, bge-m3 구조, dense 1024, CLS 풀링 후 L2 정규화) revision `8b418a58414668e75532ed045c22d9ca018ae2b2`, `model.safetensors` sha256 `c18156e80caf8ff45eb84a24a853130c3bca03087ccb41b051f86e7556bae02c`. batch 이미지 빌드가 그 판을 받아 체크섬을 확인하고 ONNX로 바꾼다(optimum, 버전 고정). 실행은 batch JVM의 ONNX Runtime **CPU 실행기만**(macOS CoreML 실행기는 RSS 16.7GB까지 늘었다). ONNX Runtime에서는 fp32가 느려 기본 가중치는 int8 동적 양자화(`EMBEDDING_VARIANT=int8`, 품질 −0.01~0.03); fp32도 고를 수 있다. 벡터에 붙는 모델 id는 `nlpai-lab/KURE-v1@8b418a5:int8`(판·양자화가 바뀌면 id도 바꾼다). 최대 입력 8192토큰. 384차원 소형으로 바꿀 때(`dearby.embedding.dimensions=384`, multilingual-e5-small은 모든 글에 `passage: `/`query: ` 접두어 — `text-prefix`)는 halfvec 열 차원을 바꾸는 마이그레이션이 함께 필요하고, 그 모델에는 binary 양자화를 쓰지 않는다. 로컬(Apple Silicon, 4스레드, 토큰 자르기 없음) 측정: int8 모델 읽기 2.1초, 390~2,500자 글 300개 151초(0.5초/개), 최대 RSS 2.2GB. batch 이미지 +약 740MB(모델 586MB, onnxruntime 133MB, 토크나이저 18MB). 모델을 바꾸는 빌드 단계 이미지는 약 12GB로 빌드 캐시에만 남는다. 내보낸 `tokenizer.json`은 최대 길이를 512로 적고 있어 서버가 `modelMaxLength`를 설정값(8192)으로 덮어쓴다.
   - 커지면 켤 경로(지금은 만들지 않는다): 활동 1만~5만 개쯤 `create index on activity_embeddings using hnsw (embedding halfvec_cosine_ops) where model = '<모델 id>'`, 수백만 개면 `create index on activity_embeddings using hnsw ((binary_quantize(embedding)::bit(1024)) bit_hamming_ops) where model = '<모델 id>'`로 `order by binary_quantize(embedding)::bit(1024) <~> binary_quantize(:q) limit 200` 1차 후보를 뽑고 `embedding <=> :q`로 다시 줄 세운다(384차원 e5 계열에는 쓰지 않는다). 지금은 수백 개라 메모리에서 계산한다.
 - **개인정보처리방침**: "앱 안의 활동 기록(내 활동, 관심 표시, 대기열 반응)을 맞춤 추천에 이용하고 외부로 보내지 않는다"를 더한다(게시 전 사용자 확인).
+
+## 맞춤 대기열 끝 광고(AdMob, 비개인화) — 2026-10-25 사용자 결정
+
+사용자: 한국에만 출시하고, 맞춤 대기열을 끝까지 본 뒤 AdMob 네이티브 광고 1장을 인스타그램 스토리 광고처럼 보여 준다. 비개인화 광고만, 직접 계약 광고는 하지 않는다. 원하지 않는 광고는 AdMob 콘솔의 분류 차단으로 막는다(교육·채용 성격만 남기는 방향, 콘솔 작업은 별도). 첫 출시부터 넣는다. 대기열 본문은 위 "맞춤 대기열(스토리형 쇼츠)" 절이고, 스토어·데이터 공개 답안은 [광고 스토어 답안](../../docs/store/ads-2026-10-25.md).
+
+전제: 스토어 배포 국가는 **한국만**이다. UMP 동의 창을 두지 않는 근거가 이것이므로(Google EU 사용자 동의 정책은 EEA·영국·스위스 사용자에게 인증 CMP를 요구한다) 배포 국가를 넓히면 이 절을 다시 정한다.
+
+- **위치**: 대기열 마지막 활동 카드 다음, 끝 화면(`오늘 대기열을 다 봤어요` + `더 받기`) 앞에 광고 카드 1장. 대기열을 한 번 열 때(`queue_open` 한 번)마다 최대 1장이다. `더 받기`로 뒤에 붙은 카드 뒤에는 다시 넣지 않는다(같은 열람). 대기열을 닫았다가 같은 날 다시 열면 새 열람이라 다시 1장까지 보일 수 있다. 대기열은 로그인 전용이므로 광고도 로그인 사용자에게만 보인다. 발견 목록·활동 상세·그 밖의 화면에는 광고가 없다.
+- **모양(스토리 광고)**: 활동 카드와 같은 전체 화면 카드. 위쪽에 `광고` 배지(한국어 고정 문구, 15px 이상, 앱이 그린다), AdChoices 아이콘(SDK가 그림, CTA·닫기와 먼 모서리), 광고주 이름(`advertiser`, 없으면 생략)·헤드라인·미디어(`MediaView`, 고정 크기로 둔다)·본문·CTA 버튼. 모든 자산은 네이티브 광고 뷰(iOS `NativeAdView`, Android `NativeAdView`) 안에 둔다. AdMob 네이티브 정책상 자산을 변형하지 않는다(이미지를 늘리거나 찌그러뜨리지 않음, 가로 대칭 10%까지만 자름, 헤드라인 25자·본문 90자까지 자르지 않음, 글자는 배경과 대비 충분). 미디어 비율은 기본 `ANY`로 요청하고 세로 카드 안에 맞춘다(세로만 요청하면 채워지는 광고가 줄어든다고 Google이 경고한다; 바꾸려면 사용자 결정).
+- **활동 카드와 다른 점(정책: 광고 배경은 눌리지 않고 광고를 앱 콘텐츠·이동 버튼처럼 꾸미지 않는다)**: 4초 자동 넘김·장면 진행·켄 번즈·글자 떠오름 없음. 왼쪽·오른쪽 탭 영역(이전·다음 장면)과 두 번 탭(관심 있어요)을 끈다. 오른쪽 버튼 줄(♥ `관심`·`자세히`·`다음`·`⋯`)을 숨긴다 — 광고 뷰와 겹치면 잘못 누른 클릭이 되기 때문이다. 넘김은 상하 스와이프(대기열과 같은 넘김; Google 전체 화면 네이티브 정책 "If the app's content naturally uses a swipe-to-dismiss action, this option may remain unchanged")와 대기열 닫기 버튼(광고 뷰 밖)으로 한다. 신호(`recommendation-signals`)는 보내지 않는다. 진행 막대는 대기열 전체가 아니라 한 카드 안의 장면 막대이므로 광고 카드에는 진행 막대를 두지 않는다(막대가 없는 것으로 활동 카드와 구분된다, Android PR #367 구현). 화면 읽기는 `광고` 배지를 먼저 읽고 헤드라인·본문·CTA 순서. 동작 줄이기에서도 광고 동영상 재생은 SDK 기본을 따른다.
+- **로드**: 광고에 동의한 계정은 대기열 화면을 열 때(대기열 응답을 받은 뒤) 광고 1개를 미리 요청한다(미동의 계정은 아래 "묻는 시점"대로 마지막 카드에서 묻고 그 열람에는 광고가 없다). 마지막 활동 카드에서 위로 넘길 때 광고가 로드돼 있지 않거나(아직 요청 중 포함) 실패했으면 광고 카드 없이 바로 끝 화면으로 간다(사용자를 기다리게 하지 않는다). 다시 요청하지 않는다. 화면을 닫으면 받은 광고를 버린다(`destroy`). 광고 단위는 이 자리 전용 하나(Google 권장: 자리마다 다른 광고 단위).
+- **요청 설정(두 플랫폼 같음)**: 비개인화 — 요청마다 네트워크 extras `npa = "1"`(Android `AdMobAdapter` extras 번들, iOS `GADExtras.additionalParameters`). 최대 광고 콘텐츠 등급 PG(Android `RequestConfiguration.MAX_AD_CONTENT_RATING_PG`, iOS `GADMaxAdContentRating.parentalGuidance`). 게시자 자사 ID(Publisher first-party ID, SDK 기본 켬; Google 설명 "deliver more relevant and personalized ads")는 끈다(iOS `setPublisherFirstPartyIDEnabled(false)`, Android `MobileAds.putPublisherFirstPartyIdEnabled(false)`를 초기화 뒤 호출 — 판단, 되돌릴 수 있음). 게시자 개인정보 처리(PPT, `publisherPrivacyPersonalizationState = disabled`) API는 Beta라 지금 쓰지 않는다(쓰면 npa와 함께, 더 엄격한 쪽이 적용된다). UMP 동의 창 없음(위 전제).
+- **선택 동의 먼저(2026-10-25 사용자 결정)**: 아래 "광고 목적 개인정보 제3자 제공 동의(선택)"에 동의한 사용자에게만 SDK를 시작하고 광고를 요청한다. 이 절의 로드·ATT·요청 설정은 모두 동의 뒤의 일이고, 미동의·철회면 광고 카드 없이 끝 화면으로 간다.
+- **iOS ATT(2026-10-25 사용자 결정)**: 광고가 켜진 빌드에서 광고 동의를 받은 뒤(미동의면 ATT 창도 띄우지 않는다) 맞춤 대기열의 첫 광고 요청 전에 ATT 권한 창을 한 번 띄운다(`ATTrackingManager.trackingAuthorizationStatus == .notDetermined`일 때만; 이미 답했으면 묻지 않는다). 응답을 받은 뒤 광고를 요청하며 거절이어도 그대로 진행한다(거절이면 IDFA는 0). 허용해도 `npa=1`을 유지하므로 개인 맞춤 광고가 아니다 — IDFA는 광고 노출 횟수 제한과 광고 성과 측정에만 쓰인다. 광고가 꺼진 빌드(Release에 ID 없음)는 창을 띄우지 않는다. `NSUserTrackingUsageDescription` 문구(목적: 광고 노출 횟수 제한과 광고 성과 측정, 초안): `같은 광고를 너무 자주 보여 드리지 않고 광고 성과를 측정하는 데 쓰여요. 허용해도 맞춤 광고는 보여 드리지 않아요.` 결과는 선택 이벤트 `att_prompt_result`([analytics-v1.md](analytics-v1.md)).
+- **식별자 주입**: AdMob 앱 ID와 네이티브 광고 단위 ID는 플랫폼별 빌드 설정으로 넣고 값은 GitHub 저장소 변수(iOS `ADMOB_IOS_APP_ID`·`ADMOB_IOS_QUEUE_NATIVE_UNIT_ID`, Android `ADMOB_ANDROID_APP_ID`·`ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID`; 비밀값이 아니라 `vars`)에 둔다. 저장소에 실제 ID를 커밋하지 않는다. Debug는 Google 공식 테스트 ID([Android](https://developers.google.com/admob/android/test-ads)·[iOS](https://developers.google.com/admob/ios/test-ads), 2026-10-25 확인): 앱 ID Android `ca-app-pub-3940256099942544~3347511713`·iOS `ca-app-pub-3940256099942544~1458002511`, 네이티브 단위 Android `ca-app-pub-3940256099942544/2247696110`·iOS `ca-app-pub-3940256099942544/3986624511`(동영상 확인은 각 페이지의 Native Video 단위). Release 빌드에 값이 없으면 SDK를 시작하지 않고 광고 카드를 늘 생략한다(앱은 정상 동작, 끝 화면으로 바로).
+  - 크래시 주의(각 플랫폼이 처리): Android 레거시 SDK는 매니페스트 `com.google.android.gms.ads.APPLICATION_ID` 메타데이터가 없으면 앱 시작 때 자동 초기화 ContentProvider가 예외를 던진다 — `initialize`를 부르지 않는 것만으로는 막히지 않는다. 값이 없는 빌드는 그 provider를 매니페스트에서 빼거나(`tools:node="remove"`) 다른 방법을 쓴다(빈 문자열·자리표시자 동작은 **확인 필요**, 실기기로). iOS는 `GADApplicationIdentifier`가 없을 때 SDK를 시작하거나 광고를 요청하면 예외가 난다고 알려져 있어 값이 없으면 `MobileAds.shared.start`·광고 요청 코드를 아예 타지 않게 한다(**확인 필요**). Android SDK는 레거시(유지 모드)와 GMA Next-Gen 중 플랫폼이 고른다(데이터 공개 내용은 두 판이 같다).
+- **Android 매니페스트**: `com.google.android.gms.permission.AD_ID`의 `tools:node="remove"`를 해제해 권한을 유지한다(Play 콘솔 "광고 ID 사용: 예"와 맞춘다). `ACCESS_ADSERVICES_AD_ID`·`ACCESS_ADSERVICES_ATTRIBUTION`·`ACCESS_ADSERVICES_TOPICS`(광고 SDK가 병합; 제거 목록에 더한다)는 Privacy Sandbox 개인화·기여 측정용이라 비개인화와 맞지 않으므로 **계속 제거**한다(사용자 결정 전 기본값; 되돌릴 수 있음). Firebase Analytics 쪽 `google_analytics_adid_collection_enabled=false`·`google_analytics_ssaid_collection_enabled=false`·`google_analytics_default_allow_ad_personalization_signals=false`는 그대로다(사용 통계는 계속 광고 ID를 쓰지 않는다). `apps/android/README.md`의 "AD_ID 권한 제거" 설명을 함께 고친다.
+- **iOS Info.plist**: `GADApplicationIdentifier`(빌드 설정 변수), Google이 요구하는 `SKAdNetworkItems`(목록은 [iOS 빠른 시작](https://developers.google.com/admob/ios/quick-start)·[iOS 개인정보 전략](https://developers.google.com/admob/ios/privacy/strategies)의 최신 목록을 넣을 때 그대로 옮기고 확인 날짜를 커밋에 적는다). `NSUserTrackingUsageDescription`(위 "iOS ATT" 문구). Firebase용 `GOOGLE_ANALYTICS_*` 끔 키는 그대로. 광고 SDK의 개인정보 매니페스트(13.11.0 `PrivacyInfo.xcprivacy`)가 들어오므로 아카이브의 Privacy Report로 라벨을 맞춘다.
+- **통계**: [analytics-v1.md](analytics-v1.md) "맞춤 대기열 도달"에 `queue_ad_shown`·`queue_ad_skipped_unloaded`를 더한다. 클릭·노출 수익은 AdMob 보고서로 본다. 이 이벤트는 설정 `사용 통계 보내기`를 따르지만 AdMob 자체의 광고 노출·측정은 그 설정과 무관하다(설정 문구가 광고까지 끄는 것처럼 읽히지 않게 한다).
+- **바꿔야 할 문서·답안(게시 전 사용자 확인)**:
+  - 개인정보처리방침: 제3자 제공 Google(AdMob)(처리 위탁이 아니라 제3자 제공으로 적는다, 2026-10-25 사용자 결정) — 항목 기기·광고 식별자(Android 광고 ID·앱 세트 ID, iOS 추적 허용 시 IDFA, 그 밖에는 IDFV), IP 주소(대략적 위치 추정), 광고 상호작용(노출·클릭·동영상 재생), 진단 정보 / 목적 비개인화 광고 표시·빈도 제한·광고 보고·부정 클릭 방지 / 거부 방법 Android 설정의 광고 ID 재설정·삭제, iOS ATT 창에서 거부하거나 설정 › 개인정보 보호 및 보안 › 추적에서 Dearby 끄기(IDFA를 보내지 않음, IDFV는 막지 못함). 위 "맞춤 대기열" 절의 처리방침 추가와 함께 게시한다.
+  - 스토어: Play "앱에 광고 포함" 예, "광고 ID" 선언 예(광고), 데이터 보안 공유 예(Google AdMob); App Store 개인정보 라벨에 제3자 광고 용도 항목, 기기 ID "추적에 사용: 예"(2026-10-25 사용자 결정) — 표와 근거는 [광고 스토어 답안](../../docs/store/ads-2026-10-25.md). 스토어 등록 문안의 "광고 식별자·추적 없음"·심사 노트의 사용 통계 문장을 "사용 통계는 광고 ID를 쓰지 않음, 광고는 비개인화 AdMob"으로 고친다.
+  - 운영: `https://dearby.wid.io.kr/app-ads.txt`에 AdMob 게시자 줄을 게시하고, 스토어 게시 뒤 AdMob 콘솔에서 앱을 스토어와 연결·검토 받는다. 콘솔 분류 차단(교육·채용만 남김)은 별도 작업.
+
+## 광고 목적 개인정보 제3자 제공 동의(선택) — 2026-10-25 사용자 결정
+
+사용자: "AdMob 광고는 Google LLC에 대한 개인정보 제3자 제공으로 보고 선택 동의를 받는다. 동의한 사용자에게만 광고를 요청·표시하고, 미동의·철회 사용자는 광고 SDK를 시작하지도 요청하지도 않는다(서비스 이용에 불이익 없음)." + "모든 동의 항목은 실제로 그 정보가 수집되는 지점 바로 직전에 구한다(Just-in-time)." 위 "맞춤 대기열 끝 광고" 절의 로드·ATT·요청 설정은 모두 이 동의 **뒤에만** 일어난다.
+
+- **성격**: 선택 동의. 동의하지 않거나 철회해도 모든 기능을 그대로 쓰고, 맞춤 대기열 끝 광고 카드만 없다(마지막 활동 카드 다음 바로 끝 화면). 광고 동의는 프로필 필수 동의("개인정보 동의")와 묶지 않는다(서로의 전제가 아니다).
+- **묻는 시점(JIT)**: 맞춤 대기열에서 **마지막 활동 카드를 넘길 때(광고 자리 직전)** 묻는다(2026-10-26 사용자 결정, 이전에는 대기열 응답 직후 첫 카드에서 물었다). 순서: 대기열 응답 → `GET /v1/me/consents/ad-third-party` → `agreed`이면 지금처럼 SDK 시작 → (iOS) ATT `.notDetermined`이면 ATT 창 → 광고 미리 요청. `agreed=false`이면 대기열을 열 때는 아무것도 묻지 않고 SDK·ATT·광고 요청도 없다. 그 뒤 마지막 활동 카드에서 넘겨 끝 화면으로 갈 때, 이 기기에서 이 계정·이 버전으로 거부한 기억이 없으면 끝 화면 위에 동의 시트 → `동의하고 계속`이면 `PUT` 뒤 SDK 시작 → (iOS) ATT. 그 열람은 광고를 기다리지 않고 끝 화면 그대로이며(지나간 광고 자리에 쓰지 않을 광고는 요청하지 않는다) 다음 열람부터 광고가 나온다. `동의하지 않음`·시트 닫기면 SDK 시작·ATT 창·광고 요청 모두 없이 끝 화면을 그대로 본다. 수집 직전 원칙은 그대로다 — 광고 요청은 동의 뒤에만 일어난다. 거부는 기기에만 기억해(계정·버전별) 다시 띄우지 않고, 바꾸려면 프로필 스위치를 쓴다(서버에 거부 기록을 남기지 않는다; 다른 기기에서는 한 번 더 물을 수 있다). GET이 실패하면 미동의로 보고 광고 없이 진행한다(사용자를 기다리게 하지 않는다). 앱 시작·로그인·발견 탭에서는 묻지 않는다. 광고가 꺼진 빌드(Release에 광고 ID 없음)는 시트도 띄우지 않는다.
+- **시트 문구 요소(문구 게시는 사용자 확인 뒤)**: 제목 `광고를 보여 드려도 될까요?`, 한 줄 설명 `맞춤 대기열 끝에 광고 1장을 보여 드리려면 아래 정보를 Google에 제공해야 해요. 맞춤 광고는 아니에요.` 그리고 표 다섯 줄:
+  - 제공받는 자: **Google LLC**(AdMob)
+  - 제공 목적: 앱 안 광고 표시(비개인화), 같은 광고 노출 횟수 제한, 광고 성과 측정, 부정 클릭 방지
+  - 제공 항목: 광고 식별자(Android 광고 ID·앱 세트 ID, iOS는 추적 허용 시 IDFA, 그 밖에는 IDFV), IP 주소(대략적 위치 추정), 기기 정보(모델·OS·언어), 광고 상호작용(노출·클릭·동영상 재생), 진단 정보
+  - 보유·이용 기간: **제공받는 자(Google)의 개인정보처리방침에 따름**(`전문 보기`에 Google 정책 링크)
+  - 국외 이전: 미국(Google LLC), 광고를 요청할 때 네트워크로 전송 — 개인정보 보호법 국외 이전 고지 항목(이전받는 자·국가·시기와 방법·항목·목적·기간·거부 방법)을 처리방침 `광고` 항목에 함께 둔다(판단: 같은 데이터가 미국으로 가므로 함께 고지; 법률 검토는 확인 필요)
+  - 거부 권리: `동의하지 않을 수 있어요. 동의하지 않아도 모든 기능을 그대로 쓸 수 있고, 광고가 표시되지 않을 뿐이에요.`
+  - 버튼: `동의하고 계속`(기본)·`동의하지 않음`(같은 크기, 같은 눈에 띄는 정도 — 거부를 숨기지 않는다). `[선택]` 표시와 `전문 보기`(웹 `/privacy`의 광고 항목을 인앱 브라우저로). iOS는 기본 시트(`.presentationDetents`), Android Material 3 `ModalBottomSheet`.
+- **버전**: `2026-10-25`(서버 상수 `AdConsent.VERSION`, 앱이 같은 값을 보낸다). 시트 문구(제공받는 자·목적·항목)를 바꾸면 버전을 올리고, 옛 버전 기록은 `agreed=false`가 되어 다음 대기열에서 다시 묻는다(그전까지 광고 없음). 처리방침 버전(`dearby.consent.privacy-version`)과 따로 움직인다(지원 자격 정보 동의 `2026-10-24`와 같은 방식).
+- **철회·다시 켜기**: 프로필 설정에 스위치 `광고 목적 정보 제공`(보조 글자 `끄면 광고가 보이지 않아요`, iOS `Toggle`, Android Material 3 `Switch`). 켜면 위 시트 내용을 다시 보여 주고 `동의하고 계속`일 때 `PUT`, 끄면 바로 `DELETE`(되돌리기 없이). 끄면 그 실행에서 더 광고를 요청하지 않고 받아 둔 광고를 버린다(`destroy`). 이미 시작한 SDK는 앱 프로세스가 끝날 때까지 남을 수 있고 다음 실행부터 시작하지 않는다(SDK에 끄는 API가 없다). iOS의 ATT 답은 OS 설정이라 이 스위치가 바꾸지 않는다(스위치를 끄면 광고 요청 자체가 없어 IDFA도 가지 않는다).
+- **SDK를 시작하지 않기(구현)**: 앱 시작 때 `MobileAds.initialize`/`MobileAds.shared.start`를 부르지 않고 위 순서에서만 부른다. 광고 SDK가 명시 시작 전에 앱 측정을 시작하지 않게 iOS Info.plist `GADDelayAppMeasurementInit = YES`(Google 문서 "delay app measurement until you explicitly initialize the Mobile Ads SDK or load an ad", 2026-10-25 검색 확인). Android는 앱이 동의 전 `MobileAds.initialize`를 부르지 않는 것으로 충분하다(SDK의 자동 ContentProvider는 초기화·네트워크 요청을 하지 않는다, PR #375 조사; 근거 없는 `DELAY_APP_MEASUREMENT_INIT` 메타데이터는 두지 않는다). 실기기에서 동의 전 `googleads`·`app-measurement` 요청이 없는지 네트워크로 확인한다. 미동의 상태에서 광고 관련 네트워크 요청이 0건이어야 한다.
+- **서버 API(Bearer, 로그인만)**: `GET /v1/me/consents/ad-third-party` → `{consent: {version, agreedAt}|null, agreed: boolean}`(`agreed`는 기록의 `version`이 현재 버전일 때만 true). `PUT` 같은 경로 `{version}` → 같은 모양(현재 버전과 다르면 400 `CONSENT_VERSION`; 같은 버전에 다시 동의하면 처음 `agreedAt`을 지킨다). `DELETE` 같은 경로 → 204(없어도 204). 비로그인 401. `GET /v1/profile`에는 싣지 않는다(대기열에서 읽는 값이고 프로필 탭과 시점이 다르다).
+- **저장**: V57 `user_ad_consents(user_id pk → users on delete cascade, version, consented_at timestamptz)`. 철회하면 행을 지운다(철회 시각은 남기지 않는다; 필요해지면 `withdrawn_at`을 더한다). 계정 삭제와 함께 지워진다.
+- **바꿔야 할 문서(게시 전 사용자 확인)**: 처리방침의 Google(AdMob) 제3자 제공 항목에 "선택 동의를 받은 경우에만 제공, 거부해도 불이익 없음, 철회는 프로필 설정"과 국외 이전 고지를 더한다(열린 PR #344 문구를 이것에 맞춘다). Play 데이터 보안의 광고 데이터 항목은 "사용자가 선택할 수 있음"으로, 스토어 심사 노트에 "광고는 앱 안 선택 동의 뒤에만"을 더한다.
+- **동의 시점 원칙(JIT) 점검**: 처리방침·약관 필수 동의는 프로필 첫 저장 전(이름·연락처·이력 수집 직전), 지원 자격 정보 동의는 그 입력 직전, 알림 권한은 첫 프로그램 하트(토큰은 권한 허용 뒤에만 서버로), 기기 캘린더는 겹침 확인·`캘린더에 추가`에서 OS 권한·시스템 화면으로(기기 안에서만 비교, 서버로 보내지 않음), 광고는 이 절. 로그인 때 저장되는 계정 식별자(Apple·Google `sub`, 이메일, 애플 이름)와 Firebase 사용 통계(앱 시작부터 기본 켬)는 동의 없이 처리방침 고지로 처리한다 — 근거와 남은 판단은 2026-10-25 동의 점검 기록(PR 본문).
 
 ## 태그 아이콘+라벨·분야 1개·자동 펼침 없음 — 2026-10-24 사용자 결정
 
@@ -563,7 +643,15 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **iOS**: 입력 화면은 `Form`(또는 `List`) + `.insetGrouped` 섹션으로 구성하고 행에는 `TextField`·`SecureField`·`Toggle`·`Picker`·`DatePicker`·`LabeledContent`를 그대로 둔다. 글꼴은 시스템 텍스트 스타일(`.body`, Pretendard 매핑은 크기 17 유지), 행 최소 높이 44, 섹션 제목은 `Section("…")`, 도움말은 `footer`. 여러 줄 입력은 `TextField(axis: .vertical)` + `lineLimit(3...)`. 검색창은 `.searchable` 대신 발견 페이지의 고정 제목 구조를 지키므로 `TextField`를 `.textFieldStyle(.roundedBorder)` 대신 **둥근 `Color(.tertiarySystemFill)` 바탕 높이 44의 시스템 검색 모양**(`magnifyingglass` + 지우기 버튼)으로 둔다. 주 버튼은 `.borderedProminent` + `.controlSize(.large)`(높이 50). 키보드 종류·`submitLabel`·`textContentType`을 지정한다. 오류 문구는 행 아래 `.footnote` 빨강.
 - **Android**: Material 3 `OutlinedTextField`(기본 높이 56dp, `bodyLarge`, `label`·`supportingText`·`isError`), 여러 줄은 `minLines`, 선택은 `ExposedDropdownMenuBox`, 날짜는 `DatePickerDialog`, 스위치는 `Switch` + `ListItem`, 주 버튼은 `Button` 기본 높이 48 이상(`ButtonDefaults`), `KeyboardOptions`/`KeyboardActions` 지정. 사용자 정의 높이·폰트 크기를 두지 않는다. 검색창은 `OutlinedTextField`가 아니라 Material 3 `SearchBar`의 입력 필드 모양(`SearchBarDefaults.InputField`, 높이 56, 둥근 바탕)을 쓴다.
 - 공통: 터치 영역은 iOS 44pt·Android 48dp 이상, 라벨은 항상 보이는 라벨(placeholder만으로 설명하지 않음), 필수 표시는 라벨 끝 `*`가 아니라 도움말 문장. 기존 입력값·검증·저장 흐름은 바꾸지 않는다.
-- **키보드 내리기(사용자 "키보드가 올라왔을 때 폼을 제외한 다른 곳 클릭 시 내려가게")**: 입력 필드 밖을 누르면 키보드가 내려간다. 스크롤로도 내려간다. iOS: 화면 루트에 `.scrollDismissesKeyboard(.interactively)`와, 빈 곳 탭 때 `@FocusState`를 `nil`로 만드는 탭 제스처(버튼·링크·필드의 탭은 그대로 전달, `simultaneousGesture` 아님 — 배경 전용). 앱 전체 입력 화면에 공통 modifier(`shared/ui`)로 적용한다. Android: 입력 화면 루트 `Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }`(필드·버튼은 자기 탭을 먼저 받으므로 영향 없음) + LazyColumn/Column 스크롤에 `imeNestedScroll`·`imePadding`. 발견 검색창도 같다.
+- **키보드 내리기(사용자 "키보드가 올라왔을 때 폼을 제외한 다른 곳 클릭 시 내려가게")**: 입력 필드 밖을 누르면 키보드가 내려간다. 스크롤로도 내려간다. iOS: 화면 루트에 `.scrollDismissesKeyboard(.interactively)`와, 빈 곳 탭 때 `@FocusState`를 `nil`로 만드는 탭 제스처(버튼·링크·필드의 탭은 그대로 전달, `simultaneousGesture` 아님 — 배경 전용). 앱 전체 입력 화면에 공통 modifier(`shared/ui`)로 적용한다. Android: 입력 화면 루트 `Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }`(필드·버튼은 자기 탭을 먼저 받으므로 영향 없음) + LazyColumn/Column 스크롤에 `shared/ui`의 `dismissKeyboardOnScroll()`(손가락이 터치 슬롭 넘게 끌리면 `clearFocus()`, 이벤트는 소비하지 않음; 길게 누른 뒤 끌기는 제외). `imePadding`은 앱 셸이 한 번만 적용한다. `imeNestedScroll`은 쓰지 않는다 — 목록 끝에서 더 끌어올리면 포커스 없이도 키보드가 올라와 탭 바가 사라졌다(2026-10-26 사용자 보고). 포커스된 `DearbyField`는 키보드가 올라오는 동안 행 전체(라벨·칸·도움말)를 키보드와 하단 막대 위로 보이게 한다. `CardComposer`는 명함 템플릿 제거 PR 뒤 같은 modifier로 바꾼다. 발견 검색창도 같다.
+
+## 뒤로 가기 — 2026-10-25 사용자 결정
+
+사용자: "뒤로가기 버튼은 어지간하면 지원해줄 수 있을까? 프로필 만들기 퍼널 등." 화면을 쌓은 곳은 플랫폼 뒤로가 이전 화면으로 간다(iOS 내비게이션 바 뒤로·가장자리 스와이프, Android 상단 바 뒤로 화살표·시스템 뒤로 제스처).
+
+- **퍼널**(한 화면에 질문 하나: 추천 설정·지원 자격 정보·이력 입력): 뒤로 = 이전 질문, 입력값은 그대로. iOS는 단계를 퍼널 자신의 `NavigationStack(path:)`에 쌓는다. Android는 상단 화살표와 시스템 뒤로가 같은 함수(`BackHandler`)로 이전 질문에 가고, 퍼널 전체를 닫지 않는다. 첫 질문(저장된 이력은 요약)에서 뒤로 = 닫기이며 바꾼 답이 있으면 "작성 중인 내용을 버릴까요?"(버리기·취소, iOS `confirmationDialog`·Android `AlertDialog`)를 먼저 묻는다. iOS 시트는 바꾼 답이 있는 동안 끌어내려 닫기를 막는다.
+- **프로필 만들기**는 탭 첫 화면의 아코디언(2026-10-17 결정)이라 쌓인 화면이 없다: `다음` 옆 `이전`과 Android 시스템 뒤로가 앞 단계를 다시 연다. 첫 단계에서는 그 자리가 `나중에`이고 Android 뒤로도 같다: "프로필 만들기를 그만할까요? / 프로필은 나중에 프로필 탭에서 만들 수 있어요."(나중에 하기·계속 만들기) 뒤 발견 탭으로 가며 로그인과 입력값은 그대로다(프로필 없이도 로그인 상태로 앱을 쓸 수 있다; 명함 만들기는 "먼저 프로필을 적어 주세요").
+- **스토리형 전체 화면**(맞춤 대기열): 뒤로 = 닫기(`queue_exit` 그대로). iOS 전체 화면 표시는 스와이프 닫기가 없으므로 `닫기` 버튼을 쓴다.
 
 ## 신청 확인 조건 완화·공개 applicationUrl — 2026-10-19 밤 사용자 결정
 
@@ -579,8 +667,25 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "운영자 지정 날짜가 있음에도 클라이언트에서 수집 원문이 노출되고 있어." 원인: 세 클라이언트가 활동 기간·모집 기간을 그릴 때 `dateLabel`(수집 원문 문구)이 있으면 그것을 먼저 쓰고, 운영자가 지정한 구조화 날짜(`startDate`/`endDateExclusive`, `startAt`/`endAt`)를 뒤로 미뤘다. 서버는 운영자 지정 뒤에도 원문 `dateLabel`을 그대로 돌려준다(어드민 `기간 확인` 판정과 수집 피드백에 필요).
 
-- **규칙(iOS·Android·웹 공통)**: Schedule을 글자로 보일 때 **구조화 날짜가 있으면 그것을 형식화**해 보인다(종일: `M월 d일 (요일)`·범위는 `~`, 연도는 **오늘(서울) 연도와 다른 날짜에만** 붙인다(`12월 30일 (수) ~ 2027년 1월 2일 (토)`); 시각: `M월 d일 (요일) HH:mm`, 같은 날 범위는 `M월 d일 (요일) 14:00 ~ 18:00`으로 날짜를 한 번만; 끝만 있으면 모집 기간은 `~ M월 d일 (요일) HH:mm 마감`, 활동 기간·세부 일정은 `~ M월 d일 (요일) HH:mm까지`). `dateLabel`은 **구조화 날짜가 전혀 없을 때만** 보이고, 그것도 없으면 `미정`/`일정 미확인`. 발견 활동 카드의 `모집`·`활동` 줄, 활동 상세의 `개최 일시`·모집 기간, 내 활동 행·진행 트랙 단계, 받은 명함·이력 선택의 활동 표시, 웹 활동 카드·상세 모두 같은 규칙.
+- **규칙(iOS·Android·웹 공통)**: Schedule을 글자로 보일 때 **구조화 날짜가 있으면 그것을 형식화**해 보인다(종일: `M월 d일 (요일)`·범위는 `~`, 연도는 **오늘(서울) 연도와 다른 날짜에만** 붙인다(`12월 30일 (수) ~ 2027년 1월 2일 (토)`); 시각: `M월 d일 (요일) HH:mm`, 같은 날 범위는 `M월 d일 (요일) 14:00 ~ 18:00`으로 날짜를 한 번만; 끝만 있으면 모집 기간은 `~ M월 d일 (요일) HH:mm 마감`, 활동 기간·세부 일정은 `~ M월 d일 (요일) HH:mm까지`). 모집 기간에 시작·끝이 모두 있을 때의 표기는 아래 "모집 날짜 표기 — 2026-10-26"이 대체한다. `dateLabel`은 **구조화 날짜가 전혀 없을 때만** 보이고, 그것도 없으면 `미정`/`일정 미확인`. 발견 활동 카드의 `모집`·`활동` 줄, 활동 상세의 `개최 일시`·모집 기간, 내 활동 행·진행 트랙 단계, 받은 명함·이력 선택의 활동 표시, 웹 활동 카드·상세 모두 같은 규칙.
 - 서버·어드민은 바꾸지 않는다. 어드민은 원문과 지정값을 둘 다 보이는 기존 규칙 유지.
+
+## 모집 날짜 표기 — 2026-10-26 사용자 결정
+
+사용자: 모집 기간이 있으면 "모집 10.1 – 10.20 · D-3"처럼 기간과 D-day 배지만 보이고, 별도의 "10월 20일 마감" 줄은 없앤다. 마감일만 있으면 기존 "10월 20일 마감". 위 "일정 표시 우선순위"의 모집 기간 문구를 이 절이 대체한다(활동 기간·세부 일정 문구는 그대로).
+
+- **모집 기간에 시작·끝이 모두 있으면**: `M.d – M.d`(en dash 앞뒤 공백, **시각은 빼고** 날짜만). 시각 일정은 그 시간대, 종일 일정은 서울 날짜이고 끝은 `endDateExclusive` 하루 전. 오늘(서울) 연도와 다른 날짜만 `yyyy.M.d`(`12.20 – 2027.1.5`). 시작과 끝이 같은 날이면 그 날 하나(`10.20`).
+- **D-day 배지**: 모집 중(열린 활동 판정)일 때만, 서울 날짜로 오늘부터 마지막 날까지 `D-n`, 당일은 `D-DAY`. 모집 예정·마감·확인 필요에는 배지가 없다. 배지는 채운 청록 캡슐(흰 글자)로 문구 바로 뒤에 둔다(강조된 민트 줄 위에서도 보이게).
+- **끝만 있으면**: 기존 문구 그대로(`~ 10월 20일 (화) 18:00 마감`), 배지 없음. 시작만 있거나 구조화 날짜가 없으면(`dateLabel`) 기존 규칙 그대로.
+- **표기 위치**: 발견·즐겨찾기·프로그램 상세의 활동 카드 `모집` 줄(값 + 배지), 앱 활동 상세 `행사 일정`의 모집 행(기간이 있으면 제목 `모집` + 기간 + 배지, 끝만 있으면 지금처럼 `모집 마감` + 마감 문구 — 별도 마감 행은 두지 않는다; `캘린더에 추가`는 마감 시점 그대로), 웹 활동 카드 `모집` 줄, 웹 활동 상세 `모집 기간`, 웹 활동 오픈그래프 이미지(한 시간 캐시라 배지 없이 기간만).
+- **바꾸지 않는 곳**: 접힌 프로그램 카드의 보조 줄(`M월 d일 마감` — `ProgramSummary`에 모집 시작이 없어 기간을 만들 수 없다), 내 활동 진행 트랙의 `지원` 단계(단계 날짜가 곧 마감), 맞춤 대기열 `DEADLINE` 장면(서버 `deadlineText`와 큰 D-day), 알림 문구.
+- 대가: 시각을 빼서 카드·상세에서 마감 시각(예 18:00)이 보이지 않는다. 마감 시각은 공식 안내와 캘린더에 추가한 일정에서 확인한다.
+- iOS·웹 2026-10-26 구현(`ActivityModel.recruitmentDate`, 웹 `recruitmentDate`). Android는 같은 규칙으로 따로 구현한다.
+
+## 모집 일정 없는 활동은 마감 — 2026-10-26 사용자 결정
+
+- 모집 일정(`application`의 구조화 날짜)이 없는 활동은 종류와 상관없이 **마감**으로 본다(서버 `feat/open-requires-recruitment`). 서버 반영 뒤 `ProgramSummary.nearestIsActivityStart`는 늘 false이고 `nearestRecruitmentEndAt`은 모집 마감만이다.
+- iOS·웹(2026-10-26): 모집 상태는 `모집 마감` 칩, 활동 카드 `모집` 줄은 `모집 일정 미정`(같은 날 "활동 상태" 구현에서 `일정 없음`을 바꿈), `모집 예정` 묶음에 넣지 않는다(활동 시작으로 대신하지 않음). 접힌 프로그램 보조 줄의 `M월 d일 행사`(열린 이벤트의 행사 시작 대체 표시)는 없앴다 — 옛 서버가 `nearestIsActivityStart: true`를 보내면 그 날짜를 마감으로 보이지 않고 버린다. 이벤트 탭의 최근 행사 날짜(`M월 d일 행사`/`최근 yyyy.M`)는 그대로.
 
 ## 비스크롤 화면 배치·CTA — 2026-10-19 밤 사용자 결정
 
@@ -599,7 +704,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - **한 가족만**: iOS는 SF Symbols만(사용자 PNG 아이콘 금지, 브랜드 심볼·GitHub 마크만 예외), Android는 **`Icons.Rounded`** 한 가족만(`Outlined`·`Filled`·`Default` 금지, `AutoMirrored.Rounded`는 허용). 색은 iOS `.foregroundStyle(.secondary)`/`DearbyStyle.teal`, Android `onSurfaceVariant`/`primary` 두 가지만.
 - **세 가지 크기**: ① 인라인(글자 옆·버튼 안): 글자 크기 따름(iOS `.imageScale(.medium)`, Android 20dp), 선형(outline 계열 SF 이름, Rounded는 그대로). ② 행 앞 글리프(목록·정보 행): 24, 보조색, 같은 열에 맞춤. ③ 상태 아이콘(빈 상태·완료·오류·시트 머리): **청록 채움 원 64 안의 흰 글리프 28**(토스의 파란 체크 원처럼; 흰 글자 규칙과 같음), 오류는 `danger` 채움 원. `CenteredMessage`의 `symbol`이 이 형태를 그린다. iOS 큰 상태 심볼은 `.fill` 변형, 인라인은 선형.
-- **의미별 고정 이름**(둘 다 이 표만 쓴다): 일정·달력 `calendar`/`Event`, 시각 `clock`/`Schedule`, 장소 `mappin.and.ellipse`/`Place`, 외부 링크 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 수정 `pencil`/`Edit`, 삭제 `trash`/`Delete`, 추가 `plus`/`Add`, 제거 `minus.circle`/`RemoveCircle`, 검색 `magnifyingglass`/`Search`, 지우기 `xmark.circle.fill`/`Cancel`, 닫기 `xmark`/`Close`, 뒤로 `chevron.left`/`AutoMirrored.Rounded.ArrowBack`, 펼침 `chevron.down`/`ExpandMore`, 성공·확인 `checkmark.circle`(상태는 `.fill`)/`CheckCircle`, 오류 `exclamationmark.triangle`/`Warning`, 정보 `info.circle`/`Info`, 알림 `bell`/`Notifications`, QR `qrcode`/`QrCode`, 명함 `person.text.rectangle`/`Badge`, 프로필 `person.crop.circle`/`AccountCircle`, 활동 둘러보기 `safari`/`Explore`, 내 활동 `checklist`/`Checklist`, 받은 명함 `tray.full`/`Inbox`, 공유 `square.and.arrow.up`/`Share`, 지도 `map`/`Map`, 전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 첨부 `paperclip`/`AttachFile`, 사진 `photo`/`Image`, 눈 `eye`/`Visibility`, 잠금 `lock`/`Lock`, 기기 `iphone`/`Smartphone`, 위로 `arrow.up`/`ArrowUpward`, 조직 `building.2`/`Business`, 변경 이력 `clock.arrow.circlepath`/`History`, 단계 종류(마감 `flag`/`Flag`, 발표 `megaphone`/`Campaign`, 면접 `person.wave.2`/`RecordVoiceOver`, 기타 `pencil.line`/`EditNote`), 연락처 종류(채팅 `bubble.left`/`ChatBubble`, 사진 `camera`/`CameraAlt`, 링크 `link`/`Link`), 선택 안 됨 `circle`/`RadioButtonUnchecked`, 설정 `gearshape`/`Settings`, 잠금 안내 `lock`/`Lock`. 보내기·신청 `paperplane`/`Send`, 진행 단계 종류는 위 단계 항목을 따른다. 표에 없는 뜻이 생기면 표에 먼저 더한다.
+- **의미별 고정 이름**(둘 다 이 표만 쓴다): 일정·달력 `calendar`/`Event`, 시각 `clock`/`Schedule`, 장소 `mappin.and.ellipse`/`Place`, 외부 링크 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 수정 `pencil`/`Edit`, 삭제 `trash`/`Delete`, 추가 `plus`/`Add`, 제거 `minus.circle`/`RemoveCircle`, 검색 `magnifyingglass`/`Search`, 지우기 `xmark.circle.fill`/`Cancel`, 닫기 `xmark`/`Close`, 뒤로 `chevron.left`/`AutoMirrored.Rounded.ArrowBack`, 펼침 `chevron.down`/`ExpandMore`, 성공·확인 `checkmark.circle`(상태는 `.fill`)/`CheckCircle`, 오류 `exclamationmark.triangle`/`Warning`, 정보 `info.circle`/`Info`, 알림 `bell`/`Notifications`, QR `qrcode`/`QrCode`, 명함 `person.text.rectangle`/`Badge`, 프로필 `person.crop.circle`/`AccountCircle`, 활동 둘러보기 `safari`/`Explore`, 내 활동 `checklist`/`Checklist`, 받은 명함 `tray.full`/`Inbox`, 공유 `square.and.arrow.up`/`Share`, 지도 `map`/`Map`, 전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 첨부 `paperclip`/`AttachFile`, 사진 `photo`/`Image`, 눈 `eye`/`Visibility`, 잠금 `lock`/`Lock`, 기기 `iphone`/`Smartphone`, 위로 `arrow.up`/`ArrowUpward`, 조직 `building.2`/`Business`, 변경 이력 `clock.arrow.circlepath`/`History`, 단계 종류(마감 `flag`/`Flag`, 발표 `megaphone`/`Campaign`, 면접 `person.wave.2`/`RecordVoiceOver`, 기타 `pencil.line`/`EditNote`), 연락처 종류(채팅 `bubble.left`/`ChatBubble`, 사진 `camera`/`CameraAlt`, 링크 `link`/`Link`), 선택 안 됨 `circle`/`RadioButtonUnchecked`, 설정 `gearshape`/`Settings`, 잠금 안내 `lock`/`Lock`. 보내기·신청 `paperplane`/`Send`, 진행 단계 종류는 위 단계 항목을 따른다. 활동 종류(2026-10-26, "종류 아이콘 라벨"): 부트캠프 `graduationcap`/`School`, 컨퍼런스 `person.3`/`Groups`, 워크샵 `pencil.and.ruler`/`DesignServices`, 스터디 `books.vertical`/`LibraryBooks`, 동아리 `person.2`/`Group`, 강연 `mic`/`Mic`, 해커톤 `keyboard`/`Keyboard`, 공모전 `trophy`/`EmojiEvents`, 밋업 `cup.and.saucer`/`LocalCafe`, 기타 `square.grid.2x2`/`Category`, 시간표(트랙·세션 시간표 있음·시간표 보기, 2026-10-26) `tablecells`/`ViewTimeline`. 워크샵·스터디·해커톤은 처음 제안(`hammer`·`book`·`laptopcomputer`)이 같은 카드의 태그 아이콘(프로젝트·독서·IT, "분야·성격 태그와 아이콘")과 겹쳐 바꿨다(웹은 같은 모양의 인라인 SVG). 표에 없는 뜻이 생기면 표에 먼저 더한다.
 - **탭 막대**: 다섯 탭은 위 표의 활동 둘러보기·내 활동·명함·받은 명함·프로필 아이콘을 쓰고, 선택 상태는 iOS 기본(`.fill` 자동), Android `NavigationBar` 기본.
 - 적용 시점: 비스크롤 화면 배치·흰 글자 규칙과 같은 묶음(현재 PR 병합 뒤).
 
@@ -613,6 +718,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   2. `연결된 로그인`: Apple·Google 두 행. 연결됨이면 이메일(가린 이메일 그대로)·연결일과 `연결 해제`, 아니면 `연결하기`(기존 네이티브 로그인 → `POST /v1/me/identities/{apple|google}` 링크 흐름 재사용). **마지막 로그인 수단은 해제할 수 없다**(패스키 0개이고 다른 OAuth 연결이 없으면 해제 버튼 비활성 + 설명).
   3. `패스키`: 이 계정의 패스키 목록(이름 `label`, 만든 날, 마지막 사용, 기기 동기화 여부 `backupState`). 행을 밀거나 누르면 `이름 바꾸기`·`삭제`. 맨 아래 `패스키 추가`(기존 등록 흐름 `POST /v1/auth/passkeys/registration/options` → `registration`, 로그인 상태에서 호출). 마지막 로그인 수단이면 삭제 불가(위와 같은 규칙).
   4. `정보`: 개인정보 처리방침·이용약관(인앱 브라우저), 앱 버전·빌드.
+  - 2026-10-25 사용자 결정: `정보` 위에 `알림`·`개인정보` 섹션을 둔다(프로필의 `알림` 묶음은 없앤다). `알림`: `새 모집 알림` 스위치와, 기기 알림 권한이 꺼져 있으면 안내 행(설정 앱 열기). 푸시는 계정 기능이라 로그인 + 동의 뒤에만 보인다(비로그인·동의 전 숨김). `개인정보`: `사용 통계 보내기`(설명 "어떤 화면과 기능을 쓰는지 모아 앱을 고치는 데 써요. 이름·연락처는 보내지 않아요.", 기기 저장)로 비로그인에서도 보인다. 광고 제3자 제공 동의 철회 스위치가 나중에 이 섹션에 들어간다. 비로그인 설정은 `로그인` CTA·`개인정보`·`정보`.
 - **API(`auth` 모듈, Bearer)**:
   | 메서드·경로 | 응답 |
   | --- | --- |
@@ -622,7 +728,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   | GET /v1/me/passkeys | 200 `{items: [{id(credentialId), label, createdAt, lastUsedAt, backedUp, transports[]}]}` |
   | PATCH /v1/me/passkeys/{id} | `{label}`(1~60자) → 200 항목 |
   | DELETE /v1/me/passkeys/{id} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 남이 가진 id면 404 |
-  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
+  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름 — 2026-10-25부터 배포된 옛 앱만 쓴다).
 - 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
 - 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
 
@@ -636,7 +742,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **안전 영역 배경**: 페이지 배경색이 상태 표시줄·홈 인디케이터·노치 영역까지 채운다. iOS는 배경 `Color`를 `.ignoresSafeArea()`로 깔고 내용만 안전 영역 안에 둔다(시트·`Form`·`List`는 시스템이 알아서 함). Android는 `enableEdgeToEdge()` 아래에서 루트 `Surface(color = colorScheme.background)`가 창 전체를 채우고 inset padding은 그 안쪽 내용에만 준다. 키보드 영역도 같은 배경.
 - **토글 라벨은 바로 옆**: `Switch`/`Toggle`의 라벨은 같은 행의 바로 왼쪽에 두고(iOS `Toggle("라벨", isOn:)` 기본 배치, Android `ListItem(headlineContent = 라벨, trailingContent = Switch)`), 라벨과 스위치 사이에 다른 요소를 두지 않는다. 발견 탭 `마감 숨기기`는 라벨과 스위치가 붙은 한 묶음이며 묶음 전체를 눌러도 토글된다. 라벨을 스위치 바로 옆에 두면 배치가 어색한 곳(짧은 라벨이 넓은 행 오른쪽 끝에 홀로 가는 경우, 동의 항목처럼 여러 줄 라벨)은 스위치 대신 **체크박스**(iOS는 `Toggle` + `.toggleStyle(.checkbox)`가 없으므로 `Label`+`checkmark.circle(.fill)` 버튼, Android `Checkbox` + `ListItem`)로 바꾼다(사용자 2026-10-20 "바로 근처에 있을 때 별로라면 체크박스로 변경"). 발견 `마감 숨기기`는 검색창 아래 한 줄에 라벨+스위치를 왼쪽 정렬로 붙여 둔다.
 - **폼 라벨·입력 크기(사용자 2026-10-20 "프로필의 라벨이 너무 작아, 토스 참고해서 키워줘")**: 토스 입력 화면([계좌 입력](https://mobbin.com/screens/bb17bf31-062b-4b19-94e4-08f8c8d2d615), [거래 추가](https://mobbin.com/screens/6963fb34-5544-4c53-96fa-19fa70dbc5ae))처럼 **라벨을 입력 위에 쌓고** 입력 글자를 크게 둔다. 프로필·이력·명함 폼의 행은 세로 스택: 라벨 iOS `.subheadline`(15) 중간 굵기 보조색 / Android `labelLarge`(14) `onSurfaceVariant` → 입력 iOS `.title3`(20) / Android `titleLarge`(22) 본문색, 행 최소 높이 64, placeholder는 입력 크기 그대로 보조색. 섹션 머리·도움말은 `.footnote`(13)/`bodyMedium`가 아니라 `.subheadline`/`bodyMedium`(14) 이상. `LabeledContent`의 가로 라벨(왼쪽 라벨·오른쪽 값)은 쓰지 않는다. Android `OutlinedTextField`는 `textStyle = titleLarge`, `label`은 기본(포커스 시 떠오름) 대신 위에 별도 `Text`로 둔다(같은 쌓기).
-- **연락처 행은 라벨 대신 왼쪽 아이콘(사용자 2026-10-20 "연락처의 경우 전화번호·이메일 같은 라벨 대신 좌측에 아이콘으로")**: 프로필 편집·퍼널의 연락처 입력 행과 명함·프로필의 연락처 표시 행은 위에 쌓는 글자 라벨을 두지 않고 행 왼쪽에 24 보조색 글리프(전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 카카오톡 `bubble.left`/`ChatBubble`, Instagram `camera`/`CameraAlt`, GitHub `chevron.left.forwardslash.chevron.right`/`Code`, Behance `paintpalette`/`Palette`, 기타 `link`/`Link`)를 둔다. 입력 글자는 `.title3`/`titleLarge` 그대로, placeholder가 종류 이름("전화번호", "이메일", "@아이디" 등)을 대신 말한다. 접근성 라벨은 종류 이름을 유지한다. 행 전체 탭 → 포커스 규칙 동일.
+- **연락처 행은 라벨 대신 왼쪽 아이콘(사용자 2026-10-20 "연락처의 경우 전화번호·이메일 같은 라벨 대신 좌측에 아이콘으로")**: 프로필 편집·퍼널의 연락처 입력 행과 명함·프로필의 연락처 표시 행은 위에 쌓는 글자 라벨을 두지 않고 행 왼쪽에 24 보조색 글리프(전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 카카오톡 `bubble.left`/`ChatBubble`, Instagram `camera`/`CameraAlt`, GitHub `chevron.left.forwardslash.chevron.right`/`Code`, Behance `paintpalette`/`Palette`, 기타 `link`/`Link`)를 둔다(GitHub·Instagram·Behance·카카오톡 네 종류는 2026-10-26부터 아래 "연락처 아이콘·바로가기"의 단색 브랜드 글리프). 입력 글자는 `.title3`/`titleLarge` 그대로, placeholder가 종류 이름("전화번호", "이메일", "사용자 이름" 등)을 대신 말한다. 접근성 라벨은 종류 이름을 유지한다. 행 전체 탭 → 포커스 규칙 동일.
 - **플로팅 라벨·필수 표시(사용자 2026-10-20 "필수 항목은 빨간 *로 표시. placeholder에 label을 넣어 주고 클릭 시 placeholder가 작아지면서 라벨 위치로 가는 효과")**: 위 "폼 라벨·입력 크기"의 고정 쌓기 대신 **플로팅 라벨**로 바꾼다. 비어 있고 포커스가 없을 때는 라벨 글자가 입력 자리에 placeholder처럼 크게(`.title3`/`titleLarge`, 보조색) 보이고, 포커스가 가거나 값이 있으면 짧은 애니메이션(iOS `.snappy(duration: 0.2)`, Android 기본 라벨 전환)으로 작아져 입력 위 라벨 위치(`.subheadline`/`bodySmall`, 보조색·포커스 시 청록)로 올라간다. **입력 칸은 검색창처럼 글자 한 줄만 담는 작은 칸이고, 라벨은 칸 바깥 좌상단으로 이동한다**(사용자 2026-10-20 "바깥 좌상단으로 하고 영역은 검색창처럼 글자만 들어가도 되는 크기"): 칸은 발견 검색창과 같은 모양(둥근 10, `tertiarySystemFill`/`surfaceContainerHighest` 채움, 높이 44/48, 테두리 없음, 여러 줄 입력은 3줄 높이)이며 포커스·값에 따라 모양이 바뀌지 않는다. 비어 있고 포커스 없으면 라벨이 칸 안에 placeholder로(`.body`/`bodyLarge` 보조색) 보이고, 포커스가 가거나 값이 있으면 라벨이 칸 **위 왼쪽**(바깥)으로 작아지며 올라간다(`.subheadline`/`bodySmall` 보조색, 포커스 시 청록). 행은 처음부터 라벨 줄(20) + 간격 4 + 칸 높이를 확보해 레이아웃이 튀지 않는다. 둘 다 플랫폼 기본 플로팅 라벨이 칸 안/테두리로 뜨므로 쓰지 않고, iOS `DearbyFormRow`·Android `DearbyField`가 `TextField`/`BasicTextField` 위에 라벨 `Text`를 애니메이션(`scaleEffect`+`offset` / `animateFloatAsState`로 위치·크기)으로 옮겨 구현한다(SwiftUI·Compose만). 필수 항목은 라벨 끝에 **빨간 `*`**(`Text("*").foregroundStyle(.red)` 이어 붙임 / Android 라벨 `AnnotatedString`에 `error` 색 `*`)를 붙이고, 접근성 라벨에는 ", 필수"를 넣는다. 2026-10-19의 "필수 표시는 도움말 문장" 규칙은 이것으로 대체한다. 연락처 행처럼 왼쪽 아이콘이 있는 행도 같은 플로팅 라벨을 쓴다(아이콘 + 플로팅 라벨 입력).
 - **입력 영역 터치(사용자 "텍스트에어리어랑 연락처 추가 등 영역이 터치가 잘 안 돼")**: 입력 행은 행 어디를 눌러도 그 필드에 포커스가 간다(iOS 행 `.contentShape(Rectangle())` + 탭 → `@FocusState`, Android `Modifier.clickable { focusRequester.requestFocus() }` 또는 필드가 행 전체를 채움). 여러 줄 입력은 최소 3줄 높이·행 너비 전체. `연락처 추가`·`이력 추가`·`인증자료 추가` 같은 추가 행은 행 전체가 `Button`/`ListItem(clickable)`이며 아이콘+라벨이 왼쪽, 높이 48 이상.
 - **키보드 내리기와 터치 충돌 점검(사용자 2026-10-20)**: 점검 결과 — 버튼·링크·스위치는 자식 제스처가 우선이라 루트 탭 제스처와 충돌하지 않는다. 충돌은 **버튼이 아닌 영역**에서 난다: iOS 루트 `.onTapGesture`가 행의 라벨 글자·여백 탭을 받아 첫 응답자를 내려 버리고(그래서 필드 옆을 누르면 포커스가 가는 대신 키보드가 닫힘), Android 루트 `detectTapGestures`도 `clickable`이 아닌 라벨 `Text` 탭에서 `clearFocus()`를 부른다. 조치: ① 위 "입력 영역 터치" 규칙대로 입력 행 전체가 그 필드에 포커스를 주면 루트 제스처가 받을 영역이 사라진다. ② iOS는 **SwiftUI만** 쓴다(사용자 2026-10-20 "SwiftUI만 사용"): 루트 탭으로 키보드를 내리는 제스처를 아예 두지 않고, `.scrollDismissesKeyboard(.interactively)` + 키보드 툴바 `완료` 버튼 + 입력 행 전체 포커스로 해결한다(애플 기본 앱과 같은 방식; 빈 곳 탭으로 내리기는 iOS 관례가 아니다). `DearbyDismissKeyboard`는 scroll dismiss와 툴바만 남긴다. ③ Android는 **Jetpack Compose만** 쓴다(사용자 2026-10-20; 현재도 `AndroidView`·XML 레이아웃·Fragment·appcompat 없음): 루트 제스처는 Compose `pointerInput`+`LocalFocusManager`로 유지하되 모든 행이 `clickable`이면 도달하지 않는다. 앞으로도 View 기반 컴포넌트를 섞지 않는다.
@@ -684,6 +790,40 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 신청 확인 시트(외부 브라우저에서 돌아올 때)는 그대로 둔다. 둘 다 같은 기기 저장소를 쓴다.
 - **빼기는 눈에 보이게(사용자 2026-10-20 "내 활동에 추가하고 삭제가 가능해야 해")**: 길게 누르기·작은 펼침 아이콘 같은 숨은 동작에만 두지 않는다. ① 활동 상세: 이미 내 활동에 있으면 `내 활동에서 보기` 버튼 아래에 텍스트 버튼 `내 활동에서 빼기`(빨강, iOS `.borderless` role destructive / Android `TextButton` error 색)를 항상 보이게 두고, 누르면 확인("내 활동에서 뺄까요? 단계 표시와 참여 확정도 함께 지워져요.") 뒤 뺀다. ② 내 활동 탭 목록: 각 행에서 빼기 — iOS 왼쪽으로 밀기 `.swipeActions` `빼기`(목록이 `List`가 아니면 행 `contextMenu`와 함께 상세의 버튼으로 충분하도록 ③을 둔다), Android 행 끝 `MoreVert` → `DropdownMenu` `내 활동에서 빼기`. ③ 진행 단계 상세(내 활동 행을 눌렀을 때): 맨 아래 `내 활동에서 빼기` 텍스트 버튼(같은 확인). 뺀 뒤 그 화면은 닫고 목록으로 돌아간다. 실수 방지 확인은 항상 둔다.
 
+## 연락처 아이콘·바로가기 — 2026-10-26 사용자 결정
+
+사용자: GitHub·Instagram·Behance·카카오톡 연락처 아이콘을 각 회사 공식 브랜드 마크로 바꾸고, 연락처를 누르면 그 서비스로 바로 간다. 같은 날 이어서 "SVG 아이콘이 적용이 안 됐는데? https://expo.dev/blog/supporting-iphone-duo 이런 거(페이지 하단 GitHub·X·Discord·Bluesky처럼) 단색 아이콘 차용해서 색깔 적용해 주면 돼", "외부 링크는 직접 치게 하지 말고, 태그나 사용자명을 입력하면 링크를 생성해 주도록 해". 위 "아이콘 통일"의 브랜드 심볼 예외이고, "연락처 행은 라벨 대신 왼쪽 아이콘"의 해당 네 종류 글리프를 대신한다(전화·메일·기타는 그대로).
+
+- **아이콘 원본**: [Simple Icons](https://simpleicons.org) 16.36.0(저장소 CC0-1.0)의 `github`·`instagram`·`behance`·`kakaotalk` SVG를 바꾸지 않고 `shared/assets/prototype/contact-icons/`에 둔다. 출처·라이선스·브랜드 가이드·SHA256은 그 폴더 README. 마크 자체는 각 회사 상표이며 CC0가 상표권을 주지 않는다 — 모양을 바꾸지 않는다.
+- **색·크기(2026-10-26 사용자 결정, 브랜드 고유색 규칙 대체)**: 네 마크는 **단색 글리프**이고 색은 앱이 정한다 — 연락처 글리프 자리의 보조색(iOS `.secondary`, Android `onSurfaceVariant`; 라이트·다크 자동)으로 전화·메일 기호와 같은 색. 크기는 글리프 열(24) 안에 20(글자 배율 따름)으로 SF Symbols·Material 기호와 같은 여백. 참고: expo.dev 블로그 하단 소셜 글리프. 이전 브랜드 색 규칙(GitHub·Instagram 검정/흰색, Behance `#1769FF`, 카카오톡 `#FFCD00`)은 [`006b118a`](https://github.com/fixabley/dearby/blob/006b118a/shared/contracts/native-v1.md#연락처-아이콘바로가기--2026-10-26-사용자-결정).
+- **적용 위치**: 연락처를 그리는 모든 곳 — 명함 면·받은 명함 상세·내 프로필 카드(보기 모드), 프로필 수정의 연락처 입력 행, `연락처 추가` 목록, 명함 만들기의 연락처 선택 행. 한 함수(iOS `ContactModel.glyph(kind:)` → `DearbyGlyphView`, Android `contactIcon(kind)`)가 모두에 쓰인다. 웹 `/cards/:id`도 같은 Simple Icons 경로를 채운 단색 글리프(`Icon` 청록)로 그리고, 사용자명 값으로 같은 링크를 만든다(옛 URL 값은 사용자명으로 읽음).
+- **플랫폼**: iOS는 asset catalog 벡터(`preserves-vector-representation`, Render As Template, `Image(...).renderingMode(.template)` + `foregroundStyle`). Android는 같은 경로를 vector drawable로 옮기고(28.8 viewport 안에 2.4 이동해 24dp에 20으로) `Icon(tint = …)`.
+- **사용자명 입력(2026-10-26 사용자 결정)**: GitHub·Instagram·Behance·카카오톡은 링크를 치지 않고 **사용자명(ID)만** 입력한다. 링크는 앱이 만든다.
+  - 허용: 영문·숫자·`.`·`_`·`-`. 길이 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20(공식 상한을 확인하지 못해 넉넉히 둔 값). 앞의 `@`와 공백은 지운다.
+  - 입력 칸: GitHub·Instagram·Behance는 라벨이 떠 있을 때 값 앞에 고정 접두어 `github.com/`·`instagram.com/`·`behance.net/`를 보조색으로 보인다(카카오톡은 없음). 입력·붙여넣기는 허용 문자만 남기고 길이에서 자르며, 그 서비스의 프로필 URL(`[https://][www.|m.]host/이름[/…]`)을 붙여 넣으면 이름만 남긴다. 카카오톡 칸에 URL을 넣으면 ID가 아니므로 비운다(오픈채팅 URL 입력 지원 없음). placeholder `사용자 이름`/`카카오톡 ID`.
+  - 서버(`PUT /v1/profile`): 같은 규칙으로 정규화(프로필 URL → 사용자명, `@`·공백 제거)해 사용자명만 저장하고, 정규화 뒤 형식이 틀리면 400(`사용자명은 영문·숫자·.·_·-로 N자까지입니다`). 옛 앱이 URL을 보내도 400이 아니라 정규화. 이미 저장된 값과 같은 값(같은 연락처 id·종류)은 다시 검사하지 않는다 — 2026-10-26 전에 저장된 카카오톡 오픈채팅 URL이 변경 없는 저장을 막지 않게. 버전 되돌리기에서 지금 프로필에 없는 옛 오픈채팅 URL은 400이 될 수 있다. 저장된 값의 일괄 마이그레이션은 하지 않는다(운영 DB 변경은 사용자 승인 필요).
+  - 이미 저장된 URL 형태의 값: 앱은 표시·링크에서 사용자명으로 읽고(프로필 수정 폼도 사용자명으로 채움), 카카오톡 오픈채팅 URL은 그대로 보이고 연다.
+  - 웹사이트처럼 본래 URL인 종류는 지금 연락처 종류(phone/email/kakao/instagram/github/behance)에 없다.
+- **바로가기(행 전체 터치)**: 값의 앞뒤 공백을 지우고 —
+  - 전화 `tel:`(숫자와 `+`만), 이메일 `mailto:`.
+  - GitHub `https://github.com/{id}`, Instagram `https://instagram.com/{id}`, Behance `https://www.behance.net/{id}`. `{id}`는 위 사용자명이며 규칙에 맞지 않으면 링크 없이 값만. 앱이 설치돼 있으면 시스템이 앱으로 연다(유니버설 링크·App Links).
+  - 카카오톡: ID는 공개 링크로 열 수 없으므로 **복사**하고(앞 `@` 지움) "ID를 복사했어요"를 잠깐 보인다(iOS 행 끝 문구 + VoiceOver 알림, Android 스낵바 또는 시스템 복사 알림). 2026-10-26 전에 저장된 오픈채팅 URL(`http`/`https`, 또는 스킴 없는 `도메인/경로`에 `https://`)은 연다. 그 밖의 스킴(`javascript:` 등)은 열지 않는다.
+  - 행 끝 표시: 열기 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 복사 `doc.on.doc`/`ContentCopy`, 동작이 없으면 표시 없음. 접근성 힌트: 전화 "전화를 걸어요", 메일 "메일을 보내요", 링크 "링크를 열어요", 복사 "ID를 복사해요".
+
+## 소개 링크·소개 글 폐지 — 2026-10-26 사용자 결정
+
+사용자: "소개 노션 같은 링크를 이름 다음에 추가할 수 있게 해 줘." 이어서 "소개 글 기능 전체 삭제 — 자기소개는 이름 옆 소개 링크로 대신", "내 프로필의 활동 이력을 명함처럼". iOS·Android·웹·API.
+
+- **소개 링크(`introLink`, 선택, 하나)**: 노션·포트폴리오 같은 외부 문서 주소. 위 "외부 링크는 직접 치지 않는다"(연락처 사용자명 입력)의 예외 — 사용자명으로 만들 수 없는 링크라 URL을 입력한다.
+  - 서버(`PUT /v1/profile` `introLink`): 앞뒤 공백 제거, 비면 null, 스킴이 없으면 `https://`를 붙이고 `https` 주소(호스트에 `.`, 공백 없음)만, 500자까지. 그 밖(`http:`·`javascript:` 등)은 400 `소개 링크는 https 주소만 쓸 수 있습니다`. 프로필 버전 스냅샷에 들어가고 되돌리기도 따른다. 저장: `profiles.intro_link`·`business_cards.intro_link`(V60).
+  - 입력: 프로필 수정의 이름 칸 바로 아래 `소개 링크` 칸(URL 키보드, 자동 고침·대문자 끔, placeholder `notion.so/…`), 선택. 형식 오류 문구는 서버 문구와 같다. 처음 입력 퍼널에는 넣지 않는다(수정에서 추가).
+  - 표시: 프로필 보기 카드·명함 면·받은 명함·웹 `/cards/:id`에서 **이름 바로 옆**(같은 줄, 넘치면 다음 줄)에 작은 링크 버튼 — 글리프 + `소개`. 호스트가 `notion.so`·`notion.site`(하위 도메인 포함)면 Notion 단색 글리프(Simple Icons `notion` 16.36.0, `shared/assets/prototype/contact-icons/notion.svg`, 연락처 브랜드 글리프와 같은 단색 규칙), 그 밖은 링크 글리프(`link`/`Link`). 색은 청록(iOS `DearbyStyle.teal`, Android `primary`, 웹 `text-teal`), 캡슐 옅은 배경(iOS `.buttonStyle(.bordered)` 소형 + `.tint(teal)`, Android `AssistChip` 또는 `FilledTonalButton` 소형, 웹 둥근 버튼). 누르면 시스템 브라우저/앱으로 연다(iOS `openURL`, Android `CustomTabs`/`ACTION_VIEW`, 웹 `target=_blank rel=noopener`). 접근성 라벨 `소개 링크 열기`. `introLink`가 없으면 버튼 없음.
+  - 명함: 발행·고치기 요청에 `includeIntroLink: Boolean`(생략 시 true). 명함 만들기에서 프로필에 소개 링크가 있으면 `소개 링크 넣기` 스위치(기본 켬, 사진 넣기와 같은 모양). 명함 지우기·어드민 내리기는 비운다. 신고 스냅샷에 들어간다.
+- **소개 글(`introduction`) 폐지**: 앱·웹에서 소개 입력·표시를 모두 없앤다 — 프로필 수정의 `소개` 칸, 처음 입력 퍼널의 `소개` 단계, 프로필 보기의 `소개` 절, 명함 만들기의 본문 미리보기, 명함 면·받은 명함·웹 `/cards/:id`의 소개 절(이미 발행된 명함의 옛 본문도 보이지 않는다). 마크다운 렌더러는 쓰는 곳이 없어 지운다.
+  - 서버: `PUT /v1/profile`의 `introduction`은 받고 무시(옛 앱 호환, 400 없음), 명함 발행·고치기는 본문을 비운다(`business_cards.introduction` = `""`). 응답의 `introduction`(Profile·Card)은 **폐지 예정**으로 당분간 늘 `""`. 버전 스냅샷의 옛 `introduction`은 읽지 않는다(되돌려도 돌아오지 않는다). DB 열 `profiles.introduction`·`business_cards.introduction`과 그 안의 기존 값은 지우지 않는다(운영 데이터 일괄 삭제는 사용자 승인 필요). 2026-10-26 전 신고 스냅샷의 소개 글은 어드민 신고 상세에 `소개 글(폐지 전)`로 남는다.
+- **내 프로필 활동 이력 = 명함 이력**: 프로필 보기 모드의 활동 이력 목록은 명함 면(명함 상세·받은 명함)의 이력 행 컴포넌트를 그대로 쓴다(기간·조직 · 프로그램 · 활동·역할·`확인됨`/`미확인` 배지·설명).
+- 처리방침: 수집 항목에서 `소개`(자기소개 글)를 빼고 `소개 링크(선택)`를 더해야 한다(#344와 별도, 사용자 확인 후).
+
 ## 프로필 읽기/수정 모드·상단 바 메뉴 — 2026-10-20 사용자 결정
 
 사용자: "내 프로필에서 수정이 바로 가능하게 하지 말고, 상단 탭바에 수정 버튼을 눌렀을 때 노출되도록. 수정과 설정·알림 버튼을 제외하고 알림 버튼 오른쪽에 햄버거 메뉴 버튼을 눌렀을 때 드롭다운으로 라벨과 함께 표시." iOS·Android.
@@ -692,6 +832,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **수정 모드**: 상단 바의 `수정`(`pencil`/`Edit`, 텍스트 버튼 또는 아이콘, 접근성 `수정`)을 누르면 같은 화면이 편집 폼(플로팅 라벨 입력·이력 추가·연락처 추가)으로 바뀌고 아래에 `저장`/`원래대로` 막대가 나타난다. 상단 `수정`은 `완료`로 바뀌며 변경이 없으면 읽기 모드로 돌아가고, 변경이 있으면 저장 여부를 묻는 확인(저장 / 버리기 / 취소). 저장 성공 시 읽기 모드로 돌아간다. 모드는 앱 실행 중 메모리.
 - **상단 바 구성(네 탭 공통)**: 오른쪽에 [탭 고유 주 행동(프로필의 `수정`만)] [설정] [알림] [**메뉴** `line.3.horizontal`/`Menu`] 순. 메뉴를 누르면 드롭다운(iOS `Menu` → 항목은 `Label(제목, systemImage:)`, Android `DropdownMenu` → `DropdownMenuItem(leadingIcon + text)`)에 나머지 보조 행동이 **아이콘 + 라벨**로 나온다: 프로필 — `변경 이력`, `명함 만들기`; 내 활동 — 항목 없음(예시 데이터셋이 없어 `예시` 배지는 지우고 메뉴도 숨긴다; 2026-10-20 구현 확인); 발견·명함 — 지금은 항목이 없으면 메뉴 버튼을 숨긴다. 설정·알림·수정은 메뉴에 넣지 않는다.
 - iOS는 `ToolbarItemGroup(.topBarTrailing)` 안에 순서대로, Android는 `TopAppBar.actions` 안에 순서대로. 메뉴 아이콘 접근성 이름 `더 보기`.
+- **보기 모드 = 명함 디자인(2026-10-26 사용자 결정)**: 보기 모드 맨 위는 명함 면 컴포넌트를 그대로 쓴 카드(사진·이름·직무·연락처, 연락처는 아래 "연락처 아이콘·바로가기"대로 누르면 열림), 그 아래 `활동 이력` 목록(명함의 이력 행과 같은 컴포넌트·인증 배지; `소개` 절은 2026-10-26 폐지), 그 아래 `이 내용으로 명함 만들기`(주 버튼, 명함 만들기 시트)·`수정`(보조 버튼, 상단 `수정`과 같다). 수정 모드 입력 화면은 그대로이며 맨 위에 `사진` 칸("프로필 사진")이 더해진다. 변경 이력의 버전 상세도 같은 표현(버전에는 사진이 없어 머리글자).
 
 ## 명함 고치기는 같은 명함을 수정 — 2026-10-20 사용자 결정
 
@@ -748,7 +889,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - 상세 화면에서는 빼지 않는다. 내 활동 목록의 밀어서 빼기와 진행 화면의 빼기는 그대로다.
   - 웹은 내 활동이 없어 해당 없음.
 - **내 활동 목록에서 밀어서 지우기**: iOS `List` + `.swipeActions(edge: .trailing)` `빼기`(또는 `onDelete`), Android Material 3 `SwipeToDismissBox`(끝에서 시작 방향), 확인 대화 후 삭제. 기존 더 보기 메뉴 빼기는 유지.
-- **진행 단계 상태**: 단계마다 일정의 `statuses`를 선택지로 보인다(기본 대기·통과·탈락, 어드민이 바꾸면 그 이름). `FAILED` 종류를 고르면 기존 탈락 규칙(끝난 활동으로).
+- **진행 단계 상태**: 단계마다(2026-10-26부터 선발 단계만 — `phase = SELECTION`, 아래 "선발 과정·활동 일정 분리") 일정의 `statuses`를 선택지로 보인다(기본 대기·통과·탈락, 어드민이 바꾸면 그 이름). `FAILED` 종류를 고르면 기존 탈락 규칙(끝난 활동으로).
 - **저장**: 로그인했으면 서버(`/v1/me/activities`), 로그인 안 했으면 지금처럼 기기 안. 로그인하는 순간 기기 기록을 import로 올리고 기기 사본은 지운다.
 
 ### 내 캘린더에 추가
@@ -797,14 +938,84 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 ### 앱 — 겹침 확인과 결과 묶음
 
 - 활동 일정 쪽: 반복이 있으면 규칙을 풀어 회차 창을 만든다(최대 400회, 6개월 넘는 반복도 400회까지만). 반복이 없으면 지금 규칙(시각 일정, 또는 날짜 + overlapCheck 날마다) 그대로.
-- 기기 일정 쪽 묶음:
-  - 같은 기기 일정의 회차는 하나로 묶는다 — iOS `calendarItemIdentifier`(분리된 예외 회차 포함), Android `Instances.EVENT_ID`(예외는 `ORIGINAL_ID`).
+- 기기 일정 쪽 세기(요약용):
+  - 같은 기기 일정의 회차는 하나로 센다 — iOS `calendarItemIdentifier`(분리된 예외 회차 포함), Android `Instances.EVENT_ID`(예외는 `ORIGINAL_ID`).
   - 다른 캘린더에 동기화된 같은 일정(제목·시작·끝 같음)은 하나로 합친다.
-  - 반복 기기 일정 묶음 한 줄: "제목 · 반복 문구(매주 화 10:00~11:00) — n번 겹침(첫 날짜~마지막 날짜)". 반복 문구는 기기 일정의 규칙에서 만든다(iOS `recurrenceRules`, Android `Events.RRULE`); 읽을 수 없으면 "반복 일정".
-  - 단일 일정은 가까운 날짜순 5개까지, 나머지는 "더 보기".
   - 맨 위 요약: "n일 겹침 · 반복 일정 a개 · 단일 일정 b개". 겹침이 없으면 지금처럼 "겹치는 일정이 없어요".
-  - 묶음 줄을 누르면 겹친 날짜 목록이 펼쳐진다(특정 회차만 시간이 다른 경우 확인용).
+- 결과 목록은 아래 "겹침 결과 시간표 연달아"(2026-10-26)를 따른다. 2026-10-22~10-26에는 기기 일정별 묶음 줄(반복 일정 "제목 · 매주 화 10:00~11:00 — n번 겹침", 단일 일정 5개 뒤 "더 보기")을 누르면 날짜·시간표가 펼쳐졌다.
+- 겹침 하나의 시간표(2026-10-26 사용자 요청): 보이는 구간은 겹침 앞 활동 최대 1시간~겹침 끝 30분 뒤이고, 왼쪽 눈금과 두 블록(활동·기기 일정)·겹침 띠는 같은 분당 높이로 비례 배치한다. 눈금 간격은 15분·30분·1시간·2시간·3시간·4시간·6시간·12시간 중 구간을 6칸 이하(라벨 약 6개)로 나누는 가장 작은 값이고, 활동 시간대의 자정 기준 정시에 맞춘다. 전체 높이는 최소·최대를 두고(Android 192~288dp, iOS 190~280pt), 아주 짧은 겹침 띠·블록도 라벨이 읽히는 최소 높이를 갖는다. 구간 밖으로 이어지는 블록은 구간에 맞춰 자르고 '이전부터 계속'/'이후에도 계속'을 붙인다. 이 구간에는 두 블록이 모두 없는 긴 빈 구간이 생기지 않으므로 접기는 두지 않는다.
 - 기기 일정 제목은 여전히 화면에만 보이고 저장·전송하지 않는다.
+
+### 겹침 결과 시간표 연달아 — 2026-10-26 사용자 결정
+
+사용자: "겹치는 일정 찾기는 항목마다 하기가 너무 불편해서 초기처럼 연달아 보여 줬으면 좋겠어."
+
+- 겹침이 둘 이상이면 요약 아래에 **모든 겹침의 시간표를 날짜순으로 차례로 이어서** 바로 보인다. 누르거나 펼칠 것이 없다(초기 2026-10-06 판은 한 화면에 하나씩 `확인했어요 · 다음 일정`으로 넘겼다).
+- 겹침마다 머리글 두 줄: "날짜(요일) · 기기 일정 제목", "시간 범위 · n분 겹침 · 반복 문구"(반복 기기 일정만; 문구는 기기 일정 규칙에서, 읽을 수 없으면 "반복 일정"). 그 아래 "겹침 하나의 시간표" 그대로.
+- 처음 10개만 보이고 `더 보기 (n개 남음)`을 누를 때마다 10개씩 더 보인다(긴 부트캠프와 주간 일정처럼 수백 번 겹칠 수 있음).
+- 겹침이 하나면 지금처럼 그 문장과 시간표, 없으면 "겹치는 일정이 없어요".
+
+## 트랙·세션 시간표 — 2026-10-26 사용자 결정
+
+사용자: 컨퍼런스처럼 **트랙(강연장)이 나뉘어 같은 시간에 여러 세션이 동시에 진행**되는 활동을 표현한다(참고 https://woowacon.com/sessions). 정정: "전체 강연 일정은 (우아콘 기준) 10:50~12:30 오전 세션, 12:30~13:50 쉬는시간, 13:50~17:30 오후 세션으로 수집하고, 트랙이 따로 준비돼 있으면 오전 세션 시간표·오후 세션 시간표 버튼을 만들고 지정할 수 있게 해 줘." 추가: "트랙이 없는 경우에도 상세 시간표는 볼 수 있게 해 줘." 이번 단계는 계약·서버·어드민 API·수집기이고 앱·웹 화면은 다음 단계다.
+
+### 구조 — 일정 블록의 하위 시간표
+
+- 활동의 기존 일정(`activitySchedule`·`schedules[]`)은 그대로 **큰 블록**(오전 세션·쉬는시간·오후 세션, 여러 날이면 날마다 블록)이다. 트랙 시간표는 **블록 하나에 딸린 하위 시간표**다. 기존 일정 데이터는 바뀌지 않고 이관도 없다. 일차(여러 날)는 블록이 날마다 따로 있으므로 시간표에 일차 개념을 두지 않는다.
+- 시간표를 붙일 수 있는 블록: 활동 기간(`activitySchedule`)과 세부 일정(`schedules[]`) 중 **시작·끝 시각이 있는 시각 일정** 또는 종일 일정(서울 자정 기준 그 날짜들). 모집 기간·반복 일정(`recurrence`)·날짜 미정 일정에는 붙이지 않는다(어드민 400).
+- 트랙 Track `{id, name, room, position}`: 이름(≤50, 블록 안에서 유일), 방(강연장 이름, 선택 ≤100), 표시 순서 `position`(0부터). **색은 서버가 저장하지 않는다**: 앱·웹이 `position` 순서로 자기 팔레트에서 고른다(같은 순서면 같은 색). 트랙은 0~20개이고, **0개면 단일 진행**이다.
+- 세션 Session `{id, scheduleId, trackId, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[], favorited}`:
+  - `kind`: `TALK`(일반) · `KEYNOTE` · `BREAK`(쉬는시간) · `MEAL`(점심 등) · `OTHER`.
+  - `trackId: null` = **모든 트랙에 걸친 전폭 세션**(키노트·쉬는시간·점심). 트랙이 없는 시간표는 모든 세션이 `null`이다.
+  - 시각은 부모 블록의 시간대 오프셋(종일 블록은 `Asia/Seoul`)이고 **반드시 부모 블록의 시간 범위 안**이다. 같은 트랙의 세션끼리, 그리고 전폭 세션과 다른 모든 세션은 시간이 겹치지 않는다(서버 검증).
+  - `tags`는 기존 태그 사전(`GET /v1/tags`)에서 고른 분야 태그, 보낸 순서, 최대 5개. 연사 최대 10명(이름 ≤100, 소속 선택 ≤100). 제목 ≤200, 설명 선택 ≤2000. 세션 제목·연사는 한국어 원문만 있다(`Accept-Language`와 상관없음).
+- 저장(V61): `schedule_tracks(id, schedule_id → schedules cascade, name, room, position)`, `schedule_sessions(id, schedule_id → schedules cascade, track_id → schedule_tracks cascade null, kind, title, description, start_at, end_at, speakers jsonb)`, `schedule_session_tags(session_id, tag_id, position)`, `user_session_favorites(user_id → users cascade, session_id → schedule_sessions cascade, created_at)`.
+- **재수집과 id 유지**: 수집은 운영자 지정이 아닌 세부 일정을 매번 지웠다 다시 넣는다. 그래서 세부 일정 블록에 시간표가 붙으면(어드민·수집·가져오기 모두) 서버가 그 블록을 운영자 지정(`schedules.curated = true`)으로 올려 재수집이 지우거나 다시 쓰지 않는다 — 세션 id와 찜이 남는다. 대가로 그 블록의 시각은 이후 수집이 고치지 않는다(어드민에서 고친다).
+
+### 공개 API
+
+| 메서드·경로 | 인증 | 성공 응답 |
+| --- | --- | --- |
+| GET /v1/activities/:id/schedules/:scheduleId/timetable | 없음(Bearer가 오면 `favorited`를 채우고 `Vary: Authorization`) | 200 `{activityId, schedule: Schedule, tracks: Track[], sessions: Session[]}`(세션은 시작 순). 게시되지 않은 활동, 그 활동의 블록이 아니거나 지운 블록, 모집 기간, 세션이 없는 블록은 404 |
+| PUT /v1/me/session-favorites/:sessionId | Bearer | 204(멱등). 게시되지 않은 활동이나 지운 블록의 세션, 없는 세션은 404 |
+| DELETE /v1/me/session-favorites/:sessionId | Bearer | 204(없어도) |
+| GET /v1/me/session-favorites | Bearer | 200 `{items: [{activityId, activityName, scheduleId, scheduleTitle, schedule: Schedule, track: Track\|null, session: Session, favoritedAt}]}` — 내 시간표, 세션 시작 순. 게시되지 않았거나 지운 블록의 세션은 목록에서 뺀다(행은 남긴다). `schedule`(부모 블록 전체: 시작·끝·시간대)·`track`(전폭 세션이면 null)은 2026-10-26 추가: 앱이 활동·시간표를 다시 조회하지 않고 그린다 |
+
+- `Schedule.hasTimetable: boolean`(공개 Activity의 `activitySchedule`·`schedules[]`, 어드민 일정 응답에도): 그 블록에 세션이 하나라도 있으면 true. 활동 응답에는 시간표 본문을 싣지 않는다(세션이 수백 개일 수 있어 위 별도 조회).
+- 목록 배지용(2026-10-26 추가, 필드 추가만): `Activity.hasTimetable: boolean`(`activitySchedule`·`schedules[]` 중 하나라도 `hasTimetable`), `ProgramSummary.hasTimetable: boolean`(그 묶음의 **모집 중·모집 예정** 활동 — `kind`·`category`·유형·태그·대상자 필터를 반영한 같은 활동들 — 중 하나라도 시간표가 있으면 true; 마감된 활동만 있으면 false). 접힌 프로그램 카드와 활동 행에 "시간표" 배지를 단다. iOS(2026-10-26): 발견·즐겨찾기·프로그램 상세의 접힌 프로그램 머리에 `ProgramSummary.hasTimetable`로 `시간표` 배지(펼치면 활동 카드가 각자 단다), 활동 카드(발견·즐겨찾기)는 일정 블록의 `hasTimetable`로 단다(`Activity.hasTimetable`과 같은 값).
+- 비로그인: 시간표 보기는 되고, 세션 하트를 누르면 기존 로그인 시트(위 "비로그인에서 만들기·추천을 막음"). 동의 전 계정은 앱이 동의 화면으로 막는다(기존 즐겨찾기와 같이 앱만 막고 서버는 프로필 하위만 강제).
+
+### 세션 찜과 다른 기능의 관계
+
+- 세션 찜은 **활동 즐겨찾기·알림·추천·내 활동과 따로**다(부수 효과 없음). 세션을 찜해도 활동 하트가 켜지지 않고, 맞춤 대기열 `LIKE`·푸시 알림 거리(`push_deliveries`는 `schedules`만 본다)도 바뀌지 않는다. 대안(세션 찜 = 활동 자동 즐겨찾기)은 알림 수준·추천 신호까지 끌고 와 고르지 않았다.
+- 개인정보: 세션 찜은 계정 기록이다(사용자·세션·찜한 시각). 계정 삭제 때 users cascade로 지워진다. 처리방침의 "즐겨찾기" 항목에 세션 찜을 더해야 한다(조율 세션 판단, 이번 변경은 서버만).
+
+### 겹침
+
+- **찜 겹침**: 앱이 `GET /v1/me/session-favorites`(또는 열린 시간표의 `favorited`)로 계산한다 — 찜한 세션끼리 `a.startAt < b.endAt && b.startAt < a.endAt`이면 겹침(같은 블록의 다른 트랙에서 동시간에 찜한 경우가 대부분). 서버는 겹침을 막지 않는다.
+- **기기 캘린더 겹침**(위 "내 활동 서버 저장·일정 상태·겹침 확인 시간"·"반복 일정과 겹침 결과 묶음"): 지금처럼 **블록 단위**로 비교한다. 세션은 블록 안에 있으므로 블록 비교로 충분하고 세션을 따로 비교하지 않는다. 캘린더에 추가도 블록 단위 그대로다.
+
+### 앱·웹 화면(다음 단계)
+
+- **모달 시트(2026-10-26 사용자 결정 "그럼 차라리 모달로 보여줘")**: 활동 상세의 일정 블록 중 `hasTimetable`인 행은 **행 전체를 누르면** 그 블록의 시간표가 모달 시트로 뜬다. 행은 발견 목록 행처럼 오른쪽에 `시간표` 표시와 chevron(iOS `chevron.right`)을 두고, `캘린더에 추가`는 따로 누른다. 상세 안에 제자리로 펼치면 표의 가로 넘기기와 상세의 세로 스크롤이 겹치므로 시트로 띄운다. 시트(iOS `.sheet`, `.large` detent·drag indicator 보임): 상단 제목 `{활동 이름} · {블록 제목}`과 보조 줄에 블록의 날짜·시간, `닫기` 버튼, 그 아래 `전체 | 찜한 세션` 전환과 표. 시트가 열릴 때 시간표를 불러오고, 그동안 로딩, 실패하면 `다시 시도`. (같은 날 처음 판의 별도 버튼 → 시간표 화면 push는 행 전체 버튼 + 모달로 바뀌었다.)
+- **웹 시간표 모달(2026-10-26)**: `hasTimetable` 블록 행 전체가 버튼이고 오른쪽에 `시간표`와 chevron이 있다. 누르면 모달이 열린다. 모바일 폭은 거의 전체 높이 바텀 시트, `md`(768px) 이상은 가운데 큰 dialog. 머리글은 제목 `{활동 이름} · {블록 제목}`, 그 아래 시간 범위, 닫기 버튼. 본문은 두 방향으로 스크롤하고 시간 열과 트랙 머리를 고정한다. 웹은 로그인이 없어 하트와 `전체 | 찜한 세션` 전환이 없고, 하단에 "세션 찜은 Dearby 앱에서 할 수 있어요." 한 줄을 둔다. 모달을 열 때마다 불러오고, 로딩 중에는 skeleton, 실패하면 다시 시도.
+- **표(우아콘 오후 시간표 캡처 기준, 2026-10-26)**: **행 = 시간대**(왼쪽 시간 칸 "13:50 – 14:30"), **열 = 트랙**(`position` 순서 고정: 트랙 A, B, C…). 각 칸은 세션 카드: 트랙 배지(트랙 색), 분야 태그 최대 2개, 제목, 연사(이름·소속), 하트(iOS `heart`/`heart.fill`, Android `FavoriteBorder`/`Favorite`, 접근성 `찜`/`찜 해제`).
+  - 그 시간대에 세션이 없는 트랙 칸은 **비워 둔다**(빈 어두운 칸). 열 정렬을 지키고 다른 세션을 당겨 채우지 않는다.
+  - 전폭 세션(`trackId` null: 키노트·쉬는시간·점심)은 **한 행 전체 폭** 한 장. `BREAK`·`MEAL`은 "쉬는시간"·"점심" 띠 모양.
+  - 행 나누기: 기본은 세션들의 **고유한 (시작, 끝) 쌍** 하나가 한 행이고 시작 순이다. 트랙마다 경계가 달라 쌍이 부분적으로 겹치면(예: A 13:50–14:30, B 13:50–14:50) 그 구간의 모든 경계 시각으로 행을 잘게 나누고, 세션 카드는 자기 시간 범위에 해당하는 연속 행을 함께 차지한다(행 높이 합만큼, 표의 rowspan). 행의 시간 칸은 그 행의 시작–끝.
+  - 트랙이 0개면 열이 하나인 표: 가로 넘기기 없이 시간대 행 + 세션 카드 한 장씩.
+  - 트랙 색: 서버는 순서만 준다. 앱·웹이 `position` 순서로 자기 팔레트에서 고르고(같은 순서면 같은 색), 라이트·다크 모두 배지 글자와 배경의 대비를 확보한다.
+- **모바일 "트랙 가로 넘기기"(2026-10-26 사용자 확정)**: **표 전체를 한 번에 가로 스크롤**(모든 행이 같이 움직여 열 정렬을 지키고, 왼쪽 시간 칸은 고정)이다. 행마다 따로 넘기면 빈 칸·열 정렬이 깨지기 때문이다(사용자 표현 "시간대마다 트랙 카드를 가로로 넘기기"를 이렇게 구현하기로 확정). 웹·태블릿처럼 넓은 화면은 가로 스크롤 없이 전체 열을 보인다.
+- 찜 겹침은 카드에 "같은 시간 찜 n개" 같은 표시(문구는 앱 담당).
+- **`찜한 세션` = 나만의 시간표(2026-10-26 사용자 "세션 시간표에서 찜했다면 해당 찜한 시간표만 따로 볼 수도 있게 해 줘")**: 표에서 빈 칸만 남기지 않고, 찜한 세션만 **시간순 한 줄**(가로 넘기기 없음)로 보인다. 카드마다 시간과 **트랙 이름·방(room)을 크게**(이동할 강연장 안내), 세션 사이에 빈 시간(`40분 비어 있어요`)과 다른 트랙·방으로 바뀌면 이동 표시(`이동 › 트랙 B · 201호`), 같은 시간대에 찜이 겹치면 그 묶음 앞에 경고 띠(`같은 시간에 찜한 세션 n개 · 하나만 들을 수 있어요`). 비로그인이면 로그인 안내, 찜이 없으면 빈 안내. 쉬는시간·점심은 찜(하트)이 없다.
+- iOS 구현 메모(2026-10-26): 행 높이는 고정(세션 행 168pt·쉬는시간/점심만 있는 행 52pt, 글자 크기 배율을 따름)이고 긴 제목은 카드에서 3줄로 줄이고 시트에 전부 보인다. 트랙 색은 시스템 색 팔레트(파랑·주황·보라·초록·분홍·남색·갈색·청록·빨강·민트, 노랑 제외)를 `position` 순서로 돌려 쓰고, 배지는 그 색 18% 바탕 + 기본 글자색(라이트·다크 대비). 열이 화면에 다 들어가면(아이패드·가로) 열을 넓혀 가로 넘기기가 생기지 않는다.
+- **활동 밖 찜한 세션(2026-10-26 사용자 결정)**: 내 활동 탭 › 즐겨찾기(캘린더) 화면 위에 찜이 하나라도 있으면 `찜한 세션 n개` 행 → `GET /v1/me/session-favorites`를 **활동별, 그 안에서 날짜별**로 묶어 각 날을 위 나만의 시간표 모양으로 보인다(트랙 이름·방과 시간대는 목록 항목의 `track`·`schedule`로 그린다 — 2026-10-26 서버 #401 뒤로 iOS는 블록별 시간표를 다시 읽지 않는다; `track`이 null이거나 옛 응답이면 트랙 배지 없이, 시간대는 서울). 즐겨찾기 캘린더의 날짜 칸에는 찜한 세션이 있는 날에 분홍 점 하나를 더한다(아래 날짜 목록은 활동 그대로).
+- **내 활동(2026-10-26 사용자 "내 활동에서도 시간표를 볼 수 있으면 좋겠어", 같은 날 "진행단계에서 시간표 있는 일정은 시간표 아이콘 표시해주고 펼쳤을때 시간표보기 버튼이 있으면 좋겠어")**: 내 활동 목록 행은 `Activity.hasTimetable`이면 활동 이름 옆에 `시간표` 배지. 진행 단계 화면(위 "진행 단계 화면 정리")에서는 일정 블록이 `hasTimetable`인 단계 행 오른쪽(상태 표시 왼쪽)에 시간표 아이콘(`tablecells`/`ViewTimeline`, 보조색)을 보이고 접근성 라벨에 `시간표 있음`을 넣는다. 그 행을 눌러 열리는 메뉴의 맨 위에 `시간표 보기`가 있고, 누르면 활동 상세와 같은 시간표 모달 시트. 같은 날 앞선 판의 별도 `시간표` 섹션은 중복이라 지웠다(iOS·Android). 내 활동의 Activity는 공개 활동 응답(`Schedule.hasTimetable` 포함)을 그대로 쓰므로 다시 읽지 않는다(필드가 없는 옛 응답과 `false`는 앱에서 구별되지 않아 시간표 없음으로 본다).
+
+### 어드민·수집
+
+- 어드민 API: admin-v1.md "트랙·세션 시간표". 화면(일정 블록마다 `시간표` 편집)은 다음 단계.
+- 수집기: 큰 블록을 기본으로 `schedules[]`에 뽑고, 트랙·세션 정보가 본문에 있으면 그 블록의 `timetable`로 뽑는다(`WORKFLOW.md`). 서버는 블록 시간 안·겹침 없음·세션 제목이 원문에 있음을 확인하고, 어긋나면 그 블록의 시간표만 버린다. 시간표는 블록이 처음 수집될 때만 붙는다(붙은 블록은 운영자 지정이 되어 재수집이 다시 쓰지 않음).
 
 ## 활동 장소 — 2026-10-19 사용자 결정
 
@@ -831,10 +1042,12 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 사용자: "활동 종류도 추가해줬으면 좋겠어. 부트캠프, 컨퍼런스, 워크샵, 스터디, 강연 등으로 구분하고 프로그램 하위에서 그룹화되도록". 활동에 **종류** 하나를 둔다.
 
 - 값(API 코드 → 한글 이름): `BOOTCAMP` 부트캠프, `CONFERENCE` 컨퍼런스, `WORKSHOP` 워크샵, `STUDY` 스터디, `CLUB` 동아리(연합동아리 등), `LECTURE` 강연, `HACKATHON` 해커톤, `CONTEST` 공모전, `MEETUP` 밋업, `OTHER` 기타. 없으면 `null`(미분류). 저장은 `activities.category varchar(20) null`(V31, check 제약). 코드는 `participationType`처럼 대문자 영문이고 한글 이름은 클라이언트가 붙인다.
+- **발견 `프로그램 | 이벤트` 전환(2026-10-26 사용자 결정)**: 발견 탭 맨 위 세그먼트(iOS 내비게이션 바 제목 자리 `Picker(.segmented)`, 내 활동 탭과 같은 관용구), 기본 `프로그램`, 고른 값은 기기에 남긴다(iOS `UserDefaults` 새 키 `dearby.discovery.kind`). **이벤트 = 종류 `CONFERENCE`·`MEETUP`·`LECTURE`·`WORKSHOP`**, 프로그램 = 그 밖의 종류와 미분류(해커톤은 프로그램). 앱은 종류로 거르지 않고 `GET /v1/discovery/programs?kind=program|event`를 보낸다(서버가 판정하고 요약 날짜도 그 kind 기준; `kind`를 모르는 서버는 무시하고 전부 준다). 이벤트 카드 머리의 보조 글자는 모집 마감 대신 행사 날짜(`latestActivityAt`이 오늘 이후면 `M월 d일 행사`, 지났으면 `최근 yyyy.M`; `nearestIsActivityStart` 분기는 서버가 항상 false라 쓰이지 않는다, 2026-10-26). 펼친 활동 조회에도 같은 `kind`를 보낸다, 펼친 활동 카드는 `hasTimetable` 블록이 있으면 `시간표` 배지(두 모드 공통). 맞춤 대기열 행·추천은 두 모드에서 그대로. 사용 통계 `discovery_mode`.
+- **종류 필터(2026-10-26 사용자 결정)**: 사용자 "마찬가지로 저런 것들도 필터링 옵션에 추가해줘"(위 "종류 아이콘 라벨"에 이어). 발견의 `활동 상태` 행 바로 아래에 같은 관용구의 `종류` 다중 선택 행(iOS 시스템 `Menu` + 체크 `Toggle`, 고르는 동안 열림; 웹 `MultiSelect`; Android는 같은 자리의 `활동 상태`와 같은 컴포넌트). 좁은 폭에서 두 요약 글자가 잘리므로 가로로 나란히 두지 않고 두 행으로 쌓는다. 항목은 **지금 `kind`의 종류만**, 계약 순서, 항목마다 종류 아이콘 + 이름: 프로그램 = 부트캠프·스터디·동아리·해커톤·공모전·기타, 이벤트 = 컨퍼런스·워크샵·강연·밋업(서버 `kind=event` 집합). **아무것도 안 고르면 전체**(미분류 포함, `category`를 보내지 않음), 요약은 `전체`, 고르면 계약 순서로 `부트캠프·동아리`, 셋 이상이면 `부트캠프 외 2`. 고르면 `category`(코드 쉼표 목록, 계약 순서; 서버는 이미 지원, `kind`·`status`와 함께)를 프로그램 묶음과 펼친 활동(`GET /v1/activities?programId=…&category=`) 둘 다에 보낸다. 고른 종류만 보면 미분류 활동은 빠진다. **선택 기억**: kind마다 따로 — iOS `UserDefaults` `dearby.discovery.categories.program`·`dearby.discovery.categories.event`(쉼표 코드), kind를 바꾸면 그 kind의 선택으로 바뀐다. 웹은 URL `?category=`(그 kind의 코드만 읽고 나머지는 버림)이며 URL 하나라 `프로그램 | 이벤트`를 바꾸면 종류 선택이 지워진다(검색·`활동 상태` 변경은 유지). 즐겨찾기 프로그램 상세는 종류 필터를 쓰지 않는다(모든 종류). **요약 글자**는 각 플랫폼의 `활동 상태` 요약과 같은 모양(접두어 없이 행/버튼 라벨 `종류` 옆에 `전체`·`부트캠프·동아리`·`부트캠프 외 2`; Android PR #414와 맞춤). **빈 결과**: 검색어가 없고 종류를 골랐으면 `고른 조건의 프로그램이(이벤트가) 없어요` + `종류 필터 지우기`(전체로 되돌림), 검색어가 있으면 기존 검색 빈 안내. `활동 상태`만 기본값에서 바꾼 경우의 빈 제목도 `고른 조건의 …`으로 통일한다(2026-10-26, 옛 `고른 상태의 …`). 사용 통계 `categories`는 전체로 되돌리면 빈 문자열. 사용 통계 `discovery_category_filter`(analytics-v1.md).
 - 공개 `Activity`(활동 조회·발견의 펼친 활동)와 `AdminActivity`에 `category: string|null`을 더한다. `GET /v1/activities`·`GET /v1/discovery/programs`에 `category?` 필터(코드 하나 또는 쉼표 목록)를 더한다.
 - 수집: 추출 지시문이 `category`를 함께 뽑는다(본문의 성격으로 판단, 모르면 null). 어드민이 바꾼 값은 `curated_fields`의 `category`로 보호된다.
-- 화면: 프로그램 하위에서 종류별로 묶는다. **어드민**은 펼친 프로그램 안에서 종류 소제목(부트캠프 (n) …, 미분류는 맨 뒤) 아래에 활동 행을 둔다. **앱·웹 발견**은 펼친 프로그램 안의 활동을 같은 순서의 종류 소제목으로 묶고(종류가 하나뿐이면 소제목 생략), 활동 행에는 종류를 다시 쓰지 않는다. 활동 상세에는 종류 칩 하나. 종류 순서는 위 값 순서, 각 종류 안의 활동 순서는 "발견 프로그램 묶음"의 정렬 키(모집 마감 → 활동 시작 → 없음, 이름순)다.
-- 프로그램 기본 종류: `programs.category`(V33)를 운영자가 지정하면 수집·운영자 생성에서 종류가 비었을 때 기본값으로 쓰고, 운영자가 지정하지 않은 활동에 일괄 적용할 수 있다(admin-v1.md "프로그램 기본 종류"). `ProgramSummary.category`로 발견 머리글에 보인다.
+- 화면: 프로그램 하위에서 종류별로 묶는다. **어드민**은 펼친 프로그램 안에서 종류 소제목(부트캠프 (n) …, 미분류는 맨 뒤) 아래에 활동 행을 둔다. **앱·웹 발견**은 펼친 프로그램 안의 활동을 같은 순서의 종류 소제목으로 묶고(종류가 하나뿐이면 소제목 생략), 활동 행에는 종류를 다시 쓰지 않는다. 활동 상세에는 종류 칩 하나(2026-10-26부터 종류 아이콘을 붙인다, "종류 아이콘 라벨"). 종류 순서는 위 값 순서, 각 종류 안의 활동 순서는 "발견 프로그램 묶음"의 정렬 키(모집 마감 → 활동 시작 → 없음, 이름순)다.
+- 프로그램 기본 종류: `programs.category`(V33)를 운영자가 지정하면 수집·운영자 생성에서 종류가 비었을 때 기본값으로 쓰고, 운영자가 지정하지 않은 활동에 일괄 적용할 수 있다(admin-v1.md "프로그램 기본 종류"). `ProgramSummary.category`로 접힌 프로그램 카드 이름 위 종류 줄에 보인다("종류 아이콘 라벨" 2026-10-26).
 - 변경 이력: 2026-10-19 최초 9종 [`11ae3025`](https://github.com/fixabley/dearby/blob/11ae3025/shared/contracts/native-v1.md#활동-종류category--2026-10-19-사용자-결정) → 같은 날 `CLUB` 동아리 추가(사용자 "연합동아리 같은 동아리 활동도 있어"), 정렬 규칙 두 번 보완(위 정렬 키).
 
 ## 발견 프로그램 묶음 — 2026-10-18 사용자 결정 (2026-10-19 보완)
@@ -843,27 +1056,45 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 ### 규칙
 
-- **열린 활동 판정은 서버 한 곳에서만 한다**(2026-10-19). 게시 활동이고 (a) 모집 기간이 시각 일정이면 `start_at ≤ now`(없으면 열림) 이고 `end_at > now`(없으면 열림), (b) 모집 기간이 날짜 일정이면 서울 날짜로 `start_date ≤ today < end_date_exclusive`, (c) 모집 기간이 없으면 활동 시작(시각 또는 서울 0시)이 `now`보다 뒤. 같은 규칙이 `GET /v1/activities?open=true`에도 적용된다. 앱·웹은 열린 활동을 스스로 걸러내지 않고, 활동 상세의 `모집 중/마감/예정` 라벨도 날짜 일정을 같은 규칙으로 계산한다(시각이 없다고 `확인 필요`로 두지 않음).
-- **활동 기간이 끝난 활동은 열리지 않는다**(2026-10-25, 운영 NDC 2026·CODEGATE 2026 CTF 보고 뒤 사용자 "해주세요"). 위 (a)–(c) 중 어느 것으로 열려도 활동 기간(ACTIVITY 슬롯)의 끝(시각 일정은 `end_at`, 날짜 일정은 `end_date_exclusive` 서울 0시, 끝이 없으면 활동 시작)이 `now` 이하이면 열린 활동도 모집 예정도 아니다. 활동 기간이 없으면 지금처럼 모집 기간만 본다. 모집 기간에 시작만 있고 끝이 없어 지난 행사가 계속 열려 있던 문제를 막는다. 발견 묶음·`open=true`·추천·맞춤 대기열(만들 때와 읽을 때 다시 거르기)이 모두 이 판정을 쓴다.
+- **열린 활동 판정은 서버 한 곳에서만 한다**(2026-10-19). 게시 활동이고 (a) 모집 기간이 시각 일정이면 `start_at ≤ now`(없으면 열림) 이고 `end_at > now`(없으면 열림), (b) 모집 기간이 날짜 일정이면 서울 날짜로 `start_date ≤ today < end_date_exclusive`. **모집 일정(모집 시작 또는 마감)이 없는 활동은 종류와 상관없이 마감으로 본다**(2026-10-26 사용자 결정 "모두 마감 취급": 모집 기간 없이 행사 날짜만 있는 컨퍼런스 등은 `마감 숨기기`를 켠 발견에서 빠진다; 이전 규칙 (c) "모집 기간이 없으면 활동 시작이 `now`보다 뒤면 열림"은 폐지). 열린 활동 = 아래 "활동 상태"의 `RECRUITING`, 모집 예정 = `RECRUITING_UPCOMING`. 같은 규칙이 `GET /v1/activities?open=true`에도 적용된다. 앱·웹은 열린 활동을 스스로 걸러내지 않고, 활동 상세의 `모집 중/마감/예정` 라벨도 날짜 일정을 같은 규칙으로 계산한다(시각이 없다고 `확인 필요`로 두지 않음).
+- **활동 기간이 끝난 활동은 열리지 않는다**(2026-10-25, 운영 NDC 2026·CODEGATE 2026 CTF 보고 뒤 사용자 "해주세요"). 위 (a)·(b) 중 어느 것으로 열려도 활동 기간(ACTIVITY 슬롯)의 끝(시각 일정은 `end_at`, 날짜 일정은 `end_date_exclusive` 서울 0시, 끝이 없으면 활동 시작)이 `now` 이하이면 열린 활동도 모집 예정도 아니다. 활동 기간이 없으면 지금처럼 모집 기간만 본다. 모집 기간에 시작만 있고 끝이 없어 지난 행사가 계속 열려 있던 문제를 막는다. 발견 묶음·`open=true`·추천·맞춤 대기열(만들 때와 읽을 때 다시 거르기)이 모두 이 판정을 쓴다.
 - **정렬 키**(활동 공통): 모집 마감(APPLICATION 슬롯의 끝 시각·날짜) → 모집 마감을 알 수 없으면(모집 기간이 없거나 끝이 비어 있으면) 활동 시작(ACTIVITY 슬롯의 시작 시각·날짜) → 둘 다 없으면 맨 뒤, 같으면 이름순. SQL은 `coalesce(app.end_at, app.end_date_exclusive 서울 0시, 활동 시작)`. 프로그램 순서(`nearestRecruitmentEndAt`), 펼친 활동, 어드민 묶음 보기가 모두 이 키를 쓴다.
-- **마감 숨기기** 토글(기본 켬, 메모리). 2026-10-19 밤 사용자 지적 "마감 숨기기인데 모집 예정은 왜 숨겨?"로 뜻을 바로잡음: 켜면 **마감된 활동만 숨긴다**. 즉 `openOnly=true`는 **모집 중이거나 모집 예정**(모집 기간이 아직 시작되지 않았거나, 모집 기간이 없고 활동 시작이 아직 오지 않은) 활동이 있는 프로그램을 돌려주고, 마감된 활동뿐인 프로그램만 뺀다. `ProgramSummary`에 `upcomingActivityCount`(모집 예정 수)와 `nearestRecruitmentStartAt`(모집 예정 활동의 가장 이른 모집 시작, 없으면 활동 시작)을 더하고, 순서는 모집 중 프로그램(정렬 키) → 모집 예정 프로그램(가장 이른 시작) → (끄면) 나머지 최근 활동 순. 머리글은 모집 중이 있으면 `모집 중 n개 · 마감`, 없고 모집 예정이 있으면 `모집 예정 n개 · M월 d일 시작`, 둘 다 없으면 `최근 활동 yyyy.M`. 펼치면 `모집 중`(open=true)과 `모집 예정` 묶음은 토글과 무관하게 항상 보이고, `지난 활동`(최근 3년)은 토글을 껐을 때만 보인다. 자동 펼침(열린 활동 1개)은 그대로. 끄면 끄면 **최근 3년 안에 활동이 있었던 프로그램**(게시 활동의 활동 시작·모집 마감·생성 시각 중 하나가 `now − 3년` 이후)을 모두(2026-10-19 저녁 사용자 결정으로 2년 → 3년). 순서는 열린 프로그램 먼저(정렬 키), 그 뒤는 가장 최근 활동 시작이 늦은 순.
+- **마감 숨기기** 토글(기본 켬, 메모리; 2026-10-26 iOS·웹·Android 화면에서는 아래 "활동 상태" 다중 선택으로 대체, 서버 `openOnly`는 옛 앱 호환으로 남음). 2026-10-19 밤 사용자 지적 "마감 숨기기인데 모집 예정은 왜 숨겨?"로 뜻을 바로잡음: 켜면 **마감된 활동만 숨긴다**. 즉 `openOnly=true`는 **모집 중이거나 모집 예정**(모집 기간이 아직 시작되지 않은; 2026-10-26부터 모집 기간이 없으면 모집 예정도 아니다) 활동이 있는 프로그램을 돌려주고, 마감된 활동뿐인 프로그램만 뺀다. `ProgramSummary`에 `upcomingActivityCount`(모집 예정 수)와 `nearestRecruitmentStartAt`(모집 예정 활동의 가장 이른 모집 시작)을 더하고, 순서는 모집 중 프로그램(정렬 키) → 모집 예정 프로그램(가장 이른 시작) → (끄면) 나머지 최근 활동 순. 머리글은 모집 중이 있으면 `모집 중 n개 · 마감`, 없고 모집 예정이 있으면 `모집 예정 n개 · M월 d일 시작`, 둘 다 없으면 `최근 활동 yyyy.M`. 펼치면 `모집 중`(open=true)과 `모집 예정` 묶음은 토글과 무관하게 항상 보이고, `지난 활동`(최근 3년)은 토글을 껐을 때만 보인다. 자동 펼침(열린 활동 1개)은 그대로. 끄면 끄면 **최근 3년 안에 활동이 있었던 프로그램**(게시 활동의 활동 시작·모집 마감·생성 시각 중 하나가 `now − 3년` 이후)을 모두(2026-10-19 저녁 사용자 결정으로 2년 → 3년). 순서는 열린 프로그램 먼저(정렬 키), 그 뒤는 가장 최근 활동 시작이 늦은 순.
 - **머리글**: 프로그램 이름, 조직 이름, 종류 칩(프로그램 기본 종류가 있을 때), `모집 중 n개 · M월 d일 (요일) 마감`(열린 활동이 있을 때) 또는 `최근 활동 yyyy.M`(`latestActivityAt`). 접근성에서 `펼침`/`접힘` 상태를 가진 버튼으로 읽힌다.
-- **펼침**: 머리글을 누르면 `GET /v1/activities?programId=<id>&open=true`로 그 프로그램의 모집 중 활동을 불러와 기존 활동 카드로 보인다. 종류별 소제목으로 묶고(아래 "활동 종류", 종류가 하나뿐이면 소제목 생략) 각 묶음 안은 정렬 키 순. 그 아래 **다른 활동**(같은 `GET /v1/activities?programId=`, 20개, 종류 소제목 없음)을 `모집 예정`(모집 시작 또는 활동 시작이 아직 오지 않은 것, 가까운 순)과 `지난 활동`(최근 3년, 활동 시작 최근 순) 두 묶음으로 보인다. `모집 예정`은 토글과 무관하게 항상, `지난 활동`은 토글을 **껐을 때만** 보인다(2026-10-19 밤 정정; 그 전에는 켜진 상태에서 모집 중이 없을 때만 두 묶음을 보였다). 모집 중·모집 예정·지난 활동이 모두 비면 "지금 모집 중인 활동이 없어요"만 남긴다. 빈 묶음은 생략한다. 기본은 접힘이며, 토글이 켜진 상태에서 열린 활동이 1개인 프로그램과 검색어가 활동 이름에 맞은 프로그램은 펼친 채로 시작한다. 펼침 상태는 앱 실행 중 메모리에만 두고, 동작 줄이기에서는 애니메이션 없이 바뀐다.
+- **펼침**: 머리글을 누르면 `GET /v1/activities?programId=<id>&open=true`로 그 프로그램의 모집 중 활동을 불러와 기존 활동 카드로 보인다. 종류별 소제목으로 묶고(아래 "활동 종류", 종류가 하나뿐이면 소제목 생략) 각 묶음 안은 정렬 키 순. 그 아래 **다른 활동**(같은 `GET /v1/activities?programId=`, 20개, 종류 소제목 없음)을 `모집 예정`(2026-10-26부터 `status`가 `RECRUITING_UPCOMING`인 것, 가까운 순; 그 전에는 모집 시작 또는 활동 시작이 아직 오지 않은 것)과 `지난 활동`(최근 3년, 활동 시작 최근 순) 두 묶음으로 보인다. `모집 예정`은 토글과 무관하게 항상, `지난 활동`은 토글을 **껐을 때만** 보인다(2026-10-19 밤 정정; 그 전에는 켜진 상태에서 모집 중이 없을 때만 두 묶음을 보였다). 모집 중·모집 예정·지난 활동이 모두 비면 "지금 모집 중인 활동이 없어요"만 남긴다. 빈 묶음은 생략한다. 기본은 접힘이며, 토글이 켜진 상태에서 열린 활동이 1개인 프로그램과 검색어가 활동 이름에 맞은 프로그램은 펼친 채로 시작한다. 펼침 상태는 앱 실행 중 메모리에만 두고, 동작 줄이기에서는 애니메이션 없이 바뀐다.
 - **검색**: 검색어는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). 활동 이름으로만 맞은 프로그램도 목록에 나온다. 태그 이름 검색과 태그 필터는 "태그" 절(설계 완료, 구현 예정).
 - **유형(참가등록·선발)**: 세 플랫폼의 발견 화면에는 유형 칩이 없다. API의 `participationType` 필터는 칩을 다시 넣을 때 쓰도록 둔다. 칩이 생기면 펼친 활동과 열린 활동 수에 함께 적용하고 맞는 활동이 없는 프로그램은 숨긴다.
+- **프로그램·이벤트 전환**(2026-10-26 사용자 결정: 발견 화면에 `프로그램 | 이벤트` 전환). `kind?` query(`program`\|`event`, 대소문자 무시, 모르는 값 400, 생략하면 전부 — 옛 앱 호환). `event`는 종류 `CONFERENCE`·`WORKSHOP`·`MEETUP`·`LECTURE`(서버의 단기 행사 종류, "활동 이력에서 단기 행사 제외"와 같은 목록), `program`은 그 밖의 모든 종류와 **미분류(`category` null)**. `category` 목록으로 거르면 미분류가 어느 쪽에도 안 나오므로 전환에는 `kind`를 쓴다. 활동 행 자체를 거르므로 프로그램 묶음은 그 kind의 활동(모집 중·모집 예정, `openOnly=false`면 최근 3년)이 하나라도 있는 프로그램만 나오고, `openActivityCount`·`upcomingActivityCount`·`nearestRecruitmentEndAt`·`nearestIsActivityStart`(2026-10-26부터 항상 false)·`nearestRecruitmentStartAt`·`latestActivityAt`·`matchedActivityIds`(검색 포함)가 모두 그 kind의 활동 기준이다. 펼친 활동(`GET /v1/activities?programId=…`)에도 같은 `kind`를 넘긴다. 묶음 머리의 `category`(프로그램 기본 종류)와 태그는 kind와 무관하다.
 
 ### API
 
 | 메서드·경로 | 인증 | query | 응답 |
 | --- | --- | --- | --- |
-| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `category?`(종류 코드, 쉼표 목록), 대상자 필터(아래 "대상자 조건"), `openOnly?`(기본 `true`), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
-| GET /v1/activities | 없음 | 기존 query에 `open?`(기본 false: 전부, `true`: 위 열린 활동만), `category?` | 200 `{items: Activity[], nextCursor}` |
+| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `category?`(종류 코드, 쉼표 목록), `kind?`(program\|event, 위 "프로그램·이벤트 전환"), 대상자 필터(아래 "대상자 조건"), `openOnly?`(기본 `true`), `status?`(아래 "활동 상태", 쉼표 목록; 있으면 `openOnly` 대신), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
+| GET /v1/activities | 없음 | 기존 query에 `open?`(기본 false: 전부, `true`: 위 열린 활동만), `category?`, `kind?`, `status?`(아래 "활동 상태", 쉼표 목록) | 200 `{items: Activity[], nextCursor}` |
 
 - 경로가 `/v1/programs`가 아닌 이유: `/v1/programs`는 이력 선택 창의 활동 정보 검색(로그인)이 이미 쓴다. `nextCursor`는 정렬 결과의 정수 오프셋이다(활동 조회의 id 커서와 다르다).
-- ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, category: string|null, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, latestActivityAt: ISO-8601|null, matchedActivityIds: number[]}`. `openActivityCount`는 열린 활동 수(`participationType`·`category`·대상자 2차 판정까지 통과한 것)이고 `openOnly=false`에서는 0일 수 있다. `nearestRecruitmentEndAt`은 열린 활동의 정렬 키 최솟값(없으면 null), `latestActivityAt`은 조회 범위 안 게시 활동의 가장 최근 활동 시작. `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
-- 펼쳤는데 모집 중 활동이 없으면 "지금 모집 중인 활동이 없어요" 아래에 그 프로그램의 다른 활동(`GET /v1/activities?programId=`, 20개)을 `모집 예정`(모집 시작 또는 활동 시작이 아직 오지 않음, 가까운 순)과 `지난 활동`(최근 3년, 활동 시작 최근 순) 두 묶음으로 보인다. 둘 다 없으면 안내만(2026-10-19 PR #272, SK AIGEN 1기처럼 모집이 11/1에 시작하는 활동이 어느 묶음에도 들지 않던 문제).
+- ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, category: string|null, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, latestActivityAt: ISO-8601|null, matchedActivityIds: number[]}`. `openActivityCount`는 열린 활동 수(`participationType`·`category`·대상자 2차 판정까지 통과한 것)이고 `openOnly=false`에서는 0일 수 있다. `nearestRecruitmentEndAt`은 열린 활동의 **모집 마감** 최솟값(활동 시작으로 대체하지 않는다, 2026-10-26; 모집 마감이 없는 열린 활동뿐이면 null). 프로그램 순서는 그대로 정렬 키(모집 마감 → 활동 시작) 최솟값. `nearestIsActivityStart: boolean`은 **폐지 예정, 항상 false**(옛 앱 호환으로 남김; 2026-10-26 오전에 "정렬 키가 활동 시작으로 대체됐는지"로 넣었으나 같은 날 모집 일정 없는 활동을 마감으로 바꾸며 의미가 없어졌다). `statusCounts: {[status]: number}`(2026-10-26)는 조회 범위(필터·`status`·`openOnly` 반영) 안 게시 활동의 상태별 수(0은 빠진다), `latestActivityAt`은 조회 범위 안 게시 활동의 가장 최근 활동 시작. `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
+- 펼쳤는데 모집 중 활동이 없으면 "지금 모집 중인 활동이 없어요" 아래에 그 프로그램의 다른 활동(`GET /v1/activities?programId=`, 20개)을 `모집 예정`(2026-10-26부터 `status`가 `RECRUITING_UPCOMING`, 가까운 순)과 `지난 활동`(최근 3년, 활동 시작 최근 순) 두 묶음으로 보인다. 둘 다 없으면 안내만(2026-10-19 PR #272, SK AIGEN 1기처럼 모집이 11/1에 시작하는 활동이 어느 묶음에도 들지 않던 문제).
 - `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
-- 변경 이력: 2026-10-18 최초(서버는 시각 모집 기간만 보고 열림 판정, 펼친 활동은 클라이언트가 걸러냄, 열린 활동 1개 이상인 프로그램만) [`b14acca1`](https://github.com/fixabley/dearby/blob/b14acca1/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-19 정렬 키에 활동 시작 대체(사용자 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급") [`6e2834e0`](https://github.com/fixabley/dearby/blob/6e2834e0/shared/contracts/native-v1.md) · 2026-10-19 날짜 모집 기간을 서버가 "없음"으로, 앱이 `확인 필요`로 다뤄 펼친 활동이 비던 버그(운영 활동 126)를 계기로 판정 일원화·`open=true`·`openOnly`·`지난 활동` [`352f20b7`](https://github.com/fixabley/dearby/blob/352f20b7/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정).
+- 변경 이력: 2026-10-18 최초(서버는 시각 모집 기간만 보고 열림 판정, 펼친 활동은 클라이언트가 걸러냄, 열린 활동 1개 이상인 프로그램만) [`b14acca1`](https://github.com/fixabley/dearby/blob/b14acca1/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-19 정렬 키에 활동 시작 대체(사용자 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급") [`6e2834e0`](https://github.com/fixabley/dearby/blob/6e2834e0/shared/contracts/native-v1.md) · 2026-10-19 날짜 모집 기간을 서버가 "없음"으로, 앱이 `확인 필요`로 다뤄 펼친 활동이 비던 버그(운영 활동 126)를 계기로 판정 일원화·`open=true`·`openOnly`·`지난 활동` [`352f20b7`](https://github.com/fixabley/dearby/blob/352f20b7/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-26 `kind`(프로그램·이벤트 전환, 미분류는 프로그램 쪽) · 2026-10-26 모집 일정이 없는 활동은 마감(이전: 활동 시작 전이면 열림), `nearestRecruitmentEndAt`은 모집 마감만·`nearestIsActivityStart` 폐지 예정, 활동 상태·`status` 필터.
+
+## 활동 상태 — 2026-10-26 사용자 결정
+
+서버가 활동마다 상태를 계산해 내려 준다(서울 시각 기준). 앱·웹은 상태를 스스로 계산하지 않는다. 열린 활동 판정(위 "발견 프로그램 묶음")은 이 상태로 표현된다: 열린 활동 = `RECRUITING`, 모집 예정 = `RECRUITING_UPCOMING`. 추천·맞춤 대기열·즐겨찾기 새 모집 알림의 후보는 그대로 열린 활동이다.
+
+- **값과 판정 순서**(위에서 먼저 맞는 것):
+  1. `ENDED` 종료: 활동 기간(ACTIVITY 슬롯)의 끝(시각 일정 `end_at`, 날짜 일정 `end_date_exclusive` 서울 0시, 끝이 없으면 활동 시작)이 `now` 이하.
+  2. `RECRUITING` 모집 중: 모집 기간이 지금을 포함(위 열린 활동 (a)·(b)). 활동 기간과 겹쳐도 모집 중이 앞선다.
+  3. `RECRUITING_UPCOMING` 모집 예정: 모집 시작 전(시각 `start_at > now`, 날짜 `start_date > 서울 오늘`).
+  4. `IN_PROGRESS` 진행 중: 활동 시작 ≤ `now` (끝은 1에서 이미 걸렀다).
+  5. 모집 기간이 있으나 끝났으면: 활동 기간이 있으면 `RECRUITMENT_CLOSED` 모집 마감(활동 시작 전), **활동 기간이 없으면 `ENDED`**.
+  6. `NO_RECRUITMENT` 모집 정보 없음: 모집 일정이 없고 활동이 아직 시작 전(활동 기간도 없으면 이것).
+- **한국어 라벨**: 모집 예정·모집 중·모집 마감·모집 정보 없음·진행 중·종료.
+- **응답**: `Activity.status: string`(위 값, 목록·상세·펼친 활동·즐겨찾기·추천·맞춤 대기열 모두). `ProgramSummary.statusCounts`(위 "발견 프로그램 묶음" API).
+- **필터**: `GET /v1/discovery/programs`와 `GET /v1/activities`에 `status?`(값 쉼표 목록, 대소문자 무시, 모르는 값 400). 발견 묶음에서 `status`가 있으면 `openOnly` 대신 그 상태의 활동으로 묶고 세며(`openActivityCount`·`upcomingActivityCount`·`statusCounts`·`hasTimetable`·`matchedActivityIds`가 그 활동 기준), `RECRUITING`·`RECRUITING_UPCOMING`이 아닌 활동은 최근 3년 창(위 `openOnly=false`와 같다) 안만. 대상자 필터와 함께 써도 같은 상태 기준. 생략하면 기존 `openOnly` 동작(옛 앱 호환). `status=RECRUITING_UPCOMING,RECRUITING`은 `openOnly=true`와 같은 결과다. 서버 파라미터는 enum 단위이고 앱이 아래 묶음을 펼쳐 보낸다.
+- **앱·웹 UI**(iOS·웹 2026-10-26 `feat/status-filter-ios-web`, Android PR #406): `마감 숨기기` 토글 대신 **드롭다운 다중 선택, 세 묶음**: `지원 가능`(`RECRUITING_UPCOMING`+`RECRUITING`, 기본 선택), `진행 중`(`IN_PROGRESS`), `지난 활동`(`RECRUITMENT_CLOSED`+`NO_RECRUITMENT`+`ENDED`). 묶음 id는 `available`·`in_progress`·`past`(저장값·URL·사용 통계 공통). 하나도 안 고르면 `지원 가능`으로 되돌린다. 버튼에 고른 묶음 요약(`지원 가능`, `지원 가능·진행 중`, 셋 다면 `전체`). 선택 기억: iOS UserDefaults `dearby.discovery.statusGroups`(쉼표 id), 웹 URL `?status=`(기본이면 생략, 검색·`kind` 전환이 유지). iOS는 발견 목록 첫 행(옛 `마감 숨기기` 자리)의 `활동 상태` 시스템 `Menu`(체크 `Toggle`, 고르는 동안 열려 있음; 상단 바는 `프로그램 | 이벤트`·설정·종이 차지해 행으로 둠), 웹은 같은 자리의 공개 버튼 + 체크박스 묶음(바깥 클릭·Esc로 닫힘). 프로그램 묶음과 펼친 활동(`GET /v1/activities?programId=&kind=&status=&size=100`, 한 번 요청)에 같은 `status`를 넘기고, 펼친 활동은 서버 `status`로 `모집 중`(종류별 소제목)·`모집 예정`·`진행 중`·`지난 활동` 묶음으로 보인다. **`GET /v1/activities`의 `status`에는 기간 제한이 없으므로 앱·웹은 `지난 활동`을 활동 시작이 최근 3년 안인 것으로 거르고, 날짜 없는 활동은 남긴다.** 즐겨찾기 프로그램 상세는 세 묶음 모두. **배지**: 모집 예정·모집 중·모집 마감·진행 중·종료를 보이고(진행 중은 시스템 파랑 틴트), `NO_RECRUITMENT`는 배지 없이 날짜 자리(카드 `모집` 줄, 상세 모집 상태·모집 기간)에 `모집 일정 미정`. 신청 CTA(신청 링크·"신청하셨나요?")는 모집 중·모집 예정일 때만이고, 그 밖에는 `공식 안내 보기`. 상태가 없는 옛 서버 응답은 모집 기간으로 모집 중·모집 예정·모집 마감만 가린다. **접힌 프로그램 카드**: 배지 수는 `statusCounts` 합(없으면 옛 `openActivityCount + upcomingActivityCount`), 보조 줄은 기존 순서(`M월 d일 마감` → `M월 d일 시작`)에 모집 중·모집 예정이 없고 진행 중이 있으면 `진행 중 n개`, 그 밖에는 `최근 yyyy.M`. 상태별 수 요약 줄("모집 중 2 · 모집 예정 1")은 넣지 않는다(한 줄 보조 글자에 날짜가 더 쓸모 있고, iOS 보이스오버는 배지 라벨로 상태별 수를 읽는다).
+- 변경 이력: 2026-10-26 최초(같은 날 "모집 일정이 없으면 마감" 결정과 함께).
 
 ## 구글 로그인 — 네이티브 SDK (2026-10-18 결정, 2026-10-19 네이티브로 전환)
 
@@ -1007,7 +1238,8 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 - `POST /v1/cards/:id/reports` 인증: Bearer 또는 게스트 토큰(웹 프록시) 또는 없음(웹에서 코드로 본 사람, 본문에 `code`). 명함을 볼 권한이 있는 사람만(위 "명함 QR 코드" 조회 권한과 같음, 아니면 403). 본문 `{reason: SPAM|IMPERSONATION|INAPPROPRIATE|OTHER, detail?: string(≤500), code?: string}`. 201. 같은 신고자(계정·게스트)가 같은 명함을 24시간 안에 다시 신고하면 200으로 기존 신고를 돌려준다(중복 방지). 자기 명함은 400.
 - 사유 표시: 스팸·광고 / 다른 사람 사칭 / 부적절한 내용 / 기타(기타는 설명 필수).
-- 저장: `card_reports(id uuid, card_id, reporter_user_id null, reporter_guest_id null, reason, detail, created_at, status OPEN|RESOLVED|DISMISSED, resolved_at, resolved_by, note)`(V48). 신고 시점의 명함 스냅샷(이름·직무·소개·연락처)을 `card_snapshot jsonb`로 함께 둔다(주인이 고치거나 지워도 근거가 남게).
+- 저장: `card_reports(id uuid, card_id, reporter_user_id null, reporter_guest_id null, reason, detail, created_at, status OPEN|RESOLVED|DISMISSED, resolved_at, resolved_by, note)`(V48). 신고 시점의 명함 스냅샷(이름·직무·소개 링크·연락처; 2026-10-26 전 신고는 소개 글)을 `card_snapshot jsonb`로 함께 둔다(주인이 고치거나 지워도 근거가 남게).
+- 보유 기간(2026-10-25 사용자 결정): 신고 기록은 신고일(`created_at`)로부터 1개월이 지나면 상태(`OPEN` 포함)와 관계없이 지운다(batch 매일 04:00 명함 회수와 함께). 차단(`card_blocks`) 보유 기간은 아래 "차단".
 - 화면: 받은 명함 상세(iOS 툴바 `ellipsis.circle` Menu, Android TopAppBar 더 보기 메뉴)와 웹 `/cards/:id`·`/saved` 상세의 카드 아래 작은 글자 버튼 `신고하기`. 사유 고르기(iOS confirmationDialog 또는 시트의 Picker, Android 라디오 목록 다이얼로그, 웹 shadcn Dialog) → 선택 설명 → 보내기. 성공하면 "신고를 받았어요. 24시간 안에 확인할게요." 신고만으로 명함이 사라지지는 않는다(차단은 따로).
 
 ### 차단
@@ -1017,6 +1249,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - 게스트(웹 `/saved` 상세): `POST /v1/guest/blocks {cardId}`(게스트 토큰)로 같은 동작(`guest_cards` 회수 + 게스트 차단 기록, 이후 `PUT /v1/guest/cards/:id` 409).
 - `GET /v1/wallet/blocks` → `{items:[{id, name, blockedAt}]}`, `DELETE /v1/wallet/blocks/:id` 204(차단 해제, 지운 명함은 돌아오지 않는다). `name`은 차단할 때 그 명함의 이름 스냅샷. 앱 설정 화면에 `차단한 사람` 행 → 목록과 밀어서/편집으로 해제. 게스트는 목록·해제 없음(쿠키를 지우면 초기화).
 - 저장: `card_blocks(id uuid, blocker_user_id null, blocker_guest_id null, blocked_user_id, name, created_at)`(V48, 둘 중 하나만).
+- 보유 기간(2026-10-25 사용자 결정): 게스트 차단은 차단일(`created_at`)로부터 1년이 지나면 지우고, 게스트 세션이 지워졌으면(`DELETE /v1/guest/session`) 기간과 관계없이 지운다(batch 매일 04:00 명함 회수와 함께, 세션 삭제 뒤 다음 실행까지 남을 수 있다). 계정 차단은 해제할 때까지 둔다.
 
 ### 어드민
 
@@ -1068,7 +1301,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - **카드 면**: 흰 바탕, 모서리 20, 1px 구분선 색 테두리, 안쪽 여백 20. 웹은 최대 너비 480px 가운데 정렬. 명함은 "한 장의 카드"로 보이고 행동 버튼(고치기·저장)은 카드 바깥 아래에 둔다.
 - **머리**: 가운데 정렬. 이니셜 아바타 56(민트 바탕·청록 글자) → 이름(title 굵게) → 직무 칩(`job`을 ` · `로 나눈 각 항목을 옅은 배경 칩으로, 없으면 생략) → 소속(가장 최근 승인 이력의 조직 이름, 보조색 작은 글자, 없으면 생략).
-- **소개**: `introduction`(기본 템플릿을 채운 결과 = 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
+- **소개**: 2026-10-26 폐지(절 자체를 그리지 않음, 이미 발행된 명함의 옛 본문도). 이름 옆 소개 링크가 대신한다(아래 "소개 링크·소개 글 폐지").
 - **연락처**: 절 제목 `연락처`. 행마다 왼쪽 종류 아이콘(전화·메일·카카오톡·Instagram·GitHub·Behance), 라벨(보조색 작은 글자: `label`이 있으면 그것, 없으면 종류 이름), 값(본문색), 열 수 있으면 오른쪽 외부 링크 아이콘. 행 전체가 눌려 기존 동작(전화·메일·링크 열기)을 한다. 연락처가 없으면 `공개된 연락처가 없어요`.
 - **활동 이력**: 절 제목 `활동 이력`. 행마다 기간(보조색 작은 글자, `2026.03 – 진행 중`), 제목(굵게, 조직 · 프로그램 · 활동), 역할과 인증 배지(`확인됨`/`미확인`, 기존 배지). 설명이 있으면 아래 한 줄. 이력이 없으면 `공개된 활동 이력이 없어요`.
 - **내 명함 탭**: 가로 스크롤 타일 대신 2열 격자. 첫 칸 `+ 새 명함`, 각 칸은 명함 이름(굵게)·프로필 이름·직무 한 줄. 선택한 칸은 민트 바탕·청록 테두리. 격자 아래에 선택한 명함의 카드(위 규칙)와 `이 명함 고치기` 버튼, 그 아래 위험 색 `이 명함 지우기`(확인 대화상자 "공개 링크도 더 열리지 않아요. 되돌릴 수 없어요." → `DELETE /v1/cards/:id`, 2026-10-18 사용자 요청 "내 명함 삭제가 없어"), 그리고 `QR 보이기`("명함 교환"). 지운 뒤 다음 명함(가장 새 것)을 고르고, 마지막 명함이면 첫 명함 안내로 돌아간다. 명함이 없을 때의 안내 카드는 유지.
@@ -1088,13 +1321,56 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 ### 현재 단계와 사용자 표시
 
 - 자동 판정: 오늘(서울 시간) 기준으로 끝나지 않은 가장 이른 단계가 현재 단계다. 끝난 단계는 지난 것으로 본다.
-- 사용자 표시: 단계마다 `통과`·`대기`·`탈락`을 직접 표시할 수 있다(기본 `대기`). `통과`로 표시하면 그 단계는 지난 것으로 보고 다음 단계가 현재가 된다. `탈락`이면 활동이 `끝난 활동` 묶음으로 내려간다. 표시는 사용자가 스스로 남기는 것이며 주최 측 결과가 아니라는 문구를 상세에 둔다(참여 확정 표시와 같은 원칙).
+- 사용자 표시: 단계마다(2026-10-26부터 **선발 단계만**, 아래 절) `통과`·`대기`·`탈락`을 직접 표시할 수 있다(기본 `대기`). `통과`로 표시하면 그 단계는 지난 것으로 보고 다음 단계가 현재가 된다. `탈락`이면 활동이 `끝난 활동` 묶음으로 내려간다. 표시는 사용자가 스스로 남기는 것이며 주최 측 결과가 아니라는 문구를 상세에 둔다(참여 확정 표시와 같은 원칙).
 - 저장: 신청 표시와 같이 기기 안에만 둔다(앱 실행 간 유지 여부도 신청 표시와 같은 규칙을 따른다). 서버·계정 동기화는 이번 범위가 아니다.
+
+### 통과 여부는 선발 단계에만 — 2026-10-26 사용자 결정 (대체됨)
+
+> 같은 날 아래 "선발 과정·활동 일정 분리"로 대체됐다. 선발 단계 판정은 서버의 `Schedule.phase`로 한다. 이 절의 추론은 서버 판정 규칙(필드가 비었을 때)과 `phase`가 없는 옛 서버 응답의 앱 대체 판정으로만 남는다.
+
+- 통과·대기·탈락(일정의 `statuses` 선택)은 **선발 단계**에만 둔다. 그 밖의 단계는 날짜와 `예정`/`지남`(시간 판정)만 보이고 선택지가 없다.
+- 선발 단계: `지원`(모집 슬롯), 세부 일정 중 `kind`가 `DEADLINE`(서류 등 마감)·`ANNOUNCEMENT`(결과 발표)·`INTERVIEW`(면접)인 것, 그리고 `EVENT`라도 **어드민이 그 일정의 상태를 직접 지정한 것**(`statuses`에 `id`가 있는 항목이 있음 — 서버가 채운 기본 세 개는 `id`가 없다). 활동 기간(`activitySchedule`) 단계는 늘 선발 단계가 아니다.
+- 이유·한계: 수집 규칙(`WORKFLOW.md`)이 코딩테스트·과제 같은 테스트를 행사·교육과 같은 `EVENT`로 넣어 `kind`만으로는 구분되지 않는다. 테스트 일정에 통과 표시가 필요하면 어드민이 그 일정에 상태(대기·통과·탈락)를 지정한다. 서버에 선발 여부 필드(예 `selection: boolean` 또는 `kind: TEST`)를 두면 이 추론을 대체할 수 있다(조율 세션 판단, 이번 변경은 앱만).
+- 판정: 선발 단계가 아닌 단계는 저장된 표시를 읽지 않는다(지우지도 않는다 — 기본 `대기`로 본다). 그래서 `통과`로 넘어가거나 `탈락`으로 끝나는 것은 선발 단계의 표시뿐이다. `참여 중`은 선발 단계가 모두 `통과`이고 그 뒤에 다른 단계(적어도 활동 기간)가 남았을 때다.
+- iOS 2026-10-26 구현(`ActivityStages.isSelection`). Android는 같은 규칙으로 따로 구현한다.
 
 ### 화면
 
 - 목록 행: 활동 이름(굵게) + 프로그램 · 조직(보조색) / 아래에 세그먼트 트랙: 지난 단계는 채움(청록), 현재 단계는 빗금 또는 강조 테두리, 다음 단계는 옅은 회색. 트랙 아래 단계 이름(현재 단계는 굵게, 길면 말줄임). 오른쪽 끝에 배지 `D-3 · 면접`(현재 단계의 시작까지 남은 날과 종류/제목. 진행 중인 날은 `D-DAY`, 모든 단계가 지났으면 `지남`, 탈락 표시면 `탈락`(위험 색), 날짜 없으면 `날짜 미확인 · 종류`). 단계가 4개를 넘으면 트랙은 4칸까지만 보이고 `+N`을 붙인다.
 - 묶음: `진행 중`(기본), `끝난 활동`(탈락 표시했거나 모든 단계가 지난 활동). 끝난 활동은 접힌 묶음으로 아래에 둔다.
-- 상세(행을 누름): 세로 타임라인. 단계마다 종류 아이콘·이름·날짜(또는 문구)·상태 칩과 `통과`/`대기`/`탈락` 선택. 맨 위에 활동 이름과 활동 상세로 가는 버튼, 맨 아래에 "표시는 내가 남긴 것이며 주최 측 결과가 아니에요" 안내. 날짜가 있는 단계는 기존 `겹치는 시간 확인`을 그 단계 시각으로 열 수 있다.
+- 상세(행을 누름) — 2026-10-18~10-26 판: 세로 타임라인. 단계마다 종류 아이콘·이름·날짜(또는 문구)·상태 칩과 `통과`/`대기`/`탈락` 선택(선발 단계만; 그 밖의 단계는 칩이 `예정`/`지남`). 맨 위에 활동 이름과 활동 상세로 가는 버튼, 맨 아래에 "표시는 내가 남긴 것이며 주최 측 결과가 아니에요" 안내. 날짜가 있는 단계는 기존 `겹치는 시간 확인`을 그 단계 시각으로 열 수 있다.
+- **진행 단계 화면 정리 — 2026-10-26 사용자 결정**("진행단계 페이지가 너무 난잡한데 활동탐색 카드처럼 깔끔하게", "마진이 너무 크고 항목별 경계가 뚜렷하지 않아. 개수가 적어도 스크롤이 길고 한눈에 파악이 어려워"): 위 타임라인을 대신한다. 정보는 지우지 않고 배치·표현만 바꾼다.
+  - 플랫폼 기본 목록(iOS `List` `.insetGrouped`, Android 같은 역할의 Material 목록)의 기본 행 높이·간격·구분선을 쓴다. 직접 만든 큰 패딩·카드 테두리·연결선은 없다. 섹션마다 작은 머리글로 경계를 둔다.
+  - `활동 정보`: 발견 활동 카드(제목·상태 배지·`모집`·`활동`·`장소`·태그, 하트·종)를 그대로 쓰고 누르면 활동 상세. 프로그램 · 조직은 섹션 아래 보조 줄.
+  - `진행 단계`: 머리글 오른쪽에 지금 상태 배지(목록 행과 같은 `D-3 · 면접`/`참여 중`/`지남`/`탈락`). 단계마다 한 줄: 종류 아이콘(지난 단계 보조색, 현재 청록, 다음 옅은 색, 탈락 위험 색) + 이름(현재 단계는 굵게) + 아래 줄 `날짜 · 지남/진행 중/예정`(진행 중은 선발 단계만, 기존 칩 규칙). 오른쪽에는 선발 단계만 표시한 상태(`대기`/`통과`/`탈락` 또는 어드민 이름; 통과 청록, 탈락 위험 색). 일정 블록에 시간표가 있으면 상태 왼쪽에 시간표 아이콘(보조색, 2026-10-26). 고를 것이나 할 일이 있는 행을 누르면 메뉴: `시간표 보기`(시간표 있는 블록만, 맨 위), 선발 단계의 상태 선택, `캘린더에 추가`, `겹치는 시간 확인`(그 단계 시각). 안내 "표시는 내가 남긴 것이며 주최 측 결과가 아니에요."는 섹션 아래 보조 줄.
+  - 별도 `시간표` 섹션은 2026-10-26 같은 날 단계 행 아이콘·메뉴 `시간표 보기`로 통합되며 없어졌다(아래 "트랙·세션 시간표" 내 활동).
+  - 맨 아래 섹션에 `내 활동에서 빼기`(destructive 텍스트 버튼).
+  - 목표: 단계가 5개 이하면 카드부터 진행 단계 끝까지 한 화면에 들어온다.
 - 검색·정렬: 기존 내 활동 검색 규칙 유지. 정렬은 다음 단계가 가까운 순, 날짜 없는 활동은 뒤.
 - 접근성: 트랙은 하나의 요소로 "5단계 중 3단계 1차 면접 진행 중"처럼 읽힌다. 동작 줄이기에서 트랙 애니메이션 없음.
+
+## 선발 과정·활동 일정 분리 — 2026-10-26 사용자 결정
+
+사용자: "선발 프로세스랑 실제 활동이랑 분리하고 싶어" → 추천안 승인 "그렇게 해주세요 내활동페이지 프로세스에도 반영해주세요". 일정마다 선발 과정인지 활동 일정인지를 서버가 내려 주고, 활동 상세와 내 활동 진행 단계가 두 섹션으로 나눠 보인다. 위 "통과 여부는 선발 단계에만"의 `kind`·상태 지정 추론을 대체한다.
+
+### 데이터
+
+- `Schedule.phase: "SELECTION" | "ACTIVITY"`(공개 Activity의 `application`·`activitySchedule`·`schedules[]`, 어드민 일정 응답 모두). 응답에는 늘 값이 있다(null 없음).
+  - `SELECTION`(선발 과정): 붙기 전의 단계 — 서류 접수·마감, 코딩테스트·과제, 면접, 결과·합격자 발표 등 합격자 OT 전까지.
+  - `ACTIVITY`(활동 일정): 붙은 뒤의 활동 — OT·오리엔테이션, 세션·교육·과정 단계, 행사 본 일정, 수료·데모데이. 선발이 없는 컨퍼런스·행사의 일정도 활동이다.
+- 고정: `application`(모집 슬롯)은 늘 `SELECTION`, `activitySchedule`(활동 기간 슬롯)은 늘 `ACTIVITY`. DB 제약(V62 `schedules_slot_phase_check`)이 슬롯 행에 다른 값을 막는다.
+- 저장: `schedules.phase varchar(20) null`(check `SELECTION`·`ACTIVITY`, V62). 값이 없는 행은 서버가 읽을 때 옛 판정으로 채운다: `kind`가 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`이거나 운영자가 상태를 지정한(`schedule_statuses` 행이 있는) 일정은 `SELECTION`, 그 밖은 `ACTIVITY`. 서버 구현 `SchedulePhase.resolve`.
+- V62 채우기(조율 세션 결정 2026-10-26): 슬롯 행과 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW` 세부 일정만 채우고, 그 밖의 세부 일정(`EVENT` 등)은 null로 남긴다. 그래서 `EVENT` 일정은 운영자가 상태를 지정하면 예전 앱 판정처럼 저절로 `SELECTION`이 된다. 운영자가 어드민에서 `phase`를 직접 정한 행만 저장값이 우선이고(상태 지정보다 앞선다), 수집기가 `phase`를 준 행도 저장값으로 남는다.
+- 어드민·수집: 세부 일정 POST·PATCH가 `phase?`를 받는다(고치면 기존 규칙대로 `curated`라 재수집이 덮어쓰지 않는다). 수집기 제출 `schedules[].phase`(모르면 null), 큐레이션 가져오기 `schedules[]` 항목도 `phase?`. 모집·활동 기간 행의 `phase`는 고칠 수 없다(400).
+
+### 화면(iOS·Android·웹)
+
+- **활동 상세**: 일정을 `선발 과정`과 `활동 일정` 두 섹션으로 나눈다(앱의 `행사 일정` 섹션, 웹 활동 상세의 일정 목록을 이 두 섹션으로). `선발 과정`은 모집 행(기존 "모집 날짜 표기" 규칙) + `SELECTION` 세부 일정, `활동 일정`은 활동 기간 행 + `ACTIVITY` 세부 일정. 섹션 안의 순서·행 모양·`캘린더에 추가`·`겹치는 시간 확인`은 그대로다. 시간표 블록(`hasTimetable`, "트랙·세션 시간표")은 `phase`와 상관없이 `활동 일정` 섹션에 둔다.
+- **내 활동 진행 단계 화면**("진행 단계 화면 정리" 위에서): `진행 단계` 섹션을 `선발 과정`과 `활동 일정` 두 섹션으로 나눈다. 행 모양·메뉴는 그대로이고, 지금 상태 배지(`D-3 · 면접`/`참여 중`/`지남`/`탈락`)는 첫 섹션 머리글 오른쪽에 둔다. `시간표` 섹션은 `활동 일정` 다음에 둔다.
+  - 통과·대기·탈락(일정의 `statuses` 선택)은 `SELECTION` 단계에만 붙인다. `ACTIVITY` 단계는 날짜와 `예정`/`지남`만 보이고 선택지가 없다(기존 판정: 선발이 아닌 단계는 저장된 표시를 읽지 않고 지우지도 않는다).
+  - 선발 단계가 모두 `통과`이면(선발 단계가 하나도 없는 활동은 해당 없음) `활동 일정` 섹션을 "참여 중"으로 강조한다: 머리글 옆 `참여 중` 배지(청록)와 지금 단계 표시. 지금 상태 배지 `참여 중` 규칙(선발이 모두 통과이고 뒤에 활동 단계가 남음)과 같은 조건이다.
+  - 탈락(선발 단계의 `FAILED`)이면 기존대로 `끝난 활동`이고 `활동 일정` 섹션은 강조하지 않는다.
+- 내 활동 목록의 세그먼트 트랙·배지·정렬·`끝난 활동` 판정은 바뀌지 않는다(단계 순서는 기존 "단계 만들기" 그대로, 선발 단계 판정만 `phase`로).
+- 한쪽이 비면 그 섹션을 숨긴다(예: 선발이 없는 컨퍼런스는 `활동 일정`만).
+- 옛 서버(응답에 `phase` 없음): 앱은 위 "통과 여부는 선발 단계에만"의 판정(`kind`·상태 지정)으로 나눈다. 모집 슬롯은 선발, 활동 기간 슬롯은 활동.
+- 접근성: 섹션 머리글은 제목(heading)으로 읽힌다. "참여 중" 강조는 색만으로 나타내지 않고 배지 글자를 둔다.

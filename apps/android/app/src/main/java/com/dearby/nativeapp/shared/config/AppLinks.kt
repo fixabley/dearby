@@ -4,7 +4,7 @@ import java.net.URI
 import java.util.UUID
 
 /** A sign-in provider (contract "애플 로그인", "구글 로그인"). [path] is the API segment; only Apple's web flow uses it as a redirect path (Google is native). */
-enum class AuthProvider(val path: String, val label: String) { APPLE("apple", "애플"), GOOGLE("google", "Google") }
+enum class AuthProvider(val path: String, val label: String) { APPLE("apple", "Apple"), GOOGLE("google", "Google") }
 
 /** Where a provider's web flow returns: `dearby://auth/apple?code=<UUID>` or `?error=cancelled|failed` (Google has no redirect since 2026-10-19). */
 sealed interface AuthRedirect {
@@ -73,11 +73,10 @@ fun cardQrUrl(webOrigin: String, cardId: String, activityId: String?, code: Stri
     "${webOrigin.trimEnd('/')}/cards/$cardId?" + (activityId?.let { "activity=$it&" } ?: "") + "code=$code"
 
 /**
- * `dearby://favorites?view=calendar|list` (the `오늘 일정 n개` push, contract "프로그램·활동별 알림 수준"): the `view` value, or `list` when it is missing;
- * anything else is null.
+ * `dearby://favorites` (the `오늘 일정 n개` push sends `?view=calendar`, contract "프로그램·활동별 알림 수준"). 즐겨찾기 is the calendar only since
+ * 2026-10-26, so the query is not read.
  */
-fun favoritesLink(link: String): String? = runCatching {
+fun isFavoritesLink(link: String): Boolean = runCatching {
     val uri = URI(link)
-    if (uri.scheme != "dearby" || uri.rawAuthority != "favorites" || uri.rawFragment != null || !uri.rawPath.isNullOrEmpty() && uri.rawPath != "/") return null
-    uri.rawQuery?.split('&')?.firstNotNullOfOrNull { pair -> pair.split('=', limit = 2).takeIf { it.size == 2 && it[0] == "view" }?.get(1) } ?: "list"
-}.getOrNull()
+    uri.scheme == "dearby" && uri.rawAuthority == "favorites" && uri.rawFragment == null && (uri.rawPath.isNullOrEmpty() || uri.rawPath == "/")
+}.getOrDefault(false)

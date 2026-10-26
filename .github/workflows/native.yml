@@ -139,8 +139,15 @@ jobs:
             echo "No IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64; building without Analytics"
           fi
       # The Xcode project is generated, not tracked (avoids merge conflicts on project.pbxproj).
+      # 맞춤 대기열 끝 광고: this Debug build uses Google's test IDs; the variables only matter to Release (ios-testflight.yml), so only warn here.
       - name: Generate Xcode project
+        env:
+          ADMOB_IOS_APP_ID: ${{ vars.ADMOB_IOS_APP_ID }}
+          ADMOB_IOS_QUEUE_NATIVE_UNIT_ID: ${{ vars.ADMOB_IOS_QUEUE_NATIVE_UNIT_ID }}
         run: |
+          if [ -z "$ADMOB_IOS_APP_ID" ] || [ -z "$ADMOB_IOS_QUEUE_NATIVE_UNIT_ID" ]; then
+            echo "::warning::ADMOB_IOS_APP_ID or ADMOB_IOS_QUEUE_NATIVE_UNIT_ID is not set; Release builds leave out the queue ad"
+          fi
           gem install --user-install --no-document xcodeproj
           ruby scripts/generate_project.rb
       - name: Build app

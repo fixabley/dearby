@@ -55,14 +55,16 @@ class AccountDeletionFlowTest(
         val user = User(UUID.randomUUID(), listOf(UserRole.USER))
         val id = user.id
         jdbc.sql("insert into users (id) values (?)").param(id).update()
-        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-22', '2026-10-22', now())").param(id).update()
+        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-26', '2026-10-22', now())").param(id).update()
         // 지원 자격 정보·추천 설정(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천")
         jdbc.sql("insert into profile_eligibility (user_id, birth_year, consent_version, consented_at, updated_at) values (?, 2003, '2026-10-24', now(), now())").param(id).update()
         jdbc.sql("insert into recommendation_preferences (user_id, categories, completed_at, updated_at) values (?, '{BOOTCAMP}', now(), now())").param(id).update()
+        jdbc.sql("insert into user_ad_consents (user_id, version, consented_at) values (?, '2026-10-25', now())").param(id).update()
         jdbc.sql("insert into user_roles (user_id, role) values (?, 'USER')").param(id).update()
         jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'EMAIL', '메일', 'a@example.com', 0)").params(UUID.randomUUID(), id).update()
         jdbc.sql("insert into profiles (user_id, name, introduction, version, created_at, updated_at) values (?, '이름', '', 1, now(), now())").param(id).update()
         jdbc.sql("insert into profile_jobs (id, user_id, job_name, position, approval_status, created_at, updated_at) values (?, ?, '직접 적은 직무', 0, 'PENDING', now(), now())").params(UUID.randomUUID(), id).update()
+        jdbc.sql("insert into profile_photos (user_id, data, updated_at) values (?, '\\xffd8', now())").param(id).update()
         jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 1, '{}', now())").param(id).update()
         val history = UUID.randomUUID()
         jdbc.sql("insert into profile_histories (id, user_id, kind, organization_name, role_name, start_date, description, position, approval_status, verification_status, created_at, updated_at) values (?, ?, 'ORGANIZATION', '조직', '역할', '2026-01-01', '', 0, 'PENDING', 'UNVERIFIED', now(), now())").params(history, id).update()
@@ -182,7 +184,7 @@ class AccountDeletionFlowTest(
         assertEquals(0, count("user_activities", "user_id", user.id))
         assertEquals(0, count("user_activity_schedule_statuses", "user_activity_id", user.id))
         assertEquals(1, count("user_activity_schedule_statuses", "user_activity_id", other.id))
-        for (table in listOf("recommendation_signals", "user_org_affinity", "user_taste", "discovery_queue", "user_favorites", "push_devices", "notification_settings", "user_notifications")) {
+        for (table in listOf("recommendation_signals", "user_org_affinity", "user_taste", "discovery_queue", "user_favorites", "push_devices", "notification_settings", "user_notifications", "user_ad_consents", "profile_photos")) {
             assertEquals(0, count(table, "user_id", user.id), table)
             assertEquals(1, count(table, "user_id", other.id), table)
         }

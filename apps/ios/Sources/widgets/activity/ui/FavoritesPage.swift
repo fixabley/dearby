@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25), the second half of the 내 활동 tab: `프로그램` (logo, name, next recruitment,
-/// `새 모집` badge) then `활동` (the server's deadline order), each with its heart and bell (the level is spoken and shown by the bell symbol and
-/// its title). Swiping a row removes it with a `되돌리기` notice. The top-right `목록 | 캘린더` switch (remembered on the device) shows the
-/// activities by recruitment date instead (`FavoritesCalendarView`). Signed out: a sign-in prompt; nothing yet: `하트를 누르면 여기에 모여요`.
+/// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25), the second half of the 내 활동 tab: the activities by recruitment date
+/// (`FavoritesCalendarView`; the `목록` view went 2026-10-26), then `날짜 없는 즐겨찾기` — the programs (logo, name, next recruitment, `새 모집`
+/// badge) and the activities without any date — as the discovery rows with their heart and bell (the level is spoken and shown by the bell symbol
+/// and its title). Signed out: a sign-in prompt; nothing yet: `하트를 누르면 여기에 모여요`.
 struct FavoritesPage: View {
     let state: ActivityViewModel
     @Binding var path: NavigationPath
     @Environment(FavoritesModel.self) private var favorites
-    @AppStorage(FavoritesLayout.storageKey) private var layout = FavoritesLayout.list
+    @Environment(SessionFavoritesModel.self) private var sessions
     var body: some View {
         Group {
             switch favorites.phase {
@@ -23,58 +23,55 @@ struct FavoritesPage: View {
             case .loaded, .unavailable:
                 if favorites.programs.isEmpty && favorites.activities.isEmpty {
                     CenteredMessage(symbol: "heart", title: "하트를 누르면 여기에 모여요", message: "발견에서 마음에 드는 활동과 프로그램에 하트를 눌러 보세요.")
-                } else if layout == .calendar {
-                    FavoritesCalendarView(items: favorites.activities) { path.append($0) }
                 } else {
-                    list
-                }
-            }
-        }
-        .toolbar {
-            if favorites.phase != .signedOut {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("보기", selection: $layout.reporting { if $0 == .calendar { AppAnalytics.event("menu_open", ["menu": "favorites_calendar"]) } }) {
-                            Label("목록", systemImage: "list.bullet").tag(FavoritesLayout.list)
-                            Label("캘린더", systemImage: "calendar").tag(FavoritesLayout.calendar)
+                    FavoritesCalendarView(items: favorites.activities, sessionDays: Set(sessions.items.map { SeoulDay($0.session.start) }),
+                                          open: { path.append($0) }) { undated in
+                        if !favorites.programs.isEmpty || !undated.isEmpty {
+                            undatedSection(undated)
                         }
-                    } label: {
-                        Image(systemName: layout == .calendar ? "calendar" : "list.bullet")
                     }
-                    .accessibilityLabel("보기 전환").accessibilityValue(layout == .calendar ? "캘린더" : "목록")
-                    .accessibilityIdentifier("favorites-layout")
+                    .refreshable { await favorites.load() }
                 }
             }
         }
-        .overlay(alignment: .bottom) { undoNotice }
-        .onDisappear { favorites.commitPending() }
-        .analyticsScreen(layout == .calendar ? "favorites_calendar" : "favorites")
+        // 찜한 세션 (contract "트랙·세션 시간표" 2026-10-26): with at least one, a row above the calendar opens 나만의 시간표.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !sessions.items.isEmpty {
+                Button { path.append(MySessionsRoute()) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "heart.text.square").foregroundStyle(.pink)
+                        Text("찜한 세션").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
+                        Text("\(sessions.items.count)개").font(.dearby(.subheadline)).foregroundStyle(.secondary).monospacedDigit()
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 16).frame(minHeight: 48)
+                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).padding(.horizontal, 20).padding(.vertical, 8)
+                .accessibilityLabel("찜한 세션 \(sessions.items.count)개").accessibilityHint("누르면 나만의 시간표를 보여요")
+                .accessibilityIdentifier("favorite-sessions")
+            }
+        }
+        .analyticsScreen("favorites")
     }
-    private var list: some View {
-        List {
-            if !favorites.programs.isEmpty {
-                heading("프로그램")
-                ForEach(favorites.programs) { favorite in
-                    row(programRow(favorite), target: .program(favorite.id))
-                }
-            }
-            if !favorites.activities.isEmpty {
-                heading("활동")
-                ForEach(favorites.activities) { favorite in
-                    row(activityRow(favorite), target: .activity(favorite.id))
-                }
-            }
+    /// 날짜 없는 즐겨찾기: the programs (never on the calendar) and the activities without any date.
+    private func undatedSection(_ activities: [FavoriteActivity]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("날짜 없는 즐겨찾기").font(.dearby(.headline)).accessibilityAddTraits(.isHeader).padding(.top, 20)
+            ForEach(favorites.programs) { programRow($0) }
+            ForEach(activities) { activityRow($0) }
         }
-        .listStyle(.plain).environment(\.defaultMinListRowHeight, 0)
-        .scrollContentBackground(.hidden)
-        .refreshable { await favorites.load() }
+        .padding(.horizontal, 20)
     }
     private func programRow(_ favorite: FavoriteProgram) -> some View {
         let program = favorite.program
-        return ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
+        return ProgramHeader(name: program.name, organization: program.organization, category: program.category, logoURL: program.logoURL,
+                             openCount: program.openActivityCount,
                              nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                              nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
-                             fieldTags: program.fieldTags, traitTags: program.traitTags, newRecruitment: favorite.newRecruitment, expanded: false) {
+                             fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable, newRecruitment: favorite.newRecruitment, expanded: false) {
             FavoriteControls(target: .program(program.id), showsLevel: true)
         } toggle: {
             favorites.seen(program.id)
@@ -83,11 +80,11 @@ struct FavoritesPage: View {
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
     }
     private func activityRow(_ favorite: FavoriteActivity) -> some View {
-        let activity = favorite.activity, now = Date()
-        return ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: now),
-                            recruitmentText: activity.recruitmentText(at: now), scheduleText: activity.scheduleText(at: now),
+        let activity = favorite.activity, now = Date(), recruitmentDate = activity.recruitmentDate(at: now)
+        return ActivityCard(activityID: activity.id, title: activity.title, status: activity.status(at: now),
+                            recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday, scheduleText: activity.scheduleText(at: now),
                             place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
-                            surface: Color(.secondarySystemGroupedBackground)) {
+                            surface: Color(.secondarySystemGroupedBackground), hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), {
                 state.remember(activity)
                 state.addToMine(activity.id, source: "favorites")
@@ -97,45 +94,6 @@ struct FavoritesPage: View {
             path.append(activity.id)
         }
     }
-    private func heading(_ text: String) -> some View {
-        Text(text).font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 4, trailing: 20))
-    }
-    /// One card row: no list background or separator; a trailing swipe removes it (with the undo notice).
-    private func row(_ content: some View, target: FavoriteTarget) -> some View {
-        content
-            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button("해제", systemImage: "heart.slash", role: .destructive) { withAnimation { favorites.removeWithUndo(target) } }
-            }
-    }
-    @ViewBuilder private var undoNotice: some View {
-        if let pending = favorites.pending {
-            HStack(spacing: 12) {
-                Text("즐겨찾기에서 뺐어요").font(.dearby(.subheadline)).foregroundStyle(.primary)
-                Spacer(minLength: 8)
-                Button("되돌리기") { withAnimation { favorites.undo() } }.font(.dearby(.subheadline).weight(.semibold))
-            }
-            .padding(.horizontal, 16).frame(minHeight: 48)
-            .background(.regularMaterial, in: .capsule)
-            .padding(.horizontal, 16).padding(.bottom, 12)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-            .task(id: pending.target) {
-                AccessibilityNotification.Announcement("즐겨찾기에서 뺐어요").post()
-                try? await Task.sleep(for: .seconds(4))
-                if !Task.isCancelled { withAnimation { favorites.commitPending() } }
-            }
-        }
-    }
-}
-
-/// The favorites screen's `목록 | 캘린더` choice, kept on the device (a new key, 2026-10-25).
-enum FavoritesLayout: String {
-    case list, calendar
-    static let storageKey = "dearby.favorites.layout"
 }
 
 /// A program page pushed from 즐겨찾기; equal by program id.
@@ -154,19 +112,20 @@ struct ProgramDetailPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
+                ProgramHeader(name: program.name, organization: program.organization, category: program.category, logoURL: program.logoURL,
+                              openCount: program.openActivityCount,
                               nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                               nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
-                              fieldTags: program.fieldTags, traitTags: program.traitTags, expanded: false,
+                              fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable, expanded: false,
                               accessory: { FavoriteControls(target: .program(program.id)) }, toggle: nil)
                     .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
                     .padding(.bottom, 8)
-                ProgramActivityGroups(state: state, programID: program.id, path: $path, showsPast: true, source: "favorites")
+                ProgramActivityGroups(state: state, programID: program.id, path: $path, groups: Set(StatusGroup.allCases), source: "favorites")
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
         // Loads again when a discovery search dropped the loaded lists.
-        .task(id: state.openActivities[program.id] == nil) { state.loadProgram(program.id) }
+        .task(id: state.activities(program.id, for: Set(StatusGroup.allCases)) == nil) { state.loadProgram(program.id) }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle(program.name).navigationBarTitleDisplayMode(.inline).analyticsScreen("program_detail")
     }

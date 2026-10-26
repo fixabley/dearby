@@ -1,12 +1,9 @@
 package com.dearby.nativeapp.features.calendar
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Event
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
@@ -59,9 +56,9 @@ import java.util.Locale
 }
 
 /**
- * The result (contract "반복 일정과 겹침 결과 묶음"): a check or warning symbol and the title; one overlap keeps its sentence and the
- * timeline; several show the summary "n일 겹침 · 반복 일정 a개 · 단일 일정 b개", one row per repeating device event (tap to list its
- * dates), then one-off events nearest first, five until "더 보기".
+ * The result (contract "겹침 결과 시간표 연달아" 2026-10-26): a check or warning symbol and the title; one overlap keeps its sentence and
+ * the timeline; several show the summary "n일 겹침 · 반복 일정 a개 · 단일 일정 b개", then every overlap's timetable in date order, each
+ * under its date, device event and time, ten at a time with "더 보기".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun CalendarResultSheet(overlaps: List<CalendarOverlapState>, schedule: ScheduleModel, close: () -> Unit) {
@@ -70,9 +67,16 @@ import java.util.Locale
     val zone = ZoneId.of(schedule.timeZone)
     val date = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN).withZone(zone)
     val clock = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN).withZone(zone)
-    fun span(start: Long, end: Long) = "${clock.format(Instant.ofEpochMilli(start))} – ${clock.format(Instant.ofEpochMilli(end))}"
+    val day = DateTimeFormatter.ofPattern("M월 d일", Locale.KOREAN).withZone(zone)
+    // An event running past midnight names its end date ("23:00 – 11월 2일 15:00").
+    fun span(start: Long, end: Long): String {
+        val from = Instant.ofEpochMilli(start); val to = Instant.ofEpochMilli(end)
+        return "${clock.format(from)} – ${if (day.format(from) == day.format(to)) "" else "${day.format(to)} "}${clock.format(to)}"
+    }
     val (repeating, oneOff) = groups.partition { it.repeating }
-    var allOneOff by remember(overlaps) { mutableStateOf(false) }
+    // Every overlap in date order, one timetable after another (contract "겹침 결과 시간표 연달아" 2026-10-26).
+    val timeline = remember(groups) { groups.flatMap { it.overlaps }.sortedBy { it.start } }
+    var shown by remember(overlaps) { mutableIntStateOf(PageSize) }
     ModalBottomSheet(onDismissRequest = close, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
         CenteredMessage(if (groups.isEmpty()) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
             when { groups.isEmpty() -> "겹치는 시간이 없어요"; single != null -> "${(single.end - single.start) / 60_000}분이 겹쳐요"; else -> "겹치는 일정이 있어요" },
@@ -93,14 +97,15 @@ import java.util.Locale
                         Text(schedule.title, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
                         Text("${instant(schedule.startAt)?.let(clock::format).orEmpty()} – ${instant(schedule.endAt)?.let(clock::format).orEmpty()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                     }
-                    else -> Column(Modifier.fillMaxWidth()) {
-                        repeating.forEach { group -> RepeatingRow(group, describe(group, ::span), { date.format(Instant.ofEpochMilli(it)) }, ::span) }
-                        (if (allOneOff) oneOff else oneOff.take(5)).forEach { group ->
-                            val overlap = group.overlaps.first()
-                            ListItem(headlineContent = { Text(group.title ?: "제목 없는 일정") },
-                                supportingContent = { Text("${date.format(Instant.ofEpochMilli(overlap.busy.start))} ${span(overlap.busy.start, overlap.busy.end)}") })
+                    else -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        timeline.take(shown).forEach { overlap ->
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("${date.format(Instant.ofEpochMilli(overlap.start))} · ${overlap.busy.title ?: "제목 없는 일정"}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                                Text(listOfNotNull("${span(overlap.start, overlap.end)} · ${(overlap.end - overlap.start) / 60_000}분 겹침", overlap.busy.rule?.let { Recurrence.parse(it)?.describe() ?: "반복 일정" }).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                                CalendarOverlapTimeline(overlap)
+                            }
                         }
-                        if (!allOneOff && oneOff.size > 5) TextButton({ allOneOff = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("더 보기 (${oneOff.size - 5}개)") }
+                        if (timeline.size > shown) TextButton({ shown += PageSize }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("더 보기 (${timeline.size - shown}개 남음)") }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -112,22 +117,5 @@ import java.util.Locale
     }
 }
 
-/** "매주 화 10:00 – 11:00" from the device event's rule and its first occurrence; "반복 일정" when the rule is unreadable. */
-private fun describe(group: OverlapGroupState, span: (Long, Long) -> String): String {
-    val busy = group.overlaps.first().busy
-    return Recurrence.parse(group.rule)?.let { "${it.describe()} ${span(busy.start, busy.end)}" } ?: "반복 일정"
-}
-
-/** One repeating device event: "n번 겹침(first~last)"; tapping lists every overlapping date. */
-@Composable private fun RepeatingRow(group: OverlapGroupState, pattern: String, day: (Long) -> String, span: (Long, Long) -> String) {
-    var open by remember(group) { mutableStateOf(false) }
-    val first = group.overlaps.first().start; val last = group.overlaps.last().start
-    ListItem(headlineContent = { Text("${group.title ?: "제목 없는 일정"} · $pattern") },
-        supportingContent = { Text("${group.overlaps.distinctBy { it.busy.start }.size}번 겹침(${day(first)}${if (day(first) == day(last)) "" else "~${day(last)}"})") },
-        trailingContent = { Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, if (open) "날짜 접기" else "겹친 날짜 보기") },
-        modifier = Modifier.clickable { open = !open })
-    if (open) group.overlaps.forEach { overlap ->
-        Text("${day(overlap.start)} ${span(overlap.start, overlap.end)}", Modifier.fillMaxWidth().padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-    }
-}
+/** Timetables shown before (and added by each) "더 보기"; a weekly event against a long bootcamp can overlap hundreds of times. */
+private const val PageSize = 10

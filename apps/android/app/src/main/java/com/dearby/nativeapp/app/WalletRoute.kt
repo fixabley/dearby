@@ -1,7 +1,6 @@
 package com.dearby.nativeapp.app
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.pages.cards.MyCardsPhase
 import com.dearby.nativeapp.pages.wallet.ReceivedCard
@@ -26,9 +25,9 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
 @Composable fun WalletCardRoute(received: ReceivedCard, wallet: WalletViewModel, myCards: MyCardsViewModel, close: () -> Unit) {
     val state by wallet.state.collectAsStateWithLifecycle()
     val mine by myCards.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val openContact = rememberOpenContact()
     LaunchedEffect(Unit) { if (mine.phase != MyCardsPhase.LOADED) myCards.load() }
-    WalletCardPage(received, mine.cards.map { it.id to it.title }, state.busy, state.message, close, { openContact(context, it) },
+    WalletCardPage(received, mine.cards.map { it.id to it.title }, state.busy, state.message, close, openContact,
         report = { reason, detail -> wallet.report(received.card.id, reason, detail) }, block = { wallet.block(received.card.id) }) { myCardId ->
         wallet.reciprocate(received.card.id, myCardId)
     }
@@ -36,6 +35,6 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
 
 /** 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); saving lands on 받은 명함 › that card's detail through [WalletState.opened]. */
 @Composable fun SharedCardRoute(shared: SharedCard, wallet: WalletViewModel, close: () -> Unit) {
-    val context = LocalContext.current
-    SharedCardPage(shared, close, { openContact(context, it) }, report = { reason, detail -> shared.card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared)
+    val openContact = rememberOpenContact()
+    SharedCardPage(shared, close, openContact, report = { reason, detail -> shared.card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared)
 }

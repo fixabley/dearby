@@ -95,8 +95,15 @@ jobs:
           else
             echo "No IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64; building without Analytics"
           fi
+      # 맞춤 대기열 끝 광고 (AdMob): repository variables; without both the build leaves the ad out and never starts the SDK.
       - name: Archive
+        env:
+          ADMOB_IOS_APP_ID: ${{ vars.ADMOB_IOS_APP_ID }}
+          ADMOB_IOS_QUEUE_NATIVE_UNIT_ID: ${{ vars.ADMOB_IOS_QUEUE_NATIVE_UNIT_ID }}
         run: |
+          if [ -z "$ADMOB_IOS_APP_ID" ] || [ -z "$ADMOB_IOS_QUEUE_NATIVE_UNIT_ID" ]; then
+            echo "::warning::ADMOB_IOS_APP_ID or ADMOB_IOS_QUEUE_NATIVE_UNIT_ID is not set; this build has no queue ad"
+          fi
           # The Xcode project is generated, not tracked.
           gem install --user-install --no-document xcodeproj
           DEARBY_RELEASE_PROFILE="$PROFILE_NAME" DEARBY_TEAM_ID="$TEAM_ID" ruby scripts/generate_project.rb

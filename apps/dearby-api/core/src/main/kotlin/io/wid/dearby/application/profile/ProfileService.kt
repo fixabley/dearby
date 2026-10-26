@@ -27,6 +27,7 @@ class ProfileService(
     private val profiles: ProfileRepository,
     private val versions: ProfileVersionRepository,
     private val evidence: EvidenceRepository,
+    private val photos: ProfilePhotoRepository,
     private val reviews: HistoryReviewRepository,
     private val organizations: OrganizationRepository,
     private val programs: ProgramRepository,
@@ -74,7 +75,7 @@ class ProfileService(
         val input = ProfileInput(
             name = snapshot.name,
             jobs = snapshot.jobs.map { JobInput(it.id, it.job?.id, it.jobName) },
-            introduction = snapshot.introduction,
+            introLink = snapshot.introLink,
             contacts = snapshot.contacts.map { ContactInput(it.id, it.kind.name.lowercase(), it.label, it.value) },
             histories = snapshot.histories.map {
                 HistoryInput(
@@ -116,6 +117,32 @@ class ProfileService(
         }
     }
 
+    // 프로필 사진(native-v1.md "프로필 사진"): 앱이 정사각형으로 자른 JPEG·PNG를 서버가 다시 인코딩해 둔다. 버전 스냅샷과 무관하다
+    @Transactional
+    fun putPhoto(userId: UserId, contentType: String, data: ByteArray): OffsetDateTime {
+        requireConsent(userId)
+        if (contentType !in PHOTO_TYPES) throw InvalidInputException("사진은 JPEG·PNG만 올릴 수 있습니다")
+        if (data.isEmpty() || data.size > MAX_PHOTO_BYTES) throw InvalidInputException("사진은 5MB까지입니다")
+        val encoded = ProfilePhotoImage.reencode(data)
+        // DB(timestamptz)는 마이크로초까지라 photoUrl의 버전도 저장값과 같게 자른다
+        val now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)
+        photos.save(userId, encoded, now)
+        return now
+    }
+
+    @Transactional(readOnly = true)
+    fun photo(userId: UserId): ByteArray = photos.find(userId) ?: throw NotFoundException("프로필 사진이 없습니다", "Profile photo not found: $userId")
+
+    @Transactional(readOnly = true)
+    fun photoUpdatedAt(userId: UserId): OffsetDateTime? = photos.updatedAt(userId)
+
+    // 없어도 204(한 칸짜리라 지운 상태가 목표)
+    @Transactional
+    fun deletePhoto(userId: UserId) {
+        requireConsent(userId)
+        photos.delete(userId)
+    }
+
     // 개인정보 동의(native-v1.md "개인정보 동의"): 기록이 없거나 버전이 다르면 프로필 쓰기를 막는다
     @Transactional(readOnly = true)
     fun consent(userId: UserId): ConsentStatus {
@@ -126,10 +153,28 @@ class ProfileService(
     @Transactional
     fun giveConsent(userId: UserId, privacyVersion: String, termsVersion: String) {
         if (privacyVersion != consentVersions.privacy || termsVersion != consentVersions.terms) {
-            throw InvalidInputException("동의 문서 버전이 현재 버전과 다릅니다", "Consent version mismatch: $privacyVersion/$termsVersion", code = CONSENT_VERSION)
+            throw InvalidInputException("동의 문서 버전이 바뀌었어요. 앱을 업데이트한 뒤 다시 동의해 주세요.", "Consent version mismatch: $privacyVersion/$termsVersion", code = CONSENT_VERSION)
         }
         consents.save(userId, Consent(privacyVersion, termsVersion, OffsetDateTime.now(ZoneOffset.UTC)))
     }
+
+    // 광고 목적 제3자 제공 동의(선택, native-v1.md "광고 목적 개인정보 제3자 제공 동의(선택)"): 프로필 동의와 별개이고 프로필 쓰기를 막지 않는다
+    @Transactional(readOnly = true)
+    fun adConsent(userId: UserId): AdConsent? = consents.findAd(userId)
+
+    // 현재 버전이 아니면 400 CONSENT_VERSION. 같은 버전에 다시 동의하면 처음 동의 시각을 지킨다
+    @Transactional
+    fun giveAdConsent(userId: UserId, version: String): AdConsent {
+        if (version != AdConsent.VERSION) {
+            throw InvalidInputException("광고 목적 개인정보 제3자 제공 동의 버전이 현재 버전과 다릅니다", "Ad consent version mismatch: $version", code = CONSENT_VERSION)
+        }
+        consents.findAd(userId)?.takeIf { it.version == version }?.let { return it }
+        // DB(timestamptz)는 마이크로초까지라 응답도 저장값과 같게 자른다
+        return AdConsent(version, OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)).also { consents.saveAd(userId, it) }
+    }
+
+    @Transactional
+    fun withdrawAdConsent(userId: UserId) = consents.deleteAd(userId)
 
     private fun requireConsent(userId: UserId) {
         if (!consentVersions.satisfiedBy(consents.find(userId))) {
@@ -151,8 +196,9 @@ class ProfileService(
         val foundJobs = jobs.findAllById(jobIds).associateBy { it.id }
         val existingJobs = current.jobs.associateBy { it.id }
         val jobEntries = input.jobs.map { job(it, foundJobs, existingJobs[it.id]) }
-        val introduction = multiline(input.introduction, "자기소개", MAX_INTRODUCTION)
-        val contacts = input.contacts.map(::contact)
+        val introLink = introLink(input.introLink)
+        val existingContacts = current.contacts.associateBy { it.id }
+        val contacts = input.contacts.map { contact(it, existingContacts[it.id]) }
         if (contacts.map { it.id }.toSet().size != contacts.size) throw InvalidInputException("연락처 id가 겹칩니다")
         if (contacts.none { it.kind == ContactKind.PHONE } || contacts.none { it.kind == ContactKind.EMAIL }) {
             throw InvalidInputException("전화번호와 이메일을 하나 이상 넣어 주세요")
@@ -160,7 +206,7 @@ class ProfileService(
         if (input.histories.map { it.id }.toSet().size != input.histories.size) throw InvalidInputException("이력 id가 겹칩니다")
         val existing = current.histories.associateBy { it.id }
         val histories = input.histories.map { history(it, existing[it.id]) }
-        return Profile(userId, name, jobEntries, introduction, contacts, histories, current.version, current.updatedAt)
+        return Profile(userId, name, jobEntries, introLink, contacts, histories, current.version, current.updatedAt)
     }
 
     // 직무 id가 있으면 이름을 직무에서 가져오고, 없으면 직접 입력(승인 대기). 직접 입력이 그대로면 승인·거절 결과를 지킨다
@@ -176,7 +222,9 @@ class ProfileService(
         }
     }
 
-    private fun contact(input: ContactInput): Contact {
+    // 사용자명 종류(GitHub·Instagram·Behance·카카오톡)는 사용자명만 저장한다(native-v1.md "연락처 사용자명 입력", 2026-10-26). 프로필 URL이 오면 사용자명으로 바꾸고(옛 앱 호환),
+    // 형식이 틀리면 400. 이미 저장된 그대로의 값(2026-10-26 전 오픈채팅 URL 등)은 다시 검사하지 않는다 — 변경 없는 저장이 막히지 않도록
+    private fun contact(input: ContactInput, existing: Contact?): Contact {
         val kind = ContactKind.entries.firstOrNull { it.name.equals(input.kind, ignoreCase = true) }
             ?: throw InvalidInputException("연락처 종류가 올바르지 않습니다: ${input.kind}")
         val label = text(input.label, "연락처 이름", MAX_NAME, allowEmpty = true)
@@ -184,9 +232,39 @@ class ProfileService(
         when (kind) {
             ContactKind.PHONE -> if (!PHONE.matches(value) || value.count { it.isDigit() } !in 8..15) throw InvalidInputException("전화번호 형식이 올바르지 않습니다")
             ContactKind.EMAIL -> if (!EMAIL.matches(value)) throw InvalidInputException("이메일 형식이 올바르지 않습니다")
-            else -> if (value.contains("://") && !value.startsWith("https://")) throw InvalidInputException("링크는 https 주소만 쓸 수 있습니다")
+            else -> {
+                val rule = USERNAME_RULES.getValue(kind)
+                val username = username(value, rule)
+                if (username != null) return Contact(input.id, kind, label, username)
+                if (existing?.kind != kind || existing.value != value) {
+                    throw InvalidInputException("사용자명은 영문·숫자·.·_·-로 ${rule.max}자까지입니다", "Invalid ${kind.name.lowercase()} username")
+                }
+            }
         }
         return Contact(input.id, kind, label, value)
+    }
+
+    // `[https://][www.|m.]host/name[/…]`는 name, `@`·공백은 지운다. 남은 값이 허용 문자·길이를 넘으면 null
+    private fun username(value: String, rule: UsernameRule): String? {
+        val path = rule.host?.let { host -> Regex("^(https?://)?((www|m)\\.)?" + Regex.escape(host) + "/", RegexOption.IGNORE_CASE).find(value) }
+            ?.let { value.substring(it.range.last + 1).takeWhile { c -> c !in "/?#" } } ?: value
+        val id = path.filterNot { it.isWhitespace() || it == '@' }
+        return id.takeIf { it.isNotEmpty() && it.length <= rule.max && USERNAME.matches(it) }
+    }
+
+    private class UsernameRule(val host: String?, val max: Int)
+
+    // 소개 링크(native-v1.md "소개 링크·소개 글 폐지"): 비면 null, 스킴이 없으면 https://를 붙이고 https 주소(호스트에 점, 공백 없음)만 받는다
+    private fun introLink(value: String?): String? {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return null
+        val url = if (text.contains("://")) text else "https://$text"
+        val uri = runCatching { java.net.URI(url) }.getOrNull()
+        if (uri == null || !uri.scheme.equals("https", ignoreCase = true) || uri.host?.contains('.') != true || url.any { it.isWhitespace() }) {
+            throw InvalidInputException("소개 링크는 https 주소만 쓸 수 있습니다")
+        }
+        if (url.length > MAX_INTRO_LINK) throw InvalidInputException("소개 링크는 ${MAX_INTRO_LINK}자까지입니다")
+        return url
     }
 
     // 활동 정보 id가 있으면 이름을 활동 정보에서 가져오고 직접 입력 이름은 버린다. 상태는 기존 이력과 비교해 정한다
@@ -274,14 +352,22 @@ class ProfileService(
         const val MAX_EVIDENCE_PER_HISTORY = 3
         const val MAX_JOBS = 10
         const val MAX_EVIDENCE_BYTES = 5 * 1024 * 1024
+        const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
         val EVIDENCE_TYPES = setOf("image/jpeg", "image/png", "image/webp", "application/pdf")
+        val PHOTO_TYPES = setOf("image/jpeg", "image/png")
         private const val MAX_NAME = 100
         private const val MAX_VALUE = 500
         private const val MAX_ACTIVITY_INFO_NAME = 200
-        private const val MAX_INTRODUCTION = 10_000
+        private const val MAX_INTRO_LINK = 500
         private const val MAX_DESCRIPTION = 10_000
         private val PHONE = Regex("^[0-9+\\- ]+$")
         private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+        // 앱(iOS ContactModel.usernameRules, Android ContactRules)과 같은 표. 길이는 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20은 확인 못 해 넉넉히
+        private val USERNAME_RULES = mapOf(
+            ContactKind.GITHUB to UsernameRule("github.com", 39), ContactKind.INSTAGRAM to UsernameRule("instagram.com", 30),
+            ContactKind.BEHANCE to UsernameRule("behance.net", 64), ContactKind.KAKAO to UsernameRule(null, 20),
+        )
+        private val USERNAME = Regex("^[A-Za-z0-9._-]+$")
         private val EPOCH: OffsetDateTime = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
     }
 }

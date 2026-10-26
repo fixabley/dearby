@@ -3,7 +3,7 @@ import Synchronization
 
 /// One activity from `GET /v1/activities` (contract "활동 조회 — 2026-10-14"). Missing values stay nil and read as unconfirmed.
 struct ActivityModel: Equatable, Identifiable, Sendable {
-    enum Recruitment: Equatable, Sendable { case upcoming, open, closed, unknown }
+    private enum Recruitment { case upcoming, open, closed, unknown }
     /// The API's numeric id as a string: navigation uses string ids.
     let id: String
     let title: String
@@ -47,11 +47,23 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// 한 줄 소개 and 핵심 세 줄 (contract "맞춤 대기열" 2026-10-24); nil/empty when none or on older responses.
     var hook: String? = nil
     var highlights: [ActivityHighlight] = []
+    /// 활동 상태 from the server (contract "활동 상태" 2026-10-26); nil on older responses or an unknown value. Read it through `status(at:)`.
+    var serverStatus: ActivityStatus? = nil
 
-    /// Recruitment only from the application window against now (contract "열린 활동 판정 일원화", 2026-10-19). A timed window
+    /// The status to show: the server's, else (an older server) one read from the recruitment window alone — 모집 중·예정, otherwise 마감.
+    func status(at now: Date) -> ActivityStatus? {
+        if let serverStatus { return serverStatus }
+        switch recruitment(at: now) {
+        case .upcoming: return .recruitingUpcoming
+        case .open: return .recruiting
+        case .closed: return .recruitmentClosed
+        case .unknown: return nil
+        }
+    }
+    /// The older servers' stand-in for `status`: recruitment only from the application window against now (contract "열린 활동 판정 일원화"). A timed window
     /// compares instants and a missing bound is open on that side; a date-only window compares Seoul days
     /// (`startDate ≤ today < endDateExclusive`). No window at all, or an unreadable bound, needs checking.
-    func recruitment(at now: Date) -> Recruitment {
+    private func recruitment(at now: Date) -> Recruitment {
         if recruitmentStartAt != nil || recruitmentEndAt != nil {
             let start = Self.instant(recruitmentStartAt), end = Self.instant(recruitmentEndAt)
             guard (start == nil) == (recruitmentStartAt == nil), (end == nil) == (recruitmentEndAt == nil) else { return .unknown }
@@ -66,16 +78,14 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
             if let end, now >= end { return .closed }
             return .open
         }
-        return .unknown
+        // 모집 일정이 없는 활동은 종류와 상관없이 마감 (user 2026-10-26, contract "모집 일정 없는 활동은 마감").
+        return .closed
     }
-    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); with no
-    /// window at all, the activity start. nil when neither is known. Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
-    var upcomingStart: Date? {
-        if recruitmentStartAt != nil || recruitmentEndAt != nil || recruitmentStartDate != nil || recruitmentEndDateExclusive != nil {
-            return Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate)
-        }
-        return activityStage?.anchor
-    }
+    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); nil without one (an activity
+    /// without a recruitment schedule is closed, never upcoming). Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
+    var upcomingStart: Date? { Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate) }
+    /// Some block (`schedules[]` or the activity period) has a 트랙·세션 시간표.
+    var hasTimetable: Bool { (stages + [activityStage].compactMap { $0 }).contains(where: \.hasTimetable) }
     /// Everything the overlap check can compare (contract "겹침 확인 시간" 2026-10-22): `schedules[]` and the activity period, each timed
     /// or date-only with an admin time window. The recruitment window is not an event and is left out. Empty: the detail says it cannot check.
     var overlapSchedules: [ActivityScheduleModel] { (stages + [activityStage].compactMap { $0 }).flatMap(\.overlapSchedules) }
@@ -84,6 +94,16 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     func scheduleText(at now: Date) -> String? { activityStage?.text(now: now) }
     /// The recruitment window as text by the same rule (`~ … 마감` when only the deadline is known); nil without a window or any text for it.
     func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now, recruitment: true) }
+    /// 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): with both bounds, the period `M.d – M.d` (`ActivityStageModel.periodText`)
+    /// and, while 모집 중, `D-n`/`D-DAY` in Seoul days to the last day; otherwise `recruitmentText` (an end alone `~ … 마감`) and no badge.
+    func recruitmentDate(at now: Date) -> (text: String?, dday: String?) {
+        guard let stage = applicationStage, let period = stage.periodText(now: now) else { return (recruitmentText(at: now), nil) }
+        guard status(at: now) == .recruiting, let last = stage.lastDay else { return (period, nil) }
+        var seoul = Calendar(identifier: .gregorian)
+        seoul.timeZone = ActivityText.seoul
+        let days = seoul.dateComponents([.day], from: seoul.startOfDay(for: now), to: seoul.startOfDay(for: last)).day ?? 0
+        return (period, days <= 0 ? "D-DAY" : "D-\(days)")
+    }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         raw.flatMap(seoulDayFormatter.date(from:))
@@ -98,14 +118,6 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
-    func statusLabel(at now: Date) -> String {
-        switch recruitment(at: now) {
-        case .upcoming: "모집 예정"
-        case .open: "모집 중"
-        case .closed: "모집 마감"
-        case .unknown: "모집 여부 확인 필요"
-        }
-    }
     /// The official link (https only).
     var officialURL: URL? { Self.safeURL(officialUrl) }
     /// The activity's page on the build's web origin, written into events added from the app and used to leave them out of the
@@ -113,14 +125,11 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     static func calendarLink(_ id: String, web: URL) -> URL { web.appending(path: "activities/\(id)") }
     /// The curated application link (https only); the detail CTA opens it before the official notice.
     var applicationSiteURL: URL? { Self.safeURL(applicationUrl) }
-    /// Applying is over (contract "신청 확인 조건 완화"): the recruitment deadline passed, or, with no window to judge by, the activity
-    /// itself ended. Open, upcoming and unknown-but-not-ended all still lead to the "신청하셨나요?" prompt.
+    /// Applying is over (contract "신청 확인 조건 완화"): the status is neither 모집 중 nor 모집 예정. Without a status (an unreadable window on
+    /// an older server) only an ended activity is closed, so the "신청하셨나요?" prompt still comes.
     func applicationClosed(at now: Date) -> Bool {
-        switch recruitment(at: now) {
-        case .closed: true
-        case .open, .upcoming: false
-        case .unknown: activityStage.flatMap { $0.end ?? $0.start }.map { $0 < now } ?? false
-        }
+        if let status = status(at: now) { return !status.applicable }
+        return activityStage.flatMap { $0.end ?? $0.start }.map { $0 < now } ?? false
     }
     var imageURL: URL? { Self.safeURL(imageUrl) }
 
@@ -190,8 +199,25 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     var overlapCheck: OverlapCheck? = nil
     /// The admin's repeat rule (contract "반복 일정" 2026-10-22); nil when the schedule does not repeat or the rule is unreadable.
     var recurrence: ScheduleRecurrence? = nil
+    /// The block has a track·session timetable (contract "트랙·세션 시간표" 2026-10-26: `Schedule.hasTimetable`); false on older responses.
+    var hasTimetable = false
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
+    /// The last moment within the stage: a timed end, or Seoul midnight of an all-day stage's last day (the exclusive end minus a day).
+    var lastDay: Date? { allDay ? end.flatMap { Self.seoul.date(byAdding: .day, value: -1, to: $0) } : end }
+    /// `M.d – M.d` when both bounds are known (contract "모집 날짜 표기 — 2026-10-26"): no times, the stage's zone (Seoul when all-day),
+    /// a bound outside `now`'s Seoul year as `yyyy.M.d`, one day alone when both fall on it. nil with a missing bound.
+    func periodText(now: Date) -> String? {
+        guard let start, let last = lastDay, last >= start else { return nil }
+        let zone = allDay ? ActivityText.seoul : TimeZone(identifier: timeZone) ?? ActivityText.seoul
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let thisYear = Self.seoul.component(.year, from: now)
+        func day(_ date: Date) -> String {
+            ActivityText.format(date, calendar.component(.year, from: date) == thisYear ? "M.d" : "yyyy.M.d", zone: zone)
+        }
+        return calendar.isDate(start, inSameDayAs: last) ? day(start) : day(start) + " – " + day(last)
+    }
     /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간", "반복 일정" 2026-10-22). With a repeat rule,
     /// one window per occurrence (at most 400): a timed stage's own interval moved by whole Seoul days, a date-only stage's
     /// `overlapCheck` window on each occurrence day from `startDate`. Without one: a timed stage's own non-empty interval; a date-only
@@ -311,6 +337,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     let name: String
     let nameEn: String?
     let organization: String
+    /// 프로그램 기본 종류 (contract "활동 종류": `ProgramSummary.category`); nil when unset, unknown or on older responses.
+    var category: ActivityCategory? = nil
     /// Open activities that match the query and type filter; 0 when the list also shows programs without open activities.
     let openActivityCount: Int
     /// Raw ISO 8601 of the nearest recruitment deadline among them; nil when none has a deadline.
@@ -329,6 +357,10 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var traitTags: [Tag] = []
     /// The program logo (contract "프로그램 로고" 2026-10-19 밤), already resolved against the API origin; nil without a logo.
     var logoURL: URL? = nil
+    /// An open or upcoming activity of the bundle has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): the collapsed card's `시간표` badge.
+    var hasTimetable = false
+    /// Activities per 활동 상태 in the query's scope (contract "활동 상태": `statusCounts`, zeros left out); empty on older responses.
+    var statusCounts: [ActivityStatus: Int] = [:]
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
     var nearestRecruitmentStart: Date? { ActivityModel.instant(nearestRecruitmentStartAt) }

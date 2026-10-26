@@ -13,11 +13,15 @@ import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.entities.activity.model.scheduleText
+import com.dearby.nativeapp.entities.activity.model.rangeText
+import com.dearby.nativeapp.entities.activity.model.deadlineCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
+import com.dearby.nativeapp.pages.activity.DiscoveryKind
+import com.dearby.nativeapp.pages.activity.StatusGroup
 import com.dearby.nativeapp.pages.activity.ProgramActivities
 import com.dearby.nativeapp.pages.activity.ProgramPhase
 import com.dearby.nativeapp.pages.activity.ProgramState
@@ -56,7 +60,8 @@ import kotlinx.coroutines.launch
 /**
  * Discovery (contract "발견 프로그램 묶음"): GET /v1/programs page by page, and GET /v1/activities?programId= when a
  * program is expanded; a failure is an error state, never example activities. [fetchPrograms] takes the search text
- * (null for all), the cursor and the open-only flag; [fetch] takes the search text, the cursor, the program id and the open flag.
+ * (null for all), the cursor, the `status=` value (contract "활동 상태") and the kind; [fetch] takes the search text, the cursor, the program id,
+ * the `status=` value and the kind.
  * Tags are a search condition only (contract "태그 칩 줄 제거", 2026-10-19 밤): no dictionary load, no tag filter.
  *
  * 내 활동 storage (contract "내 활동 서버 저장·일정 상태", 2026-10-22): signed out, the applied marks and stage statuses stay
@@ -66,12 +71,18 @@ import kotlinx.coroutines.launch
  * loaded (`GET /v1/activities/:id`, null when it is gone → "삭제된 활동"). Signing out drops the account's records from memory.
  */
 class ActivityViewModel(
-    private val fetchPrograms: suspend (String?, String?, Boolean) -> ProgramPage, // query, cursor, openOnly
-    private val fetch: suspend (String?, String?, String?, Boolean) -> ActivityPage, // query, cursor, programId, open
+    private val fetchPrograms: suspend (String?, String?, String, String, String?) -> ProgramPage, // query, cursor, status, kind, category
+    private val fetch: suspend (String?, String?, String?, String, String?, String?) -> ActivityPage, // query, cursor, programId, status, kind, category
     private val fetchOne: suspend (String) -> ActivityModel? = { null },
     private val account: AccountViewModel? = null,
+    /** 발견 `프로그램 | 이벤트` remembered on the device (2026-10-26): the starting choice and where a change is saved. */
+    kind: DiscoveryKind = DiscoveryKind.PROGRAM, private val saveKind: (DiscoveryKind) -> Unit = {},
+    /** The 상태 dropdown remembered on the device (2026-10-26), like [kind]. */
+    statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, private val saveStatusGroups: (Set<StatusGroup>) -> Unit = {},
+    /** The 종류 dropdown remembered on the device per kind (2026-10-26): read when the kind changes, saved on each change. */
+    private val loadCategories: (DiscoveryKind) -> Set<String> = { emptySet() }, private val saveCategories: (DiscoveryKind, Set<String>) -> Unit = { _, _ -> },
 ) : ViewModel() {
-    private val mutable = MutableStateFlow(ActivityListState())
+    private val mutable = MutableStateFlow(ActivityListState(kind = kind, statusGroups = statusGroups, categories = loadCategories(kind)))
     val state = mutable.asStateFlow()
     private var models: Map<String, ActivityModel> = emptyMap()
     // The user's own stage statuses by activity id, then schedule id (contract "내 활동 서버 저장·일정 상태").
@@ -93,8 +104,8 @@ class ActivityViewModel(
         reload()
         account?.let { account ->
             viewModelScope.launch {
-                // WORKING is the sign-in prompt itself; only the settled phases switch the storage.
-                account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+                // Server storage only once signed in with the consent given ([AccountViewModel.ready], contract "개인정보 동의" 2026-10-25).
+                account.ready.map { if (it) AccountPhase.SIGNED_IN else AccountPhase.SIGNED_OUT }.collect { phase ->
                     if (phase == AccountPhase.SIGNED_IN && !serverMode) { serverMode = true; importing = deviceRecords(); mutable.update { it.copy(mineLoading = true) }; syncMine() }
                     else if (phase == AccountPhase.SIGNED_OUT && serverMode) signedOut()
                 }
@@ -109,10 +120,33 @@ class ActivityViewModel(
         start(debounce = true)
     }
     fun reload() = start(debounce = false)
-    /** The `마감 숨기기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last three years and always shows their other activities when expanded. */
-    fun setOpenOnly(value: Boolean) {
-        if (value == state.value.openOnly) return
-        mutable.update { it.copy(openOnly = value) }
+    /**
+     * The 상태 dropdown (contract "활동 상태", 2026-10-26): the list and expanded programs are read again with those states. Unchecking the
+     * last group falls back to 지원 가능.
+     */
+    fun setStatusGroups(value: Set<StatusGroup>) {
+        val groups = value.ifEmpty { StatusGroup.DEFAULT }
+        if (groups == state.value.statusGroups) return
+        mutable.update { it.copy(statusGroups = groups) }
+        saveStatusGroups(groups)
+        Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(groups))
+        start(debounce = false)
+    }
+    /** The 종류 dropdown (2026-10-26 사용자 요청): the list and expanded programs are read again with `category=`; nothing chosen is 전체. */
+    fun setCategories(value: Set<String>) {
+        if (value == state.value.categories) return
+        val kind = state.value.kind
+        mutable.update { it.copy(categories = value) }
+        saveCategories(kind, value)
+        Analytics.event("discovery_category_filter", "categories" to kind.chosen(value).joinToString(",") { it.code.lowercase() })
+        start(debounce = false)
+    }
+    /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind and its kept 종류. */
+    fun setKind(value: DiscoveryKind) {
+        if (value == state.value.kind) return
+        mutable.update { it.copy(kind = value, categories = loadCategories(value)) }
+        saveKind(value)
+        Analytics.event("discovery_mode", "mode" to value.code)
         start(debounce = false)
     }
     private fun start(debounce: Boolean) {
@@ -164,7 +198,7 @@ class ActivityViewModel(
         }
     }
     private suspend fun programPage(cursor: String?): ProgramPage? = try {
-        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly)
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, StatusGroup.query(state.value.statusGroups), state.value.kind.code, state.value.kind.categoryQuery(state.value.categories))
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
@@ -188,13 +222,16 @@ class ActivityViewModel(
     private fun loadProgram(programId: String) {
         if (programJobs[programId]?.isActive == true) return
         mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities())) }
+        val kind = state.value.kind.code
+        val status = StatusGroup.query(state.value.statusGroups)
+        val category = state.value.kind.categoryQuery(state.value.categories)
         programJobs[programId] = viewModelScope.launch {
             val items = mutableListOf<ActivityModel>()
             var cursor: String? = null
             try {
-                // Every page of the program's open activities (contract "열린 활동 판정 일원화": the server decides openness).
+                // Every page of the program's activities in the chosen states (contract "활동 상태": the server decides each state).
                 for (attempt in 1..MAX_PROGRAM_PAGES) {
-                    val page = fetch(null, cursor, programId, true)
+                    val page = fetch(null, cursor, programId, status, kind, category)
                     items += page.items
                     // `break`, not `return@repeat`: the latter only skips to the next pass, which fetched page 1 again (each activity shown 5 times).
                     cursor = page.nextCursor ?: break
@@ -204,22 +241,15 @@ class ActivityViewModel(
                 return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
             val now = Instant.now()
-            val open = items
-            // The program's other activities (contract "마감 숨기기", 2026-10-19 밤 정정) in two groups — 모집 예정 (recruitment or activity
-            // start still ahead, nearest first) is shown always; 지난 활동 (started within three years, most recent first) only while the
-            // switch is off. Activities already shown as open are excluded.
-            val others = try {
-                fetch(null, null, programId, false).items
-            } catch (e: CancellationException) { throw e } catch (e: Exception) {
-                Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
-                emptyList()
-            }
-            val openIds = open.map { it.id }.toSet()
-            val upcoming = others.filter { it.id !in openIds && (it.upcomingKey ?: Instant.MIN) > now }.sortedBy { it.upcomingKey }
+            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행 중, and the rest as 지난 활동 within
+            // three years (an undated one stays), most recent start first.
+            val byStatus = items.groupBy { it.status }
+            val open = byStatus["RECRUITING"].orEmpty()
+            val upcoming = byStatus["RECRUITING_UPCOMING"].orEmpty().sortedWith(compareBy(nullsLast()) { it.upcomingKey })
+            val inProgress = byStatus["IN_PROGRESS"].orEmpty().sortedWith(compareByDescending(nullsFirst()) { it.activityStart })
             val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
-            val past = if (state.value.openOnly) emptyList()
-                else others.filter { it.id !in openIds && it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
-            val shown = open + upcoming + past
+            val past = items.filter { it.status in StatusGroup.PAST.statuses && it.activityStart?.let { start -> start >= since } != false }.sortedByDescending { it.activityStart }
+            val shown = open + upcoming + inProgress + past
             models = models + shown.associateBy { it.id }
             val today = today()
             mutable.update { state ->
@@ -227,7 +257,7 @@ class ActivityViewModel(
                     activity.id to activity.toState(now).let { known -> state.known[known.id]?.takeUnless { it.deleted }?.let { known.copy(applied = it.applied) } ?: known }
                 }
                 state.copy(known = state.known + loaded, progress = state.progress + shown.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
-                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, upcoming.map { it.id }, past.map { it.id })))
+                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, upcoming.map { it.id }, inProgress.map { it.id }, past.map { it.id })))
             }
         }
     }
@@ -419,25 +449,37 @@ private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
 private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
 /** One program card's state, for discovery and 즐겨찾기 alike. */
 internal fun ProgramSummary.toState() = ProgramState(id, name, organization, openActivityCount, instant(nearestRecruitmentEndAt), matchedActivityIds.size, instant(latestActivityAt),
-    fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl)
+    fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl,
+    deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable, statusCounts = statusCounts, category = category?.label, categoryCode = category?.name)
 
-private fun ActivityModel.toState(now: Instant) = ActivityState(
-    // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
-    id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-    stages().map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it)) },
-    safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
-    eligibility = eligibility?.lines() ?: emptyList(),
-    category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
-    sortKey = sortKey,
-    fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
-    place = place,
-    applicationUrl = safeHttpsUrl(applicationUrl),
-    overlapCheckable = schedules.isNotEmpty(),
-)
+private fun ActivityModel.toState(now: Instant): ActivityState {
+    val status = statusLabel(now)
+    // 모집 날짜 표기 (user 2026-10-26): a window with both ends is a range plus a D-day badge, without a separate `모집 마감` line.
+    val range = application?.rangeText()
+    val stages = stages()
+    val deadline = stages.firstOrNull { it.kind == "APPLICATION" }?.takeIf { range != null }
+    return ActivityState(
+        // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
+        id, name, description, organization, program, status, activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
+        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable, it.selection && !it.hasTimetable) },
+        safeHttpsUrl(officialUrl), applyUrl(now), range ?: period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
+        eligibility = eligibility?.lines() ?: emptyList(),
+        category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE, categoryCode = category?.name,
+        sortKey = sortKey,
+        fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
+        place = place,
+        applicationUrl = safeHttpsUrl(applicationUrl),
+        overlapCheckable = schedules.isNotEmpty(),
+        hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
+        periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
+        deadlineDraft = deadline?.let { draft(it) },
+        noRecruitment = this.status == "NO_RECRUITMENT",
+    )
+}
 /**
  * The stage track with the user's [marks] (by schedule id): a PASSED status makes the stage past, the earliest other stage not
  * over by [today] is current, a FAILED status or no current stage ends the activity. No stages at all leaves an empty track.
- * A stage without a choice shows its first waiting status.
+ * A stage without a choice shows its first waiting status; a stage that is not a 선발 단계 has no options, so an old mark on it is ignored.
  */
 private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDate): ProgressState {
     val stages = stages()
@@ -456,13 +498,14 @@ private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDat
             index in passed || stage.finished(today) || index <= (failedAt ?: (current ?: 0) - 1) -> ProgressStatus.PAST
             else -> ProgressStatus.UPCOMING
         }
-        ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage))
+        ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage),
+            stage.scheduleId?.takeIf { stage.hasTimetable }, stage.selection)
     }
-    // 참여 중 (2026-10-22, 참여 확정 replaced): every selection stage before the activity period is marked PASSED.
-    val selection = if (activitySchedule != null) picks.dropLast(1) else picks
-    val participating = selection.isNotEmpty() && selection.all { it?.passed == true }
+    // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (contract "선발 과정·활동 일정 분리": `phase`) is marked PASSED, none FAILED, and a step is still ahead.
+    val selection = stages.indices.filter { stages[it].selection }.map { picks[it] }
+    val participating = failedAt == null && current != null && selection.isNotEmpty() && selection.all { it?.passed == true }
     val badge = when { stages.isEmpty() -> ""; failedAt != null -> shown[failedAt].selected?.name ?: "탈락"; current == null -> "지남"; participating -> "참여 중"; else -> stageBadge(stages[current], today) }
-    return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
+    return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day }, participating)
 }
 
 /** The recruitment window as text (contract "일정 표시 우선순위" format: `10월 1일 (수) 14:07 ~ 10월 8일 (수) 00:00`, end only `~ … 마감`), null without one. */

@@ -43,6 +43,10 @@ open class ProfilesRecord() : UpdatableRecordImpl<ProfilesRecord>(Profiles.PROFI
         set(value): Unit = set(5, value)
         get(): OffsetDateTime? = get(5) as OffsetDateTime?
 
+    open var introLink: String?
+        set(value): Unit = set(6, value)
+        get(): String? = get(6) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -52,13 +56,14 @@ open class ProfilesRecord() : UpdatableRecordImpl<ProfilesRecord>(Profiles.PROFI
     /**
      * Create a detached, initialised ProfilesRecord
      */
-    constructor(userId: UUID? = null, name: String? = null, introduction: String? = null, version: Int? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(userId: UUID? = null, name: String? = null, introduction: String? = null, version: Int? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, introLink: String? = null): this() {
         this.userId = userId
         this.name = name
         this.introduction = introduction
         this.version = version
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.introLink = introLink
         resetTouchedOnNotNull()
     }
 }

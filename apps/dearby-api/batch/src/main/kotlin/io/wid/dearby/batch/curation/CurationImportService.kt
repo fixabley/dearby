@@ -2,6 +2,8 @@ package io.wid.dearby.batch.curation
 
 import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.application.activity.ActivityRepository
+import io.wid.dearby.application.activity.ScheduleItem
+import io.wid.dearby.application.activity.ScheduleItemPatch
 import io.wid.dearby.application.catalog.CatalogWrites
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.application.organization.OrganizationLogoRepository
@@ -10,6 +12,14 @@ import io.wid.dearby.application.program.ProgramCoverRepository
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
+import io.wid.dearby.application.timetable.TimetableService
+import io.wid.dearby.domain.timetable.SessionInput
+import io.wid.dearby.domain.timetable.SessionKind
+import io.wid.dearby.domain.timetable.Speaker
+import io.wid.dearby.domain.timetable.TimetableInput
+import io.wid.dearby.domain.timetable.TimetableRules
+import io.wid.dearby.domain.timetable.TrackInput
+import io.wid.dearby.domain.Activity
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
@@ -20,6 +30,10 @@ import io.wid.dearby.domain.ProgramCover
 import io.wid.dearby.domain.ProgramCoverInfo
 import io.wid.dearby.domain.ProgramLogo
 import io.wid.dearby.domain.PublicationStatus
+import io.wid.dearby.domain.ScheduleKind
+import io.wid.dearby.domain.SchedulePhase
+import io.wid.dearby.domain.ScheduleStatus
+import io.wid.dearby.domain.ScheduleTime
 import io.wid.dearby.domain.Tag
 import io.wid.dearby.domain.TagKind
 import io.wid.dearby.domain.curation.CollectionSettings
@@ -29,13 +43,15 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 // 운영 데이터 가져오기(admin-v1.md "운영 데이터 가져오기 — 2026-10-22"): 조사한 조직·프로그램(수집 설정 포함)을 만들고,
 // 대상자 조건·태그·장소·로고를 채우고, 초안을 게시하거나 지운다. 운영자 API와 같은 검증(core CatalogWrites 등)을 거친다.
 // 빈 것만 채우고(항목의 overwrite면 바꾼다), 운영자 지정 필드(curated_fields)는 건드리지 않으며, 채운 값을 운영자 지정으로 남기지 않는다.
-// apply=false(기본)면 계획만 돌려주고 아무것도 쓰지 않는다. 항목마다 트랜잭션 하나
+// apply=false(기본)면 계획만 돌려주고 아무것도 쓰지 않는다: 쓰기 경로를 부르지 않고, 항목을 읽기 전용 트랜잭션에서 돌린 뒤 되돌린다(DB가 쓰기를 거부). 항목마다 트랜잭션 하나
 @Service
 class CurationImportService(
     private val activities: ActivityRepository,
@@ -48,6 +64,7 @@ class CurationImportService(
     private val programCovers: ProgramCoverRepository,
     private val transactions: TransactionTemplate,
     private val catalog: CatalogWrites,
+    private val timetables: TimetableService,
     private val json: JsonMapper,
 ) {
 
@@ -61,22 +78,26 @@ class CurationImportService(
         // key → id. dry run에서 새로 만들 것은 PENDING(아직 id 없음)이라 뒤 항목은 계획만 보인다
         val orgKeys = mutableMapOf<String, Id>()
         val programKeys = mutableMapOf<String, Id>()
-        root.path("organizations").forEach { item -> lines += item(apply) { organization(item, orgKeys, apply) } }
-        root.path("newPrograms").forEach { item -> lines += item(apply) { newProgram(item, orgKeys, programKeys, apply) } }
-        root.path("activities").forEach { item -> lines += item(apply) { activity(item, apply) } }
-        root.path("programs").forEach { item -> lines += item(apply) { program(item, apply) } }
-        root.path("organizationLogos").forEach { item -> lines += item(apply) { organizationLogo(item, base, orgKeys, apply) } }
-        root.path("programLogos").forEach { item -> lines += item(apply) { programLogo(item, base, programKeys, apply) } }
-        root.path("programCovers").forEach { item -> lines += item(apply) { programCover(item, base, programKeys, apply) } }
+        root.path("organizations").forEach { item -> lines += item(apply, "organization") { organization(item, orgKeys, apply) } }
+        root.path("newPrograms").forEach { item -> lines += item(apply, "program") { newProgram(item, orgKeys, programKeys, apply) } }
+        root.path("activities").forEach { item -> lines += item(apply, "activity ${item.path("id").asLong()}") { activity(item, apply) } }
+        root.path("programs").forEach { item -> lines += item(apply, "program ${item.path("id").asLong()}") { program(item, apply) } }
+        root.path("organizationLogos").forEach { item -> lines += item(apply, "organization logo") { organizationLogo(item, base, orgKeys, apply) } }
+        root.path("programLogos").forEach { item -> lines += item(apply, "program logo") { programLogo(item, base, programKeys, apply) } }
+        root.path("programCovers").forEach { item -> lines += item(apply, "program cover") { programCover(item, base, programKeys, apply) } }
         return lines
     }
 
-    // 항목 하나를 트랜잭션 하나로. 실패하면 그 항목만 SKIP(이유)으로 남기고 다음으로 간다
-    private fun item(apply: Boolean, work: () -> List<Line>): List<Line> = try {
-        if (apply) transactions.execute { work() }!! else work()
+    // 항목 하나를 트랜잭션 하나로. 실패하면 그 항목 전체를 되돌리고 SKIP(이유)으로 남긴 뒤 다음으로 간다
+    private fun item(apply: Boolean, target: String, work: () -> List<Line>): List<Line> = try {
+        if (apply) transactions.execute { work() }!!
+        else dryRun.execute { status -> status.setRollbackOnly(); work() }!!
     } catch (e: Exception) {
-        listOf(Line("item", "-", SKIP, e.message ?: e.javaClass.simpleName))
+        listOf(Line(target, "-", SKIP, e.message ?: e.javaClass.simpleName))
     }
+
+    // dry run 안전장치: 실수로 쓰기를 불러도 읽기 전용 트랜잭션이라 DB가 거부하고, 끝나면 되돌린다
+    private val dryRun = TransactionTemplate(transactions.transactionManager!!).apply { isReadOnly = true }
 
     private fun activity(item: JsonNode, apply: Boolean): List<Line> {
         val id = item.path("id").asLong()
@@ -123,6 +144,13 @@ class CurationImportService(
             }
         }
 
+        // 세부 일정 블록 지우기·고치기·만들기(admin-v1.md "세부 일정 편집기"와 같은 검증). 새 블록은 ref로 아래 timetables에서 가리킨다
+        val refs = mutableMapOf<String, Pair<Id, ScheduleItem>>()
+        lines += schedules(activity, item.path("schedules"), refs, apply)
+
+        // 하위 시간표(native-v1.md "트랙·세션 시간표"): 어드민 PUT timetable과 같은 검증. 이미 세션이 있으면 overwrite일 때만 바꾼다
+        item.path("timetables").forEach { node -> lines += timetable(id, node, refs, apply) }
+
         // 게시는 필드를 채운 뒤(어드민 게시와 같다: 상태만 바꾼다)
         if (item.path("publish").asBoolean(false)) {
             lines += if (published) {
@@ -132,6 +160,134 @@ class CurationImportService(
             }
         }
         return lines
+    }
+
+    // [{id, delete: true}] 지우기(curated_deleted: 재수집이 되살리지 않음, 어드민 DELETE와 같다. 붙은 세션은 블록과 함께 숨는다),
+    // [{id, title?, kind?, status?, phase?(SELECTION|ACTIVITY|null=자동 판정), startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}] 보낸 필드만 고치기(어드민 PATCH와 같다, curated가 된다),
+    // [{ref, title, kind?(기본 EVENT), phase?(없으면 서버 규칙), …}] 만들기(어드민 POST와 같다, curated). 같은 제목·시각의 보이는 세부 일정이 있으면 만들지 않고 그 블록을 ref로 쓴다(다시 실행해도 같다).
+    // 지우기 → 고치기 → 만들기 순서. 하나라도 검증에 걸리면 이 활동 항목 전체를 건너뛴다(apply도 아무것도 남기지 않는다)
+    private fun schedules(activity: Activity, ops: JsonNode, refs: MutableMap<String, Pair<Id, ScheduleItem>>, apply: Boolean): List<Line> {
+        val activityId = activity.id
+        val lines = mutableListOf<Line>()
+        val errors = mutableListOf<String>()
+        val all = ops.toList()
+        val deleted = mutableSetOf<Id>()
+        fun each(nodes: List<JsonNode>, label: (JsonNode) -> String, work: (JsonNode, String) -> Unit) = nodes.forEach { op ->
+            try { work(op, "activity $activityId ${label(op)}") } catch (e: Exception) { errors += "${label(op)}: ${e.message ?: e.javaClass.simpleName}" }
+        }
+        // 세부 일정(slot 없음)만. 없거나 이미 지웠거나 모집·활동 기간 행이면 SKIP
+        fun detail(op: JsonNode, target: String, field: String) = curations.findSchedule(activityId, op.path("id").asLong()).let { stored ->
+            when {
+                stored == null -> null.also { lines += Line(target, field, SKIP, "없거나 이미 지운 일정") }
+                stored.slot != null -> null.also { lines += Line(target, field, SKIP, "모집·활동 기간 행은 바꾸지 않습니다") }
+                else -> stored.schedule
+            }
+        }
+        val (existing, created) = all.partition { it.has("id") }
+        val (deletes, edits) = existing.partition { it.path("delete").asBoolean(false) }
+        each(deletes, { "schedule ${it.path("id").asLong()}" }) { op, target ->
+            val schedule = detail(op, target, SCHEDULE_DELETE) ?: return@each
+            val sessions = timetables.adminTimetable(activityId, schedule.id).sessions.size
+            if (apply) curations.deleteDetailSchedule(activityId, schedule.id)
+            deleted += schedule.id
+            lines += Line(target, SCHEDULE_DELETE, SET, schedule.title + if (sessions > 0) " (세션 ${sessions}개도 함께 숨김)" else "")
+        }
+        each(edits, { "schedule ${it.path("id").asLong()}" }) { op, target ->
+            val schedule = detail(op, target, SCHEDULE_EDIT) ?: return@each
+            val item = schedulePatch(op, defaultKind = null).toItem(existing = schedule)
+            val unchanged = ScheduleItemPatch(null, null, null, false, null, null, null, null, null, null, null).toItem(existing = schedule)
+            if (item.copy(time = null) == unchanged.copy(time = null) && sameTime(item.time, unchanged.time)) return@each run { lines += Line(target, SCHEDULE_EDIT, SKIP, "이미 같음") }
+            if (apply) curations.updateDetailSchedule(activityId, schedule.id, item)
+            lines += Line(target, SCHEDULE_EDIT, SET, if (item.title == schedule.title) item.title else "${schedule.title} → ${item.title}")
+        }
+        each(created, { "schedule ${it.path("ref").asString("")}" }) { op, target ->
+            val ref = op.path("ref").asString("").trim()
+            require(ref.isNotEmpty() && ref !in refs) { "ref가 비었거나 겹칩니다" }
+            val item = schedulePatch(op, defaultKind = ScheduleKind.EVENT).toItem(existing = null)
+            val same = activity.schedules.firstOrNull { it.id !in deleted && it.title == item.title && sameTime(it.time, item.time) }
+            if (same != null) {
+                refs[ref] = same.id to item
+                return@each run { lines += Line(target, SCHEDULE_CREATE, SKIP, "이미 있음: id ${same.id}") }
+            }
+            val id = if (apply) curations.insertDetailSchedule(activityId, item)!!.id else PENDING
+            refs[ref] = id to item
+            lines += Line(target, SCHEDULE_CREATE, SET, "${item.title} | ${describe(item.time)}${if (id != PENDING) " → id $id" else ""}")
+        }
+        require(errors.isEmpty()) { errors.joinToString("; ") }
+        return lines
+    }
+
+    private fun schedulePatch(op: JsonNode, defaultKind: ScheduleKind?): ScheduleItemPatch {
+        fun text(field: String) = op.get(field)?.takeUnless { it.isNull }?.asString()
+        val times = listOf("startAt", "endAt", "startDate", "endDate")
+        return ScheduleItemPatch(
+            title = text("title")?.trim(),
+            kind = text("kind")?.let(ScheduleKind::valueOf) ?: defaultKind,
+            status = text("status")?.let(ScheduleStatus::valueOf),
+            hasTime = times.any(op::has),
+            startAt = text("startAt")?.let(OffsetDateTime::parse),
+            endAt = text("endAt")?.let(OffsetDateTime::parse),
+            startDate = text("startDate")?.let(LocalDate::parse),
+            endDate = text("endDate")?.let(LocalDate::parse),
+            timeZone = text("timeZone")?.let(ZoneId::of),
+            dateLabel = text("dateLabel"),
+            note = text("note"),
+            hasPhase = op.has("phase"),
+            phase = text("phase")?.let(SchedulePhase::valueOf), // JSON null은 저장값을 지워 자동 판정으로
+        )
+    }
+
+    // 저장한 시각은 Asia/Seoul로 읽히므로 순간으로 비교한다
+    private fun sameTime(a: ScheduleTime?, b: ScheduleTime?) = when {
+        a is ScheduleTime.Timed && b is ScheduleTime.Timed -> a.start?.toInstant() == b.start?.toInstant() && a.end?.toInstant() == b.end?.toInstant()
+        else -> a == b
+    }
+
+    private fun describe(time: ScheduleTime?) = when (time) {
+        is ScheduleTime.Timed -> "${time.start?.toOffsetDateTime() ?: ""}~${time.end?.toOffsetDateTime() ?: ""}"
+        is ScheduleTime.AllDay -> "${time.start}~${time.endExclusive.minusDays(1)}"
+        null -> "날짜 미정"
+    }
+
+    // {scheduleId | scheduleRef, overwrite?, tracks: [{name, room?}], sessions: [{track?(순번), kind, title, startAt, endAt, speakers?: [{name, affiliation?}], tagNames?, description?}]}.
+    // 세션 태그는 사전 이름(띄어쓰기·대소문자 무시)으로 찾고 모르는 이름은 버린다. 운영자 지정과 같이 저장되어 그 블록은 curated가 된다
+    // scheduleRef는 같은 항목 schedules에서 만든(또는 같은 것을 찾은) 블록
+    private fun timetable(activityId: Id, node: JsonNode, refs: Map<String, Pair<Id, ScheduleItem>>, apply: Boolean): Line {
+        val ref = node.path("scheduleRef").asString("").ifEmpty { null }
+        val planned = ref?.let { refs[it] ?: throw IllegalArgumentException("schedules에서 정의하지 않은 scheduleRef: $it") }
+        val scheduleId = planned?.first ?: node.path("scheduleId").asLong()
+        val target = "activity $activityId schedule ${ref ?: scheduleId}"
+        if (scheduleId != PENDING) {
+            val existing = timetables.adminTimetable(activityId, scheduleId)
+            if (existing.sessions.isNotEmpty() && !node.path("overwrite").asBoolean(false)) return Line(target, TIMETABLE, SKIP, "이미 있음: 세션 ${existing.sessions.size}개")
+        }
+        val text = { n: JsonNode, field: String -> n.path(field).asString("").trim().ifEmpty { null } }
+        val input = TimetableInput(
+            tracks = buildList { node.path("tracks").forEach { add(TrackInput(null, it.path("name").asString(""), text(it, "room"))) } },
+            sessions = buildList {
+                node.path("sessions").forEach { s ->
+                    val names = buildList { s.path("tagNames").forEach { add(it.asString("")) } }
+                    add(
+                        SessionInput(
+                            id = null,
+                            track = s.get("track")?.takeIf { it.isNumber }?.asInt(),
+                            kind = SessionKind.valueOf(s.path("kind").asString("TALK")),
+                            title = s.path("title").asString(""),
+                            description = text(s, "description"),
+                            startAt = OffsetDateTime.parse(s.path("startAt").asString()),
+                            endAt = OffsetDateTime.parse(s.path("endAt").asString()),
+                            speakers = buildList { s.path("speakers").forEach { add(Speaker(it.path("name").asString(""), text(it, "affiliation"))) } },
+                            tagIds = if (names.isEmpty()) emptyList() else tags.findByNames(names).map { it.id }.take(TimetableRules.MAX_TAGS),
+                        )
+                    )
+                }
+            },
+        )
+        // dry run도 같은 검증을 거친다(쓰지 않음). 기존 트랙·세션은 새로 만든 것으로 바뀐다(id가 바뀌어 그 블록의 세션 찜은 지워진다)
+        if (apply) timetables.replace(activityId, scheduleId, input)
+        else if (scheduleId == PENDING) TimetableRules.validate(input, TimetableRules.window(planned!!.second.time, planned.second.recurrence != null))
+        else TimetableRules.validate(input, TimetableRules.window(curations.findSchedule(activityId, scheduleId)!!.schedule))
+        return Line(target, TIMETABLE, SET, "트랙 ${input.tracks.size}개, 세션 ${input.sessions.size}개")
     }
 
     // 같은 상위 조직 아래 같은 이름(띄어쓰기·대소문자 무시)이 있으면 그 조직을 쓴다. 없으면 어드민 만들기와 같은 검증으로 만든다
@@ -311,6 +467,10 @@ class CurationImportService(
         const val ELIGIBILITY = "eligibility"
         const val TAGS = "tags"
         const val PLACE = "place"
+        const val TIMETABLE = "timetable"
+        const val SCHEDULE_CREATE = "schedule-create"
+        const val SCHEDULE_EDIT = "schedule-edit"
+        const val SCHEDULE_DELETE = "schedule-delete"
         const val LOGO = "logo"
         const val COVER = "cover"
         const val PUBLISH = "publish"

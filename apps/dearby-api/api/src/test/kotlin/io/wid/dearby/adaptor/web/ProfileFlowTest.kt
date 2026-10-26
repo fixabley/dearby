@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.web
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.mock.web.MockMultipartFile
@@ -11,7 +12,10 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.*
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.util.*
+import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,7 +32,7 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
     private fun user(): UUID = userWithoutConsent().also { consent(it) }
     private fun userWithoutConsent(): UUID = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
     private fun consent(user: UUID) = mvc.post("/v1/me/consents") {
-        asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-22","termsVersion":"2026-10-22"}"""
+        asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-26","termsVersion":"2026-10-22"}"""
     }.andExpect { status { isNoContent() } }
 
     private fun MockHttpServletRequestDsl.asUser(id: UUID) {
@@ -64,9 +68,11 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         mvc.get("/v1/profile").andExpect { status { isUnauthorized() } }
 
         val jobEntry = UUID.randomUUID()
-        val body = """{"name":" 조민준 ","jobs":[{"id":"$jobEntry","jobName":"개발자"}],"introduction":"안녕하세요\n반갑습니다","contacts":${contacts()},"histories":[]}"""
+        val body = """{"name":" 조민준 ","jobs":[{"id":"$jobEntry","jobName":"개발자"}],"introduction":"안녕하세요\n반갑습니다","introLink":" notion.so/me ","contacts":${contacts()},"histories":[]}"""
         val saved = read(put(user, body).andExpect { status { isOk() } })
         assertEquals(listOf(1, "조민준", user.toString()), listOf(saved["version"].asInt(), saved["name"].asString(), saved["id"].asString()))
+        // 옛 앱이 보내는 소개 글은 무시하고(2026-10-26 소개 글 폐지) 소개 링크는 스킴이 없으면 https://를 붙인다
+        assertEquals(listOf("", "https://notion.so/me"), listOf(saved["introduction"].asString(), saved["introLink"].asString()))
         assertEquals("phone", saved["contacts"][0]["kind"].asString())
         // 같은 내용이면 버전 그대로
         assertEquals(1, read(put(user, body).andExpect { status { isOk() } })["version"].asInt())
@@ -77,8 +83,27 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         // 연락처 규칙
         put(user, """{"name":"a","contacts":[{"id":"$phone","kind":"phone","label":"","value":"010-1234-5678"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts().replace("010-1234-5678", "abc")}}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts(""",{"id":"${UUID.randomUUID()}","kind":"github","label":"깃헙","value":"http://github.com/x"}""")}}""").andExpect { status { isBadRequest() } }
+        // 사용자명 종류: 프로필 URL은 사용자명으로 바뀌고, 다른 주소·허용하지 않는 글자·오픈채팅 URL은 400
+        val other = user() // 버전 수를 세는 아래 검사와 섞이지 않게
+        val github = UUID.randomUUID()
+        val (otherPhone, otherEmail) = UUID.randomUUID() to UUID.randomUUID() // 연락처 id는 전체에서 유일
+        fun extra(kind: String, value: String, id: UUID = UUID.randomUUID()) =
+            contacts(""",{"id":"$id","kind":"$kind","label":"","value":"$value"}""").replace("$phone", "$otherPhone").replace("$email", "$otherEmail")
+        val normalized = read(put(other, """{"name":"a","contacts":${extra("github", "http://www.github.com/x-y?tab=repos", github)}}""").andExpect { status { isOk() } })
+        assertEquals("x-y", normalized["contacts"][2]["value"].asString())
+        assertEquals("minjun.cho", read(put(other, """{"name":"a","contacts":${extra("instagram", " @minjun.cho ")}}""").andExpect { status { isOk() } })["contacts"][2]["value"].asString())
+        put(other, """{"name":"a","contacts":${extra("github", "https://gitlab.com/x")}}""").andExpect { status { isBadRequest() } }
+        put(other, """{"name":"a","contacts":${extra("behance", "이름")}}""").andExpect { status { isBadRequest() } }
+        put(other, """{"name":"a","contacts":${extra("kakao", "https://open.kakao.com/o/abc")}}""").andExpect { status { isBadRequest() } }
+        // 이미 저장된 그대로의 옛 값(오픈채팅 URL)은 다시 저장해도 막히지 않는다
+        val kakao = UUID.randomUUID()
+        jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'KAKAO', '', 'https://open.kakao.com/o/abc', 2)").params(kakao, other).update()
+        put(other, """{"name":"a","contacts":${extra("kakao", "https://open.kakao.com/o/abc", kakao)}}""").andExpect { status { isOk() } }
         put(user, """{"name":"","contacts":${contacts()}}""").andExpect { status { isBadRequest() } }
+        // 소개 링크는 https만
+        listOf("http://example.com", "javascript:alert(1)", "not a link").forEach {
+            put(user, """{"name":"a","introLink":"$it","contacts":${contacts()}}""").andExpect { status { isBadRequest() } }
+        }
 
         val versions = read(mvc.get("/v1/profile/versions") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf(2, 1), versions["items"].values().map { it["version"].asInt() })
@@ -206,6 +231,52 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         assertEquals("verified", read(mvc.get("/v1/profile") { asUser(user) })["histories"].single()["verification"].asString())
     }
 
+    // native-v1.md "프로필 사진": 동의 뒤에만 올리고, 서버가 JPEG·정사각 512px 이하로 다시 인코딩하며 버전 스냅샷에는 싣지 않는다
+    @Test
+    fun `프로필 사진은 동의 뒤에만 올리고, 정사각 JPEG로 다시 인코딩해 photoUrl로 주며 지우면 사라진다`() {
+        fun image(width: Int, height: Int, format: String, type: Int = BufferedImage.TYPE_INT_RGB) =
+            ByteArrayOutputStream().also { ImageIO.write(BufferedImage(width, height, type), format, it) }.toByteArray()
+        fun upload(who: UUID, type: String, bytes: ByteArray) = mvc.multipart(HttpMethod.PUT, "/v1/profile/photo") {
+            file(MockMultipartFile("file", "photo", type, bytes)); asUser(who)
+        }
+        fun stored(who: UUID) = mvc.get("/v1/profile/photo") { asUser(who) }.andExpect { status { isOk() } }.andReturn().response
+        fun side(bytes: ByteArray) = ImageIO.read(bytes.inputStream()).let { listOf(it.width, it.height) }
+
+        val denied = userWithoutConsent()
+        assertEquals("CONSENT_REQUIRED", read(upload(denied, "image/png", image(10, 10, "png")).andExpect { status { isForbidden() } })["code"].asString())
+
+        val user = user()
+        assertTrue(read(mvc.get("/v1/profile") { asUser(user) })["photoUrl"].isNull)
+        mvc.get("/v1/profile/photo") { asUser(user) }.andExpect { status { isNotFound() } }
+        upload(user, "image/webp", image(10, 10, "png")).andExpect { status { isBadRequest() } }
+        upload(user, "image/png", byteArrayOf(1, 2, 3)).andExpect { status { isBadRequest() } }
+        upload(user, "image/png", image(4097, 1, "png")).andExpect { status { isBadRequest() } }
+        upload(user, "image/png", ByteArray(5 * 1024 * 1024 + 1)).andExpect { status { isBadRequest() } }
+
+        // 투명 PNG·직사각형도 받아 가운데 정사각형 JPEG(512px)로 바꾼다
+        val first = read(upload(user, "image/png", image(1000, 800, "png", BufferedImage.TYPE_INT_ARGB)).andExpect { status { isOk() } })["photoUrl"].asString()
+        assertTrue(first.startsWith("/v1/profile/photo?v="), first)
+        val photo = stored(user)
+        assertEquals("image/jpeg", photo.contentType)
+        assertTrue(photo.getHeader("Cache-Control")!!.contains("private"))
+        assertEquals(listOf(512, 512), side(photo.contentAsByteArray))
+        // 작은 사진은 키우지 않는다. 다시 올리면 v가 바뀐다
+        put(user, """{"name":"사진","contacts":${contacts()},"histories":[]}""").andExpect { status { isOk() } }
+        val second = read(upload(user, "image/jpeg", image(200, 200, "jpg")).andExpect { status { isOk() } })["photoUrl"].asString()
+        assertEquals(listOf(200, 200), side(stored(user).contentAsByteArray))
+        val profile = read(mvc.get("/v1/profile") { asUser(user) })
+        assertEquals(second, profile["photoUrl"].asString())
+        assertTrue(first != second)
+        assertTrue(read(mvc.get("/v1/profile/versions/${profile["version"].asInt()}") { asUser(user) })["profile"]["photoUrl"].isNull)
+        // 다른 사람의 사진은 볼 수 없다(본인 것만 조회)
+        mvc.get("/v1/profile/photo") { asUser(user()) }.andExpect { status { isNotFound() } }
+
+        mvc.delete("/v1/profile/photo") { asUser(user) }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/profile/photo") { asUser(user) }.andExpect { status { isNoContent() } }
+        assertTrue(read(mvc.get("/v1/profile") { asUser(user) })["photoUrl"].isNull)
+        mvc.get("/v1/profile/photo") { asUser(user) }.andExpect { status { isNotFound() } }
+    }
+
     @Test
     fun `선택 창 검색은 로그인이 필요하고 조직·프로그램·역할을 keyset 페이지로 준다`() {
         val user = user()
@@ -274,19 +345,44 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val denied = read(put(user, """{"name":"조민준","jobs":[],"introduction":"","contacts":${contacts()},"histories":[]}""").andExpect { status { isForbidden() } })
         assertEquals("CONSENT_REQUIRED", denied["code"].asString())
         val wrong = read(mvc.post("/v1/me/consents") {
-            asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2025-01-01","termsVersion":"2026-10-22"}"""
+            asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-22","termsVersion":"2026-10-22"}"""
         }.andExpect { status { isBadRequest() } })
         assertEquals("CONSENT_VERSION", wrong["code"].asString())
+        assertTrue(wrong["detail"].asString().contains("앱을 업데이트한 뒤 다시 동의해 주세요"))
         consent(user)
         val after = read(mvc.get("/v1/profile") { asUser(user) }.andExpect { status { isOk() } })
-        assertEquals(listOf(false, "2026-10-22", "2026-10-22"), listOf(after["consentRequired"].asBoolean(), after["consent"]["privacyVersion"].asString(), after["consent"]["termsVersion"].asString()))
+        assertEquals(listOf(false, "2026-10-26", "2026-10-22"), listOf(after["consentRequired"].asBoolean(), after["consent"]["privacyVersion"].asString(), after["consent"]["termsVersion"].asString()))
         assertFalse(after["consent"]["consentedAt"].isNull)
         val saved = read(put(user, """{"name":"조민준","jobs":[],"introduction":"","contacts":${contacts()},"histories":[]}""").andExpect { status { isOk() } })
         assertEquals(1, saved["version"].asInt())
         assertEquals(1, jdbc.sql("select count(*) from user_consents where user_id = ?").param(user).query(Long::class.java).single())
-        // 문서 버전이 오르면(2026-10-19 → 2026-10-22, 내 활동 서버 저장) 이전 동의만 있는 사용자는 다시 동의해야 한다
+        // 문서 버전이 오르면(처리방침 2026-10-22 → 2026-10-26, 사진·소개 링크·웹 통계) 이전 동의만 있는 사용자는 다시 동의해야 하고, 옛 버전으로 보낸 동의(위 wrong, 옛 앱)는 400이다
         val earlier = userWithoutConsent()
-        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-19', '2026-10-19', now())").param(earlier).update()
+        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-22', '2026-10-22', now())").param(earlier).update()
         assertEquals(true, read(mvc.get("/v1/profile") { asUser(earlier) })["consentRequired"].asBoolean())
+    }
+
+    @Test
+    fun `광고 목적 제3자 제공 동의는 선택이라 프로필 동의와 따로 기록·철회되고, 현재 버전일 때만 agreed다`() {
+        val user = userWithoutConsent()
+        fun get() = read(mvc.get("/v1/me/consents/ad-third-party") { asUser(user) }.andExpect { status { isOk() } })
+        fun putAd(version: String) = mvc.put("/v1/me/consents/ad-third-party") { asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"version":"$version"}""" }
+        assertEquals(listOf(true, false), listOf(get()["consent"].isNull, get()["agreed"].asBoolean()))
+        assertEquals("CONSENT_VERSION", read(putAd("2026-10-24").andExpect { status { isBadRequest() } })["code"].asString())
+        // 프로필 동의가 없어도 기록된다(서로 묶지 않는다)
+        val given = read(putAd("2026-10-25").andExpect { status { isOk() } })
+        assertEquals(listOf(true, "2026-10-25"), listOf(given["agreed"].asBoolean(), given["consent"]["version"].asString()))
+        fun instant(body: JsonNode) = java.time.OffsetDateTime.parse(body["consent"]["agreedAt"].asString()).toInstant()
+        // 같은 버전에 다시 동의해도 처음 시각을 지킨다(응답 시간대는 저장 경로마다 다를 수 있어 시각으로 비교)
+        assertEquals(instant(given), instant(read(putAd("2026-10-25").andExpect { status { isOk() } })))
+        assertEquals(instant(given), instant(get()))
+        assertEquals(true, read(mvc.get("/v1/profile") { asUser(user) })["consentRequired"].asBoolean())
+        // 옛 버전 기록은 agreed=false(다시 묻는다)
+        jdbc.sql("update user_ad_consents set version = '2026-01-01' where user_id = ?").param(user).update()
+        assertEquals(listOf(false, "2026-01-01"), listOf(get()["agreed"].asBoolean(), get()["consent"]["version"].asString()))
+        // 철회는 멱등이다
+        repeat(2) { mvc.delete("/v1/me/consents/ad-third-party") { asUser(user) }.andExpect { status { isNoContent() } } }
+        assertEquals(listOf(true, false), listOf(get()["consent"].isNull, get()["agreed"].asBoolean()))
+        mvc.get("/v1/me/consents/ad-third-party").andExpect { status { isUnauthorized() } }
     }
 }

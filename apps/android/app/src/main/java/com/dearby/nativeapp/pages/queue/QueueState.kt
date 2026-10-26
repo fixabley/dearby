@@ -44,10 +44,12 @@ enum class QueueReaction(val label: String, val done: String) {
 data class QueueUndo(val message: String, val serial: Int)
 
 /**
- * [index] is the page on screen (the end page is `cards.size`); [moves] counts the model's own jumps to [index] (undo, 더 받기), which the pager
+ * [index] is the page on screen (the ad page, when [ad], is `cards.size` and the end page [end]); [moves] counts the model's own jumps to [index] (undo, 더 받기), which the pager
  * follows, while the user's paging only updates [index]. [failed] with cards is a failed `더 받기`; [exhausted] means it found nothing new.
  */
 data class QueueViewState(
     val cards: List<QueueCardState> = emptyList(), val index: Int = 0, val moves: Int = 0, val loading: Boolean = true, val failed: Boolean = false,
-    val refilling: Boolean = false, val exhausted: Boolean = false, val undo: QueueUndo? = null,
-)
+    val refilling: Boolean = false, val exhausted: Boolean = false, val undo: QueueUndo? = null, val ad: Boolean = false,
+) {
+    val end get() = cards.size + if (ad) 1 else 0
+}

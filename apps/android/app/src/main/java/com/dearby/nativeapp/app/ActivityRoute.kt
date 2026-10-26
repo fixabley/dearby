@@ -28,7 +28,8 @@ import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
-import com.dearby.nativeapp.pages.activity.FavoritesView
+import com.dearby.nativeapp.pages.activity.TimetableSheet
+import com.dearby.nativeapp.pages.activity.MySessionsPage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
 import androidx.compose.foundation.layout.Column
@@ -42,7 +43,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
     openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, header: (@Composable () -> Unit)? = null,
     hearts: FavoriteHearts = FavoriteHearts(), favorites: FavoritesViewModel? = null, segment: MineSegment = MineSegment.MINE, selectSegment: (MineSegment) -> Unit = {},
-    signIn: () -> Unit = {}, unread: Int = 0, active: (Boolean) -> Unit,
+    signIn: () -> Unit = {}, unread: Int = 0,
+    /** 트랙·세션 시간표 and its 찜 (contract "트랙·세션 시간표"); [sessionHeart] opens sign-in or the consent screen when the account is not ready. */
+    sessions: SessionFavoritesViewModel? = null, sessionHeart: (String) -> Unit = {},
+    active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
     // `+` beside an activity heart (contract "`+` 내 활동에 추가"): adds it to 내 활동, or opens it there once it is in.
@@ -60,11 +64,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     var progressId by remember { mutableStateOf<String?>(null) }
     var stageCalendar by remember { mutableStateOf<Int?>(null) }
     var prompt by remember { mutableStateOf(false) }
+    // 즐겨찾기 › 찜한 세션 (나만의 시간표).
+    var mySessions by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     LaunchedEffect(open) { open?.let { show(it, model.takeLinkSource() ?: "my_activity"); consumeOpen() } }
     // Signed in, opening 내 활동 re-reads the account's records (and retries a failed import or read).
     LaunchedEffect(mine) { if (mine) model.syncMine(announce = true) }
-    DisposableEffect(selected, progressId) { active(selected != null || progressId != null); onDispose { active(false) } }
+    DisposableEffect(selected, progressId, mySessions) { active(selected != null || progressId != null || mySessions); onDispose { active(false) } }
     val context = LocalContext.current
     // Links are already https-only from the activityModel model; failure to open stays on screen.
     val activity = selected?.let(state.known::get)
@@ -106,13 +112,27 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
+    // The timetable sheet opened from this detail's block row, or from the 진행 단계 page's stage row (the view model is shared by both tabs,
+    // so it shows only over its own activity).
+    val sheetActivity = activity ?: progressActivity
+    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == (selected ?: progressId) }
+    // The sheet belongs to this detail or 진행 단계 page: leaving it (back, another activity, the consent screen or a tab switch disposing this
+    // route) closes it, so it does not come back on its own the next time the activity is opened.
+    DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null) } }
+    val sheetNotices = remember { SnackbarHostState() }
+    val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
+    val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
+    BackHandler(mySessions && selected == null) { mySessions = false }
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, share, openMap,
-            addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts)
-        progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { show(progress.id, "my_activity") },
-            { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
+            addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
+            openTimetable = { sessions?.show(activity.id, it) })
+        mySessions && mine -> MySessionsPage(sessionEntries, sessionIds, sessionHeart, { show(it, "favorites") }) { mySessions = false }
+        progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { show(progress.id, "my_activity") },
+            { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) },
+            openTimetable = { sessions?.show(progress.id, it) })
         mine -> MineTab(segment, selectSegment, settings, notify, unread) {
             val openDetail: (String) -> Unit = { show(it, listSource) }
             if (segment == MineSegment.MINE || favorites == null) MyActivitiesPage(state, openDetail, { progressId = it }, explore) { model.apply(it, false) }
@@ -120,15 +140,24 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                 val favoritesState by favorites.state.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { favorites.load() }
                 FavoritesPage(favoritesState, state, hearts, openDetail, plus, { favorites.seen(it); model.ensureProgram(it) }, model::retryProgram,
-                    favorites::remove, favorites::undo, favorites::commit, { view -> if (view == FavoritesView.CALENDAR) Tracking.menu("favorites_calendar"); favorites.setView(view) }, signIn, favorites::load)
+                    signIn, favorites::load, sessionEntries.size, sessionEntries.map { it.session.startAt.toLocalDate() }.toSet()) { sessions?.load(); mySessions = true }
             }
         }
-        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread)
+        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setStatusGroups, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread, model::setKind, model::setCategories)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), activityLink(activity.id), openPrivacy) { calendar = false }
+    if (openTimetable != null && sessions != null) {
+        // 찜 실패 알림 while the sheet is up: shown in the sheet (DearbyApp leaves it to us while a timetable is open).
+        val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
+        LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
+        val block = sheetActivity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
+        val blockTitle = openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: block?.name ?: "세션"
+        TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
+            sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry, sheetNotices)
+    }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).
     // 403 CONSENT_REQUIRED on a 내 활동 write (consent version moved to 2026-10-22): go to 내 프로필, whose consent screen comes up on load.

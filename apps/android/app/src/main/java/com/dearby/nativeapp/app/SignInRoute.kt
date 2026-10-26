@@ -8,7 +8,9 @@ import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.pages.account.LinkAccountSheet
 import com.dearby.nativeapp.pages.account.SignInSheet
+import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.AuthProvider
+import com.dearby.nativeapp.shared.config.ConsentVersions
 import kotlinx.coroutines.launch
 
 /** The sign-in sheet every screen that needs an account opens. While a provider's choice is pending [PendingAccountRoute] shows instead. */
@@ -16,10 +18,10 @@ import kotlinx.coroutines.launch
     val auth by account.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    if (auth.pending == null) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
+    if (auth.pending == null) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message, ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN),
         signIn = { scope.launch { account.signIn(Passkeys(context)) } }, apple = { scope.launch { account.startWeb(AuthProvider.APPLE, OAuthBrowser(context)) } },
         google = if (auth.googleAvailable) ({ scope.launch { account.signInWithGoogle(GoogleSignIn(context)) } }) else null,
-        signUp = { scope.launch { account.signUp(Passkeys(context)) } }, close = close,
+        close = close,
     )
 }
 

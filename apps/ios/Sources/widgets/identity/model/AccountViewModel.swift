@@ -41,18 +41,10 @@ import SwiftUI
 
     /// "패스키로 로그인": choose one of this app's passkeys on the device (or a nearby device).
     func signIn(using controller: AuthorizationController) async {
-        await start(failure: "패스키로 로그인하지 못했어요. 다시 시도하거나 새 패스키로 시작해 주세요.") { [client] in
+        await start(failure: "패스키로 로그인하지 못했어요. 다시 시도하거나 애플·구글로 로그인해 주세요.") { [client] in
             let challenge = try await client.authenticationOptions()
             let credential = try await Passkey.assert(challenge.options, with: controller)
             return try await client.authenticate(challengeId: challenge.challengeId, credential: credential)
-        }
-    }
-    /// "새 패스키로 시작": makes a new passkey, and with it a new account.
-    func register(using controller: AuthorizationController) async {
-        await start(failure: "새 패스키를 만들지 못했어요. 잠시 후 다시 시도해 주세요.") { [client] in
-            let challenge = try await client.registrationOptions()
-            let credential = try await Passkey.register(challenge.options, with: controller)
-            return try await client.register(challengeId: challenge.challengeId, credential: credential)
         }
     }
     /// "Apple로 계속하기": an Apple account already linked signs in; a first-time one sets `pendingLink` for the user's choice.
@@ -166,10 +158,10 @@ import SwiftUI
     }
     enum DeletionResult: Equatable {
         case deleted, signedOut, failed
-        /// What the screens tell the person afterwards (프로필·설정 share it).
-        var notice: String {
+        /// What the screens tell the person afterwards; the passkey cleanup hint only when the account had passkeys.
+        func notice(hadPasskeys: Bool) -> String {
             switch self {
-            case .deleted: "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."
+            case .deleted: hadPasskeys ? "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요." : "계정을 삭제했어요."
             case .signedOut: "로그인이 만료됐어요. 다시 로그인해 주세요."
             case .failed: "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
             }
@@ -195,6 +187,12 @@ import SwiftUI
     }
     /// Runs an owner call. A 401 refreshes the tokens once and retries; if that is refused, the tokens are
     /// forgotten and the screens fall back to signing in.
+    /// A Profile or Card `photoUrl`'s bytes (`PhotoLoader`): with the session when signed in, so 내 프로필·내 명함·받은 명함 can read it;
+    /// signed out only a card link's `&code=` opens it.
+    func photo(_ photoUrl: String) async throws -> Data {
+        guard session != nil else { return try await client.photo(photoUrl, nil) }
+        return try await authorized { [client] in try await client.photo(photoUrl, $0) }
+    }
     func authorized<Value: Sendable>(_ call: @Sendable (TokenPair) async throws -> Value) async throws -> Value {
         guard let session else { throw AccountError.unauthorized }
         do { return try await call(session) } catch AccountError.unauthorized {}

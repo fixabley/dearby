@@ -4,6 +4,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.ActivityStatus
+import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.PublicationStatus
 import org.jooq.Condition
 import org.jooq.Field
@@ -19,8 +21,8 @@ object OpenActivityConditions {
     private const val SLOT_ACTIVITY = "ACTIVITY"
     private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
     private const val HISTORY_MIN_DAYS = 7
-    // 기간을 모를 때 단기 행사로 보는 종류. historyEligible보다 앞에 둔다(object 초기화 순서)
-    private val SHORT_EVENT_CATEGORIES = setOf(ActivityCategory.CONFERENCE, ActivityCategory.WORKSHOP, ActivityCategory.MEETUP, ActivityCategory.LECTURE)
+    // 단기 행사 종류 코드(ActivityCategory.EVENTS). historyEligible보다 앞에 둔다(object 초기화 순서)
+    private val EVENT_CODES = ActivityCategory.EVENTS.map(ActivityCategory::name)
 
     val app: Schedules = SCHEDULES.`as`("app")
     val act: Schedules = SCHEDULES.`as`("act")
@@ -39,40 +41,68 @@ object OpenActivityConditions {
     private fun notEnded(now: OffsetDateTime): Condition = activityEnd.isNull.or(activityEnd.gt(now))
     // 정렬 키(admin-v1.md "정렬 기준 보완"): 모집 마감(시각 또는 날짜) → 없으면 활동 시작 → 둘 다 없으면 null(맨 뒤)
     val deadline: Field<OffsetDateTime?> = DSL.coalesce(app.END_AT, seoulMidnight(app.END_DATE_EXCLUSIVE), activityStart)
-    // 모집 시작(시각 또는 날짜) → 없으면 활동 시작. 모집 예정 활동의 "가장 이른 시작"(native-v1.md "마감 숨기기")
-    val recruitmentStart: Field<OffsetDateTime?> = DSL.coalesce(app.START_AT, seoulMidnight(app.START_DATE), activityStart)
+    // 실제 모집 마감만(활동 시작으로 대체하지 않음). 발견 묶음의 nearestRecruitmentEndAt
+    val recruitmentEnd: Field<OffsetDateTime?> = DSL.coalesce(app.END_AT, seoulMidnight(app.END_DATE_EXCLUSIVE))
+    // 모집 시작(시각 또는 날짜). 모집 예정 활동의 "가장 이른 시작"(native-v1.md "마감 숨기기")
+    val recruitmentStart: Field<OffsetDateTime?> = DSL.coalesce(app.START_AT, seoulMidnight(app.START_DATE))
 
-    // 게시 활동이고 (a) 시각 모집 기간이 지금을 포함, 또는 (b) 날짜 모집 기간이 서울 오늘을 포함, 또는
-    // (c) 구조화된 모집 기간이 없으면(행 없음 또는 문구만) 활동 시작이 아직 오지 않음. 어느 경우든 활동 기간이 이미 끝났으면 열지 않는다
-    fun open(now: OffsetDateTime): Condition {
+    // 게시 활동이고 (a) 시각 모집 기간이 지금을 포함, 또는 (b) 날짜 모집 기간이 서울 오늘을 포함. 어느 경우든 활동 기간이 이미 끝났으면 열지 않는다.
+    // 구조화된 모집 기간이 없으면(행 없음 또는 문구만) 종류와 상관없이 마감으로 본다(2026-10-26 사용자 결정, 그 전에는 활동 시작이 남았으면 열었다)
+    fun open(now: OffsetDateTime): Condition =
+        ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(recruitingNow(now)).and(notEnded(now))
+
+    // 모집 기간이 지금을 포함(시각 일정은 끝이 없으면 계속, 날짜 일정은 서울 오늘)
+    private fun recruitingNow(now: OffsetDateTime): Condition {
         val today = now.atZoneSameInstant(SEOUL).toLocalDate()
         val timed = app.TIME_TYPE.eq("TIMED")
             .and(app.START_AT.isNull.or(app.START_AT.le(now)))
             .and(app.END_AT.isNull.or(app.END_AT.gt(now)))
         val allDay = app.TIME_TYPE.eq("ALL_DAY").and(app.START_DATE.le(today)).and(app.END_DATE_EXCLUSIVE.gt(today))
-        val upcoming = app.ID.isNull.or(app.TIME_TYPE.isNull).and(activityStart.gt(now))
-        return ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(timed.or(allDay).or(upcoming)).and(notEnded(now))
+        return timed.or(allDay)
+    }
+
+    // 모집 기간이 아직 시작되지 않음
+    private fun recruitmentLater(now: OffsetDateTime): Condition {
+        val today = now.atZoneSameInstant(SEOUL).toLocalDate()
+        return app.TIME_TYPE.eq("TIMED").and(app.START_AT.gt(now)).or(app.TIME_TYPE.eq("ALL_DAY").and(app.START_DATE.gt(today)))
     }
 
     // 모집 예정(native-v1.md "마감 숨기기", 2026-10-19 밤): 게시 활동이고 구조화된 모집 기간이 아직 시작되지 않음
-    // (시각 모집 기간의 start_at > now, 또는 날짜 모집 기간의 start_date > 서울 오늘). 모집 기간이 없고 활동 시작이 남은 경우는 open()이 이미 연 것으로 본다
-    fun upcoming(now: OffsetDateTime): Condition {
-        val today = now.atZoneSameInstant(SEOUL).toLocalDate()
-        val timed = app.TIME_TYPE.eq("TIMED").and(app.START_AT.gt(now))
-        val allDay = app.TIME_TYPE.eq("ALL_DAY").and(app.START_DATE.gt(today))
-        return ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(timed.or(allDay)).and(notEnded(now))
-    }
+    // (시각 모집 기간의 start_at > now, 또는 날짜 모집 기간의 start_date > 서울 오늘). 모집 기간이 없으면 모집 예정도 아니다(2026-10-26)
+    fun upcoming(now: OffsetDateTime): Condition =
+        ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(recruitmentLater(now)).and(notEnded(now))
+
+    // 활동 상태(native-v1.md "활동 상태", 2026-10-26). ActivityStatus.of와 같은 순서. RECRUITING은 open(), RECRUITING_UPCOMING은 upcoming()과 같다
+    fun status(now: OffsetDateTime): Field<String> = DSL.case_()
+        .`when`(activityEnd.le(now), DSL.inline(ActivityStatus.ENDED.name))
+        .`when`(recruitingNow(now), DSL.inline(ActivityStatus.RECRUITING.name))
+        .`when`(recruitmentLater(now), DSL.inline(ActivityStatus.RECRUITING_UPCOMING.name))
+        .`when`(activityStart.le(now), DSL.inline(ActivityStatus.IN_PROGRESS.name))
+        .`when`(app.TIME_TYPE.isNotNull.and(activityEnd.isNull), DSL.inline(ActivityStatus.ENDED.name))
+        .`when`(app.TIME_TYPE.isNotNull, DSL.inline(ActivityStatus.RECRUITMENT_CLOSED.name))
+        .otherwise(DSL.inline(ActivityStatus.NO_RECRUITMENT.name))
+
+    // 게시 활동 중 상태가 statuses 안에 있는 것
+    fun statusIn(statuses: Set<ActivityStatus>, now: OffsetDateTime): Condition =
+        ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(status(now).`in`(statuses.map { it.name }))
 
     // 활동 이력 후보(native-v1.md "활동 이력에서 단기 행사 제외", 2026-10-20): 게시 활동이고 활동 기간이 7일 이상이거나,
     // 기간을 모르면(행 없음, 문구만, 또는 시각 일정에 시작이 없음) 종류가 컨퍼런스·워크샵·밋업·강연이 아닌 것. 끝이 없는 시각 일정은 하루로 본다.
     // GET /v1/activities?forHistory=true와 이력 쓰기 검사(ProfileService)가 같은 규칙을 쓴다. null이 끼면 where에서 빠지므로 남길 조건을 양의 형태로 쓴다
+    // 발견 프로그램·이벤트 전환(native-v1.md "발견 프로그램·이벤트 전환", 2026-10-26): EVENT는 단기 행사 종류, PROGRAM은 그 밖과 미분류(null)
+    private val notEvent: Condition = ACTIVITIES.CATEGORY.isNull.or(ACTIVITIES.CATEGORY.notIn(EVENT_CODES))
+    fun kind(kind: DiscoveryKind): Condition = when (kind) {
+        DiscoveryKind.EVENT -> ACTIVITIES.CATEGORY.`in`(EVENT_CODES)
+        DiscoveryKind.PROGRAM -> notEvent
+    }
+
     val historyEligible: Condition = run {
         val allDayLong = act.TIME_TYPE.eq("ALL_DAY")
             .and(DSL.condition("{0} - {1} >= {2}", act.END_DATE_EXCLUSIVE, act.START_DATE, DSL.inline(HISTORY_MIN_DAYS)))
         val timedLong = act.TIME_TYPE.eq("TIMED").and(act.START_AT.isNotNull).and(act.END_AT.isNotNull)
             .and(DSL.condition("{0} - {1} >= make_interval(days => {2})", act.END_AT, act.START_AT, DSL.inline(HISTORY_MIN_DAYS)))
         val unknownPeriod = act.TIME_TYPE.isNull.or(act.TIME_TYPE.eq("TIMED").and(act.START_AT.isNull))
-            .and(ACTIVITIES.CATEGORY.isNull.or(ACTIVITIES.CATEGORY.notIn(SHORT_EVENT_CATEGORIES.map(ActivityCategory::name))))
+            .and(notEvent)
         ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(allDayLong.or(timedLong).or(unknownPeriod))
     }
 }

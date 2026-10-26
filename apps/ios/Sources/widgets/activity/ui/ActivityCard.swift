@@ -1,14 +1,19 @@
 import SwiftUI
 
-/// 펼친 프로그램 안의 활동 카드(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구). 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 칩
-/// (`모집 중` 청록 채움 캡슐 / `모집 예정` 청록 틴트 캡슐 / `마감` 시스템 fill 캡슐), 아래 `LabeledContent` 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만).
-/// 모집이 지나지 않았으면 `모집` 줄의 값이 청록 굵은 글씨에 옅은 민트 바탕으로 강조된다. 카드를 누르면 `open`(상세 이동). 접근성에서는 상태와 세 줄을 한 라벨로 읽는다.
+/// 펼친 프로그램 안의 활동 카드(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구). 로고 없이 왼쪽 위 활동명, 오른쪽 위 활동 상태 칩
+/// (contract "활동 상태" 2026-10-26: `모집 중` 청록 채움 캡슐 / `모집 예정` 청록 틴트 캡슐 / `진행 중` 시스템 파랑 틴트 / `모집 마감`·`종료` 시스템 fill 캡슐;
+/// `모집 정보 없음`은 칩 없이 `모집` 줄이 `모집 일정 미정`), 아래 `LabeledContent` 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만).
+/// 모집 중·모집 예정이면 `모집` 줄의 값이 청록 굵은 글씨에 옅은 민트 바탕으로 강조된다. 카드를 누르면 `open`(상세 이동). 접근성에서는 상태와 세 줄을 한 라벨로 읽는다.
 struct ActivityCard<Accessory: View>: View {
     let activityID: String
     let title: String
-    let recruitment: ActivityModel.Recruitment
-    /// Recruitment window text (`ActivityModel.recruitmentText`: structured dates before the collected label); nil reads as `미정`.
+    /// The server's 활동 상태 (`ActivityModel.status(at:)`); nil shows no chip.
+    let status: ActivityStatus?
+    /// Recruitment window text (`ActivityModel.recruitmentDate`: `M.d – M.d` with both bounds, else structured dates before the collected
+    /// label); nil, or 모집 정보 없음, reads as `모집 일정 미정`.
     var recruitmentText: String?
+    /// `D-3`/`D-DAY` beside the period while recruiting (contract "모집 날짜 표기 — 2026-10-26"); nil for none.
+    var recruitmentDDay: String?
     /// Activity period text (`ActivityModel.scheduleText`); nil reads as `미정`.
     var scheduleText: String?
     /// Place name (contract "활동 장소"); nil omits the row.
@@ -18,6 +23,8 @@ struct ActivityCard<Accessory: View>: View {
     var traitTags: [Tag] = []
     /// The card's fill: the grouped background inside a discovery card, the secondary one on its own (즐겨찾기).
     var surface = Color(.systemGroupedBackground)
+    /// A block has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): a `시간표` badge beside the status.
+    var hasTimetable = false
     /// The heart, bell and `+` (`FavoriteControls`) at the bottom trailing corner, outside the card's button; `EmptyView` for none.
     @ViewBuilder var accessory: Accessory
     let open: () -> Void
@@ -30,10 +37,16 @@ struct ActivityCard<Accessory: View>: View {
                 HStack(alignment: .top, spacing: 10) {
                     Text(title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary)
                         .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
-                    statusChip
+                    if hasTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
+                    if let badge = status?.badge { statusChip(badge) }
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    LabeledContent("모집") { Text(recruitmentText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
+                    LabeledContent("모집") {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(recruitmentValue)
+                            if let recruitmentDDay { DearbyMiniBadge(title: recruitmentDDay, filled: true) }
+                        }
+                    }.labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
                     LabeledContent("활동") { Text(scheduleText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle())
                     if let place, !place.isEmpty { LabeledContent("장소") { Text(place) }.labeledContentStyle(DiscoveryRowStyle()) }
                 }
@@ -44,7 +57,7 @@ struct ActivityCard<Accessory: View>: View {
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([title, statusText, "모집 " + (recruitmentText ?? "미정"), "활동 " + (scheduleText ?? "미정"),
+            .accessibilityLabel([title, status?.badge, hasTimetable ? "시간표 있음" : nil, "모집 " + recruitmentValue + (recruitmentDDay.map { " " + $0 } ?? ""), "활동 " + (scheduleText ?? "미정"),
                                  place.map { "장소 " + $0 }, TagChipLine.label(field: fieldTag, traits: traitTags)].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")
@@ -55,22 +68,20 @@ struct ActivityCard<Accessory: View>: View {
             .background(surface, in: .rect(cornerRadius: 14, style: .continuous))
     }
     /// Recruiting or upcoming: the recruitment row stands out (contract 강조 규칙).
-    private var emphasized: Bool { recruitment == .open || recruitment == .upcoming }
-    private var statusText: String {
-        switch recruitment {
-        case .open: "모집 중"
-        case .upcoming: "모집 예정"
-        case .closed: "마감"
-        case .unknown: "확인 필요"
+    private var emphasized: Bool { status?.applicable ?? false }
+    private var recruitmentValue: String { status == .noRecruitment ? "모집 일정 미정" : recruitmentText ?? "모집 일정 미정" }
+    /// Capsule tints as iOS uses them: filled for the active state, tinted for the pending and running ones (system blue for 진행 중),
+    /// system fill for the closed ones. Semantic colours, so light and dark both follow the system.
+    private func statusChip(_ title: String) -> some View {
+        let (foreground, background): (Color, Color) = switch status {
+        case .recruiting: (DearbyStyle.onTeal, DearbyStyle.tealFill)
+        case .recruitingUpcoming: (DearbyStyle.teal, DearbyStyle.mint)
+        case .inProgress: (.blue, .blue.opacity(0.15))
+        default: (.secondary, Color(.tertiarySystemFill))
         }
-    }
-    /// Capsule tints as iOS uses them: filled for the active state, tinted for the pending one, system fill for the rest.
-    private var statusChip: some View {
-        Text(statusText).font(.dearby(.caption2).weight(.semibold))
-            .foregroundStyle(recruitment == .open ? DearbyStyle.onTeal : recruitment == .upcoming ? DearbyStyle.teal : .secondary)
+        return Text(title).font(.dearby(.caption2).weight(.semibold)).foregroundStyle(foreground)
             .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(recruitment == .open ? DearbyStyle.tealFill : recruitment == .upcoming ? DearbyStyle.mint : Color(.tertiarySystemFill),
-                        in: Capsule())
+            .background(background, in: Capsule())
     }
 }
 
@@ -96,14 +107,14 @@ struct DiscoveryRowStyle: LabeledContentStyle {
 struct ActivityCardSample: View {
     var body: some View {
         VStack(spacing: 8) {
-            ActivityCard(activityID: "1", title: "부스트캠프 Web·Mobile 10기", recruitment: .open,
-                         recruitmentText: "10월 20일 (화) 10:00 ~ 11월 10일 (화) 18:00", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남",
+            ActivityCard(activityID: "1", title: "부스트캠프 Web·Mobile 10기", status: .recruiting,
+                         recruitmentText: "10.20 – 11.10", recruitmentDDay: "D-3", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남",
                          fieldTag: Tag(id: 10, name: "웹·앱", nameEn: "webApp", kind: .field),
                          traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")],
                          accessory: { EmptyView() }) {}
-            ActivityCard(activityID: "2", title: "SK AIGEN 1기", recruitment: .upcoming,
-                         recruitmentText: "11월 1일 (일) ~ 11월 15일 (일)", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩", accessory: { EmptyView() }) {}
-            ActivityCard(activityID: "3", title: "우아콘 2025", recruitment: .closed, scheduleText: "2025년 10월 30일 (목)", accessory: { EmptyView() }) {}
+            ActivityCard(activityID: "2", title: "SK AIGEN 1기", status: .recruitingUpcoming,
+                         recruitmentText: "11.1 – 11.15", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩", accessory: { EmptyView() }) {}
+            ActivityCard(activityID: "3", title: "우아콘 2025", status: .ended, scheduleText: "2025년 10월 30일 (목)", accessory: { EmptyView() }) {}
         }.padding(10).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
             .padding(16).background(Color(.systemGroupedBackground))
     }

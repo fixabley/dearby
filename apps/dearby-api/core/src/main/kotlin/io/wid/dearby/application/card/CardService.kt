@@ -18,29 +18,29 @@ import java.util.*
 class CardService(private val cards: CardRepository, private val profiles: ProfileRepository, private val wallet: WalletRepository, private val codes: CardQrCodes) {
 
     @Transactional
-    fun publish(ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
+    fun publish(ownerId: UserId, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>, includePhoto: Boolean = true, includeIntroLink: Boolean = true): BusinessCard {
         val now = OffsetDateTime.now(ZoneOffset.UTC)
-        val card = snapshot(UUID.randomUUID(), ownerId, name, description, template, contactIds, historyIds, createdAt = now, updatedAt = now)
+        val card = snapshot(UUID.randomUUID(), ownerId, name, description, contactIds, historyIds, includeIntroLink, createdAt = now, updatedAt = now)
         cards.create(card)
-        return card
+        return card.copy(photoUpdatedAt = cards.snapshotPhoto(card.id, ownerId, includePhoto))
     }
 
     // 명함 고치기(native-v1.md "명함 고치기는 같은 명함을 수정"): 같은 id·createdAt으로 현재 프로필 기준 스냅샷을 다시 만든다.
-    // 없거나 철회됐거나 남의 명함이면 모두 404(지우기의 403과 다르다). template이 비어 있으면 그 명함의 template을 그대로 둔다
+    // 없거나 철회됐거나 남의 명함이면 모두 404(지우기의 403과 다르다)
     @Transactional
-    fun update(ownerId: UserId, id: UUID, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
+    fun update(ownerId: UserId, id: UUID, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>, includePhoto: Boolean = true, includeIntroLink: Boolean = true): BusinessCard {
         val existing = cards.find(id)?.takeIf { it.ownerId == ownerId } ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found or not owned: $id by $ownerId")
-        val card = snapshot(id, ownerId, name, description, template.ifBlank { existing.template }, contactIds, historyIds, createdAt = existing.createdAt, updatedAt = OffsetDateTime.now(ZoneOffset.UTC))
+        val card = snapshot(id, ownerId, name, description, contactIds, historyIds, includeIntroLink, createdAt = existing.createdAt, updatedAt = OffsetDateTime.now(ZoneOffset.UTC))
         if (!cards.update(card)) throw NotFoundException("명함을 찾을 수 없습니다", "Card revoked while updating: $id")
-        return card
+        return card.copy(photoUpdatedAt = cards.snapshotPhoto(id, ownerId, includePhoto))
     }
 
-    // POST·PUT 공통 검증과 스냅샷 만들기. 프로필의 공개 선택분을 복사한다
-    private fun snapshot(id: UUID, ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>, createdAt: OffsetDateTime, updatedAt: OffsetDateTime): BusinessCard {
+    // POST·PUT 공통 검증과 스냅샷 만들기. 프로필의 공개 선택분과 소개 링크(넣기를 켰을 때)를 복사한다(2026-10-26 "소개 링크·소개 글 폐지").
+    // template·introduction 열은 옛 앱 응답 호환으로만 남아 새 스냅샷에는 빈 문자열이다
+    private fun snapshot(id: UUID, ownerId: UserId, name: String, description: String, contactIds: List<UUID>, historyIds: List<UUID>, includeIntroLink: Boolean, createdAt: OffsetDateTime, updatedAt: OffsetDateTime): BusinessCard {
         val profile = profiles.find(ownerId) ?: throw InvalidInputException("프로필을 먼저 만들어 주세요")
         val cardName = text(name, "명함 이름", MAX_NAME)
         val cardDescription = multiline(description, "설명")
-        val cardTemplate = multiline(template, "템플릿")
         if (contactIds.toSet().size != contactIds.size || historyIds.toSet().size != historyIds.size) throw InvalidInputException("같은 항목을 두 번 골랐습니다")
         val contactById = profile.contacts.associateBy { it.id }
         val historyById = profile.histories.associateBy { it.id }
@@ -55,8 +55,8 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
             ownerId = ownerId,
             name = cardName,
             description = cardDescription,
-            template = cardTemplate,
-            introduction = TemplateRenderer.render(cardTemplate, profile, contacts),
+            template = "",
+            introLink = profile.introLink.takeIf { includeIntroLink },
             profileName = profile.name,
             job = profile.jobTitle,
             contacts = contacts,
@@ -79,6 +79,13 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
         val holder = viewer != null && (card.ownerId == viewer || wallet.findReceipt(viewer, id) != null)
         if (!holder && !guestHolds) codes.require(id, code)
         return card
+    }
+
+    // 명함 사진(native-v1.md "프로필 사진"): 명함 조회와 같은 근거로 본다. 사진 없는 명함은 404
+    @Transactional(readOnly = true)
+    fun photo(id: UUID, viewer: UserId?, guestHolds: Boolean, code: String?): ByteArray {
+        view(id, viewer, guestHolds, code)
+        return cards.photo(id) ?: throw NotFoundException("명함 사진이 없습니다", "Card photo not found: $id")
     }
 
     @Transactional

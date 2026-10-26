@@ -30,6 +30,9 @@ struct ActivityStage: Identifiable, Equatable {
     /// The schedule behind the stage; for `지원` only the application window's end (README: 날짜는 모집 마감). Its `id` is the
     /// schedule id the marks are keyed by and the server stores them under.
     let source: ActivityStageModel
+    /// A 선발 단계 (contract "통과 여부는 선발 단계에만" 2026-10-26): only these take 통과·대기·탈락; any other stage keeps the date and
+    /// 예정/지남 by time, and its stored mark is not read (`.wait`).
+    let selection: Bool
     var mark: StageMark
     var state: State
     /// The marked status as the schedule names it (대기·통과·탈락 or the admin's names).
@@ -48,7 +51,7 @@ struct ActivityProgress: Equatable {
     /// nil when every stage is past or the user marked a 탈락: the activity belongs to `끝난 활동`.
     let currentIndex: Int?
     let failed: Bool
-    /// Every selection stage before the activity period is marked PASSED (contract: 참여 확정 is inferred from statuses, 2026-10-22).
+    /// Every 선발 단계 is marked PASSED and a later stage remains (contract: 참여 확정 is inferred from statuses, 2026-10-22).
     var participating = false
     var ended: Bool { currentIndex == nil }
     var current: ActivityStage? { currentIndex.map { stages[$0] } }
@@ -99,17 +102,17 @@ enum ActivityStages {
                                               allDay: application.allDay, dateLabel: application.dateLabel, timeZone: application.timeZone,
                                               statuses: application.statuses)
             stages.append(ActivityStage(id: applicationStageID, name: "지원", badgeName: "지원", icon: "paperplane", source: deadline,
-                                        mark: marks[application.id] ?? .wait, state: .upcoming))
+                                        selection: true, mark: marks[application.id] ?? .wait, state: .upcoming))
         }
         let ordered = activity.stages.enumerated()
             .sorted { ($0.element.anchor ?? .distantFuture, $0.offset) < ($1.element.anchor ?? .distantFuture, $1.offset) }.map(\.element)
         for source in ordered {
-            stages.append(stage(source, name: source.title, badgeName: badgeName(source), icon: icon(source.kind), marks: marks))
+            stages.append(stage(source, name: source.title, badgeName: badgeName(source), icon: icon(source.kind), selection: isSelection(source),
+                                marks: marks))
         }
-        let selectionCount = stages.count
         if let period = activity.activityStage {
             let name = period.title.isEmpty ? "활동" : period.title
-            stages.append(stage(period, name: name, badgeName: name, icon: "flag", marks: marks))
+            stages.append(stage(period, name: name, badgeName: name, icon: "flag", selection: false, marks: marks))
         }
         guard !stages.isEmpty else { return nil }
         let today = seoul.startOfDay(for: now)
@@ -121,13 +124,22 @@ enum ActivityStages {
             }
         }
         let failed = stages.contains { $0.mark.kind == .failed }
-        // 참여 중: an activity period follows selection stages that are all marked passed.
-        let participating = !failed && selectionCount > 0 && selectionCount < stages.count
-            && stages.prefix(selectionCount).allSatisfy { $0.mark.kind == .passed }
+        // 참여 중: every 선발 단계 is marked passed and some other stage (the activity period at least) remains.
+        let selections = stages.filter(\.selection)
+        let participating = !failed && !selections.isEmpty && selections.count < stages.count
+            && selections.allSatisfy { $0.mark.kind == .passed }
         return ActivityProgress(stages: stages, currentIndex: failed ? nil : currentIndex, failed: failed, participating: participating)
     }
-    private static func stage(_ source: ActivityStageModel, name: String, badgeName: String, icon: String, marks: [String: StageMark]) -> ActivityStage {
-        ActivityStage(id: source.id, name: name, badgeName: badgeName, icon: icon, source: source, mark: marks[source.id] ?? .wait, state: .upcoming)
+    private static func stage(_ source: ActivityStageModel, name: String, badgeName: String, icon: String, selection: Bool,
+                              marks: [String: StageMark]) -> ActivityStage {
+        ActivityStage(id: source.id, name: name, badgeName: badgeName, icon: icon, source: source, selection: selection,
+                      mark: selection ? marks[source.id] ?? .wait : .wait, state: .upcoming)
+    }
+    /// 선발 단계 (contract "통과 여부는 선발 단계에만" 2026-10-26): 마감·발표·면접 (`DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`), and an `EVENT`
+    /// whose statuses the admin set (an id: e.g. 코딩테스트, which collection files as EVENT like any 행사). The `지원` stage always is; the
+    /// activity period never.
+    private static func isSelection(_ source: ActivityStageModel) -> Bool {
+        source.kind != .event || source.statuses.contains { $0.id != nil }
     }
     /// Timed: over once its end (its start, with no end) fell before today. All-day: over once the exclusive end reached today.
     /// Date-less: never by time.

@@ -54,17 +54,22 @@
     "FavoriteList",
     "InboxGroup",
     "InboxItem",
-    "InboxPage"
+    "InboxPage",
+    "Timetable",
+    "TimetableTrack",
+    "TimetableSession",
+    "FavoriteSession",
+    "DiscoveryKind",
+    "ActivityStatus",
+    "StatusGroup"
   ],
   "entities/identity": [
+    "CardHistoryRows",
     "CardModel",
     "CardView",
     "ContactModel",
-    "ContactSymbol",
     "HistoryBadge",
-    "HistoryModel",
-    "HistoryTimeline",
-    "IdentityHeading"
+    "HistoryModel"
   ],
   "features/calendar": [
     "CalendarConflictView",
@@ -76,6 +81,10 @@
   ],
   "features/analytics": [
     "AppAnalytics"
+  ],
+  "features/ads": [
+    "QueueAdLoader",
+    "QueueAdView"
   ],
   "pages/home": [
     "HomePage"
@@ -94,11 +103,9 @@
     "DearbyGoogleButton",
     "DearbyInfoRow",
     "DearbyBrand",
-    "DearbyMarkdownText",
     "DearbySearchField",
     "DearbySheetHeader",
     "DearbyStyle",
-    "MarkdownDocument",
     "NameIndex",
     "SearchQuery",
     "ConsentVersions",
@@ -113,7 +120,9 @@
     "DearbyRowsSkeleton",
     "DearbyQuestionPage",
     "InboxRoute",
-    "InboxEntry"
+    "InboxEntry",
+    "PromptLayers",
+    "PromptHost"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -140,7 +149,21 @@
     "DiscoveryQueueServer",
     "DiscoveryQueuePage",
     "DiscoveryQueueEntry",
-    "QueueStoryCard"
+    "QueueStoryCard",
+    "SessionFavoritesModel",
+    "SessionFavoritesServer",
+    "TimetableGrid",
+    "MyTimetable",
+    "TimetablePage",
+    "TimetableRoute",
+    "TimetableTable",
+    "MyTimetableList",
+    "TimetableSessionCard",
+    "TimetableSessionSheet",
+    "TimetableTrackBadge",
+    "TimetableText",
+    "MySessionsPage",
+    "MySessionsRoute"
   ],
   "widgets/identity": [
     "AccountViewModel",
@@ -167,7 +190,6 @@
     "ProfileVersionPage",
     "ProfileVersionsPage",
     "ReceivedCardRow",
-    "TemplateDocument",
     "WalletModel",
     "WalletPage",
     "ConsentPage",

@@ -2,16 +2,22 @@
 import { useEffect, useState } from "react";
 import {
   type Activity,
+  type Schedule,
   type Tag,
   fieldTagsOf,
   httpsUrl,
   traitTagsOf,
-  recruitment,
+  STATUS_BADGE,
+  activityStatus,
+  applicable,
+  recruitmentDate,
   scheduleLabel,
 } from "@/lib/models";
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
+import { CategoryIcon } from "@/shared/ui/category-icon";
 import { errorMessage, request, RequestError } from "@/lib/client";
+import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
@@ -24,6 +30,17 @@ import { TagIcon } from "@/shared/ui/tag-icon";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
+import { TimetableSheet } from "@/widgets/activity/timetable";
+import { statusVariant } from "@/widgets/activity/activity-card";
+
+/** 사용 통계 매개변수 (contract analytics-v1.md "웹"): `source` is `link`, the web page being the shared link itself. */
+function eventParams(activity: Activity) {
+  return {
+    activity_id: activity.id,
+    ...(activity.category && { category: activity.category.toLowerCase() }),
+    source: "link",
+  };
+}
 
 /**
  * Activity detail (contract "웹 리디자인" › 활동 상세, iOS `ActivityDetailView`): an information block (status/category capsules,
@@ -34,10 +51,17 @@ export function ActivityDetail({ id }: { id: number }) {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(Date.now);
+  // The schedule block whose 시간표 modal is open (contract "트랙·세션 시간표" › 앱·웹 화면); the id outlives `open` so the
+  // closing animation keeps its content.
+  const [timetableId, setTimetableId] = useState<number>();
+  const [timetableOpen, setTimetableOpen] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     request<Activity>(`/activities/${id}`, { signal: controller.signal })
-      .then(setActivity)
+      .then((found) => {
+        setActivity(found);
+        track("activity_view", eventParams(found));
+      })
       .catch((error) => {
         if (controller.signal.aborted) return;
         if (error instanceof RequestError && error.status === 404) setActivity(null);
@@ -70,18 +94,45 @@ export function ActivityDetail({ id }: { id: number }) {
         primary={{ label: "활동 둘러보기", href: "/" }}
       />
     );
-  const status = recruitment(activity.application, now);
+  // 활동 상태 (contract "활동 상태" 2026-10-26): the server's, else read from the recruitment window (older servers).
+  const status = activityStatus(activity, now);
   const official = httpsUrl(activity.officialUrl);
   // CTA: 마감이 아니면 신청 링크(없으면 공식 안내)로, 마감이면 공식 안내로(contract "신청 확인 조건 완화·공개 applicationUrl").
-  const closed = status.label === "모집 마감";
+  const closed = !applicable(status);
   const apply = closed ? undefined : httpsUrl(activity.applicationUrl ?? null);
   const cta = apply ?? official;
   const eligibility = eligibilityLines(activity.eligibility);
   const place = activity.place ?? null;
-  const facts = [
+  // The 활동 기간 block can carry a timetable too; with 세부 일정 listed it gets its own row so the button does not disappear.
+  const periodRow = activity.schedules.length && activity.activitySchedule.hasTimetable ? [activity.activitySchedule] : [];
+  const openTimetable = [activity.activitySchedule, ...activity.schedules].find((schedule) => schedule.id === timetableId);
+  // A block with a timetable is one whole-row button that opens the modal; other blocks stay plain rows.
+  const scheduleRow = (schedule: Schedule, body: React.ReactNode) =>
+    schedule.hasTimetable ? (
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-fill/50 active:bg-fill"
+        onClick={() => {
+          setTimetableId(schedule.id);
+          setTimetableOpen(true);
+        }}
+      >
+        {body}
+        <span className="flex shrink-0 items-center gap-0.5 self-center text-subheadline text-secondary-label">
+          시간표
+          <Icon name="chevron-right" size="inline" />
+        </span>
+      </button>
+    ) : (
+      <div className="flex items-start gap-3 px-4 py-3">{body}</div>
+    );
+  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` with `D-3` while open; an end alone keeps `~ … 마감`.
+  const recruitmentDay = recruitmentDate(activity.application, now);
+  const facts: [string, string, string?][] = [
     ["주최", activity.organization.name],
     ["프로그램", activity.program.name],
-    ["모집 기간", scheduleLabel(activity.application, "recruitment")],
+    ["모집 기간", (status !== "NO_RECRUITMENT" && recruitmentDay.text) || "모집 일정 미정", recruitmentDay.dday],
     ["활동 기간", scheduleLabel(activity.activitySchedule, "activity")],
   ];
   return (
@@ -89,8 +140,15 @@ export function ActivityDetail({ id }: { id: number }) {
       <article className="pt-2 pb-48">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant={status.open ? "filled" : status.label === "모집 예정" ? "tinted" : "neutral"}>{status.label}</Badge>
-            {activity.category && <Badge>{categoryLabel(activity.category)}</Badge>}
+            {STATUS_BADGE[status] && (
+              <Badge variant={statusVariant[status]}>{STATUS_BADGE[status]}</Badge>
+            )}
+            {activity.category && (
+              <Badge>
+                <CategoryIcon code={activity.category} />
+                {categoryLabel(activity.category)}
+              </Badge>
+            )}
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>
           <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>
@@ -102,10 +160,17 @@ export function ActivityDetail({ id }: { id: number }) {
           )}
         </div>
         <InsetGroup title="활동 안내">
-          {facts.map(([label, value]) => (
+          {facts.map(([label, value, badge]) => (
             <li key={label} className="flex items-baseline gap-4 px-4 py-3">
               <span className="w-20 shrink-0 text-subheadline text-secondary-label">{label}</span>
-              <span className="flex-1 text-subheadline break-keep">{value || "미확인"}</span>
+              <span className="flex-1 text-subheadline break-keep">
+                {value || "미확인"}
+                {badge && (
+                  <Badge variant="filled" className="ml-1.5 align-[1px] text-caption2 tabular-nums">
+                    {badge}
+                  </Badge>
+                )}
+              </span>
             </li>
           ))}
         </InsetGroup>
@@ -127,23 +192,40 @@ export function ActivityDetail({ id }: { id: number }) {
         )}
         <InsetGroup title="일정">
           {activity.schedules.length ? (
-            activity.schedules.map((schedule) => (
-              <li key={schedule.id} className="flex items-start gap-3 px-4 py-3">
-                <Icon name="calendar" tone="teal" />
-                <div className="flex flex-col gap-0.5">
-                  <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
-                  <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
-                  {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
-                </div>
+            [...periodRow, ...activity.schedules].map((schedule) => (
+              <li key={schedule.id}>
+                {scheduleRow(
+                  schedule,
+                  <>
+                    <Icon name="calendar" tone="teal" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
+                      <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
+                      {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
+                    </div>
+                  </>,
+                )}
               </li>
             ))
           ) : (
-            <li className="flex items-center gap-3 px-4 py-3 text-subheadline">
-              <Icon name="calendar" tone="teal" />
-              {scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}
+            <li className="text-subheadline">
+              {scheduleRow(
+                activity.activitySchedule,
+                <>
+                  <Icon name="calendar" tone="teal" />
+                  <span className="min-w-0 flex-1">{scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}</span>
+                </>,
+              )}
             </li>
           )}
         </InsetGroup>
+        <TimetableSheet
+          activityId={activity.id}
+          activityName={activity.name}
+          schedule={openTimetable}
+          open={timetableOpen}
+          onOpenChange={setTimetableOpen}
+        />
         {/* 활동 장소 (contract "활동 장소 — 2026-10-19"): curated place with a map link; otherwise the collected phrase alone. */}
         {place ? (
           <InsetGroup title="장소">
@@ -201,7 +283,12 @@ export function ActivityDetail({ id }: { id: number }) {
       <BottomBar>
           {cta ? (
             <Button asChild size="lg" variant="filled">
-              <a href={cta} target="_blank" rel="noopener noreferrer">
+              <a
+                href={cta}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => apply && track("apply_click", eventParams(activity))}
+              >
                 {closed ? "공식 안내 보기" : apply ? "신청 사이트 열기" : "공식 사이트에서 신청"}{" "}
                 <Icon name="external-link" size="inline" />
               </a>

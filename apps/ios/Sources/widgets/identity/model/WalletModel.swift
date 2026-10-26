@@ -91,7 +91,11 @@ import Observation
             let fetch = { @Sendable [client = account.client] (session: TokenPair?) in
                 try await client.publicCard(incoming.cardID, code: incoming.code, session)
             }
-            let card = try await (session == nil ? fetch(nil) : account.authorized { try await fetch($0) }).cardModel
+            var card = try await (session == nil ? fetch(nil) : account.authorized { try await fetch($0) }).cardModel
+            // The photo has the card's read rule (contract "프로필 사진"): a card not yet saved needs the same QR code.
+            if let code = incoming.code, let photo = card.photoUrl, let encoded = code.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+                card.photoUrl = photo + (photo.contains("?") ? "&" : "?") + "code=" + encoded
+            }
             // Signed in, the owner reads it without a code; signed out, an own card shows up only when saving (409).
             let own = session == nil ? false : await myCards()?.contains { $0.id == incoming.cardID } == true
             phase = own ? .ownCard(card) : .loaded(card)
@@ -189,7 +193,7 @@ import Observation
     private func entries(query: String) -> [Entry] {
         wallet.items.compactMap { receipt in
             let card = receipt.card.cardModel
-            guard SearchQuery.matches(query, fields: [card.profileName, card.job, card.name, card.introduction, card.description] + card.histories.map(\.title)) else { return nil }
+            guard SearchQuery.matches(query, fields: [card.profileName, card.job, card.name, card.description] + card.histories.map(\.title)) else { return nil }
             return entry(receipt)
         }
     }
@@ -218,13 +222,16 @@ import Observation
 extension PublishedCard {
     /// The saved or own card shown with the identity components.
     var cardModel: CardModel {
-        CardModel(id: id, name: name, profileName: profileName, job: job, introduction: introduction ?? "", description: description,
+        CardModel(id: id, name: name, profileName: profileName, job: job, introLink: introLink, description: description,
                   contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
-                  histories: histories.map(\.historyModel), organization: latestOrganization)
+                  histories: histories.map(\.historyModel), organization: latestOrganization, photoUrl: photoUrl)
     }
+    var latestOrganization: String? { histories.latestOrganization }
+}
+extension [AccountHistory] {
     /// Organization name of the most recent approved history (start date descending), nil when none names one.
     var latestOrganization: String? {
-        histories.filter { $0.approval == "approved" }.sorted { $0.startDate > $1.startDate }
+        filter { $0.approval == "approved" }.sorted { $0.startDate > $1.startDate }
             .lazy.compactMap { $0.organization?.name ?? $0.organizationName }.first { !$0.isEmpty }
     }
 }

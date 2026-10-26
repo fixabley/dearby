@@ -1,5 +1,11 @@
 package com.dearby.nativeapp.app
 
+import com.dearby.nativeapp.BuildConfig
+import com.dearby.nativeapp.features.oauth.OAuthBrowser
+import com.dearby.nativeapp.pages.profile.ConsentPage
+import com.dearby.nativeapp.pages.profile.ProfilePhase
+import com.dearby.nativeapp.shared.config.ConsentVersions
+import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -19,7 +25,6 @@ import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.inbox.InboxPage
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
-import com.dearby.nativeapp.pages.activity.FavoritesView
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector, val code: String) {
@@ -40,15 +45,17 @@ private sealed interface Route {
     data object Queue : Route
     /** 알림 목록 (contract "알림 목록(발견 우상단 종)"), from the tab bars' bell. */
     data object Inbox : Route
+    /** 개인정보 동의 (contract "개인정보 동의" 2026-10-25): signed in without the current consent, at launch, on return and from account features. */
+    data object Consent : Route
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
-    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, favoritesLink: FavoritesView? = null, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
+    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, sessions: SessionFavoritesViewModel, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
-    // 내 프로필 `사용 통계 보내기` (2026-10-25), kept on the device.
+    // 설정 `개인정보` `사용 통계 보내기` (2026-10-25), kept on the device.
     var analyticsOn by remember { mutableStateOf(device.analyticsEnabled) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
@@ -69,6 +76,9 @@ private sealed interface Route {
             "mine" -> { activityModel.screenshotActivity()?.let { activityModel.apply(it, true) }; tab = Tab.Mine }
             "cards" -> tab = Tab.Cards
             "settings" -> route = Route.Settings
+            // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
+            "queue" -> { queue.open(); route = Route.Queue }
+            "favorites" -> { tab = Tab.Mine; mineSegment = MineSegment.FAVORITES }
         }
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
@@ -84,12 +94,24 @@ private sealed interface Route {
     // The bell opens 알림 목록 (signed out → sign-in); [inboxReturn] brings it back after the detail one of its rows opened.
     var inboxReturn by remember { mutableStateOf(false) }
     val inboxState by inbox.state.collectAsStateWithLifecycle()
-    val notify = { if (auth.phase == AccountPhase.SIGNED_IN) { Tracking.menu("notifications_inbox"); inbox.open(); route = Route.Inbox } else { signingIn = true } }
+    // Signed in without the current consent the account features (and their data sync, [AccountViewModel.ready]) wait behind the consent screen.
+    val ready by account.ready.collectAsStateWithLifecycle()
+    val needAccount = { if (auth.phase == AccountPhase.SIGNED_IN) route = Route.Consent else signingIn = true }
+    val notify = { if (ready) { Tracking.menu("notifications_inbox"); inbox.open(); route = Route.Inbox } else needAccount() }
     // Signed in from the `오늘의 맞춤 대기열` row: once the settings are read, a never-finished funnel opens (its result opens the queue), else the queue.
     var queueAfterSignIn by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
-    LaunchedEffect(signedIn) { if (signedIn) signingIn = false; Tracking.signedIn(signedIn) }
-    val compose = { if (signedIn) { Tracking.menu("card_create"); publish.start(); route = Route.Composer } else { signingIn = true } }
+    // The consent state comes with the profile, read at sign-in and on every return to the app.
+    LaunchedEffect(signedIn) { if (signedIn) { signingIn = false; profile.load() } }
+    LaunchedEffect(ready) { Tracking.signedIn(ready) }
+    val consentNeeded = signedIn && profileState.phase == ProfilePhase.LOADED && profileState.consentRequired
+    var resumed by remember { mutableIntStateOf(0) }
+    // Right after sign-up (profile version 0) the consent comes at once, over whatever screen the sign-in started from (설정 too).
+    LaunchedEffect(consentNeeded, resumed) { if (consentNeeded && !signingIn && (route == null || profileState.settingUp)) route = Route.Consent }
+    // Agreed (or signed out): the screen goes; right after sign-up on to 프로필 만들기.
+    LaunchedEffect(consentNeeded) { if (!consentNeeded && route == Route.Consent) { route = null; if (profileState.settingUp) tab = Tab.Profile } }
+    val consentScope = rememberCoroutineScope()
+    val compose = { if (ready) { Tracking.menu("card_create"); publish.start(taken = myCards.state.value.cards.map { it.title }.toSet()); route = Route.Composer } else needAccount() }
     // 즐겨찾기 하트 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): signed out a heart opens sign-in. The first program heart on Android 13+ asks for the
     // notification permission once and starts push (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -97,7 +119,7 @@ private sealed interface Route {
     val activityListState by activityModel.state.collectAsStateWithLifecycle()
     val favoriteIds by favorites.ids.collectAsStateWithLifecycle()
     val hearts = FavoriteHearts(favoriteIds.activities, favoriteIds.programs, favoriteIds.levels, toggle = { program, id ->
-        if (!signedIn) signingIn = true
+        if (!ready) needAccount()
         else {
             // The first program heart starts push (token only from now on) and, on Android 13+, asks for the permission this once.
             if (program && id !in favoriteIds.programs && !device.pushStarted) { if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION); notifications.start() }
@@ -108,11 +130,19 @@ private sealed interface Route {
             favorites.toggle(program, id)
         }
     }, setLevel = { program, id, level -> Analytics.event("notify_level_set", "type" to if (program) "program" else "activity", "level" to level.name.lowercase()); favorites.setLevel(program, id, level) })
-    // `오늘 일정 n개` (dearby://favorites?view=calendar): 내 활동 → 즐겨찾기 in that view.
-    LaunchedEffect(favoritesLink) { favoritesLink?.let { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(it); consumeFavoritesLink() } }
+    // `오늘 일정 n개` (dearby://favorites): 내 활동 → 즐겨찾기.
+    LaunchedEffect(favoritesLink) { if (favoritesLink) { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; consumeFavoritesLink() } }
+    // 세션 찜 (contract "트랙·세션 시간표"): signed out the login sheet, signed in without consent the consent screen — as the activity hearts.
+    val sessionHeart: (String) -> Unit = { id -> if (!ready) needAccount() else sessions.toggle(id) }
     val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val showNotice: (String) -> Unit = remember(snackbar) { { text -> snackbarScope.launch { snackbar.showSnackbar(text) } } }
     LaunchedEffect(favoriteNotice) { favoriteNotice?.let { try { snackbar.showSnackbar(it) } finally { favorites.dismissNotice() } } }
+    val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
+    // While a timetable sheet is open the sheet shows it (ActivityRoute), since this Snackbar sits under the sheet.
+    val timetableOpen = sessions.open.collectAsStateWithLifecycle().value != null
+    LaunchedEffect(sessionNotice, timetableOpen) { sessionNotice?.takeIf { !timetableOpen }?.let { try { snackbar.showSnackbar(it) } finally { sessions.dismissNotice() } } }
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
     // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
@@ -129,7 +159,7 @@ private sealed interface Route {
     val reco by recommendation.state.collectAsStateWithLifecycle()
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
-    LaunchedEffect(tab, route, reco.needsFunnel, signedIn) { if (screenshot == null && signedIn && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true, entry = "auto") }
+    LaunchedEffect(tab, route, reco.needsFunnel, ready) { if (screenshot == null && ready && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true, entry = "auto") }
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
     LaunchedEffect(activityDetail) {
         if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue }
@@ -140,14 +170,16 @@ private sealed interface Route {
     // asks for sign-in and then carries on by itself ([queueAfterSignIn]).
     val openQueue = { Tracking.menu("queue"); queue.open(); route = Route.Queue }
     val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true, entry = "queue_row") }
-    LaunchedEffect(signedIn, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && signedIn && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
+    LaunchedEffect(ready, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && ready && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
-        QueueEntryRow(signedIn) { if (signedIn) enterQueue() else { signingIn = true; queueAfterSignIn = true } }
+        QueueEntryRow(ready, signedIn) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
     }
-    LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
+    // A card link to save: after sign-in and consent it carries on; signed in without consent it asks for the consent first.
+    LaunchedEffect(ready, walletState.needSignIn) { if (ready && walletState.needSignIn) wallet.retryPending() }
+    LaunchedEffect(signedIn, ready, walletState.needSignIn) { if (signedIn && !ready && walletState.needSignIn && consentNeeded) route = Route.Consent }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
-    // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their
+    // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `dismissKeyboardOnScroll()` on their
     // scroll containers but no `imePadding()` of their own, and the tab bar is hidden while the keyboard is up.
     // 사용 통계: one `screen_view` per screen shown (analytics-v1 screen names), nothing else about the screen.
     val favoritesView by favorites.state.collectAsStateWithLifecycle()
@@ -160,15 +192,18 @@ private sealed interface Route {
         route == Route.Settings -> "settings"
         route == Route.Queue -> "queue"
         route == Route.Inbox -> "notifications_inbox"
+        route == Route.Consent -> "consent"
         activityDetail -> "activity_detail"
         tab == Tab.Discovery -> "discovery"
-        tab == Tab.Mine -> if (mineSegment != MineSegment.FAVORITES) "my_activity" else if (favoritesView.view == FavoritesView.CALENDAR) "favorites_calendar" else "favorites"
+        tab == Tab.Mine -> if (mineSegment != MineSegment.FAVORITES) "my_activity" else "favorites"
         tab == Tab.Cards -> if (cardsSegment == CardsSegment.MINE) "my_cards" else "received_cards"
         else -> "profile"
     }
     // Logged on every change and on coming back to the app (a view logged while in the background is dropped by Firebase).
     androidx.lifecycle.compose.LifecycleResumeEffect(screenName) { Analytics.screen(screenName); onPauseOrDispose {} }
     val imeVisible = WindowInsets.isImeVisible
+    // One Snackbar for screens below (연락처 복사, 2026-10-26 "연락처 아이콘·바로가기").
+    CompositionLocalProvider(LocalNotice provides showNotice) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             Box(Modifier.weight(1f)) {
@@ -183,8 +218,23 @@ private sealed interface Route {
                         ?: LaunchedEffect(screen) { route = null }
                     Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
-                    Route.Composer -> CardComposerRoute(publish, account) { route = null }
-                    Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
+                    Route.Composer -> CardComposerRoute(publish, account) {
+                        (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
+                        route = null
+                    }
+                    Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }) { route = null }
+                    Route.Consent -> {
+                        BackHandler { route = null }
+                        ConsentPage(profileState.consenting, profileState.consentError,
+                            openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) },
+                            openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
+                            agree = profile::consent, close = { route = null },
+                            // Right after sign-up (no profile saved) 가입 취소 deletes the account; an account asked again for a new version gets 로그아웃.
+                            cancelSignUp = if (profileState.profile?.version == 0) {
+                                { consentScope.launch { runCatching { account.deleteAccount() }.onFailure { notice = "가입을 취소하지 못했어요. 잠시 후 다시 시도해 주세요." }; profile.load() } }
+                            } else null,
+                            signOut = { consentScope.launch { account.signOut(); profile.load() } }, renewal = profileState.profile?.consent != null)
+                    }
                     Route.Inbox -> {
                         BackHandler { route = null }
                         InboxPage(inboxState, { route = null }, { row -> inbox.read(row.id); inboxReturn = true; activityModel.openLinked(row.activityId, "inbox") }, inbox::readAll, inbox::open, inbox::loadMore)
@@ -205,12 +255,13 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader,
-                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = { signingIn = true }, unread = inboxState.unread) { activityDetail = it }
+                                openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; route = Route.Consent }, header = recoHeader,
+                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread,
+                                sessions = sessions, sessionHeart = sessionHeart) { activityDetail = it }
                         }
-                        Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
+                        Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify)
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery }, askConsent = { route = Route.Consent })
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
@@ -225,13 +276,15 @@ private sealed interface Route {
             }
         }
     }
+    }
     // Contract #148 "신청 확인": ask once when the app comes back from the official application page.
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> activityModel.appLeft()
-                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { activityModel.appReturned(); inbox.refreshCount() }
+                // The consent is read again on every return and asked again while missing (contract "개인정보 동의" 2026-10-25).
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { activityModel.appReturned(); inbox.refreshCount(); if (account.state.value.phase == AccountPhase.SIGNED_IN) { profile.load(); resumed++ } }
                 else -> Unit
             }
         }

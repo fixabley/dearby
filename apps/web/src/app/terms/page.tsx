@@ -9,18 +9,21 @@ export default function TermsPage() {
   return (
     <article className="legal pt-0 pb-6">
       <LargeTitle>이용약관</LargeTitle>
-      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 22일</p>
+      <p className="px-1 text-footnote text-secondary-label">
+        시행일 2026년 11월 1일 (2026년 10월 25일 고지) · 이전 판 2026년 10월 22일 시행
+      </p>
       <p className="mt-4 px-1 text-body leading-relaxed">
         이 약관은 <strong>팀 WID</strong>(이하 &ldquo;운영자&rdquo;)이 제공하는 Dearby(이하 &ldquo;서비스&rdquo;)를 이용하는 조건을 정합니다.
       </p>
       <h2>1. 서비스</h2>
       <p>
         서비스는 부트캠프·컨퍼런스·동아리 같은 활동을 모아 보여 주고, 신청한 활동의 진행 단계를 기록하고, 디지털 명함을 만들어 활동에서 만난 사람과 교환하는 기능을
-        제공합니다. 기능은 iOS·Android 앱과 웹사이트로 제공되며 예고 뒤 바뀔 수 있습니다.
+        제공합니다. 기능은 iOS·Android 앱과 웹사이트로 제공되며 예고 뒤 바뀔 수 있습니다. 광고 목적 정보 제공에 선택 동의한 경우 앱의 맞춤 대기열 끝에 Google AdMob의 비개인화 광고가 한 장 표시될 수 있으며(동의하지 않아도 다른 기능은 그대로 쓸 수 있습니다),
+        광고와 관련한 정보 처리는 <Link href="/privacy">개인정보 처리방침</Link>을 따릅니다.
       </p>
       <h2>2. 계정</h2>
       <ul>
-        <li>계정은 패스키 또는 Apple·Google 로그인으로 만듭니다. 계정은 본인만 쓰고 다른 사람에게 넘길 수 없습니다.</li>
+        <li>계정은 Apple 또는 Google 로그인으로 만들며, 만든 뒤 패스키를 추가해 로그인할 수 있습니다. 계정은 본인만 쓰고 다른 사람에게 넘길 수 없습니다.</li>
         <li>사용자는 언제든 앱에서 계정을 삭제할 수 있으며, 삭제하면 프로필·명함·받은 명함·인증자료가 모두 지워집니다.</li>
         <li>운영자는 약관 위반이나 보안 사고가 있을 때 계정 이용을 제한할 수 있습니다.</li>
       </ul>
@@ -57,6 +60,10 @@ export default function TermsPage() {
       <p>약관이 바뀌면 시행일 7일 전(사용자에게 불리한 변경은 30일 전)에 이 페이지와 앱에 알립니다. 변경 뒤 서비스를 계속 쓰면 변경에 동의한 것으로 봅니다.</p>
       <h2>9. 준거법과 관할</h2>
       <p>이 약관은 대한민국 법을 따르며, 분쟁은 민사소송법에 따른 관할 법원에서 다룹니다.</p>
+      <h2>변경 이력</h2>
+      <ul>
+        <li>2026년 10월 25일 고지, 2026년 11월 1일 시행: 새 계정은 Apple·Google 로그인으로만 만들고 패스키는 만든 뒤 추가하도록 바꾸고, 앱의 맞춤 대기열 끝 비개인화 광고를 명시했습니다.</li>
+      </ul>
       <p className="mt-8 px-1 text-footnote text-secondary-label">
         관련 문서: <Link href="/privacy">개인정보 처리방침</Link> · 문의: <strong>fixabley@naver.com</strong> · 010-7503-5692
       </p>

@@ -10,6 +10,7 @@ import io.wid.dearby.application.program.ProgramSummary
 import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.TagKind
 import io.wid.dearby.application.program.ProgramTags
@@ -32,21 +33,34 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
 
     // 열린 활동 + 유형 칩·종류·대상자 1차 판정(terms)
     private fun openConditions(condition: ProgramSummarySearch, now: OffsetDateTime): List<Condition> = buildList {
-        add(OpenActivityConditions.open(now))
+        add(condition.statuses?.let { selected(it, now) } ?: OpenActivityConditions.open(now))
         condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
         condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+        condition.kind?.let { add(OpenActivityConditions.kind(it)) }
         condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
         addAll(EligibilityRows.conditions(condition.eligibility))
     }
 
     override fun openActivities(condition: ProgramSummarySearch, now: OffsetDateTime): List<OpenActivity> =
-        dsl.select(ACTIVITIES.ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, deadline, ACTIVITIES.ELIGIBILITY)
+        dsl.select(
+            ACTIVITIES.ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, deadline, ACTIVITIES.ELIGIBILITY, OpenActivityConditions.recruitmentEnd,
+            DSL.field(TimetableRows.activityHasTimetable), OpenActivityConditions.recruitmentStart, OpenActivityConditions.status(now),
+        )
             .from(ACTIVITIES)
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
             .where(openConditions(condition, now))
             .orderBy(ACTIVITIES.ID)
-            .fetch { row -> OpenActivity(row.value1()!!, row.value2()!!, row.value3()!!, row.value4(), row.value5(), EligibilityRows.read(row.value6())) }
+            .fetch { row ->
+                OpenActivity(
+                    row.value1()!!, row.value2()!!, row.value3()!!, row.value4(), row.value5(), row.value7(), row.value9(),
+                    ActivityStatus.valueOf(row.value10()), EligibilityRows.read(row.value6()), row.value8() == true,
+                )
+            }
+
+    // 상태 필터: 그 상태의 게시 활동. 모집 중·예정이 아닌 상태는 최근 3년 안(openOnly=false와 같은 창)
+    private fun selected(statuses: Set<ActivityStatus>, now: OffsetDateTime): Condition =
+        OpenActivityConditions.statusIn(statuses, now).and(OpenActivityConditions.open(now).or(OpenActivityConditions.upcoming(now)).or(recent(now)))
 
     override fun search(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary> {
         val q = condition.q?.trim()?.takeIf { it.isNotBlank() }
@@ -54,11 +68,14 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         // 모집 예정(마감 숨기기, 2026-10-19 밤): 켜진 토글은 마감된 활동만 숨기므로 모집 예정 활동이 있는 프로그램도 돌려준다
         val isUpcoming = OpenActivityConditions.upcoming(now)
         val isOpenOrUpcoming = isOpen.or(isUpcoming)
+        // 상태 필터가 있으면 그 상태의 활동, 없으면 모집 중·모집 예정(시간표 배지·검색어 일치의 기준)
+        val isSelected = condition.statuses?.let { selected(it, now) } ?: isOpenOrUpcoming
         // 유형·종류·대상자 1차 판정은 활동 행 자체를 거른다(열린 활동 수·최근 활동 모두 이 활동들로 센다)
         val activityFilter = buildList {
             add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
             condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+            condition.kind?.let { add(OpenActivityConditions.kind(it)) }
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
         }
@@ -66,11 +83,15 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         val activityMatches = q?.let { ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)).or(TagRows.activityTagMatches(it)) }
         val openCount = DSL.count(DSL.`when`(isOpen, ACTIVITIES.ID))
         val nearestEnd = DSL.min(DSL.`when`(isOpen, deadline))
+        val nearestRealEnd = DSL.min(DSL.`when`(isOpen, OpenActivityConditions.recruitmentEnd))
         val upcomingCount = DSL.count(DSL.`when`(isUpcoming, ACTIVITIES.ID))
         val nearestStart = DSL.min(DSL.`when`(isUpcoming, OpenActivityConditions.recruitmentStart))
         val latestStart = DSL.max(OpenActivityConditions.activityStart)
+        // 접힌 카드 "시간표" 배지: 모집 중·모집 예정 활동 중 시간표 있는 것이 있는지
+        val hasTimetable = DSL.boolOr(isSelected.and(TimetableRows.activityHasTimetable))
+        val statuses = DSL.arrayAgg(OpenActivityConditions.status(now))
         // 검색어가 활동 이름에 맞은 모집 중·모집 예정 활동 id. 활동 이름으로만 맞은 프로그램도 목록에 넣기 위해 HAVING에서도 쓴다
-        val matchedIds = activityMatches?.let { DSL.arrayAggDistinct(DSL.`when`(it.and(isOpenOrUpcoming), ACTIVITIES.ID)) }
+        val matchedIds = activityMatches?.let { DSL.arrayAggDistinct(DSL.`when`(it.and(isSelected), ACTIVITIES.ID)) }
         val programMatches = q?.let {
             PROGRAMS.NAME.containsIgnoreCase(it).or(PROGRAMS.NAME_EN.containsIgnoreCase(it))
                 .or(ORGANIZATIONS.NAME.containsIgnoreCase(it)).or(ORGANIZATIONS.NAME_EN.containsIgnoreCase(it))
@@ -81,7 +102,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN,
             ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN,
             openCount, nearestEnd, matchedIds ?: DSL.inline(null, Array<Long>::class.java), PROGRAMS.CATEGORY, latestStart,
-            upcomingCount, nearestStart,
+            upcomingCount, nearestStart, nearestRealEnd, hasTimetable, statuses,
         )
             .from(PROGRAMS)
             .join(ORGANIZATIONS).on(ORGANIZATIONS.ID.eq(PROGRAMS.ORGANIZATION_ID))
@@ -89,7 +110,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
             .where(activityFilter)
-            .and(condition.programIds?.let { PROGRAMS.ID.`in`(it) } ?: if (condition.openOnly) isOpenOrUpcoming else recent)
+            .and(condition.programIds?.let { PROGRAMS.ID.`in`(it) } ?: condition.statuses?.let { isSelected } ?: if (condition.openOnly) isOpenOrUpcoming else recent)
             .groupBy(PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN, PROGRAMS.CATEGORY, ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN)
         val filtered = if (programMatches != null && activityMatches != null) {
             select.having(DSL.condition(DSL.boolOr(programMatches)).or(DSL.condition(DSL.boolOr(activityMatches))))
@@ -114,12 +135,14 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
                     organizationName = row.value5()!!,
                     organizationNameEn = row.value6(),
                     openActivityCount = row.value7(),
-                    nearestRecruitmentEndAt = row.value8(),
+                    nearestRecruitmentEndAt = row.value14(), // 모집 마감만. 정렬(nearestEnd)은 활동 시작 대체가 있는 정렬 키 그대로
                     matchedActivityIds = row.value9()?.filterNotNull()?.sorted().orEmpty(),
                     category = row.value10()?.let(ActivityCategory::valueOf),
                     latestActivityAt = row.value11(),
                     upcomingActivityCount = row.value12(),
                     nearestRecruitmentStartAt = row.value13(),
+                    hasTimetable = row.value15() == true,
+                    statusCounts = row.value16().orEmpty().filterNotNull().groupingBy(ActivityStatus::valueOf).eachCount(),
                 )
             }
     }

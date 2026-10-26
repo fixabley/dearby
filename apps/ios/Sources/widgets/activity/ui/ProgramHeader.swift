@@ -3,12 +3,14 @@ import SwiftUI
 /// 발견 프로그램 카드의 머리(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구 — AGENTS.md 2026-10-19 "플랫폼별 네이티브 디자인"):
 /// 왼쪽 로고 자리(44, 모서리 14: `logoURL`을 `AsyncImage`로 꽉 채워 보이고 로딩 중·실패·없음은 이름 첫 글자 아바타 — contract "프로그램 로고"),
 /// 가운데 이름·조직과 그 아래 태그 칩 한 줄(분야 1개 + 성격, contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음" 2026-10-24), 검색이 활동 이름에 맞으면
-/// 그 아래 줄 `맞는 활동 n개`, 오른쪽 모집 중 + 모집 예정 활동 수(`.borderedProminent` 캡슐 배지)와
+/// 그 아래 줄 `맞는 활동 n개`, 오른쪽 고른 상태의 활동 수(`statusCounts` 합, 옛 응답은 모집 중 + 모집 예정; `.borderedProminent` 캡슐 배지)와
 /// 보조 글자(`M월 d일 마감` / `M월 d일 시작` / `최근 yyyy.M`). 펼치면 배지가 `.bordered` 원형 버튼 안의 SF Symbol `chevron.down`(180° 회전, `접기`)으로 바뀐다.
 /// 머리 어디를 눌러도 `toggle`. 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 동작 줄이기에서는 배지↔화살표가 즉시 바뀐다.
 struct ProgramHeader<Accessory: View>: View {
     let name: String
     let organization: String
+    /// 프로그램 기본 종류 (contract "종류 아이콘 라벨" 2026-10-26): icon and name on a small line above the name; nil draws no line.
+    var category: ActivityCategory?
     /// The program logo, resolved against the API origin; nil without one.
     var logoURL: URL?
     let openCount: Int
@@ -18,13 +20,22 @@ struct ProgramHeader<Accessory: View>: View {
     var nearestStart: Date?
     /// The program's most recent activity start; `최근 yyyy.M` when nothing is recruiting or upcoming.
     var latestActivity: Date?
+    /// Activities per 활동 상태 in the list's scope (`ProgramSummary.statusCounts`, contract "활동 상태"): the badge counts them all and
+    /// VoiceOver reads them by state. Empty (older responses, favorites) falls back to the open and upcoming counts.
+    var statusCounts: [ActivityStatus: Int] = [:]
     /// The chip line under the organization: the first 분야 tag, then the 성격 tags.
     var fieldTags: [Tag] = []
     var traitTags: [Tag] = []
+    /// An open or upcoming activity has a 트랙·세션 시간표 (`ProgramSummary.hasTimetable`): a `시간표` badge after the name while collapsed
+    /// (expanded, the activity cards carry their own).
+    var hasTimetable = false
     /// Activities whose name matched the search; the card says `맞는 활동 n개` and stays collapsed.
     var matchedCount = 0
     /// `새 모집` (contract "즐겨찾기(하트)·새 모집 푸시 알림"): a badge after the name in the favorites screen.
     var newRecruitment = false
+    /// 발견 `이벤트` (user 2026-10-26): the meta line is the event date instead of the recruitment deadline: the latest event start when it
+    /// is still ahead (`M월 d일 행사`), a past one `최근 yyyy.M`.
+    var eventDates = false
     /// 알림 목록 (contract "알림 목록(발견 우상단 종)" 2026-10-25): the program's unread count takes the badge's place (no meta line); 0 shows a
     /// quiet badge.
     var unreadCount: Int?
@@ -60,9 +71,13 @@ struct ProgramHeader<Accessory: View>: View {
         HStack(alignment: .top, spacing: 12) {
             logo
             VStack(alignment: .leading, spacing: 2) {
+                if let category {
+                    Label(category.label, systemImage: category.systemImage).font(.dearby(.caption)).foregroundStyle(.secondary).lineLimit(1)
+                }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                     if newRecruitment { DearbyBadge(title: "새 모집") }
+                    if showsTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
                 }
                 Text(organization).font(.dearby(.subheadline)).foregroundStyle(.secondary)
                 TagChipLine(field: fieldTags.first, traits: traitTags).padding(.top, 6)
@@ -71,8 +86,9 @@ struct ProgramHeader<Accessory: View>: View {
             Spacer(minLength: 0)
         }.contentShape(Rectangle())
     }
+    private var showsTimetable: Bool { hasTimetable && !expanded }
     private var spokenLabel: String {
-        [name, newRecruitment ? "새 모집" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
+        [category?.label, name, newRecruitment ? "새 모집" : nil, showsTimetable ? "시간표 있음" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
             .compactMap { $0 }.joined(separator: ", ")
     }
     /// The 44-point logo slot: the image filled and clipped to a 14-point continuous corner; the initial avatar until it loads, on failure or without a URL.
@@ -108,7 +124,7 @@ struct ProgramHeader<Accessory: View>: View {
                 .accessibilityIdentifier("program-toggle-\(name)")
                 .transition(reduceMotion ? .identity : .scale(scale: 0.6).combined(with: .opacity))
         } else {
-            Button(action: toggle) { countText(unreadCount ?? openCount + upcomingCount) }
+            Button(action: toggle) { countText(unreadCount ?? total) }
             .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(DearbyStyle.tealFill)
             .accessibilityLabel(countLabel ?? "활동 없음").accessibilityHint(unreadCount != nil ? "누르면 알림을 보여요" : "누르면 활동을 보여요")
             .accessibilityIdentifier("program-toggle-\(name)")
@@ -122,16 +138,26 @@ struct ProgramHeader<Accessory: View>: View {
     /// Spoken count: the badge's number with its meaning.
     private var countLabel: String? {
         if let unreadCount { return unreadCount > 0 ? "읽지 않은 알림 \(unreadCount)개" : nil }
-        let total = openCount + upcomingCount
         guard total > 0 else { return nil }
+        if !statusCounts.isEmpty {
+            return ActivityStatus.allCases.compactMap { status in
+                statusCounts[status].map { "\(status.badge ?? "모집 정보 없음") \($0)개" }
+            }.joined(separator: ", ")
+        }
         if openCount > 0 && upcomingCount > 0 { return "모집 중 \(openCount)개, 모집 예정 \(upcomingCount)개" }
         return openCount > 0 ? "모집 중 \(openCount)개" : "모집 예정 \(upcomingCount)개"
     }
+    private var total: Int { statusCounts.isEmpty ? openCount + upcomingCount : statusCounts.values.reduce(0, +) }
     /// The meta line under the badge (contract): nearest deadline while recruiting, nearest start when only upcoming, else the latest activity month.
     private var meta: String? {
         if unreadCount != nil { return nil }
+        if eventDates, let latestActivity {
+            return latestActivity >= SeoulDay(Date()).date ? Self.format(latestActivity, "M월 d일") + " 행사" : "최근 " + Self.format(latestActivity, "yyyy.M")
+        }
         if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + " 마감" }
         if openCount == 0, upcomingCount > 0, let nearestStart { return Self.format(nearestStart, "M월 d일") + " 시작" }
+        // 모집 중·예정 없이 진행 중만 있으면 그 수 (contract "활동 상태" 접힌 카드).
+        if openCount == 0, upcomingCount == 0, let running = statusCounts[.inProgress], running > 0 { return "진행 중 \(running)개" }
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }
         return nil
     }
@@ -141,7 +167,7 @@ struct ProgramHeader<Accessory: View>: View {
 #if DEBUG
 #Preview("프로그램 머리") {
     VStack(spacing: 10) {
-        ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", openCount: 2,
+        ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", category: .bootcamp, openCount: 2,
                       nearestDeadline: ISO8601DateFormatter().date(from: "2026-11-10T09:00:00Z"),
                       fieldTags: [Tag(id: 10, name: "IT", nameEn: "it", kind: .field), Tag(id: 11, name: "데이터·AI", nameEn: "dataAi", kind: .field)],
                       traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")], expanded: true) { EmptyView() } toggle: {}

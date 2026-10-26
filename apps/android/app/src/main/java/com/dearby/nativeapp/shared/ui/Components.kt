@@ -2,6 +2,7 @@ package com.dearby.nativeapp.shared.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -90,6 +92,10 @@ private val DarkScheme = darkColorScheme(
     Spacer(Modifier.height(12.dp))
     Text("Dearby", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
 }
+/** 로그인 시트 락업: 가로 워드마크 아래 캐치프레이즈를 한 장으로 그린 이미지(`dearby_lockup`, 원본 shared/assets/brand/sign-in-lockup.html; 다크는 drawable-night-nodpi).
+ *  고정 높이 96dp(비율 1240:480, 글자 배율과 무관): 절반 높이 로그인 시트의 약 1/4. */
+@Composable fun DearbyLockup(modifier: Modifier = Modifier) =
+    Image(painterResource(R.drawable.dearby_lockup), "Dearby, 대외활동, 매일 맞춤으로", modifier.height(96.dp).aspectRatio(1240f / 480f))
 /**
  * 주 버튼(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤): Material 3 `Button`/`OutlinedButton` 기본 모양·글꼴에 최소 높이 48dp(터치 영역 규칙)만 둔다.
  * 사용자 정의 모서리·높이·글자 크기는 없다. 채운 버튼은 두 모드 모두 [TealFill] 바탕·흰 글자(contract "청록 채움 면 위 글자는 흰색"); 비활성 색은 Material 기본.
@@ -101,14 +107,19 @@ private val DarkScheme = darkColorScheme(
 @Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 48.dp),
     enabled = enabled, colors = if (isSystemInDarkTheme()) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black) else ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
 /**
- * Sign in with Google (contract "구글 로그인"): theme surface with an outline border, same size as the other sign-in buttons. The official "G" logo asset is
- * not in the repo yet (to be placed under shared/assets/prototype), so a bold "G" stands in for it.
+ * Sign in with Google (contract "구글 로그인"): Google's light/dark button colors (fill #FFFFFF / #131314, 1dp stroke #747775 / #8E918F, text #1F1F1F / #E3E3E3,
+ * branding guidelines 2026-07-07), same size as the other sign-in buttons. The 20dp "G" is the official asset (shared/assets/prototype/google-sign-in); its
+ * corners carry the button fill, so the fill must stay exactly these values.
  */
-@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = OutlinedButton(onClick, modifier.heightIn(min = 48.dp),
-    enabled = enabled, colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
-    Text("G", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-    Spacer(Modifier.width(8.dp))
-    Text("Google로 계속하기")
+@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val dark = isSystemInDarkTheme()
+    val fill = Color(if (dark) 0xFF131314 else 0xFFFFFFFF)
+    OutlinedButton(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, border = BorderStroke(1.dp, Color(if (dark) 0xFF8E918F else 0xFF747775)),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = fill, disabledContainerColor = fill, contentColor = Color(if (dark) 0xFFE3E3E3 else 0xFF1F1F1F))) {
+        Image(painterResource(R.drawable.ic_google_g), null, Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Google로 계속하기")
+    }
 }
 
 /**
@@ -168,9 +179,14 @@ data class MenuAction(val label: String, val icon: ImageVector, val onClick: () 
 }
 
 /** [danger] reads in the danger colour on the quiet background (a 탈락 mark). */
-@Composable fun ExampleBadge(text: String = "예시", accent: Boolean = false, danger: Boolean = false) {
+/** [icon]: a decorative 16dp icon before the text (the detail's 종류 chip). */
+@Composable fun ExampleBadge(text: String = "예시", accent: Boolean = false, danger: Boolean = false, icon: ImageVector? = null) {
+    val color = if (danger) MaterialTheme.colorScheme.error else if (accent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(color = if (accent && !danger) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(10.dp)) {
-        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = if (danger) MaterialTheme.colorScheme.error else if (accent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+        Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon != null) Icon(icon, null, Modifier.size(16.dp), tint = color)
+            Text(text, color = color, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
@@ -183,14 +199,13 @@ data class MenuAction(val label: String, val icon: ImageVector, val onClick: () 
 }
 
 /** [filled]: 청록 채움 원(`TealFill`)에 흰 이니셜. */
-@Composable fun PersonHeader(name: String, job: String, introduction: String, filled: Boolean = false) {
+@Composable fun PersonHeader(name: String, job: String, filled: Boolean = false) {
     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(Modifier.size(76.dp).background(if (filled) TealFill else MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
             Text(name.take(1), color = if (filled) Color.White else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 32.sp, fontWeight = FontWeight.Bold)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(name, style = MaterialTheme.typography.headlineMedium)
-            if (introduction.isNotBlank()) Text(introduction, style = MaterialTheme.typography.bodyMedium)
             if (job.isNotBlank()) Text(job, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -209,30 +224,27 @@ fun contactKindName(kind: String) = when (kind) {
     else -> kind
 }
 
-/** 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20): 입력 행과 명함 표시 행이 같은 표를 쓴다. */
-fun contactIcon(kind: String): ImageVector = when (kind) {
+/**
+ * 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20, "연락처 아이콘·바로가기" 2026-10-26): GitHub·Instagram·Behance·카카오톡은
+ * Simple Icons 단색 마크(`res/drawable/ic_brand_*`, Material 기호와 같은 여백), 그 밖은 Material 기호. 표시 행·입력 행·`연락처 추가` 목록이 모두 이것을 보조색 틴트로 쓴다.
+ */
+@Composable fun contactIcon(kind: String): ImageVector = when (kind) {
     "phone" -> Icons.Rounded.Call
     "email" -> Icons.Rounded.Mail
-    "kakao" -> Icons.Rounded.ChatBubble
-    "instagram" -> Icons.Rounded.CameraAlt
-    "github" -> Icons.Rounded.Code
-    "behance" -> Icons.Rounded.Palette
+    "kakao" -> ImageVector.vectorResource(R.drawable.ic_brand_kakaotalk)
+    "instagram" -> ImageVector.vectorResource(R.drawable.ic_brand_instagram)
+    "github" -> ImageVector.vectorResource(R.drawable.ic_brand_github)
+    "behance" -> ImageVector.vectorResource(R.drawable.ic_brand_behance)
     else -> Icons.Rounded.Link
 }
 
-@Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
-    Row(modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.width(10.dp).fillMaxHeight(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
-            if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerHighest))
-            Box(Modifier.padding(top = 5.dp).size(8.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
-        }
-        if (compact) Row(Modifier.weight(1f).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(date, Modifier.weight(.4f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Text(title, Modifier.weight(.6f), style = MaterialTheme.typography.bodySmall)
-        } else Column(Modifier.weight(1f).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (date.isNotBlank()) Text(date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            if (subtitle.isNotBlank()) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        }
+/** 표시 행(명함 면·받은 명함·내 프로필 카드)의 왼쪽 아이콘: [contactIcon]을 24, 보조색으로. */
+@Composable fun ContactKindIcon(kind: String, contentDescription: String, modifier: Modifier = Modifier) =
+    Icon(contactIcon(kind), contentDescription, modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+
+/** `시간표` with the timeline icon, the same mark the activity card shows (contract "트랙·세션 시간표"). */
+@Composable fun TimetableMark(modifier: Modifier = Modifier) =
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+        Text("시간표", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
     }
-}

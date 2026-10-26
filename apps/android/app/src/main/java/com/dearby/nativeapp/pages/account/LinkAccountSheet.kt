@@ -10,7 +10,7 @@ import com.dearby.nativeapp.shared.ui.*
 /**
  * A first-seen Apple or Google account (contract "애플 로그인"·"구글 로그인", 202) whose device-passkey prompt was closed. The server
  * cannot tell whether this person already has a passkey account, so they choose: a new account (primary CTA), or passkey sign-in that
- * links the provider account to it (text button). [providerLabel] is 애플 or Google; [email] may be empty or Apple's relay. Laid out as a
+ * links the provider account to it (text button). [providerLabel] is Apple or Google; [email] may be empty or Apple's relay. Laid out as a
  * [CenteredMessage] (contract "비스크롤 화면 배치·CTA").
  */
 @OptIn(ExperimentalMaterial3Api::class)

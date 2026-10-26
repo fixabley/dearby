@@ -830,6 +830,52 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
     }
 
     @Test
+    fun `일정 phase는 모집 SELECTION·활동 기간 ACTIVITY로 고정이고, 세부 일정은 저장값이 없으면 kind·상태 지정으로 판정하며 운영자가 정할 수 있다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"선발 과정 활동","description":"phase 테스트","officialUrl":"https://example.org/phase","activitySchedule":{"startDate":"2026-12-01","endDate":"2026-12-03"},"application":{"startDate":"2026-11-01","endDate":"2026-11-10"}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        val activity = created["id"].asLong()
+        // 모집·활동 기간 슬롯(native-v1.md "선발 과정·활동 일정 분리")
+        assertEquals("SELECTION" to "ACTIVITY", created["application"]["phase"].asString() to created["activitySchedule"]["phase"].asString())
+        fun create(value: String) = read(mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body(value) }.andExpect { status { isCreated() } })
+        fun patch(target: Long, value: String) = mvc.patch("/v1/admin/activities/$activity/schedules/$target") { asAdmin(); patchBody(value) }
+        fun stored(target: Long) = jdbc.sql("select phase from schedules where id = ?").param(target).query(String::class.java).list().single()
+        val deadline = create("""{"title":"서류 마감","kind":"DEADLINE","dateLabel":"11월 10일"}""")
+        val test = create("""{"title":"코딩테스트","kind":"EVENT","dateLabel":"11월 12일"}""")
+        val ot = create("""{"title":"OT","kind":"EVENT","dateLabel":"12월 1일"}""")
+        // phase를 보내지 않으면 저장하지 않고(null) 읽을 때 판정한다: 마감·발표·면접은 선발, EVENT는 활동
+        assertEquals(listOf("SELECTION", "ACTIVITY", "ACTIVITY"), listOf(deadline, test, ot).map { it["phase"].asString() })
+        assertEquals(listOf("RESOLVED", "RESOLVED", "RESOLVED"), listOf(deadline, test, ot).map { it["phaseSource"].asString() })
+        assertEquals(null, stored(test["id"].asLong()))
+        // 저장값이 없는 EVENT는 운영자가 상태를 지정하면 저절로 선발(옛 앱 판정과 같다). 운영자가 phase를 직접 정하면 그 값이 상태 지정보다 앞선다
+        mvc.put("/v1/admin/activities/$activity/schedules/${test["id"].asLong()}/statuses") { asAdmin(); body("""{"items":[{"name":"응시","kind":"WAITING"},{"name":"합격","kind":"PASSED"}]}""") }.andExpect { status { isOk() } }
+        assertEquals("SELECTION", read(patch(test["id"].asLong(), "{}"))["phase"].asString())
+        assertEquals("ACTIVITY", read(patch(test["id"].asLong(), """{"phase":"ACTIVITY"}""").andExpect { status { isOk() } })["phase"].asString())
+        // 운영자가 정하면 저장되고 다른 필드를 고쳐도 남는다
+        val chosen = read(patch(ot["id"].asLong(), """{"phase":"selection"}""").andExpect { status { isOk() } })
+        assertEquals("SELECTION" to "STORED", chosen["phase"].asString() to chosen["phaseSource"].asString())
+        assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"title":"합격자 OT 전 사전과제"}""").andExpect { status { isOk() } })["phase"].asString())
+        assertEquals("SELECTION", stored(ot["id"].asLong()))
+        // JSON null은 저장값을 지워 자동 판정으로 되돌린다(EVENT·상태 없음 → ACTIVITY). 생략은 유지
+        val cleared = read(patch(ot["id"].asLong(), """{"phase":null}""").andExpect { status { isOk() } })
+        assertEquals("ACTIVITY" to "RESOLVED", cleared["phase"].asString() to cleared["phaseSource"].asString())
+        assertEquals(null, stored(ot["id"].asLong()))
+        patch(ot["id"].asLong(), """{"phase":3}""").andExpect { status { isBadRequest() } }
+        val graduation = create("""{"title":"수료식","kind":"ANNOUNCEMENT","dateLabel":"12월 3일","phase":"ACTIVITY"}""")
+        assertEquals("ACTIVITY" to "STORED", graduation["phase"].asString() to graduation["phaseSource"].asString())
+        // 모르는 값은 400, 모집·활동 기간 행의 phase는 고칠 수 없다(400)
+        patch(deadline["id"].asLong(), """{"phase":"TEST"}""").andExpect { status { isBadRequest() } }
+        patch(created["application"]["id"].asLong(), """{"phase":"ACTIVITY"}""").andExpect { status { isBadRequest() } }
+        // 목록 응답의 세부 일정에도 늘 값이 있다
+        val listed = read(mvc.get("/v1/admin/activities?publicationStatus=DRAFT&programId=$programId&q=선발 과정 활동") { asAdmin() })["items"].toList().single { it["id"].asLong() == activity }
+        assertEquals(true, listed["schedules"].toList().all { it["phase"].isString })
+    }
+
+    @Test
     fun `초안도 검색되고, 게시하면 상태가 바뀐다`() {
         jdbc.sql("update activities set publication_status = 'DRAFT', official_source = false where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
 
@@ -980,5 +1026,79 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
             jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
             jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
         }
+    }
+
+    @Test
+    fun `일정 블록에 트랙·세션 시간표를 통째로 붙이고 id로 고치며, 블록 밖·겹침·날짜 미정은 막는다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"시간표 편집 활동","description":"시간표 테스트","officialUrl":"https://example.org/timetable","activitySchedule":{"startDate":"2026-11-20","endDate":"2026-11-20"}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        val activity = created["id"].asLong()
+        val slotSchedule = created["activitySchedule"]["id"].asLong()
+        // 수집한(운영자 지정 아닌) 큰 블록: 오전 세션 10:50~12:30
+        val block = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, '오전 세션', 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-20T10:50:00+09:00', '2026-11-20T12:30:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activity).query(Long::class.java).single()
+        val tagId = jdbc.sql("select id from tags order by id limit 1").query(Long::class.java).single()
+        val path = "/v1/admin/activities/$activity/schedules/$block/timetable"
+        fun put(target: String, value: String) = mvc.put(target) { asAdmin(); body(value) }
+        fun session(track: String, title: String, start: String, end: String, kind: String = "TALK", id: Long? = null) =
+            """{${id?.let { "\"id\":$it," } ?: ""}"track":$track,"kind":"$kind","title":"$title","startAt":"2026-11-20T$start:00+09:00","endAt":"2026-11-20T$end:00+09:00","speakers":[{"name":"김연사","affiliation":"우아한형제들"}],"tagIds":[$tagId]}"""
+
+        assertEquals("""{"scheduleId":$block,"tracks":[],"sessions":[]}""", read(mvc.get(path) { asAdmin() }.andExpect { status { isOk() } }).toString())
+        val first = read(
+            put(path, """{"tracks":[{"name":"Track 1","room":"A홀"},{"name":"Track 2"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE")},${session("0", "트랙1 세션", "11:40", "12:20")},${session("1", "트랙2 세션", "11:40", "12:20")}]}""")
+                .andExpect { status { isOk() } }
+        )
+        assertEquals(listOf("Track 1" to 0, "Track 2" to 1), first["tracks"].toList().map { it["name"].asString() to it["position"].asInt() })
+        assertEquals(listOf(null, 0, 1), first["sessions"].toList().map { it["track"].takeUnless { n -> n.isNull }?.asInt() })
+        assertEquals("김연사", first["sessions"][1]["speakers"][0]["name"].asString())
+        assertEquals(tagId, first["sessions"][1]["tags"][0]["id"].asLong())
+        // 시간표가 붙은 수집 블록은 운영자 지정으로 올라가(재수집이 지우지 않게) 응답에 hasTimetable
+        assertEquals(true, jdbc.sql("select curated from schedules where id = ?").param(block).query(Boolean::class.java).single())
+        val listed = read(mvc.get("/v1/admin/activities?q=시간표 편집 활동") { asAdmin() })["items"].toList().single { it["id"].asLong() == activity }["schedules"].toList().single()
+        assertEquals(true, listed["hasTimetable"].asBoolean())
+        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity/schedules/$block") { asAdmin(); body("""{"title":"오전 세션"}""") }.andExpect { status { isOk() } })["hasTimetable"].asBoolean())
+
+        // id로 고치면 세션 찜이 남고, 빠진 세션·트랙은 지운다(그 세션 찜도). 트랙 순서를 바꿀 수 있다
+        val (trackA, trackB) = first["tracks"].toList().map { it["id"].asLong() }
+        val (keynote, talkA, talkB) = first["sessions"].toList().map { it["id"].asLong() }
+        val user = java.util.UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        listOf(talkA, talkB).forEach { jdbc.sql("insert into user_session_favorites (user_id, session_id, created_at) values (?, ?, now())").params(user, it).update() }
+        val second = read(
+            put(path, """{"tracks":[{"id":$trackB,"name":"Track 2"},{"id":$trackA,"name":"Track 1 (본관)","room":"A홀"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE", keynote)},${session("1", "트랙1 세션(제목 수정)", "11:40", "12:20", id = talkA)}]}""")
+                .andExpect { status { isOk() } }
+        )
+        assertEquals(listOf(trackB, trackA), second["tracks"].toList().map { it["id"].asLong() })
+        assertEquals(listOf(keynote, talkA), second["sessions"].toList().map { it["id"].asLong() })
+        assertEquals(trackA, second["sessions"][1]["trackId"].asLong())
+        assertEquals(listOf(talkA), jdbc.sql("select session_id from user_session_favorites where user_id = ?").param(user).query(Long::class.java).list())
+
+        // 막는 것: 블록 밖, 같은 트랙 겹침, 전폭과 겹침, 순번 밖 track, 없는 태그, 다른 블록의 id, 날짜 미정 블록, 없는 블록
+        put(path, """{"tracks":[],"sessions":[${session("null", "늦은 세션", "12:20", "12:40")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[{"name":"T"}],"sessions":[${session("0", "가", "11:00", "11:30")},${session("0", "나", "11:20", "11:50")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[{"name":"T"}],"sessions":[${session("null", "가", "11:00", "11:30", "BREAK")},${session("0", "나", "11:20", "11:50")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[],"sessions":[${session("3", "가", "11:00", "11:30")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[],"sessions":[${session("null", "가", "11:00", "11:30").replace("[$tagId]", "[999999]")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[],"sessions":[${session("null", "가", "11:00", "11:30", id = 999999)}]}""").andExpect { status { isBadRequest() } }
+        val undated = jdbc.sql("insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at) values (?, '오후 세션', 'EVENT', 'CONFIRMED', '오후', 0, localtimestamp, localtimestamp) returning id")
+            .param(activity).query(Long::class.java).single()
+        put("/v1/admin/activities/$activity/schedules/$undated/timetable", """{"tracks":[],"sessions":[${session("null", "가", "11:00", "11:30")}]}""").andExpect { status { isBadRequest() } }
+        put("/v1/admin/activities/$activity/schedules/999999/timetable", """{"tracks":[],"sessions":[]}""").andExpect { status { isNotFound() } }
+
+        // 트랙이 없는 시간표(단일 진행)는 활동 기간(종일) 블록에도 붙는다. 빈 목록 둘이면 지운다
+        val single = read(put("/v1/admin/activities/$activity/schedules/$slotSchedule/timetable", """{"tracks":[],"sessions":[${session("null", "단일 세션", "09:00", "10:00")}]}""").andExpect { status { isOk() } })
+        assertEquals(0, single["tracks"].size())
+        assertEquals(1, single["sessions"].size())
+        assertEquals("""{"scheduleId":$block,"tracks":[],"sessions":[]}""", read(put(path, """{"tracks":[],"sessions":[]}""").andExpect { status { isOk() } }).toString())
+        assertEquals(0, jdbc.sql("select count(*) from user_session_favorites where user_id = ?").param(user).query(Int::class.java).single())
+        jdbc.sql("delete from users where id = ?").param(user).update()
     }
 }

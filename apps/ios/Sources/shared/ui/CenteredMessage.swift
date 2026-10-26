@@ -6,7 +6,8 @@ import SwiftUI
 /// 내용이 넘치면 가운데 정렬을 유지한 채 스크롤이 생기고, 버튼 묶음은 안전 영역 아래 여백 16으로 고정된다.
 /// 빈 상태·오류·로그인 시트·소개·QR·신청 확인처럼 글자 계층이 어긋나기 쉬운 화면은 모두 이 뷰로 그린다.
 struct CenteredMessage<Glyph: View, Actions: View>: View {
-    let title: String
+    /// Nil: the glyph alone (로그인 시트, whose navigation title already says it).
+    let title: String?
     var message: String?
     /// 발견 탭처럼 페이지가 자기 `ScrollView`(풀투 리프레시·접히는 검색 영역)를 이미 가진 곳에 넣을 때: 스크롤 뷰를 따로 만들지 않고
     /// 가운데 정렬만 하며, 높이는 넣는 쪽이 `frame(minHeight:)`로 준다.
@@ -36,8 +37,10 @@ struct CenteredMessage<Glyph: View, Actions: View>: View {
     private var heading: some View {
         VStack(spacing: 12) {
             glyph.padding(.bottom, 8)
-            Text(title).font(.dearby(.title2).bold()).foregroundStyle(.primary).multilineTextAlignment(.center)
-                .accessibilityAddTraits(.isHeader)
+            if let title {
+                Text(title).font(.dearby(.title2).bold()).foregroundStyle(.primary).multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+            }
             if let message, !message.isEmpty {
                 Text(message).font(.dearby(.body)).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }

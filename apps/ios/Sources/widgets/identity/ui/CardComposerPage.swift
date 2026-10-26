@@ -7,7 +7,9 @@ struct CardComposerPage: View {
     @State private var model: CardPublishModel
     @State private var signingIn = false
     @Environment(\.dismiss) private var dismiss
-    init(account: AccountViewModel, prefill: PublishedCard? = nil) { _model = State(initialValue: CardPublishModel(account: account, prefill: prefill)) }
+    init(account: AccountViewModel, prefill: PublishedCard? = nil, taken: Set<String> = []) {
+        _model = State(initialValue: CardPublishModel(account: account, prefill: prefill, taken: taken))
+    }
     private var failure: String? { if case .failed(let text) = model.phase { text } else { nil } }
     var body: some View {
         Group {
@@ -18,7 +20,7 @@ struct CardComposerPage: View {
                 CenteredMessage(symbol: "person.text.rectangle", title: "로그인하면 명함을 만들 수 있어요", message: "프로필의 이름·연락처·이력으로 명함을 꾸며요.",
                                 primary: MessageAction("로그인") { signingIn = true })
             } else if let draft = model.draft, draft.profile.version == 0 {
-                // Signed in from here without ever saving a profile: the composer has no data to fill the template with.
+                // Signed in from here without ever saving a profile: the composer has nothing to make the card from.
                 CenteredMessage(symbol: "person.crop.circle", title: "먼저 프로필을 적어 주세요", message: "내 프로필 탭에서 이름과 연락처를 저장하면 명함을 만들 수 있어요.",
                                 primary: MessageAction("닫기") { dismiss() })
             } else if let binding = Binding($model.draft) {

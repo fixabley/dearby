@@ -9,9 +9,13 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_ACTIVITY_ID_SLOT_KE
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_STATUSES__SCHEDULE_STATUSES_SCHEDULE_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses.ScheduleStatusesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks.ScheduleTracksPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.SchedulesRecord
 
 import java.time.LocalDate
@@ -225,6 +229,11 @@ open class Schedules(
      */
     val RECURRENCE: TableField<SchedulesRecord, String?> = createField(DSL.name("recurrence"), SQLDataType.VARCHAR(200), this, "")
 
+    /**
+     * The column <code>public.schedules.phase</code>.
+     */
+    val PHASE: TableField<SchedulesRecord, String?> = createField(DSL.name("phase"), SQLDataType.VARCHAR(20), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -268,6 +277,22 @@ open class Schedules(
     fun activities(): ActivitiesPath = activities
     val activities: ActivitiesPath by lazy { ActivitiesPath(this, SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY, null) }
 
+    private lateinit var _scheduleSessions: ScheduleSessionsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_sessions</code> table
+     */
+    fun scheduleSessions(): ScheduleSessionsPath {
+        if (!this::_scheduleSessions.isInitialized)
+            _scheduleSessions = ScheduleSessionsPath(this, null, SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY.inverseKey)
+
+        return _scheduleSessions;
+    }
+
+    val scheduleSessions: ScheduleSessionsPath
+        get(): ScheduleSessionsPath = scheduleSessions()
+
     private lateinit var _scheduleStatuses: ScheduleStatusesPath
 
     /**
@@ -283,12 +308,30 @@ open class Schedules(
 
     val scheduleStatuses: ScheduleStatusesPath
         get(): ScheduleStatusesPath = scheduleStatuses()
+
+    private lateinit var _scheduleTracks: ScheduleTracksPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_tracks</code> table
+     */
+    fun scheduleTracks(): ScheduleTracksPath {
+        if (!this::_scheduleTracks.isInitialized)
+            _scheduleTracks = ScheduleTracksPath(this, null, SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY.inverseKey)
+
+        return _scheduleTracks;
+    }
+
+    val scheduleTracks: ScheduleTracksPath
+        get(): ScheduleTracksPath = scheduleTracks()
     override fun getChecks(): List<Check<SchedulesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("schedules_check"), "((((time_type IS NULL) AND (start_at IS NULL) AND (end_at IS NULL) AND (time_zone IS NULL) AND (start_date IS NULL) AND (end_date_exclusive IS NULL)) OR (((time_type)::text = 'TIMED'::text) AND ((start_at IS NOT NULL) OR (end_at IS NOT NULL)) AND (time_zone IS NOT NULL) AND ((start_at IS NULL) OR (end_at IS NULL) OR (end_at >= start_at)) AND (start_date IS NULL) AND (end_date_exclusive IS NULL)) OR (((time_type)::text = 'ALL_DAY'::text) AND (start_date IS NOT NULL) AND (end_date_exclusive > start_date) AND (start_at IS NULL) AND (end_at IS NULL) AND (time_zone IS NULL))))", true),
         Internal.createCheck(this, DSL.name("schedules_check2"), "((((lat IS NULL) AND (lng IS NULL) AND (address_line1 IS NULL) AND (address_line2 IS NULL)) OR ((lat IS NOT NULL) AND (lng IS NOT NULL) AND (address_line1 IS NOT NULL) AND (address_line2 IS NOT NULL))))", true),
         Internal.createCheck(this, DSL.name("schedules_kind_check"), "(((kind)::text = ANY ((ARRAY['DEADLINE'::character varying, 'ANNOUNCEMENT'::character varying, 'INTERVIEW'::character varying, 'EVENT'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_overlap_time_check"), "((((overlap_start_time IS NULL) AND (overlap_end_time IS NULL)) OR ((overlap_start_time IS NOT NULL) AND (overlap_end_time IS NOT NULL) AND (overlap_end_time > overlap_start_time))))", true),
+        Internal.createCheck(this, DSL.name("schedules_phase_check"), "(((phase)::text = ANY ((ARRAY['SELECTION'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_slot_check"), "(((slot)::text = ANY ((ARRAY['APPLICATION'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
+        Internal.createCheck(this, DSL.name("schedules_slot_phase_check"), "(((slot IS NULL) OR (phase IS NULL) OR (((slot)::text = 'APPLICATION'::text) AND ((phase)::text = 'SELECTION'::text)) OR (((slot)::text = 'ACTIVITY'::text) AND ((phase)::text = 'ACTIVITY'::text))))", true),
         Internal.createCheck(this, DSL.name("schedules_status_check"), "(((status)::text = ANY ((ARRAY['TENTATIVE'::character varying, 'CONFIRMED'::character varying, 'CANCELLED'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_time_type_check"), "(((time_type)::text = ANY ((ARRAY['TIMED'::character varying, 'ALL_DAY'::character varying])::text[])))", true)
     )

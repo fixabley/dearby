@@ -8,14 +8,21 @@ import {
   type ActivityPage,
   type ProgramPage,
   type ProgramSummary,
+  type StatusGroup,
+  STATUS_GROUPS,
+  STATUS_GROUP_IDS,
+  activityStatus,
+  applicable,
   deadlineLabel,
   fieldTagsOf,
+  groupStatuses,
   traitTagsOf,
   programLogoSrc,
   startLabel,
-  recruitment,
+  recruitmentDate,
   scheduleLabel,
 } from "@/lib/models";
+import { track } from "@/shared/lib/analytics";
 import { errorMessage, request } from "@/lib/client";
 import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
@@ -27,15 +34,46 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
-import { Switch } from "@/shared/ui/switch";
-import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
+import { Segmented } from "@/shared/ui/segmented";
+import { MultiSelect } from "@/shared/ui/multi-select";
+import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
-import { groupByCategory } from "@/lib/category";
+import { categoriesSummary, categoryLabels, groupByCategory, kindCategories } from "@/lib/category";
+import { CategoryIcon } from "@/shared/ui/category-icon";
 
-function programsPath(q: string, openOnly: boolean, cursor?: number) {
+/**
+ * 프로그램 | 이벤트 (contract "프로그램·이벤트 전환"): the server's `kind` filter — 이벤트 is 컨퍼런스·워크샵·밋업·강연, 프로그램 every other
+ * 종류 and 미분류.
+ */
+export type Kind = "program" | "event";
+const KIND_LABEL: Record<Kind, string> = { program: "프로그램", event: "이벤트" };
+/** `?status=` value of the chosen 활동 상태 묶음; empty for the default `지원 가능` alone, which the URL leaves out. */
+function statusParam(groups: StatusGroup[]): string {
+  return groups.length === 1 && groups[0] === "available" ? "" : groups.join(",");
+}
+/**
+ * `/` or `/?kind=event`, plus the search, the 활동 상태 묶음 and the 종류; all live in the URL so a search, 전체 보기 or a reload keeps
+ * them (contract "활동 상태"·"종류 필터": 선택 기억은 웹 URL 쿼리). The 종류 belong to one side, so switching sides drops them.
+ */
+function homePath(kind: Kind, q = "", groups: StatusGroup[] = ["available"], categories: string[] = []) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
-  if (!openOnly) params.set("openOnly", "false");
+  if (kind === "event") params.set("kind", kind);
+  if (statusParam(groups)) params.set("status", statusParam(groups));
+  if (categories.length) params.set("category", categories.join(","));
+  return params.size ? `/?${params}` : "/";
+}
+/** `지원 가능` · `지원 가능·진행 중` · `전체`. */
+function groupsSummary(groups: StatusGroup[]): string {
+  return groups.length === STATUS_GROUP_IDS.length ? "전체" : groups.map((group) => STATUS_GROUPS[group].label).join("·");
+}
+
+function programsPath(q: string, groups: StatusGroup[], kind: Kind, categories: string[], cursor?: number) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  params.set("kind", kind);
+  if (categories.length) params.set("category", categories.join(","));
+  params.set("status", groupStatuses(groups).join(","));
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
 }
@@ -45,31 +83,35 @@ function programsPath(q: string, openOnly: boolean, cursor?: number) {
  * 맞춤 대기열 — contract "비로그인에서 만들기·추천을 막음"): programs with open activities,
  * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
  * with the API cursor. A card expands only when tapped — never on first load, search or coming back (contract
- * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's open activities as the usual activity cards.
+ * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's activities in the chosen 활동 상태 묶음
+ * (`groups`, contract "활동 상태" 2026-10-26) as the usual activity cards.
  */
-export function Discovery({ q }: { q: string }) {
+export function Discovery({ q, kind, groups, categories }: { q: string; kind: Kind; groups: StatusGroup[]; categories: string[] }) {
+  const router = useRouter();
   const [page, setPage] = useState<ProgramPage>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  // 마감 숨기기 (contract "마감 숨기기"): on by default hides only closed activities (open + upcoming programs stay); off also lists programs active in the last three years and shows 지난 활동 under every expanded program.
-  const [openOnly, setOpenOnly] = useState(true);
+  // The groups as one value, so the effect reruns when the URL's `status` changes.
+  const statusKey = groups.join(",");
+  const categoryKey = categories.join(",");
   useEffect(() => {
     const controller = new AbortController();
-    request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
+    const chosen = categoryKey ? categoryKey.split(",") : [];
+    request<ProgramPage>(programsPath(q, statusKey.split(",") as StatusGroup[], kind, chosen), { signal: controller.signal })
       .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [q, openOnly, attempt]);
+  }, [q, statusKey, categoryKey, kind, attempt]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, openOnly, page.nextCursor))
+    request<ProgramPage>(programsPath(q, groups, kind, categories, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -78,6 +120,14 @@ export function Discovery({ q }: { q: string }) {
       })
       .catch((error) => setMoreError(errorMessage(error)))
       .finally(() => setLoadingMore(false));
+  }
+  /** The user changed the 종류 (사용 통계 `discovery_category_filter`, empty for 전체): reloads the list with them in the URL. */
+  function chooseCategories(next: string[]) {
+    if (next.join(",") === categoryKey) return;
+    track("discovery_category_filter", { categories: next.map((code) => code.toLowerCase()).join(",") });
+    setPage(undefined);
+    setExpanded(new Set());
+    router.replace(homePath(kind, q, groups, next), { scroll: false });
   }
   function toggle(id: number) {
     setExpanded((ids) => {
@@ -90,23 +140,43 @@ export function Discovery({ q }: { q: string }) {
   return (
     <>
       <LargeTitle>활동 둘러보기</LargeTitle>
-      <SearchField q={q} />
-      {/* 마감 숨기기 as an inset-grouped switch row; the whole row (the label) toggles (contract "발견 검색·토글"). */}
-      <label
-        htmlFor="open-only"
-        className="mt-3 mb-2.5 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-[14px] bg-card px-4 py-1.5"
-      >
-        <span className="text-body">마감 숨기기</span>
-        <Switch
-          id="open-only"
-          checked={openOnly}
-          onCheckedChange={(checked) => {
-            // Clear the list so the loading state shows while the other mode loads.
-            setPage(undefined);
-            setOpenOnly(checked);
-          }}
-        />
-      </label>
+      <SearchField q={q} kind={kind} groups={groups} categories={categories} />
+      <Segmented
+        label="활동 묶음"
+        className="mt-3"
+        options={[
+          { value: "program", label: KIND_LABEL.program },
+          { value: "event", label: KIND_LABEL.event },
+        ]}
+        value={kind}
+        onChange={(next) => next !== kind && router.replace(homePath(next, q, groups), { scroll: false })}
+      />
+      {/* 활동 상태 (contract "활동 상태" 2026-10-26, replacing 마감 숨기기): a multi-select row; none chosen falls back to 지원 가능. */}
+      <MultiSelect
+        label="활동 상태"
+        summary={groupsSummary(groups)}
+        className="mt-3 mb-2.5"
+        options={STATUS_GROUP_IDS.map((id) => ({ value: id, label: STATUS_GROUPS[id].label }))}
+        value={groups}
+        onChange={(next) => {
+          const chosen: StatusGroup[] = next.length ? next : ["available"];
+          if (chosen.join(",") === statusKey) return;
+          track("discovery_status_filter", { groups: chosen.join(",") });
+          // Clear the list so the loading state shows while the other states load.
+          setPage(undefined);
+          setExpanded(new Set());
+          router.replace(homePath(kind, q, chosen, categories), { scroll: false });
+        }}
+      />
+      {/* 종류 (contract "종류 필터" 2026-10-26): this side's 종류 with their icons; none chosen is 전체. */}
+      <MultiSelect
+        label="종류"
+        summary={categoriesSummary(categories)}
+        className="mb-2.5"
+        options={kindCategories(kind).map((code) => ({ value: code, label: categoryLabels[code], icon: <CategoryIcon code={code} /> }))}
+        value={categories}
+        onChange={(next) => chooseCategories(next)}
+      />
       {error ? (
         <Failure
           message={error}
@@ -121,27 +191,50 @@ export function Discovery({ q }: { q: string }) {
         q ? (
           <CenteredMessage
             icon="search"
-            title={`‘${q}’에 맞는 프로그램이 없어요`}
-            message="다른 검색어로 찾아보거나 전체 프로그램을 확인해 보세요."
-            primary={{ label: "전체 프로그램 보기", href: "/" }}
+            title={`‘${q}’에 맞는 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
+            message={`다른 검색어로 찾아보거나 전체 ${kind === "event" ? "이벤트를" : "프로그램을"} 확인해 보세요.`}
+            primary={{ label: `전체 ${KIND_LABEL[kind]} 보기`, href: homePath(kind, "", groups, categories) }}
+          />
+        ) : categories.length ? (
+          <CenteredMessage
+            icon="explore"
+            title={`고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
+            message="다른 종류를 고르거나 종류 필터를 지워 보세요."
+            primary={{ label: "종류 필터 지우기", onClick: () => chooseCategories([]) }}
+          />
+        ) : groups.includes("past") ? (
+          <CenteredMessage
+            icon="explore"
+            title={kind === "event" ? "최근 3년 안에 열린 이벤트가 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}
+            message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. 잠시 후 다시 찾아와 주세요."
           />
         ) : (
           <CenteredMessage
             icon="explore"
-            title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}
-            message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. 잠시 후 다시 찾아와 주세요."
+            title={
+              statusKey !== "available"
+                ? `고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`
+                : kind === "event"
+                  ? "지금 열린 이벤트가 없어요"
+                  : "지금 모집 중인 프로그램이 없어요"
+            }
+            message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. ‘지난 활동’도 고르면 최근 활동한 프로그램도 보여요."
+            primary={{ label: "지난 활동도 보기", href: homePath(kind, q, [...groups, "past"]) }}
           />
         )
       ) : (
         <>
-          <ul className="flex flex-col gap-2.5">
+          {/* Keyed by the groups so each program loads its activities again for new ones. */}
+          <ul key={`${statusKey}:${categoryKey}`} className="flex flex-col gap-2.5">
             {page.items.map((program) => (
               <ProgramRow
                 key={program.id}
                 program={program}
                 open={expanded.has(program.id)}
                 toggle={() => toggle(program.id)}
-                openOnly={openOnly}
+                groups={groups}
+                kind={kind}
+                categories={categories}
               />
             ))}
           </ul>
@@ -176,9 +269,9 @@ export function Discovery({ q }: { q: string }) {
 
 /**
  * Discovery search (contract "발견 검색·토글"): a stacked label over a system-looking `type="search"` field with a magnifier and a
- * clear button; Enter submits the form so `/?q=` stays the source of truth. Clearing an applied query returns to `/`.
+ * clear button; Enter submits the form so `/?q=` stays the source of truth. Clearing an applied query returns to `/` (keeping `?kind=event`).
  */
-function SearchField({ q }: { q: string }) {
+function SearchField({ q, kind, groups, categories }: { q: string; kind: Kind; groups: StatusGroup[]; categories: string[] }) {
   const router = useRouter();
   const [value, setValue] = useState(q);
   return (
@@ -201,6 +294,9 @@ function SearchField({ q }: { q: string }) {
           className="pr-10 pl-8"
           onChange={(event) => setValue(event.target.value)}
         />
+        {kind === "event" && <input type="hidden" name="kind" value={kind} />}
+        {statusParam(groups) && <input type="hidden" name="status" value={statusParam(groups)} />}
+        {categories.length > 0 && <input type="hidden" name="category" value={categories.join(",")} />}
         {value && (
           <button
             type="button"
@@ -208,7 +304,7 @@ function SearchField({ q }: { q: string }) {
             className="absolute right-0 grid size-11 place-items-center text-secondary-label"
             onClick={() => {
               setValue("");
-              if (q) router.push("/");
+              if (q) router.push(homePath(kind, "", groups, categories));
             }}
           >
             <Icon name="clear" size="inline" />
@@ -220,29 +316,27 @@ function SearchField({ q }: { q: string }) {
 }
 
 /**
- * Props the renewed activity card needs (contract "발견 카드 리뉴얼"): the chip tone comes from the group the caller placed the
- * activity in (open list → live recruitment state; 모집 예정 group → soon; 지난 활동 → closed), and the `모집` row is emphasised
- * only while recruitment is not past and a period exists.
+ * Props the renewed activity card needs (contract "발견 카드 리뉴얼"·"활동 상태"): the capsule is the server's status; 모집 정보 없음 has
+ * none and its `모집` row reads `모집 일정 미정`; the row stands out only while 모집 중·모집 예정 and a period exists.
  */
-function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
-  const recruitmentLabel = scheduleLabel(activity.application, "recruitment", now);
+function cardProps(activity: Activity, now: number) {
+  const status = activityStatus(activity, now);
+  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` + `D-3` while open; an end alone keeps `~ … 마감`.
+  const { text, dday: recruitmentDday } = recruitmentDate(activity.application, now);
+  const recruitmentLabel = status === "NO_RECRUITMENT" ? "" : text;
   return {
     id: activity.id,
     name: activity.name,
-    statusTone,
+    status,
     recruitmentLabel,
-    recruitmentActive: statusTone !== "closed" && recruitmentLabel !== "",
+    recruitmentDday,
+    recruitmentActive: applicable(status) && recruitmentLabel !== "",
     activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
     placeName: activity.place?.name ?? activity.location ?? null,
     fieldTag: fieldTagsOf(activity)[0],
     traitTags: traitTagsOf(activity),
   };
-}
-/** Chip tone for an activity the server lists as open: 모집 예정 before its start, 마감 once passed, otherwise 모집 중. */
-function openTone(activity: Activity, now: number): StatusTone {
-  const { label } = recruitment(activity.application, now);
-  return label === "모집 예정" ? "soon" : label === "모집 마감" ? "closed" : "open";
 }
 
 /** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */
@@ -273,97 +367,87 @@ function activityStart(activity: Activity): number {
   const key = activity.activitySchedule.startAt ?? activity.activitySchedule.startDate;
   return key ? Date.parse(key) : NaN;
 }
-/** 지난 활동 window (contract "모집 중인 프로그램만 보기", 2026-10-19 저녁: 3년). */
-const THREE_YEARS = 1095 * 24 * 60 * 60 * 1000;
-
-/** Recruitment start (timed, else the date at UTC midnight), or the activity start when there is no recruitment window; NaN without one. */
+/** Recruitment start (timed, else the date at UTC midnight); NaN without one. */
 function upcomingKey(activity: Activity): number {
-  const key = activity.application
-    ? (activity.application.startAt ?? activity.application.startDate)
-    : (activity.activitySchedule.startAt ?? activity.activitySchedule.startDate);
+  const key = activity.application?.startAt ?? activity.application?.startDate;
   return key ? Date.parse(key) : NaN;
 }
+/** 지난 활동 window (contract "활동 상태": the server's `status` has no window on activities, so the page keeps the last three years). */
+const THREE_YEARS = 1095 * 24 * 60 * 60 * 1000;
+/** Latest activity start first; undated ones last. */
+function latestFirst(a: Activity, b: Activity): number {
+  return (activityStart(b) || -Infinity) - (activityStart(a) || -Infinity) || a.name.localeCompare(b.name, "ko");
+}
+
 /**
- * The other activities of a program (contract "모집 중인 프로그램만 보기"): `모집 예정` (recruitment or activity start still ahead,
- * nearest first) and `지난 활동` (activity start in the last three years, newest first); an empty group is omitted. Activities
- * already listed as open (`excludeIds`) are left out so the toggle-off view does not repeat them.
+ * A program's activities by 활동 상태 for the chosen groups (contract "활동 상태"): 모집 중 (grouped by 활동 종류 on the page), 모집 예정
+ * (nearest recruitment start first), 진행 중 and 지난 활동 (모집 마감·모집 정보 없음·종료 started within three years, undated ones kept),
+ * latest start first. An activity outside the groups (an older server ignores `status`) is left out.
  */
-function OtherActivities({
-  page,
-  now,
-  excludeIds,
-  showPast,
-  onEmpty,
-}: {
-  /** Every activity of the program, fetched by the row together with its open ones. */
-  page: ActivityPage;
-  now: number;
-  excludeIds?: Set<number>;
-  /** 지난 활동 only while 마감 숨기기 is off; 모집 예정 always (contract "펼침", 2026-10-19 밤). */
-  showPast: boolean;
-  /** Rendered when no group has items (the caller shows nothing else). */
-  onEmpty?: ReactNode;
-}) {
-  const others = page.items.filter((activity) => !excludeIds?.has(activity.id));
-  const upcoming = others
-    .filter((activity) => {
-      const start = upcomingKey(activity);
-      return !Number.isNaN(start) && start > now;
-    })
-    .sort((a, b) => upcomingKey(a) - upcomingKey(b));
-  const past = others
-    .filter((activity) => {
-      if (upcoming.includes(activity)) return false;
-      const start = activityStart(activity);
-      return !Number.isNaN(start) && start >= now - THREE_YEARS && start <= now;
-    })
-    .sort((a, b) => activityStart(b) - activityStart(a));
-  const groups = (
-    [
-      { label: "모집 예정", tone: "soon", items: upcoming },
-      { label: "지난 활동", tone: "closed", items: showPast ? past : [] },
-    ] satisfies { label: string; tone: StatusTone; items: Activity[] }[]
-  ).filter((group) => group.items.length);
-  if (!groups.length) return <>{onEmpty ?? null}</>;
+function byStatus(items: Activity[], groups: StatusGroup[], now: number) {
+  const of = (group: StatusGroup) =>
+    groups.includes(group)
+      ? items.filter((activity) => (STATUS_GROUPS[group].statuses as readonly string[]).includes(activityStatus(activity, now)))
+      : [];
+  const available = of("available");
+  return {
+    recruiting: available.filter((activity) => activityStatus(activity, now) === "RECRUITING"),
+    upcoming: available
+      .filter((activity) => activityStatus(activity, now) === "RECRUITING_UPCOMING")
+      .sort((a, b) => (upcomingKey(a) || Infinity) - (upcomingKey(b) || Infinity) || a.name.localeCompare(b.name, "ko")),
+    inProgress: of("in_progress").sort(latestFirst),
+    past: of("past")
+      .filter((activity) => {
+        const start = activityStart(activity);
+        return Number.isNaN(start) || start >= now - THREE_YEARS;
+      })
+      .sort(latestFirst),
+  };
+}
+
+/** One titled group of activity cards; nothing when empty. */
+function StatusSection({ label, items, now }: { label: string; items: Activity[]; now: number }) {
+  if (!items.length) return null;
   return (
-    <>
-      {groups.map((group) => (
-        <section key={group.label} className="flex flex-col gap-2">
-          <CategoryHeading>{group.label}</CategoryHeading>
-          <ul className="flex flex-col gap-2">
-            {group.items.map((activity) => (
-              <li key={activity.id}>
-                <ActivityCard {...cardProps(activity, group.tone, now)} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </>
+    <section className="flex flex-col gap-2">
+      <CategoryHeading>{label}</CategoryHeading>
+      <ul className="flex flex-col gap-2">
+        {items.map((activity) => (
+          <li key={activity.id}>
+            <ActivityCard {...cardProps(activity, now)} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
 /**
  * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · one line of tag chips
  * (분야 1개 + 성격, contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음") · `맞는 활동 n개` for an activity-name search hit, and on the right the
- * open + upcoming count badge that becomes an up-chevron `접기` button once expanded. The whole header toggles. The body stays
- * mounted so `grid-template-rows 0fr→1fr` can animate; its open activities come from `GET /activities?programId=&open=true`
- * (the server decides what is open) on the first expansion.
+ * count badge (Σ`statusCounts`, older responses open + upcoming) that becomes an up-chevron `접기` button once expanded. The whole
+ * header toggles. The body stays mounted so `grid-template-rows 0fr→1fr` can animate; its activities come from
+ * `GET /activities?programId=&status=` (the server judges the state) on the first expansion.
  */
 function ProgramRow({
   program,
   open,
   toggle,
-  openOnly,
+  groups,
+  kind,
+  categories,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
-  /** 마감 숨기기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
-  openOnly: boolean;
+  /** 프로그램 | 이벤트, so an expanded program lists only that side's activities. */
+  kind: Kind;
+  /** The chosen 활동 상태 묶음: the same `status` as the list. */
+  groups: StatusGroup[];
+  /** The chosen 종류 (none: every 종류): the same `category` as the list. */
+  categories: string[];
 }) {
-  // The open activities and every activity (for 모집 예정·지난 활동) load together, so one loading state covers both.
-  const [activities, setActivities] = useState<{ open: ActivityPage; all: ActivityPage }>();
+  const [activities, setActivities] = useState<ActivityPage>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(Date.now);
@@ -371,31 +455,40 @@ function ProgramRow({
   useEffect(() => {
     if (!open || activities) return;
     const controller = new AbortController();
-    const { signal } = controller;
-    Promise.all([
-      request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, { signal }),
-      request<ActivityPage>(`/activities?programId=${program.id}&size=20`, { signal }),
-    ])
-      .then(([open, all]) => setActivities({ open, all }))
+    const status = groupStatuses(groups).join(",");
+    const category = categories.length ? `&category=${categories.join(",")}` : "";
+    request<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&status=${status}${category}&size=100`, {
+      signal: controller.signal,
+    })
+      .then(setActivities)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [open, activities, program.id, attempt]);
+  }, [open, activities, program.id, kind, groups, categories, attempt]);
   useEffect(() => {
     if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [open]);
   const logoSrc = programLogoSrc(program.logoUrl);
-  const count = program.openActivityCount + (program.upcomingActivityCount ?? 0);
-  // Meta line precedence: a deadline while something is open, else the next start, else the latest activity month.
+  const counts = program.statusCounts;
+  const count = counts
+    ? Object.values(counts).reduce((sum, value) => sum + value, 0)
+    : program.openActivityCount + (program.upcomingActivityCount ?? 0);
+  const upcomingCount = program.upcomingActivityCount ?? 0;
+  const running = counts?.IN_PROGRESS ?? 0;
+  // Meta line precedence: a deadline while something is open, else the next start, else `진행 중 n개` when only running ones are in scope
+  // (contract "활동 상태"), else the latest activity month. An older server's activity-start stand-in (`nearestIsActivityStart`) is not a
+  // deadline (user 2026-10-26: no recruitment schedule = 마감).
   const meta =
-    (program.openActivityCount > 0 && deadlineLabel(program.nearestRecruitmentEndAt)) ||
-    ((program.upcomingActivityCount ?? 0) > 0 && startLabel(program.nearestRecruitmentStartAt ?? null)) ||
+    (program.openActivityCount > 0 &&
+      !program.nearestIsActivityStart &&
+      deadlineLabel(program.nearestRecruitmentEndAt)) ||
+    (upcomingCount > 0 && startLabel(program.nearestRecruitmentStartAt ?? null)) ||
+    (program.openActivityCount === 0 && upcomingCount === 0 && running > 0 && `진행 중 ${running}개`) ||
     `최근 ${monthLabel(program.latestActivityAt ?? null)}`;
-  // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.
-  const openActivities = activities?.open.items;
+  const shown = activities && byStatus(activities.items, groups, now);
   // Content is kept while collapsed so the close animation has something to shrink; nothing is fetched until the first open.
   const body = error ? (
     <Failure
@@ -406,8 +499,7 @@ function ProgramRow({
         setAttempt((value) => value + 1);
       }}
     />
-  ) : !activities || !openActivities ? (
-    // Both lists arrive together, so the empty-state line never shows before the second one (contract "빈 상태는 모두 받은 뒤에만").
+  ) : !shown ? (
     open ? (
       <SkeletonGroup className="flex flex-col gap-2">
         <ActivityCardSkeleton />
@@ -416,11 +508,16 @@ function ProgramRow({
     ) : null
   ) : (
     <>
-      {openActivities.length > 0 &&
+      {!shown.recruiting.length && !shown.upcoming.length && !shown.inProgress.length && !shown.past.length && (
+        <p className="px-1.5 text-subheadline text-secondary-label">
+          {groups.join(",") === "available" ? "지금 모집 중인 활동이 없어요." : "고른 상태의 활동이 없어요."}
+        </p>
+      )}
+      {shown.recruiting.length > 0 &&
         // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
-        groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
+        groupByCategory(shown.recruiting, (activity) => activity.category).map((group, _, categories) => (
           <section key={group.label} className="flex flex-col gap-2">
-            {groups.length > 1 && (
+            {categories.length > 1 && (
               <CategoryHeading>
                 {group.label} ({group.items.length})
               </CategoryHeading>
@@ -428,24 +525,15 @@ function ProgramRow({
             <ul className="flex flex-col gap-2">
               {[...group.items].sort(byDeadline).map((activity) => (
                 <li key={activity.id}>
-                  <ActivityCard {...cardProps(activity, openTone(activity, now), now)} />
+                  <ActivityCard {...cardProps(activity, now)} />
                 </li>
               ))}
             </ul>
           </section>
         ))}
-      {/* 모집 예정 always; 지난 활동 only while 마감 숨기기 is off (contract "펼침", 2026-10-19 밤). */}
-      <OtherActivities
-        page={activities.all}
-        now={now}
-        excludeIds={new Set(openActivities.map((activity) => activity.id))}
-        showPast={!openOnly}
-        onEmpty={
-          !openActivities.length ? (
-            <p className="px-1.5 text-subheadline text-secondary-label">지금 모집 중인 활동이 없어요.</p>
-          ) : null
-        }
-      />
+      <StatusSection label="모집 예정" items={shown.upcoming} now={now} />
+      <StatusSection label="진행 중" items={shown.inProgress} now={now} />
+      <StatusSection label="지난 활동" items={shown.past} now={now} />
     </>
   );
   return (
@@ -461,6 +549,13 @@ function ProgramRow({
           >
             <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              {/* 종류 줄 (contract "종류 아이콘 라벨" 2026-10-26): read first; none for 미분류 or an unknown code. */}
+              {program.category && categoryLabels[program.category] && (
+                <span className="flex items-center gap-1 text-caption text-secondary-label">
+                  <CategoryIcon code={program.category} />
+                  {categoryLabels[program.category]}
+                </span>
+              )}
               <span className="text-headline font-semibold break-keep">{program.name}</span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
               <TagChipRow field={fieldTagsOf(program)[0]} traits={traitTagsOf(program)} className="mt-1.5" />
@@ -526,6 +621,7 @@ function ProgramsLoading() {
         <Card key={key} className="flex items-start gap-3 p-4">
           <Skeleton className="size-11 rounded-[14px]" />
           <div className="flex flex-1 flex-col gap-2 pt-1">
+            <Skeleton className="h-3 w-1/5" />
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-3.5 w-1/3" />
           </div>

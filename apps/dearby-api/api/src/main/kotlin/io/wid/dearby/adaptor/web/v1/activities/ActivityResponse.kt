@@ -5,9 +5,12 @@ import io.wid.dearby.adaptor.web.v1.tags.TagResponse
 import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.application.program.ProgramSummaryService
+import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.TagKind
 import io.wid.dearby.domain.favorite.FavoriteIds
 import tools.jackson.databind.JsonNode
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 // 모집 여부는 application(모집 기간)으로 판단한다. 이름·설명은 요청 언어 값 하나(영문이 없으면 한글)
 data class ActivityResponse(
@@ -34,6 +37,8 @@ data class ActivityResponse(
     val hook: String?, // 맞춤 대기열 장면 ① 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null(앱은 활동 이름)
     val highlights: List<HighlightResponse>, // 장면 ② 핵심 줄 [{icon, text}] 최대 3개. 비면 앱이 기간·장소로 만든다
     val favorited: Boolean, // 로그인 사용자가 즐겨찾기했는지(native-v1.md "즐겨찾기(하트)"). 비로그인은 false
+    val status: String, // 활동 상태(native-v1.md "활동 상태"): RECRUITING_UPCOMING|RECRUITING|RECRUITMENT_CLOSED|NO_RECRUITMENT|IN_PROGRESS|ENDED
+    val hasTimetable: Boolean, // activitySchedule·schedules 중 하나라도 hasTimetable이면 true(목록 행 "시간표" 배지, native-v1.md "트랙·세션 시간표")
 ) {
     companion object {
         fun from(listing: ActivityListing, language: ResponseLanguage, favorites: FavoriteIds = FavoriteIds.NONE): ActivityResponse {
@@ -63,6 +68,8 @@ data class ActivityResponse(
                 hook = activity.hook,
                 highlights = activity.highlights.map { HighlightResponse(it.icon.code, it.text) },
                 favorited = activity.id in favorites.activities,
+                status = ActivityStatus.of(activity.application?.time, activity.activitySchedule.time, OffsetDateTime.now(ZoneOffset.UTC)).name,
+                hasTimetable = activity.activitySchedule.hasTimetable || activity.schedules.any { it.hasTimetable },
             )
         }
     }

@@ -3,12 +3,20 @@ import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { TagChipRow } from "@/shared/ui/tag-icon";
-import type { Tag } from "@/lib/models";
+import { type ActivityStatus, type Tag, STATUS_BADGE } from "@/lib/models";
 
-/** Recruitment state the chip shows (contract "발견 카드 리뉴얼"): 모집 중 teal fill / 모집 예정 teal tint / 마감 system fill. */
-export type StatusTone = "open" | "soon" | "closed";
-const statusText: Record<StatusTone, string> = { open: "모집 중", soon: "모집 예정", closed: "마감" };
-const statusVariant = { open: "filled", soon: "tinted", closed: "neutral" } as const;
+/**
+ * 활동 상태 capsule (contract "활동 상태" 2026-10-26): 모집 중 teal fill / 모집 예정 teal tint / 진행 중 system blue tint / 모집 마감·종료
+ * system fill; 모집 정보 없음 has none.
+ */
+export const statusVariant = {
+  RECRUITING: "filled",
+  RECRUITING_UPCOMING: "tinted",
+  IN_PROGRESS: "blue",
+  RECRUITMENT_CLOSED: "neutral",
+  NO_RECRUITMENT: "neutral",
+  ENDED: "neutral",
+} as const satisfies Record<ActivityStatus, string>;
 
 /**
  * 펼친 프로그램 안의 활동 카드 한 장 (contract "발견 카드 리뉴얼 — 2026-10-19", iOS `ActivityCard`): grouped-background tile inside
@@ -18,8 +26,9 @@ const statusVariant = { open: "filled", soon: "tinted", closed: "neutral" } as c
 export function ActivityCard({
   id,
   name,
-  statusTone,
+  status,
   recruitmentLabel,
+  recruitmentDday,
   recruitmentActive,
   activityLabel,
   placeName,
@@ -28,9 +37,11 @@ export function ActivityCard({
 }: {
   id: number;
   name: string;
-  statusTone: StatusTone;
-  /** 모집 기간 문구; 없으면 `미정`. */
+  status: ActivityStatus;
+  /** 모집 기간 문구; 없으면(모집 정보 없음 포함) `모집 일정 미정`. */
   recruitmentLabel: string;
+  /** `D-3`·`D-DAY` beside the period while 모집 중 (contract "모집 날짜 표기 — 2026-10-26"). */
+  recruitmentDday?: string;
   /** 모집 중·모집 예정이고 기간이 있을 때 참 → 강조. */
   recruitmentActive: boolean;
   /** 활동 기간 문구. */
@@ -41,8 +52,8 @@ export function ActivityCard({
   fieldTag?: Tag;
   traitTags?: Tag[];
 }) {
-  const rows: [string, string, boolean][] = [
-    ["모집", recruitmentLabel || "미정", recruitmentActive],
+  const rows: [string, string, boolean, string?][] = [
+    ["모집", recruitmentLabel || "모집 일정 미정", recruitmentActive, recruitmentDday],
     ["활동", activityLabel || "일정 미확인", false],
   ];
   if (placeName) rows.push(["장소", placeName, false]);
@@ -53,19 +64,28 @@ export function ActivityCard({
     >
       <span className="flex items-start gap-2.5">
         <h3 className="flex-1 text-subheadline font-semibold break-keep">{name}</h3>
-        <Badge variant={statusVariant[statusTone]} className="text-caption2">
-          {statusText[statusTone]}
-        </Badge>
+        {STATUS_BADGE[status] && (
+          <Badge variant={statusVariant[status]} className="text-caption2">
+            {STATUS_BADGE[status]}
+          </Badge>
+        )}
       </span>
       <TagChipRow field={fieldTag} traits={traitTags} />
       <dl className="flex flex-col gap-[3px] text-footnote">
-        {rows.map(([label, value, emphasized]) => (
+        {rows.map(([label, value, emphasized, badge]) => (
           <div
             key={label}
             className={cn("flex items-baseline gap-2", emphasized && "-mx-1.5 rounded-lg bg-mint px-1.5 py-[3px]")}
           >
             <dt className="w-9 shrink-0 text-secondary-label">{label}</dt>
-            <dd className={cn("flex-1 break-keep", emphasized && "font-semibold text-teal")}>{value}</dd>
+            <dd className={cn("flex-1 break-keep", emphasized && "font-semibold text-teal")}>
+              {value}
+              {badge && (
+                <Badge variant="filled" className="ml-1.5 align-[1px] text-caption2 tabular-nums">
+                  {badge}
+                </Badge>
+              )}
+            </dd>
           </div>
         ))}
       </dl>

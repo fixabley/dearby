@@ -18,9 +18,11 @@ sealed interface PublishPhase {
     data class Published(val card: PublishedCard) : PublishPhase
     data class Failed(val message: String) : PublishPhase
 }
-data class CardPublishState(val draft: CardDraft? = null, val phase: PublishPhase = PublishPhase.Editing, val signingIn: Boolean = false, val prefill: PublishedCard? = null)
+/** [taken] is the account's card names when the composer opened, so an unnamed new card gets its own default name. */
+data class CardPublishState(val draft: CardDraft? = null, val phase: PublishPhase = PublishPhase.Editing, val signingIn: Boolean = false, val prefill: PublishedCard? = null,
+    val taken: Set<String> = emptySet())
 
-/** Publishes the composer draft with `POST /v1/cards` (built-in template included), or with a [CardPublishState.prefill] saves it onto that same card with `PUT /v1/cards/:id` (contract "명함 고치기는 같은 명함을 수정", 2026-10-20). Profile data is read-only here. */
+/** Publishes the composer draft with `POST /v1/cards` (the server copies the chosen profile data), or with a [CardPublishState.prefill] saves it onto that same card with `PUT /v1/cards/:id` (contract "명함 고치기는 같은 명함을 수정", 2026-10-20). Profile data is read-only here. */
 class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(CardPublishState())
     val state = mutable.asStateFlow()
@@ -28,8 +30,8 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
     private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
 
     /** Opens the composer; signed in, it starts from the saved profile (and [prefill]'s name and selections when editing that card). */
-    fun start(prefill: PublishedCard? = null) = launch {
-        mutable.value = CardPublishState(prefill = prefill)
+    fun start(prefill: PublishedCard? = null, taken: Set<String> = emptySet()) = launch {
+        mutable.value = CardPublishState(prefill = prefill, taken = taken)
         load()
     }
     fun load() = launch {
@@ -51,8 +53,8 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
         try {
             val card = account.authorized {
-                if (editing == null) account.client.publish(draft.cardName, "", draft.template, draft.contactIds, draft.historyIds, it)
-                else account.client.updateCard(editing.id, draft.cardName, "", draft.template, draft.contactIds, draft.historyIds, it)
+                if (editing == null) account.client.publish(draft.newCardName(mutable.value.taken), "", draft.contactIds, draft.historyIds, draft.includePhoto, draft.includeIntroLink, it)
+                else account.client.updateCard(editing.id, draft.cardName, "", draft.contactIds, draft.historyIds, draft.includePhoto, draft.includeIntroLink, it)
             }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {

@@ -267,6 +267,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
             .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
             .set(SCHEDULES.RECURRENCE, item.recurrence?.rule)
+            .set(SCHEDULES.PHASE, item.phase?.name)
             .set(SCHEDULES.SEQUENCE, 0)
             .set(SCHEDULES.CREATED_AT, now)
             .set(SCHEDULES.UPDATED_AT, now)
@@ -280,7 +281,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     override fun findSchedule(activityId: Id, scheduleId: Id): StoredSchedule? =
         dsl.selectFrom(SCHEDULES)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse)
-            .fetchOne()?.let { StoredSchedule(it.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty()), it.slot) }
+            .fetchOne()?.let { StoredSchedule(it.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty(), TimetableRows.scheduleIdsWithSessions(dsl, listOf(scheduleId)).isNotEmpty()), it.slot) }
 
     @Transactional
     override fun updateDetailSchedule(activityId: Id, scheduleId: Id, item: ScheduleItem): Schedule? {
@@ -295,6 +296,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
             .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
             .set(SCHEDULES.RECURRENCE, item.recurrence?.rule)
+            .set(SCHEDULES.PHASE, item.phase?.name) // 보내지 않은 요청은 패치가 저장값을 그대로 넘긴다. null은 자동 판정으로 되돌림
             .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
             .set(SCHEDULES.UPDATED_AT, now)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED_DELETED.isFalse)
@@ -354,7 +356,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
 
     private fun fetchSchedule(activityId: Id, scheduleId: Id): Schedule? =
         dsl.selectFrom(SCHEDULES).where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId)).fetchOne()
-            ?.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty())
+            ?.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty(), TimetableRows.scheduleIdsWithSessions(dsl, listOf(scheduleId)).isNotEmpty())
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)

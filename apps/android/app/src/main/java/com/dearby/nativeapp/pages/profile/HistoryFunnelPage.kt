@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.profile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -25,8 +26,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.EvidenceRow
 import com.dearby.nativeapp.widgets.profile.profileFields.HistoryPeriodFields
 import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 
-/** Toss-style history entry: one question per screen with progress, then a summary with evidence (contract "이력"). */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Toss-style history entry: one question per screen with progress, then a summary with evidence (contract "이력"). The top-bar arrow and
+ * system back go to the previous question with the answers kept (contract "뒤로 가기"); from the first question (a saved history: from its
+ * summary) they close, asking first when something was changed. A saved history's first question goes back to its summary.
+ */
 @Composable fun HistoryFunnelPage(
     state: FunnelState, change: (HistoryDraft) -> Unit, go: (HistoryDraft.Step) -> Unit, next: () -> Unit, searchQuery: (String) -> Unit,
     pickImage: () -> Unit, pickPdf: () -> Unit, deleteEvidence: (String) -> Unit, close: () -> Unit,
@@ -34,10 +38,24 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val draft = state.draft
     val steps = draft.steps
     val index = steps.indexOf(state.step).coerceAtLeast(0)
+    var discarding by remember { mutableStateOf(false) }
+    val leave = { if (state.edited) discarding = true else close() }
+    val back = {
+        when {
+            state.saved && state.step == HistoryDraft.Step.SUMMARY -> leave()
+            state.saved && index == 0 -> go(HistoryDraft.Step.SUMMARY)
+            index > 0 -> go(steps[index - 1])
+            else -> leave()
+        }
+    }
+    BackHandler(onBack = back)
+    if (discarding) AlertDialog({ discarding = false }, title = { Text("작성 중인 내용을 버릴까요?") },
+        confirmButton = { TextButton({ discarding = false; close() }) { Text("버리기", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ discarding = false }) { Text("취소") } })
     Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
-        DearbyTopBar(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", close)
+        DearbyTopBar(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", back)
         LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (state.step) {
                 HistoryDraft.Step.KIND -> {
                     Text("어떤 이력인가요?", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)

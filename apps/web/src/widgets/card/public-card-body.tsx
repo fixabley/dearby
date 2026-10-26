@@ -1,5 +1,4 @@
-import { type Card, type History, contactHref } from "@/lib/models";
-import { Markdown } from "@/lib/markdown";
+import { type Card, type History, contactHref, contactUsername, httpsUrl } from "@/lib/models";
 import { Badge } from "@/shared/ui/badge";
 import { Card as Surface } from "@/shared/ui/card";
 import { Icon } from "@/shared/ui/icon";
@@ -18,8 +17,8 @@ const CONTACT_KIND_NAME: Record<ContactKind, string> = {
 };
 
 /**
- * 공개 명함 카드 면 (contract "명함 표현", iOS `CardView`): one grouped surface — centred head (avatar, name, job capsules, organization),
- * introduction, 연락처 rows (kind icon on the left, label for screen readers only, whole row is the link) and 활동 이력 rows.
+ * 공개 명함 카드 면 (contract "명함 표현", iOS `CardView`): one grouped surface — centred head (photo or initial avatar, name, job capsules, organization),
+ * the 소개 링크 button beside the name (contract "소개 링크·소개 글 폐지" 2026-10-26; the old introduction body is not shown), 연락처 rows (kind icon on the left, label for screen readers only, whole row is the link) and 활동 이력 rows.
  */
 export function PublicCardBody({ card }: { card: Card }) {
   const jobs = card.job
@@ -30,13 +29,22 @@ export function PublicCardBody({ card }: { card: Card }) {
   return (
     <Surface className="flex flex-col gap-6 p-5">
       <header className="flex flex-col items-center gap-2.5 text-center">
-        <span
-          aria-hidden="true"
-          className="grid size-14 place-items-center rounded-full bg-mint text-title2 font-bold text-teal"
-        >
-          {Array.from(card.profileName)[0] || <Icon name="card" />}
-        </span>
-        <h1 className="text-title2 font-bold break-keep">{card.profileName || "이름 미등록"}</h1>
+        {card.photo ? (
+          // A data URI from the proxy (contract "프로필 사진"); next/image has nothing to optimise here.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={card.photo} alt="" className="size-14 rounded-full object-cover" />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid size-14 place-items-center rounded-full bg-mint text-title2 font-bold text-teal"
+          >
+            {Array.from(card.profileName)[0] || <Icon name="card" />}
+          </span>
+        )}
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          <h1 className="text-title2 font-bold break-keep">{card.profileName || "이름 미등록"}</h1>
+          <IntroLink value={card.introLink} />
+        </div>
         {jobs.length > 0 && (
           <ul className="flex flex-wrap justify-center gap-1.5" aria-label="직무">
             {jobs.map((job, index) => (
@@ -48,11 +56,6 @@ export function PublicCardBody({ card }: { card: Card }) {
         )}
         {organization && <p className="text-footnote text-secondary-label">{organization}</p>}
       </header>
-      {card.introduction.trim() && (
-        <div className="markdown">
-          <Markdown source={card.introduction} />
-        </div>
-      )}
       <section className="flex flex-col gap-1">
         <h2 className="text-subheadline font-semibold text-secondary-label">연락처</h2>
         {!card.contacts.length ? (
@@ -65,7 +68,7 @@ export function PublicCardBody({ card }: { card: Card }) {
                 <>
                   <Icon name={contact.kind === "email" ? "mail" : contact.kind} tone="teal" />
                   <span className="sr-only">{contact.label || CONTACT_KIND_NAME[contact.kind]}: </span>
-                  <span className="flex-1 text-subheadline break-all">{contact.value}</span>
+                  <span className="flex-1 text-subheadline break-all">{contactUsername(contact) ?? contact.value}</span>
                   {href && <Icon name="external-link" size="inline" tone="secondary" />}
                 </>
               );
@@ -117,6 +120,26 @@ export function PublicCardBody({ card }: { card: Card }) {
         )}
       </section>
     </Surface>
+  );
+}
+
+/** 소개 링크 button: the Notion glyph for notion.so·notion.site pages, a link glyph otherwise; opens in a new tab. */
+function IntroLink({ value }: { value?: string | null }) {
+  const href = httpsUrl(value ?? null);
+  if (!href) return null;
+  const host = new URL(href).hostname;
+  const notion = /(^|\.)notion\.(so|site)$/.test(host);
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="소개 링크 열기"
+      className="inline-flex min-h-8 items-center gap-1 rounded-full bg-mint px-2.5 text-footnote font-semibold text-teal active:opacity-70"
+    >
+      <Icon name={notion ? "notion" : "link"} size="inline" />
+      소개
+    </a>
   );
 }
 
