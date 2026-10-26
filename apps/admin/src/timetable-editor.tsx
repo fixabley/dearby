@@ -94,25 +94,32 @@ function fromResponse(data: TimetableResponse | undefined): Draft {
 
 const byStart = (a: DraftSession, b: DraftSession) => a.start - b.start || a.end - b.end;
 
-/** Client copy of the server rules (TimetableRules.validate), so most 400s show before saving. */
-function problemsOf({ tracks, sessions }: Draft, { from, to }: BlockRange): string[] {
+/** Client copy of the server rules (TimetableRules.validate), so most 400s show before saving. `tableBroken`: the preview cannot be drawn. */
+function problemsOf({ tracks, sessions }: Draft, { from, to }: BlockRange): { problems: string[]; tableBroken: boolean } {
   const problems: string[] = [];
   const names = tracks.map((track) => track.name.trim());
   if (names.some((name) => !name)) problems.push("트랙 이름을 모두 입력해 주세요.");
   if (new Set(names.filter(Boolean)).size !== names.filter(Boolean).length) problems.push("같은 이름의 트랙이 있어요.");
   if (sessions.length > MAX_SESSIONS) problems.push(`세션은 ${MAX_SESSIONS}개까지예요.`);
   const sorted = [...sessions].sort(byStart);
+  let tableBroken = false;
   for (const session of sorted) {
-    if (session.end <= session.start) problems.push(`끝이 시작보다 뒤여야 해요: ${session.title}`);
+    if (session.end <= session.start) {
+      problems.push(`끝이 시작보다 뒤여야 해요: ${session.title}`);
+      tableBroken = true;
+    }
     else if (session.start < from || session.end > to) problems.push(`일정 시간 밖이에요: ${session.title}`);
   }
   sorted.forEach((a, index) => {
     for (const b of sorted.slice(index + 1)) {
       const sameLane = a.trackKey === null || b.trackKey === null || a.trackKey === b.trackKey;
-      if (sameLane && a.start < b.end && b.start < a.end) problems.push(`같은 트랙(또는 전체 트랙) 세션끼리 시간이 겹쳐요: ${a.title} / ${b.title}`);
+      if (sameLane && a.start < b.end && b.start < a.end) {
+        problems.push(`같은 트랙(또는 전체 트랙) 세션끼리 시간이 겹쳐요: ${a.title} / ${b.title}`);
+        tableBroken = true;
+      }
     }
   });
-  return problems;
+  return { problems, tableBroken };
 }
 
 function TimetableModal({ activityId, schedule, block, onClose }: { activityId: number; schedule: Schedule; block: BlockRange; onClose: () => void }) {
@@ -159,17 +166,20 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
   const dropped = (next: Draft) => storedSessions.filter((stored) => !next.sessions.some((kept) => kept.id === stored.id));
   const submit = (next: Draft) => {
     const removed = dropped(next);
-    if (!removed.length) return saveOnce(() => save.mutateAsync(next));
+    const deleting = !next.sessions.length && !next.tracks.length;
+    if (!removed.length && !deleting) return saveOnce(() => save.mutateAsync(next));
     modal.confirm({
-      title: next.sessions.length || next.tracks.length ? "시간표를 저장할까요?" : "시간표를 지울까요?",
-      content: `세션 ${removed.length}개(${removed.map((session) => session.title).slice(0, 3).join(", ")}${removed.length > 3 ? " 등" : ""})와 그 세션의 찜이 함께 지워져요.`,
-      okText: next.sessions.length || next.tracks.length ? "저장" : "지우기",
+      title: deleting ? "시간표를 지울까요?" : "시간표를 저장할까요?",
+      content: removed.length
+        ? `세션 ${removed.length}개(${removed.map((session) => session.title).slice(0, 3).join(", ")}${removed.length > 3 ? " 등" : ""})와 그 세션의 찜이 함께 지워져요.`
+        : "트랙이 모두 지워져요.",
+      okText: deleting ? "지우기" : "저장",
       okButtonProps: { danger: true },
       cancelText: "취소",
       onOk: () => saveOnce(() => save.mutateAsync(next)),
     });
   };
-  const problems = problemsOf(draft, block);
+  const { problems, tableBroken } = problemsOf(draft, block);
   const days = windowDays(block);
   const tagName = (value: TagValue) => (typeof value === "string" ? value : (tags.data?.find((tag) => tag.id === value)?.name ?? `#${value}`));
   const trackName = (key: string | null) => (key === null ? "전체 트랙" : (draft.tracks.find((track) => track.key === key)?.name || "이름 없는 트랙"));
@@ -306,7 +316,7 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
             {
               key: "preview",
               label: "미리보기",
-              children: problems.some((problem) => problem.startsWith("같은 트랙") || problem.startsWith("끝이")) ? (
+              children: tableBroken ? (
                 <Alert type="warning" showIcon message="시간이 겹치거나 잘못된 세션을 고치면 미리볼 수 있어요." />
               ) : (
                 <TimetablePreview draft={draft} multiDay={days.length > 1} tagName={tagName} />
@@ -393,7 +403,8 @@ function SessionForm({
           tags: session?.tags ?? [],
         }}
         onFinish={(values) => {
-          const midnight = dayjs.tz(values.day, SEOUL);
+          // The 날짜 field exists only for multi-day blocks, so read the watched day (days[0] otherwise).
+          const midnight = dayjs.tz(day, SEOUL);
           const [from, to] = values.time!.map(minuteOf);
           // 00:00 as an end is the next midnight (an all-day block ends there).
           const toMinute = to === 0 && from > 0 ? 1440 : to;
