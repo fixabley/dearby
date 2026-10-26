@@ -54,7 +54,11 @@
     "FavoriteList",
     "InboxGroup",
     "InboxItem",
-    "InboxPage"
+    "InboxPage",
+    "Timetable",
+    "TimetableTrack",
+    "TimetableSession",
+    "FavoriteSession"
   ],
   "entities/identity": [
     "CardHistoryRows",
@@ -140,7 +144,19 @@
     "DiscoveryQueueServer",
     "DiscoveryQueuePage",
     "DiscoveryQueueEntry",
-    "QueueStoryCard"
+    "QueueStoryCard",
+    "SessionFavoritesModel",
+    "SessionFavoritesServer",
+    "TimetableGrid",
+    "MyTimetable",
+    "TimetablePage",
+    "TimetableRoute",
+    "TimetableTable",
+    "MyTimetableList",
+    "TimetableSessionCard",
+    "TimetableSessionSheet",
+    "TimetableTrackBadge",
+    "TimetableText"
   ],
   "widgets/identity": [
     "AccountViewModel",

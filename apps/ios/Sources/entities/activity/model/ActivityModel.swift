@@ -190,6 +190,8 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     var overlapCheck: OverlapCheck? = nil
     /// The admin's repeat rule (contract "반복 일정" 2026-10-22); nil when the schedule does not repeat or the rule is unreadable.
     var recurrence: ScheduleRecurrence? = nil
+    /// The block has a track·session timetable (contract "트랙·세션 시간표" 2026-10-26: `Schedule.hasTimetable`); false on older responses.
+    var hasTimetable = false
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
     /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간", "반복 일정" 2026-10-22). With a repeat rule,

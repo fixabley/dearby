@@ -75,15 +75,21 @@ import Observation
     private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
     /// `GET /v1/activities/:id` for 내 활동 records and linked activities not seen in discovery; nil when the activity is gone (404).
     private let fetchActivity: @Sendable (_ id: String) async throws -> ActivityModel?
+    /// One block's 트랙·세션 시간표; nil on 404.
+    private let fetchTimetable: @Sendable (_ activityID: String, _ scheduleID: String) async throws -> Timetable?
     init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
          activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
          activity: @escaping @Sendable (_ id: String) async throws -> ActivityModel?,
+         timetable: @escaping @Sendable (_ activityID: String, _ scheduleID: String) async throws -> Timetable?,
          webOrigin: URL = URL(string: AppOrigins.defaultWeb)!) {
         self.webOrigin = webOrigin
         fetchPrograms = programs
         fetchActivities = activities
         fetchActivity = activity
+        fetchTimetable = timetable
     }
+    /// 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26) of one block; nil when the server has none (404).
+    func timetable(_ activityID: String, _ scheduleID: String) async throws -> Timetable? { try await fetchTimetable(activityID, scheduleID) }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
     /// An activity shown outside the program list (추천), so its detail can open.

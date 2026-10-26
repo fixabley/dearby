@@ -57,6 +57,20 @@ struct ConnectionProvider: Sendable {
             throw error
         }
     }
+    /// One block's 트랙·세션 시간표; nil on 404.
+    func timetable(activityID: String, scheduleID: String) async throws -> Timetable? {
+        do { return try await ActivityClient.fetchTimetable(api: origins.api, activityID: activityID, scheduleID: scheduleID) } catch {
+            log.warning("Timetable load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
+    }
+    /// 세션 찜 for the signed-in `account` (contract "트랙·세션 시간표"); each call refreshes the tokens once on a 401.
+    @MainActor func sessionFavoritesServer(_ account: AccountViewModel) -> SessionFavoritesServer {
+        let api = origins.api
+        return SessionFavoritesServer(
+            load: { try await Self.bearer(account) { try await ActivityClient.fetchSessionFavorites(api: api, bearer: $0) } },
+            set: { id, on in try await Self.bearer(account) { try await ActivityClient.setSessionFavorite(api: api, sessionID: id, on: on, bearer: $0) } })
+    }
     /// 내 활동 on the server for the signed-in `account` (contract "내 활동 서버 저장"); each call refreshes the tokens once on a 401.
     @MainActor func mineServer(_ account: AccountViewModel) -> MineServer {
         let client = account.client

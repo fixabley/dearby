@@ -5,6 +5,7 @@ import SwiftUI
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var activityModel: ActivityViewModel
     @State private var favorites = FavoritesModel()
+    @State private var sessionFavorites = SessionFavoritesModel()
     @State private var inbox = InboxModel()
     @State private var notifications: NotificationModel
     /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
@@ -45,6 +46,7 @@ import SwiftUI
         let links = ConnectionProvider()
         self.links = links
         let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities, activity: links.activity(id:),
+                                              timetable: links.timetable(activityID:scheduleID:),
                                               webOrigin: links.origins.web)
         _activityModel = State(initialValue: activityModel)
         let account = links.account()
@@ -103,10 +105,18 @@ import SwiftUI
                     .alert(favorites.notice ?? "", isPresented: Binding(get: { favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
                         Button("확인", role: .cancel) {}
                     }
+                    .background {
+                        // A separate host so it does not compete with the favorites alert above.
+                        Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { sessionFavorites.notice != nil },
+                                                                                               set: { if !$0 { sessionFavorites.notice = nil } })) {
+                            Button("확인", role: .cancel) {}
+                        }
+                    }
                 }
             }
             // Every heart reads the one favorites model, also inside sheets and the queue.
             .environment(favorites)
+            .environment(sessionFavorites)
             // Every tab's bell: the inbox signed in, sign-in otherwise (contract "알림 목록(발견 우상단 종)").
             .environment(\.inboxEntry, InboxEntry(signedIn: accountReady, unread: inbox.unread, signIn: needAccount))
             // Profile and card photos need the session (contract "프로필 사진"), so every `DearbyPhotoAvatar` reads through the account.
@@ -115,6 +125,12 @@ import SwiftUI
             .onChange(of: favorites.signInRequested) { _, requested in
                 guard requested else { return }
                 favorites.signInRequested = false
+                needAccount()
+            }
+            // A session heart, likewise (contract "트랙·세션 시간표": 비로그인 로그인 시트, 동의 전 동의 화면).
+            .onChange(of: sessionFavorites.signInRequested) { _, requested in
+                guard requested else { return }
+                sessionFavorites.signInRequested = false
                 needAccount()
             }
             .task {
@@ -217,6 +233,7 @@ import SwiftUI
                 queue.signedOut()
                 adConsent.signedOut()
                 favorites.signedOut()
+                sessionFavorites.signedOut()
                 inbox.signedOut()
                 // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
                 if !signingIn { afterSignIn = nil }
@@ -233,6 +250,7 @@ import SwiftUI
             Task { await eligibility.load() }
             Task { await activityModel.signedIn(links.mineServer(account)) }
             Task { await favorites.signedIn(links.favoritesServer(account)) }
+            Task { await sessionFavorites.signedIn(links.sessionFavoritesServer(account)) }
             Task { await inbox.signedIn(links.inboxServer(account)) }
             Task { await notifications.refresh() }
             Task { await recommendations.signedIn(links.recommendationServer(account)) }

@@ -9,12 +9,16 @@ struct ActivityInformationView: View {
         let date: String
         /// nil for a date-less schedule: no `캘린더에 추가`.
         let draft: CalendarEventDraft?
+        /// The block has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): `{제목} 시간표` under the date.
+        var hasTimetable = false
     }
     let rows: [Row]
     /// At least one schedule can be compared with the device calendar (timed, or date-only with an admin time window).
     let canCheckCalendar: Bool
     let checkCalendar: () -> Void
     let addToCalendar: (CalendarEventDraft) -> Void
+    /// `{제목} 시간표` on a row with a timetable.
+    let openTimetable: (Row) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
@@ -31,6 +35,11 @@ struct ActivityInformationView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.title).font(.dearby(.subheadline).weight(.semibold))
                             Text(row.date).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                            if row.hasTimetable {
+                                Button("\(row.title) 시간표", systemImage: "tablecells") { openTimetable(row) }
+                                    .buttonStyle(.bordered).controlSize(.small).font(.dearby(.footnote).weight(.semibold)).padding(.top, 6)
+                                    .accessibilityIdentifier("timetable-\(row.id)")
+                            }
                         }.padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
                         if let draft = row.draft {
                             Button("캘린더에 추가", systemImage: "calendar.badge.plus") { addToCalendar(draft) }
