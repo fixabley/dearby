@@ -3,8 +3,8 @@ import SwiftUI
 /// `겹치는 시간 확인`: asks for calendar access on tap, compares the activity's schedules with device events on device,
 /// and forgets them when dismissed (contract "기기 캘린더 겹침 — 2026-10-06").
 /// The explanation, the denied state and the no-overlap result are centred messages (contract "비스크롤 화면 배치·CTA").
-/// Overlaps are a list grouped per device event (contract "겹침 결과 묶음" 2026-10-22): a summary, repeating events, then single events
-/// (five, then `더 보기`); a group with several dates expands to them, and each date opens its timeline.
+/// Overlaps follow one another in date order, each with its timetable and nothing to tap (contract "겹침 결과 시간표 연달아" 2026-10-26):
+/// a summary, then ten at a time with `더 보기`.
 struct CalendarConflictView: View {
     @State private var state: CalendarConflictState
     @State private var detent = PresentationDetent.large
@@ -14,7 +14,8 @@ struct CalendarConflictView: View {
     /// The privacy policy the intro links to (web `/privacy`); the production site unless a build passes another origin.
     private let privacyURL: URL
     @State private var showingPrivacy = false
-    @State private var showsAllSingle = false
+    /// Timetables shown; a weekly event against a long bootcamp can overlap hundreds of times, so `더 보기` adds ten at a time.
+    @State private var shown = 10
     /// `activityLink`: the activity's page; device events whose notes or URL carry it (added from the app) are not compared.
     init(schedules: [ActivityScheduleModel], activityLink: URL, source: any CalendarEventSource = DeviceCalendarEventSource(),
          privacyURL: URL = URL(string: AppOrigins.defaultWeb)!.appending(path: "privacy")) {
@@ -76,15 +77,12 @@ struct CalendarConflictView: View {
             } footer: {
                 Text("기기 캘린더는 읽기만 하고, 읽은 일정은 이 화면을 닫으면 버려요.")
             }
-            if !state.repeating.isEmpty {
-                Section("반복 일정") { ForEach(state.repeating) { row($0) } }
+            ForEach(state.overlaps.prefix(shown)) { item in
+                Section { overlap(item) }
             }
-            if !state.single.isEmpty {
-                Section("단일 일정") {
-                    ForEach(showsAllSingle ? state.single : Array(state.single.prefix(5))) { row($0) }
-                    if !showsAllSingle, state.single.count > 5 {
-                        Button("더 보기 (\(state.single.count - 5)개)") { showsAllSingle = true }.foregroundStyle(DearbyStyle.teal)
-                    }
+            if state.overlaps.count > shown {
+                Section {
+                    Button("더 보기 (\(state.overlaps.count - shown)개 남음)") { shown += 10 }.foregroundStyle(DearbyStyle.teal)
                 }
             }
         }
@@ -95,38 +93,14 @@ struct CalendarConflictView: View {
                 .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
         }
     }
-    /// `제목 · 매주 화 10:00~11:00` over `n번 겹침(첫 날짜~마지막 날짜)`; one date opens its timeline, several expand first.
-    @ViewBuilder private func row(_ group: CalendarOverlapGroup) -> some View {
-        let label = VStack(alignment: .leading, spacing: 4) {
-            Text([group.title, group.repeats].compactMap { $0 }.joined(separator: " · ")).font(.dearby(.body))
-            Text(group.overlaps.count == 1 ? group.overlaps.first.map(when) ?? "" : group.countText)
-                .font(.dearby(.subheadline)).foregroundStyle(.secondary)
-        }.padding(.vertical, 2)
-        if group.overlaps.count == 1, let item = group.overlaps.first {
-            NavigationLink { detail(item) } label: { label }
-        } else {
-            DisclosureGroup {
-                ForEach(group.overlaps) { item in NavigationLink { detail(item) } label: { Text(when(item)).font(.dearby(.subheadline)) } }
-            } label: { label }
-        }
-    }
-    /// `10월 24일 금요일 14:00–15:00 · 30분`.
-    private func when(_ item: CalendarOverlapState) -> String {
-        "\(item.start.formatted(item.dateFormat)) \(item.span(item.start, item.end)) · \(item.minutes)분"
-    }
-    /// One overlap with its timeline.
-    private func detail(_ item: CalendarOverlapState) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Label(item.start.formatted(item.dateFormat), systemImage: "calendar").font(.dearby(.subheadline)).foregroundStyle(.secondary)
-                Text("\(item.minutes)분이 겹쳐요").font(.dearby(.title2).bold()).accessibilityIdentifier("overlap-duration")
-                Text("\(item.span(item.start, item.end))에 ‘\(item.busyTitle)’과 겹쳐요.")
-                    .font(.dearby(.body)).foregroundStyle(.secondary)
-                CalendarTimelineView(item: item).padding(.top, 4)
-            }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
-        }
-        .background(Color(.systemBackground))
-        .navigationTitle(item.activity.title).navigationBarTitleDisplayMode(.inline)
+    /// `10월 24일 금요일 · 제목` over `14:00 – 15:00 · 30분 겹침 · 매주 화 10:00~11:00`, then the timetable.
+    private func overlap(_ item: CalendarOverlapState) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(item.start.formatted(item.dateFormat)) · \(item.busyTitle)").font(.dearby(.headline))
+            Text(["\(item.span(item.start, item.end)) · \(item.minutes)분 겹침", item.repeats].compactMap { $0 }.joined(separator: " · "))
+                .font(.dearby(.subheadline)).foregroundStyle(.secondary).accessibilityIdentifier("overlap-duration")
+            CalendarTimelineView(item: item).padding(.top, 8)
+        }.padding(.vertical, 6)
     }
 }
 

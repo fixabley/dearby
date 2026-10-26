@@ -64,7 +64,7 @@ fun compareCalendar(schedules: List<ScheduleModel>, source: BusyTimeSource): Lis
 }
 
 /**
- * One row of the result (contract "반복 일정과 겹침 결과 묶음"): the overlaps of one device event, earliest first. [rule] is the
+ * One device event's overlaps, earliest first, counted once in the result's summary (contract "반복 일정과 겹침 결과 묶음"). [rule] is the
  * event's RRULE; an event with several overlapping occurrences repeats even when its rule could not be read.
  */
 data class OverlapGroupState(val title: String?, val rule: String?, val overlaps: List<CalendarOverlapState>) {
