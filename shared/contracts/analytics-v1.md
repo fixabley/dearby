@@ -37,7 +37,7 @@
 | `queue_exit` | 끝 전 닫음 | `position`(마지막으로 본 카드) |
 | `queue_ad_shown` | 대기열 끝 광고 카드가 화면에 보임(열람당 최대 1번, 2026-10-25) | `viewed`(그때까지 본 활동 카드 수) |
 | `att_prompt_result` (선택, iOS만) | 대기열 첫 광고 요청 전 ATT 창에 답함(창을 띄운 경우만) | `status` = `authorized`·`denied`·`restricted` |
-| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없어 광고를 끈 빌드는 보내지 않는다. 광고 미동의 계정에게 그 자리에서 광고 동의 시트를 띄운 열람도 광고를 요청하지 않았으므로 보내지 않는다, 2026-10-26) |
+| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없거나 `DEARBY_ADS_ENABLED`가 꺼져(2026-10-26부터 기본, native-v1.md "광고 끄기") 광고를 끈 빌드는 보내지 않는다. 광고 미동의 계정에게 그 자리에서 광고 동의 시트를 띄운 열람도 광고를 요청하지 않았으므로 보내지 않는다, 2026-10-26) |
 
 도달률 = `queue_card_view(position=n)` 사용자 수 ÷ `queue_open` 사용자 수(n=1…10), 완주율 = `queue_end` ÷ `queue_open`. 광고 카드는 끝 화면 전이므로 광고 카드에서 닫으면 `queue_exit`(`position` = 마지막 활동 카드 번호)를 보내고 완주로 세지 않는다. 광고 노출률 = `queue_ad_shown` ÷ (`queue_ad_shown` + `queue_ad_skipped_unloaded`). 클릭·수익은 AdMob 보고서로 본다([native-v1.md](native-v1.md) "맞춤 대기열 끝 광고").
 
