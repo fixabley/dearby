@@ -74,9 +74,9 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 
 ## 웹 (2026-10-26)
 
-사용자 요청 "웹에도 Google Analytics". 같은 GA4 속성에 웹 데이터 스트림을 더한다(`apps/web` `shared/ui/google-analytics.tsx`, 의존성 없이 `next/script` + gtag).
+사용자 요청 "웹에도 Google Analytics". 같은 GA4 속성에 웹 데이터 스트림을 더한다(`apps/web` `shared/ui/google-analytics.tsx`, 의존성 없이 `next/script` + gtag; GA 웹 측정 ID `G-C8238MCXS6`은 코드에 두지 않고 Vercel 환경 변수로만 넣는다).
 - 켜는 조건: Vercel 프로덕션 배포(`VERCEL_ENV=production`)이고 `NEXT_PUBLIC_GA_MEASUREMENT_ID`(`G-…`)가 있을 때만 스크립트를 넣는다. 로컬·프리뷰·빈 값은 아무것도 넣지 않는다. 웹에는 끄는 설정이 없다(처리방침에 브라우저 쿠키 차단으로 거부하는 방법을 적는다).
-- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID·사용자 속성 없음. 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 명함 경로는 `/cards/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다). 활동 경로 `/activities/<id>`는 공개라 그대로 둔다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
+- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID·사용자 속성 없음. 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 개별 경로를 `/cards/[id]`·`/activities/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다; 활동별 수는 `activity_view`의 `activity_id`로 본다). 규칙은 `shared/lib/analytics.ts` `analyticsUrl` 하나다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
 
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
@@ -87,8 +87,9 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
 
+Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
 `activity_view`·`apply_click`은 앱과 같은 이름이라 GA에서 플랫폼(스트림) 측정기준으로 나눠 본다. 웹은 공개 태그 사전을 불러오지 않으므로 `field`를 보내지 않는다.
-GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두면 GA가 정리 전 URL로 페이지뷰·검색어·아웃바운드 클릭을 보낸다. 신청 링크 클릭은 위 `apply_click`으로만 센다. 데이터 보관 기간은 2개월을 권한다.
+GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두면 GA가 정리 전 URL로 페이지뷰·검색어·아웃바운드 클릭을 보낸다. 신청 링크 클릭은 위 `apply_click`으로만 센다. 데이터 보관 기간은 속성 전체(앱 스트림 포함) 설정이라 탐색 보고서 기간과 함께 사용자가 정한다(2개월·14개월).
 
 ## GA 콘솔에서 할 일(사용자)
 맞춤 정의 › 맞춤 측정기준에 위 사용자 속성 4개(사용자 범위)와 매개변수 `step`, `entry`, `tab`, `menu`, `position`, `field`, `category`, `source`, `type`, `level`, `kind`, `reason`, `status`(이벤트 범위; `status`는 iOS `att_prompt_result`를 넣을 때)을 등록한다. 등록 전 데이터는 보고서 측정기준으로 쓸 수 없다.

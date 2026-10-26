@@ -2,7 +2,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { pageLocation } from "@/shared/lib/analytics";
+import { analyticsUrl } from "@/shared/lib/analytics";
 
 /**
  * GA4 web stream (contract analytics-v1.md "웹"). The automatic page view is off because it would send the raw URL; one
@@ -12,7 +12,7 @@ import { pageLocation } from "@/shared/lib/analytics";
 export function GoogleAnalytics({ id }: { id: string }) {
   const pathname = usePathname();
   useEffect(() => {
-    const location = pageLocation(pathname);
+    const location = analyticsUrl(window.location.origin + pathname);
     if (!window.gtag) {
       window.dataLayer = window.dataLayer ?? [];
       // gtag.js reads the `arguments` object, not an array, from the data layer.

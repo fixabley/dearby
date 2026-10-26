@@ -14,9 +14,10 @@ export function track(name: string, params?: Params) {
 }
 
 /**
- * `page_location` without query or fragment (`?code=` card QR codes, tokens) and with the card id templated: a card URL
- * identifies one person, an activity URL is public.
+ * The URL both GA (`page_location`) and Vercel Web Analytics receive: no query or fragment (`?code=` card QR codes, tokens,
+ * the search `q`) and per-item paths templated (`/cards/[id]`, `/activities/[id]`); a card URL identifies one person.
  */
-export function pageLocation(pathname: string): string {
-  return window.location.origin + pathname.replace(/^\/cards\/[^/]+/, "/cards/[id]");
+export function analyticsUrl(url: string): string {
+  const { origin, pathname } = new URL(url);
+  return origin + pathname.replace(/^\/(cards|activities)\/[^/]+/, "/$1/[id]");
 }
