@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.ViewTimeline
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,6 +50,8 @@ import kotlinx.coroutines.launch
 @Composable fun FavoritesPage(
     state: FavoritesViewState, list: ActivityListState, hearts: FavoriteHearts, open: (String) -> Unit, plus: (String) -> Unit, openProgram: (String) -> Unit,
     retryProgram: (String) -> Unit, signIn: () -> Unit, retry: () -> Unit,
+    /** 찜한 세션 (나만의 시간표, 2026-10-26): how many, the days they fall on (a dot in the calendar) and the entry that opens them. */
+    sessionCount: Int = 0, sessionDays: Set<LocalDate> = emptySet(), openSessions: () -> Unit = {},
 ) {
     when (state.phase) {
         FavoritesPhase.SIGNED_OUT -> DearbyEmptyState("로그인하면 즐겨찾기를 쓸 수 있어요", "하트를 누른 활동과 프로그램이 여기에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder, MessageAction("로그인", signIn))
@@ -57,8 +61,13 @@ import kotlinx.coroutines.launch
             val undatedIds = state.entries.filter { it.date == null }.map { it.activityId }.toSet()
             val undated = state.activityIds.filter { it in undatedIds }.mapNotNull(list.known::get)
             var expanded by remember { mutableStateOf(emptySet<String>()) }
-            if (state.programs.isEmpty() && state.activityIds.isEmpty()) DearbyEmptyState("하트를 누르면 여기에 모여요", "발견에서 마음에 드는 활동과 프로그램에 하트를 눌러 보세요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
-            else FavoritesCalendar(state, open) {
+            if (state.programs.isEmpty() && state.activityIds.isEmpty() && sessionCount == 0) DearbyEmptyState("하트를 누르면 여기에 모여요", "발견에서 마음에 드는 활동과 프로그램에 하트를 눌러 보세요.", Modifier.fillMaxSize(), Icons.Rounded.FavoriteBorder)
+            else FavoritesCalendar(state, open, sessionDays, header = {
+                // Only while there is a 찜한 세션: one row above the month that opens 나만의 시간표.
+                if (sessionCount > 0) ListItem({ Text("찜한 세션 ${sessionCount}개") }, Modifier.clickable(role = Role.Button, onClick = openSessions),
+                    supportingContent = { Text("나만의 시간표 보기") }, leadingContent = { Icon(Icons.Rounded.ViewTimeline, null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }) {
                 if (state.programs.isEmpty() && undated.isEmpty()) return@FavoritesCalendar
                 item(key = "undated") { Text("날짜 없는 즐겨찾기", Modifier.padding(top = 16.dp, bottom = 4.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium) }
                 items(state.programs, key = { "program-" + it.program.id }) { row ->
@@ -91,7 +100,7 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
  * recruitment end, a mint ring under a recruitment start, a mint dot under an event start; below, the dated list grouped by month, then
  * [undated]. A date tap scrolls the list to it; paging scrolls to that month's group. Past dates are dimmed. Nothing is written to the device calendar.
  */
-@Composable private fun FavoritesCalendar(state: FavoritesViewState, open: (String) -> Unit, undated: LazyListScope.() -> Unit) {
+@Composable private fun FavoritesCalendar(state: FavoritesViewState, open: (String) -> Unit, sessionDays: Set<LocalDate>, header: @Composable () -> Unit, undated: LazyListScope.() -> Unit) {
     val today = state.today
     val start = YearMonth.from(today).minusMonths((months / 2).toLong())
     val pager = rememberPagerState(initialPage = months / 2) { months }
@@ -113,6 +122,7 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
         monthIndex[target]?.let { listState.animateScrollToItem(it) }
     }
     Column(Modifier.fillMaxSize()) {
+        header()
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton({ scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }, enabled = pager.currentPage > 0) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "이전 달") }
             Text(shownMonth.title(), Modifier.weight(1f).semantics { heading() }, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
@@ -122,7 +132,7 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
             weekdays.forEach { Text(it.getDisplayName(TextStyle.NARROW, Locale.KOREAN), Modifier.weight(1f), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium) }
         }
         HorizontalPager(pager, Modifier.fillMaxWidth()) { page ->
-            MonthGrid(start.plusMonths(page.toLong()), today, byDay) { day ->
+            MonthGrid(start.plusMonths(page.toLong()), today, byDay, sessionDays) { day ->
                 // A date with nothing scrolls to the next date that has something.
                 val target = days.firstOrNull { it >= day } ?: days.lastOrNull() ?: return@MonthGrid
                 dayIndex[target]?.let { scope.launch { listState.animateScrollToItem(it) } }
@@ -139,7 +149,7 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
     }
 }
 
-@Composable private fun MonthGrid(month: YearMonth, today: LocalDate, byDay: Map<LocalDate, List<CalendarEntry>>, pick: (LocalDate) -> Unit) {
+@Composable private fun MonthGrid(month: YearMonth, today: LocalDate, byDay: Map<LocalDate, List<CalendarEntry>>, sessionDays: Set<LocalDate>, pick: (LocalDate) -> Unit) {
     val lead = month.atDay(1).dayOfWeek.value % 7
     val cells = lead + month.lengthOfMonth()
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -148,16 +158,16 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
                 repeat(7) { column ->
                     val number = week * 7 + column - lead + 1
                     if (number < 1 || number > month.lengthOfMonth()) Spacer(Modifier.weight(1f).height(48.dp))
-                    else DayCell(month.atDay(number), today, byDay[month.atDay(number)].orEmpty(), pick, Modifier.weight(1f))
+                    else DayCell(month.atDay(number), today, byDay[month.atDay(number)].orEmpty(), month.atDay(number) in sessionDays, pick, Modifier.weight(1f))
                 }
             }
         }
     }
 }
 
-@Composable private fun DayCell(day: LocalDate, today: LocalDate, entries: List<CalendarEntry>, pick: (LocalDate) -> Unit, modifier: Modifier) {
+@Composable private fun DayCell(day: LocalDate, today: LocalDate, entries: List<CalendarEntry>, sessions: Boolean, pick: (LocalDate) -> Unit, modifier: Modifier) {
     val marks = entries.mapNotNull { it.mark }.toSet()
-    val name = "${day.monthValue}월 ${day.dayOfMonth}일" + if (entries.isEmpty()) "" else ", 일정 ${entries.size}개"
+    val name = "${day.monthValue}월 ${day.dayOfMonth}일" + (if (entries.isEmpty()) "" else ", 일정 ${entries.size}개") + if (sessions) ", 찜한 세션 있음" else ""
     Column(modifier.height(48.dp).clickable(role = Role.Button) { pick(day) }.semantics { contentDescription = name }.alpha(if (day < today) .38f else 1f),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         val isToday = day == today
@@ -168,6 +178,8 @@ private fun YearMonth.title() = "${year}년 ${monthValue}월"
             if (CalendarMark.DEADLINE in marks) Box(Modifier.size(6.dp).background(TealFill, CircleShape))
             if (CalendarMark.START in marks) Box(Modifier.size(6.dp).border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = .6f), CircleShape))
             if (CalendarMark.EVENT in marks) Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape).border(BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .4f)), CircleShape))
+            // A day with a 찜한 세션 (나만의 시간표).
+            if (sessions) Box(Modifier.size(6.dp).background(MaterialTheme.colorScheme.tertiary, CircleShape))
         }
     }
 }

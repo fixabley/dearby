@@ -13,6 +13,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
+import com.dearby.nativeapp.pages.activity.DiscoveryKind
 import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
 import com.dearby.nativeapp.entities.activity.api.fetchActivity
@@ -44,10 +45,11 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 ActivityViewModel(
-                    { query, cursor, openOnly -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly) } },
-                    { query, cursor, programId, open -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open) } },
+                    { query, cursor, openOnly, kind -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly, kind) } },
+                    { query, cursor, programId, open, kind -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open, kind) } },
                     { id -> withContext(Dispatchers.IO) { fetchActivity(ApiOrigin.current, id) } },
                     account,
+                    DiscoveryKind.of(device.discoveryKind), { device.discoveryKind = it.code },
                 )
             }
         }
@@ -80,6 +82,7 @@ class MainActivity : ComponentActivity() {
     private val favorites: FavoritesViewModel by viewModels {
         viewModelFactory { initializer { FavoritesViewModel(account, activityModel::adopt) } }
     }
+    private val sessions: SessionFavoritesViewModel by viewModels { viewModelFactory { initializer { SessionFavoritesViewModel(account) } } }
     private val notifications: NotificationViewModel by viewModels {
         viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed,
             { device.pushStarted }, { device.pushStarted = true; Push.enable(applicationContext) }) } }
@@ -121,7 +124,7 @@ class MainActivity : ComponentActivity() {
             DearbyTheme { CompositionLocalProvider(LocalPhotoLoader provides account.photos::load) {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
-                    favoritesLink, { favoritesLink = false }, screenshot)
+                    sessions, favoritesLink, { favoritesLink = false }, screenshot)
                 PendingAccountRoute(account)
             } }
         }

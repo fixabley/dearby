@@ -73,6 +73,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     hearts: FavoriteHearts = FavoriteHearts(), plus: (String) -> Unit = {},
     /** Unread notifications on the bell (알림 목록). */
     unread: Int = 0,
+    /** 발견 `프로그램 | 이벤트` (2026-10-26). */
+    setKind: (DiscoveryKind) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
@@ -94,6 +96,12 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
             DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
             // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
+                // 프로그램 | 이벤트 (2026-10-26 사용자 결정): Material 3 segmented buttons at the top; the choice is remembered on the device.
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 8.dp)) {
+                    DiscoveryKind.entries.forEachIndexed { index, kind ->
+                        SegmentedButton(state.kind == kind, { setKind(kind) }, SegmentedButtonDefaults.itemShape(index, DiscoveryKind.entries.size)) { Text(kind.label) }
+                    }
+                }
                 DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
                     Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
                 // 마감 숨기기 (contract "모집 중인 프로그램만 보기"·"토글 라벨은 바로 옆"): label + switch as one left-aligned toggleable unit; off also lists programs active in the last two years.
@@ -111,13 +119,13 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
-                    programs.isEmpty() && state.openOnly -> DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.", Modifier.fillMaxSize())
-                    programs.isEmpty() -> DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
+                    programs.isEmpty() && state.openOnly -> DearbyEmptyState("지금 모집 중인 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "‘마감 숨기기’를 끄면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
+                    programs.isEmpty() -> DearbyEmptyState("최근 3년 안의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
                     else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
                             ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent,
+                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent, eventDates = state.kind == DiscoveryKind.EVENT,
                                 actions = { FavoriteActions(hearts, true, program.id, program.title) }) { ProgramBody(program.id, state, open, retryProgram, hearts, plus) }
                         }
                         if (state.nextCursor != null) item(key = "more") {
@@ -238,7 +246,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
 @Composable private fun Card(activity: ActivityState, open: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags,
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable,
         actions = { FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { plus(activity.id) } })
 
 /** Activity row used by My Activities. */

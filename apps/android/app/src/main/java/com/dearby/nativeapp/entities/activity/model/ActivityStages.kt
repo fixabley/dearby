@@ -16,7 +16,9 @@ import java.time.temporal.ChronoUnit
  */
 data class Stage(val name: String, val kind: String, val label: String, val dateText: String, val day: LocalDate?, val lastDay: LocalDate?,
     val windows: List<ScheduleModel> = emptyList(), val scheduleId: String? = null, val statuses: List<ScheduleStatus> = ScheduleStatus.DEFAULTS,
-    val eventStart: Instant? = null, val eventEnd: Instant? = null, val allDay: Boolean = false, val recurrence: String? = null) {
+    val eventStart: Instant? = null, val eventEnd: Instant? = null, val allDay: Boolean = false, val recurrence: String? = null,
+    /** The schedule has a 트랙·세션 시간표 (contract "트랙·세션 시간표"). */
+    val hasTimetable: Boolean = false) {
     /** Over by [today]: the step's last day has passed. An undated step never ends by itself. */
     fun finished(today: LocalDate) = lastDay != null && lastDay < today
 }
@@ -68,7 +70,7 @@ private fun StageSchedule.toStage(): Stage {
     val statuses = statuses.ifEmpty { ScheduleStatus.DEFAULTS }
     val windows = windows()
     val repeating = windows.firstOrNull()?.takeIf { Recurrence.parse(recurrence) != null }
-    return when {
+    val stage = when {
         // Counts down to the first occurrence and stays on until the last one.
         repeating != null -> Stage(title, kind, label, text, instant(repeating.startAt)?.atZone(seoul)?.toLocalDate(), instant(windows.last().endAt)?.atZone(seoul)?.toLocalDate(), windows, id, statuses, instant(repeating.startAt), instant(repeating.endAt), recurrence = recurrence)
         start != null || end != null -> Stage(title, kind, label, text,
@@ -77,6 +79,7 @@ private fun StageSchedule.toStage(): Stage {
             startDay.atStartOfDay(seoul).toInstant(), endDay!!.plusDays(1).atStartOfDay(seoul).toInstant(), allDay = true)
         else -> Stage(title, kind, label, text, null, null, emptyList(), id, statuses)
     }
+    return stage.copy(hasTimetable = hasTimetable)
 }
 
 private fun localDate(raw: String?): LocalDate? = raw?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

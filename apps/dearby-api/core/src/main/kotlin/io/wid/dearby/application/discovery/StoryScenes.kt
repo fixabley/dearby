@@ -24,7 +24,6 @@ sealed interface Scene {
 object StoryScenes {
 
     private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
-    private val EVENT_CATEGORIES = setOf(ActivityCategory.CONFERENCE, ActivityCategory.MEETUP, ActivityCategory.LECTURE)
     private val FREE = Regex("무료|전액 지원|전액지원")
     private const val FUNDING_TAG = "funding" // 장학·지원금 성격 태그(native-v1.md "분야·성격 태그와 아이콘")
     private const val MIN_FALLBACK_LINES = 2
@@ -52,7 +51,7 @@ object StoryScenes {
             ?: "장학·지원금이 있어요".takeIf { activity.tags.any { it.nameEn == FUNDING_TAG } }
         benefit?.let { scenes += Scene.Benefit(it) }
         // 마감까지(행사 종류는 행사 날짜까지)
-        val event = activity.category in EVENT_CATEGORIES
+        val event = activity.category in ActivityCategory.EVENTS
         val at = if (event) RecommendationRules.start(activity.activitySchedule.time) else RecommendationRules.deadline(activity)?.minusNanos(1)
         val day = at?.atZoneSameInstant(SEOUL)?.toLocalDate()
         scenes += Scene.Deadline(

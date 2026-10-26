@@ -35,6 +35,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         add(OpenActivityConditions.open(now))
         condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
         condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+        condition.kind?.let { add(OpenActivityConditions.kind(it)) }
         condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
         addAll(EligibilityRows.conditions(condition.eligibility))
     }
@@ -59,6 +60,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
             condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+            condition.kind?.let { add(OpenActivityConditions.kind(it)) }
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
         }
