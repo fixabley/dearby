@@ -25,7 +25,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmbeddingSettings
+import io.wid.dearby.adaptor.persistence.jooq.tables.GithubContactLinks
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
@@ -100,7 +102,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.DiscoveryQueueRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.DismissedActivitySourcesRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.EmailContactChallengesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.EmbeddingSettingsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.GithubContactLinksRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestCardsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestHandoffsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestSessionsRecord
@@ -193,7 +197,9 @@ val COLLECTION_WATCHLIST_PROGRAM_ID_NORMALIZED_NAME_KEY: UniqueKey<CollectionWat
 val CONTACTS_PKEY: UniqueKey<ContactsRecord> = Internal.createUniqueKey(Contacts.CONTACTS, DSL.name("contacts_pkey"), arrayOf(Contacts.CONTACTS.ID), true)
 val DISCOVERY_QUEUE_PKEY: UniqueKey<DiscoveryQueueRecord> = Internal.createUniqueKey(DiscoveryQueue.DISCOVERY_QUEUE, DSL.name("discovery_queue_pkey"), arrayOf(DiscoveryQueue.DISCOVERY_QUEUE.USER_ID, DiscoveryQueue.DISCOVERY_QUEUE.QUEUE_DATE, DiscoveryQueue.DISCOVERY_QUEUE.POSITION), true)
 val DISMISSED_ACTIVITY_SOURCES_PKEY: UniqueKey<DismissedActivitySourcesRecord> = Internal.createUniqueKey(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES, DSL.name("dismissed_activity_sources_pkey"), arrayOf(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES.SOURCE_ID), true)
+val EMAIL_CONTACT_CHALLENGES_PKEY: UniqueKey<EmailContactChallengesRecord> = Internal.createUniqueKey(EmailContactChallenges.EMAIL_CONTACT_CHALLENGES, DSL.name("email_contact_challenges_pkey"), arrayOf(EmailContactChallenges.EMAIL_CONTACT_CHALLENGES.ID), true)
 val EMBEDDING_SETTINGS_PKEY: UniqueKey<EmbeddingSettingsRecord> = Internal.createUniqueKey(EmbeddingSettings.EMBEDDING_SETTINGS, DSL.name("embedding_settings_pkey"), arrayOf(EmbeddingSettings.EMBEDDING_SETTINGS.ID), true)
+val GITHUB_CONTACT_LINKS_PKEY: UniqueKey<GithubContactLinksRecord> = Internal.createUniqueKey(GithubContactLinks.GITHUB_CONTACT_LINKS, DSL.name("github_contact_links_pkey"), arrayOf(GithubContactLinks.GITHUB_CONTACT_LINKS.ID), true)
 val GUEST_CARDS_PKEY: UniqueKey<GuestCardsRecord> = Internal.createUniqueKey(GuestCards.GUEST_CARDS, DSL.name("guest_cards_pkey"), arrayOf(GuestCards.GUEST_CARDS.SESSION_DIGEST, GuestCards.GUEST_CARDS.CARD_ID), true)
 val GUEST_HANDOFFS_PKEY: UniqueKey<GuestHandoffsRecord> = Internal.createUniqueKey(GuestHandoffs.GUEST_HANDOFFS, DSL.name("guest_handoffs_pkey"), arrayOf(GuestHandoffs.GUEST_HANDOFFS.DIGEST), true)
 val GUEST_HANDOFFS_SESSION_DIGEST_KEY: UniqueKey<GuestHandoffsRecord> = Internal.createUniqueKey(GuestHandoffs.GUEST_HANDOFFS, DSL.name("guest_handoffs_session_digest_key"), arrayOf(GuestHandoffs.GUEST_HANDOFFS.SESSION_DIGEST), true)
@@ -276,6 +282,8 @@ val COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_PROGRAM_ID_FKEY: ForeignKey<Colle
 val CONTACTS__CONTACTS_USER_ID_FKEY: ForeignKey<ContactsRecord, UsersRecord> = Internal.createForeignKey(Contacts.CONTACTS, DSL.name("contacts_user_id_fkey"), arrayOf(Contacts.CONTACTS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val DISCOVERY_QUEUE__DISCOVERY_QUEUE_ACTIVITY_ID_FKEY: ForeignKey<DiscoveryQueueRecord, ActivitiesRecord> = Internal.createForeignKey(DiscoveryQueue.DISCOVERY_QUEUE, DSL.name("discovery_queue_activity_id_fkey"), arrayOf(DiscoveryQueue.DISCOVERY_QUEUE.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val DISCOVERY_QUEUE__DISCOVERY_QUEUE_USER_ID_FKEY: ForeignKey<DiscoveryQueueRecord, UsersRecord> = Internal.createForeignKey(DiscoveryQueue.DISCOVERY_QUEUE, DSL.name("discovery_queue_user_id_fkey"), arrayOf(DiscoveryQueue.DISCOVERY_QUEUE.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val EMAIL_CONTACT_CHALLENGES__EMAIL_CONTACT_CHALLENGES_USER_ID_FKEY: ForeignKey<EmailContactChallengesRecord, UsersRecord> = Internal.createForeignKey(EmailContactChallenges.EMAIL_CONTACT_CHALLENGES, DSL.name("email_contact_challenges_user_id_fkey"), arrayOf(EmailContactChallenges.EMAIL_CONTACT_CHALLENGES.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val GITHUB_CONTACT_LINKS__GITHUB_CONTACT_LINKS_USER_ID_FKEY: ForeignKey<GithubContactLinksRecord, UsersRecord> = Internal.createForeignKey(GithubContactLinks.GITHUB_CONTACT_LINKS, DSL.name("github_contact_links_user_id_fkey"), arrayOf(GithubContactLinks.GITHUB_CONTACT_LINKS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY: ForeignKey<GuestCardsRecord, GuestSessionsRecord> = Internal.createForeignKey(GuestCards.GUEST_CARDS, DSL.name("guest_cards_session_digest_fkey"), arrayOf(GuestCards.GUEST_CARDS.SESSION_DIGEST), io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_SESSIONS_PKEY, arrayOf(GuestSessions.GUEST_SESSIONS.DIGEST), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val GUEST_HANDOFFS__GUEST_HANDOFFS_SESSION_DIGEST_FKEY: ForeignKey<GuestHandoffsRecord, GuestSessionsRecord> = Internal.createForeignKey(GuestHandoffs.GUEST_HANDOFFS, DSL.name("guest_handoffs_session_digest_fkey"), arrayOf(GuestHandoffs.GUEST_HANDOFFS.SESSION_DIGEST), io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_SESSIONS_PKEY, arrayOf(GuestSessions.GUEST_SESSIONS.DIGEST), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val HISTORY_EVIDENCE__HISTORY_EVIDENCE_HISTORY_ID_FKEY: ForeignKey<HistoryEvidenceRecord, ProfileHistoriesRecord> = Internal.createForeignKey(HistoryEvidence.HISTORY_EVIDENCE, DSL.name("history_evidence_history_id_fkey"), arrayOf(HistoryEvidence.HISTORY_EVIDENCE.HISTORY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES_PKEY, arrayOf(ProfileHistories.PROFILE_HISTORIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)

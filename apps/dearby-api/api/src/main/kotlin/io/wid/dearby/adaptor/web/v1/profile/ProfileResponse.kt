@@ -31,5 +31,8 @@ data class ProfileResponse(
             p.contacts.map(ContactResponse::from), p.histories.map(HistoryResponse::from), p.version, p.updatedAt,
             consent?.consent?.let(ConsentResponse::from), consent?.required ?: false, photoUrl,
         )
+
+        // 바뀔 때마다 v가 달라 오래 캐시해도 된다(ProfileController·ContactVerificationController가 같이 쓴다)
+        fun photoUrl(updatedAt: OffsetDateTime) = "/v1/profile/photo?v=${updatedAt.toInstant().toEpochMilli()}"
     }
 }
