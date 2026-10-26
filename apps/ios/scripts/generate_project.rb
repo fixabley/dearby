@@ -3,7 +3,25 @@ Dir.chdir(File.expand_path('..', __dir__))
 project = Xcodeproj::Project.new('Dearby.xcodeproj')
 app = project.new_target(:application, 'Dearby', :ios, '18.0')
 sources = project.main_group.new_group('Sources')
-Dir.glob('Sources/**/*.swift').sort.each { |file| app.source_build_phase.add_file_reference(sources.new_file(file)) }
+source_refs = Dir.glob('Sources/**/*.swift').sort.to_h { |file| [file, sources.new_file(file)] }
+source_refs.each_value { |ref| app.source_build_phase.add_file_reference(ref) }
+# 행사 당일 진행 중 표시 (native-v1.md "행사 당일 진행 중 표시" 2026-10-26): the Live Activity is drawn by the `DearbyWidgets` extension
+# (`Widgets/`, bundle io.wid.dearby.widgets, App Group group.io.wid.dearby on the extension only); the ActivityAttributes file is compiled into
+# both targets. Store signing needs a second App Store profile (DEARBY_RELEASE_PROFILE_WIDGETS, ios-testflight.yml); while a Release
+# project is generated without one the extension is left out altogether, so the TestFlight build has no Live Activity but still ships.
+include_widgets = ENV['DEARBY_RELEASE_PROFILE'].nil? || !ENV.fetch('DEARBY_RELEASE_PROFILE_WIDGETS', '').empty?
+widgets = nil
+if include_widgets
+  widgets = project.new_target(:app_extension, 'DearbyWidgets', :ios, '18.0')
+  widget_group = project.main_group.new_group('Widgets')
+  Dir.glob('Widgets/**/*.swift').sort.each { |file| widgets.source_build_phase.add_file_reference(widget_group.new_file(file)) }
+  widgets.source_build_phase.add_file_reference(source_refs.fetch('Sources/features/liveSession/model/LiveSessionAttributes.swift'))
+  widgets.resources_build_phase.add_file_reference(widget_group.new_file('Widgets/Assets.xcassets'))
+  app.add_dependency(widgets)
+  embed = app.new_copy_files_build_phase('Embed Foundation Extensions')
+  embed.symbol_dst_subfolder_spec = :plug_ins
+  embed.add_file_reference(widgets.product_reference).settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
+end
 # Remote packages: the Google sign-in SDK (contract "구글 로그인 — 2026-10-19 네이티브 SDK로 전환") and Firebase Analytics without the
 # advertising identifier (analytics-v1.md 2026-10-25; `FirebaseAnalyticsCore` is 12.0's rename of `FirebaseAnalyticsWithoutAdIdSupport`).
 # Firebase is pinned exactly: the generated project and its Package.resolved are not tracked, so every build resolves again.
@@ -66,13 +84,28 @@ project.targets.each do |target|
     })
     # Store signing (ios-testflight.yml): the distribution profile applies to the app target only.
     # Passing it on the xcodebuild command line also hits Swift package resource bundles, which reject profiles.
-    if target == app && config.name == 'Release' && ENV['DEARBY_RELEASE_PROFILE']
+    # The extension (present only with DEARBY_RELEASE_PROFILE_WIDGETS then, see above) gets its own App Store profile the same way.
+    if [app, widgets].include?(target) && config.name == 'Release' && ENV['DEARBY_RELEASE_PROFILE']
       config.build_settings.merge!({
         'CODE_SIGN_STYLE' => 'Manual', 'CODE_SIGN_IDENTITY' => 'Apple Distribution',
-        'PROVISIONING_PROFILE_SPECIFIER' => ENV['DEARBY_RELEASE_PROFILE'], 'DEVELOPMENT_TEAM' => ENV.fetch('DEARBY_TEAM_ID')
+        'PROVISIONING_PROFILE_SPECIFIER' => target == app ? ENV['DEARBY_RELEASE_PROFILE'] : ENV['DEARBY_RELEASE_PROFILE_WIDGETS'],
+        'DEVELOPMENT_TEAM' => ENV.fetch('DEARBY_TEAM_ID')
       })
     end
     config.build_settings['TEST_TARGET_NAME'] = 'Dearby' if target == uitests
+    if target == widgets
+      config.build_settings.merge!({
+        'INFOPLIST_FILE' => 'Widgets/Info.plist',
+        'PRODUCT_BUNDLE_IDENTIFIER' => 'io.wid.dearby.widgets',
+        'CODE_SIGN_ENTITLEMENTS' => 'Widgets/DearbyWidgets.entitlements',
+        'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME' => '',
+        'ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME' => '',
+        # App Store validation wants the extension's short version to match the app's; the build number comes from the archive command line.
+        'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
+        'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby', 'SKIP_INSTALL' => 'YES'
+      })
+      config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG' if config.name == 'Debug'
+    end
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',

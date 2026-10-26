@@ -1,3 +1,4 @@
+import ActivityKit
 import AuthenticationServices
 import SwiftUI
 
@@ -14,6 +15,8 @@ struct SettingsPage: View {
     let notifications: NotificationModel?
     /// 세션 이동 알림 (contract "찜한 세션 이동 알림" 2026-10-26); nil signed out or before consent, as the section it sits in.
     let sessionReminders: SessionReminderModel?
+    /// 행사 진행 중 표시 (contract "행사 당일 진행 중 표시" 2026-10-26); nil signed out or before consent, as the section it sits in.
+    let liveSession: LiveSessionModel?
     /// 광고 목적 정보 제공; nil signed out or before consent (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25).
     let adConsent: AdConsentModel?
     @Environment(\.authorizationController) private var authorizationController
@@ -29,11 +32,12 @@ struct SettingsPage: View {
     @State private var newLabel = ""
     @State private var opening: URL?
     init(account: AccountViewModel, webOrigin: URL, notifications: NotificationModel? = nil, sessionReminders: SessionReminderModel? = nil,
-         adConsent: AdConsentModel? = nil) {
+         liveSession: LiveSessionModel? = nil, adConsent: AdConsentModel? = nil) {
         _model = State(initialValue: SettingsModel(account: account))
         self.webOrigin = webOrigin
         self.notifications = notifications
         self.sessionReminders = sessionReminders
+        self.liveSession = liveSession
         self.adConsent = QueueAdLoader.enabled ? adConsent : nil
     }
     private var account: AccountViewModel { model.account }
@@ -210,6 +214,18 @@ struct SettingsPage: View {
                         Text("찜한 세션 10분 전에 이 기기에서 알려요").font(.dearby(.footnote)).foregroundStyle(.secondary)
                     }
                 }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-session-reminders")
+            }
+            if let liveSession {
+                // The Live Activity (contract "행사 당일 진행 중 표시"): off ends it at once (`DearbyApp` refreshes on the change). When 실시간 현황 is
+                // off for the app in iOS 설정, the line says so instead of the description; the system permission is not asked by the app.
+                Toggle(isOn: Binding(get: { liveSession.enabled }, set: { liveSession.enabled = $0 })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("행사 진행 중 표시")
+                        Text(ActivityAuthorizationInfo().areActivitiesEnabled
+                             ? "행사 당일 찜한 세션 진행을 잠금 화면과 Dynamic Island에 보여요"
+                             : "iOS 설정 › Dearby에서 실시간 현황을 켜면 보여요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    }
+                }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-live-session")
             }
             if notifications.denied {
                 Button {

@@ -14,6 +14,9 @@ enum IncomingLink: Equatable {
     /// `dearby://favorites` (the `오늘 일정 n개` notification sends `?view=calendar`, contract "프로그램·활동별 알림 수준" 2026-10-25): 즐겨찾기,
     /// which is the calendar only since 2026-10-26, so `view` is not read.
     case favorites
+    /// `dearby://timetable/<activityId>/<scheduleId>` (contract "행사 당일 진행 중 표시" 2026-10-26, `LiveSessionAttributes.link`): a tapped
+    /// Live Activity opens that activity's detail with the block's timetable sheet on 찜한 세션, as a tapped 세션 이동 알림 does.
+    case timetable(activityID: String, scheduleID: String)
 
     init?(url: URL, web: URL) {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
@@ -30,11 +33,15 @@ enum IncomingLink: Equatable {
             self = .favorites
             return
         }
+        if parts.scheme == "dearby", segments.count == 3, segments[0] == "timetable", Int64(segments[1]) != nil, Int64(segments[2]) != nil {
+            self = .timetable(activityID: segments[1], scheduleID: segments[2])
+            return
+        }
         switch segments.count == 2 ? segments[0] : nil {
         case "cards":
             guard let card = WalletModel.Incoming(cardID: segments[1], query: parts.queryItems ?? []) else { return nil }
             self = parts.scheme == "dearby" ? .saveCard(card) : .viewCard(card)
-        // Activities come only as universal links; `dearby://` carries cards alone.
+        // Activities come only as universal links; `dearby://` carries cards, 즐겨찾기 and the Live Activity's timetable.
         case "activities" where parts.scheme != "dearby" && Int64(segments[1]) != nil:
             self = .activity(segments[1])
         default:
