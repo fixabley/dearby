@@ -42,11 +42,14 @@ import java.time.format.DateTimeFormatter
  * consent screen when the account is not ready).
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun TimetableSheet(title: String, range: String?, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit) {
+@Composable fun TimetableSheet(title: String, range: String?, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit,
+    /** 찜 실패 알림: the app's own Snackbar sits under this full-height sheet, so the sheet shows it. */
+    notices: SnackbarHostState? = null) {
     var favoritesOnly by remember { mutableStateOf(false) }
     var opened by remember { mutableStateOf<String?>(null) }
     val trackOf: (SessionState) -> TrackState? = { session -> timetable?.tracks?.firstOrNull { it.id == session.trackId } }
     ModalBottomSheet(dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
+        Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -82,6 +85,8 @@ import java.time.format.DateTimeFormatter
                     }
                 }
             }
+        }
+        notices?.let { SnackbarHost(it, Modifier.align(Alignment.BottomCenter)) }
         }
     }
     timetable?.sessions?.firstOrNull { it.id == opened }?.let { session ->

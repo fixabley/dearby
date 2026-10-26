@@ -140,7 +140,9 @@ private sealed interface Route {
     val showNotice: (String) -> Unit = remember(snackbar) { { text -> snackbarScope.launch { snackbar.showSnackbar(text) } } }
     LaunchedEffect(favoriteNotice) { favoriteNotice?.let { try { snackbar.showSnackbar(it) } finally { favorites.dismissNotice() } } }
     val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
-    LaunchedEffect(sessionNotice) { sessionNotice?.let { try { snackbar.showSnackbar(it) } finally { sessions.dismissNotice() } } }
+    // While a timetable sheet is open the sheet shows it (ActivityRoute), since this Snackbar sits under the sheet.
+    val timetableOpen = sessions.open.collectAsStateWithLifecycle().value != null
+    LaunchedEffect(sessionNotice, timetableOpen) { sessionNotice?.takeIf { !timetableOpen }?.let { try { snackbar.showSnackbar(it) } finally { sessions.dismissNotice() } } }
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
     // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
