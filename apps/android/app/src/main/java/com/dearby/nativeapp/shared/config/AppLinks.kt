@@ -29,6 +29,27 @@ fun authRedirect(link: String): AuthRedirect? = runCatching {
     }
 }.getOrNull()
 
+/** Where GitHub 연결 returns (contract "연락처 인증"): `dearby://contacts/github?code=<UUID>` for `POST /v1/me/contacts/github/complete`, or `?error=cancelled|failed`. */
+sealed interface ContactLinkRedirect {
+    data class Code(val code: String) : ContactLinkRedirect
+    data object Cancelled : ContactLinkRedirect
+    data object Failed : ContactLinkRedirect
+}
+
+/** Exactly `dearby://contacts/github` with one `code=<UUID>` or `error=cancelled|failed`; anything else is not a GitHub 연결 redirect. */
+fun githubLinkRedirect(link: String): ContactLinkRedirect? = runCatching {
+    val uri = URI(link)
+    if (uri.scheme != "dearby" || uri.rawAuthority != "contacts" || uri.rawPath != "/github" || uri.rawFragment != null) return null
+    val query = uri.rawQuery?.split('&') ?: return null
+    if (query.size != 1) return null
+    val (name, value) = query[0].split('=', limit = 2).takeIf { it.size == 2 } ?: return null
+    when (name) {
+        "code" -> ContactLinkRedirect.Code(UUID.fromString(value).toString().takeIf { it.equals(value, ignoreCase = true) } ?: return null)
+        "error" -> when (value) { "cancelled" -> ContactLinkRedirect.Cancelled; "failed" -> ContactLinkRedirect.Failed; else -> null }
+        else -> null
+    }
+}.getOrNull()
+
 /**
  * A received card link (contract "명함 교환", "명함 QR 코드"): `dearby://cards/<cardId>?activity=<n>&code=<QR code>`, or the same card page as an
  * App Link `https://<web origin>/cards/<cardId>?…` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); [activityId] is the activity's

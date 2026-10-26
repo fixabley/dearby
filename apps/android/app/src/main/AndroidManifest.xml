@@ -26,6 +26,14 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="dearby" android:host="auth" android:path="/apple"/>
             </intent-filter>
+            <!-- GitHub 연결 (contract "연락처 인증", 2026-10-26): the API's callback sends the browser back to dearby://contacts/github?code=<UUID> or ?error=cancelled|failed;
+                 the code is spent on POST /v1/me/contacts/github/complete with this account's Bearer (login and tokens never ride in the link). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="dearby" android:host="contacts" android:path="/github"/>
+            </intent-filter>
             <!-- 명함 교환 (contract "명함 교환"): the web card page's "Dearby 앱에 저장" opens dearby://cards/<cardId>?activity=<n>. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

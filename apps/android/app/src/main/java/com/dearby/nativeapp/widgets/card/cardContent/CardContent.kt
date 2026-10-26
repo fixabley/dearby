@@ -76,7 +76,7 @@ import com.dearby.nativeapp.shared.ui.*
 
 /**
  * 왼쪽 종류 아이콘(24 보조색, 브랜드는 단색 마크; 접근성 이름은 종류)과 값만(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20). 행 전체를 눌러 열거나(외부 링크 아이콘)
- * 카카오톡 ID를 복사한다(복사 아이콘; 2026-10-26 "연락처 아이콘·바로가기").
+ * 카카오톡 ID를 복사한다(복사 아이콘; 2026-10-26 "연락처 아이콘·바로가기"). 인증된 행은 값 끝에 [VerifiedMark](contract "연락처 인증").
  */
 @Composable private fun ContactRow(contact: ContactState, open: () -> Unit) {
     val opens = contact.target != null
@@ -84,7 +84,10 @@ import com.dearby.nativeapp.shared.ui.*
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = opens || copies, onClickLabel = when { copies -> "ID를 복사해요"; contact.kind == "phone" -> "전화를 걸어요"; contact.kind == "email" -> "메일을 보내요"; else -> "링크를 열어요" }, role = Role.Button, onClick = open).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ContactKindIcon(contact.kind, contact.label.ifBlank { contactKindName(contact.kind) })
-        Text(contact.shown, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(contact.shown, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyLarge)
+            if (contact.verified) VerifiedMark()
+        }
         if (opens) Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         else if (copies) Icon(Icons.Rounded.ContentCopy, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
