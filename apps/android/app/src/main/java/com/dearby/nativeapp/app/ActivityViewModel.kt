@@ -18,6 +18,7 @@ import com.dearby.nativeapp.entities.activity.model.deadlineCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
+import com.dearby.nativeapp.pages.activity.AutopassPrompt
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
 import com.dearby.nativeapp.pages.activity.DiscoveryKind
@@ -31,6 +32,7 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressStatus
 import com.dearby.nativeapp.widgets.activity.progress.StatusOption
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.pages.activity.ScheduleItemState
+import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.Stage
 import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.shared.ui.TagLabel
@@ -81,6 +83,8 @@ class ActivityViewModel(
     statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, private val saveStatusGroups: (Set<StatusGroup>) -> Unit = {},
     /** The 종류 dropdown remembered on the device per kind (2026-10-26): read when the kind changes, saved on each change. */
     private val loadCategories: (DiscoveryKind) -> Set<String> = { emptySet() }, private val saveCategories: (DiscoveryKind, Set<String>) -> Unit = { _, _ -> },
+    /** 지난 선발 단계 자동 통과 제안 (2026-10-26): whether an activity was asked already (once each, kept on the device) and where to record it. */
+    private val autopassAsked: (String) -> Boolean = { false }, private val rememberAutopassAsked: (String) -> Unit = {},
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState(kind = kind, statusGroups = statusGroups, categories = loadCategories(kind)))
     val state = mutable.asStateFlow()
@@ -281,9 +285,43 @@ class ActivityViewModel(
         if (value) Analytics.event("myactivity_add", *track(id), "source" to source)
         if (value) write { account, session -> account.client.saveMyActivity(id, session) }
         else write { account, session -> account.client.deleteMyActivity(id, session) }
-        if (value || id !in marks) return
+        if (value) return offerAutopass(id)
+        if (id !in marks) return
         marks = marks - id
         models[id]?.let { model -> mutable.update { it.copy(progress = it.progress + (id to model.toProgress(emptyMap(), today()))) } }
+    }
+    /**
+     * 지난 선발 단계 자동 통과 제안 (user 2026-10-26): someone adding an activity whose 선발 is over is almost always through it, yet those stages
+     * stay 대기 and the track never says 참여 중. Right after any add, once per activity on this device and never for an ENDED activity, the
+     * unmarked 선발 단계 whose end has passed (the start without one; a date-only day ends at the next Seoul midnight), together with the
+     * undated 선발 단계 after them, are offered as [ActivityListState.autopass]. Nothing is offered when no dated stage has passed.
+     */
+    private fun offerAutopass(id: String) {
+        val model = models[id]?.takeIf { it.status != "ENDED" } ?: return
+        if (autopassAsked(id)) return
+        val now = Instant.now()
+        val own = marks[id].orEmpty()
+        var past = false
+        val stages = model.stages().withIndex().filter { (_, stage) ->
+            if (!stage.selection || stage.scheduleId == null || stage.scheduleId in own || stage.statuses.none { it.kind == ScheduleStatus.PASSED }) return@filter false
+            val end = stage.eventEnd ?: stage.eventStart
+            if (end == null) past else (end < now).also { if (it) past = true }
+        }
+        if (!past) return
+        rememberAutopassAsked(id)
+        mutable.update { it.copy(autopass = AutopassPrompt(id, stages.map { it.index }, stages.map { it.value.name })) }
+    }
+    /** `통과로 표시` ([confirm]) marks each offered stage PASSED as the progress page would; `그대로 두기` leaves them. A failed write undoes only its stage. */
+    fun autopass(confirm: Boolean) {
+        val prompt = state.value.autopass ?: return
+        mutable.update { it.copy(autopass = null) }
+        if (!confirm) return
+        val stages = models[prompt.id]?.stages() ?: return
+        prompt.stages.forEach { index ->
+            val passed = stages.getOrNull(index)?.statuses?.firstOrNull { it.kind == ScheduleStatus.PASSED } ?: return@forEach
+            Analytics.event("stage_mark", *track(prompt.id), "kind" to "passed", "via" to "autopass_prompt")
+            mark(prompt.id, index, StatusOption(passed.id, passed.name, passed.kind))
+        }
     }
     /**
      * An App Link `/activities/<id>` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): an activity discovery has not loaded is read

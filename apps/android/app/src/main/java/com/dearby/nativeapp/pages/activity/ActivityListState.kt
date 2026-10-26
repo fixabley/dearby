@@ -141,6 +141,7 @@ data class ProgramActivities(
  * asked for, loaded and ready for 발견 to open its detail; [linkNotice] says the link's activity is gone or could not be read (contract
  * "유니버설 링크·App Links·활동 공유·오픈그래프"). Both are consumed once. [mineLoading] while the first read of the account's records after
  * sign-in is under way, so 내 활동 shows its skeleton rather than "신청한 활동이 없어요" (contract "내용 로딩은 스켈레톤"); later re-reads keep the list.
+ * [autopass] is the 지난 선발 단계 자동 통과 제안 (2026-10-26) for an activity just added to 내 활동, answered once.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, val programs: List<ProgramState> = emptyList(),
@@ -148,7 +149,7 @@ data class ActivityListState(
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
     val refreshFailed: Boolean = false, val mineNotice: String? = null, val consentNeeded: Boolean = false,
-    val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
+    val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false, val autopass: AutopassPrompt? = null,
     /** 발견 `프로그램 | 이벤트`, kept on the device. */
     val kind: DiscoveryKind = DiscoveryKind.PROGRAM,
     /** The 종류 dropdown's chosen codes for [kind] (kept on the device per kind); empty = 전체. */
@@ -161,3 +162,9 @@ data class ActivityListState(
     val activeActivities get() = appliedActivities.filter { progress[it.id]?.ended != true }
     val endedActivities get() = appliedActivities.filter { progress[it.id]?.ended == true }
 }
+
+/**
+ * 지난 선발 단계 자동 통과 제안 (user 2026-10-26): the activity [id] just added to 내 활동 has unmarked 선발 단계 at track indices [stages] whose end
+ * (start without one, Seoul midnight after a date-only day) has passed — plus the undated ones after them — named [names] in track order.
+ */
+data class AutopassPrompt(val id: String, val stages: List<Int>, val names: List<String>)
