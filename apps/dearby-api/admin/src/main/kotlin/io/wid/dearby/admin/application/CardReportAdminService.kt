@@ -21,6 +21,10 @@ class CardReportAdminService(private val safety: CardSafetyRepository, private v
     @Transactional(readOnly = true)
     fun list(status: String?): List<CardReportListing> = safety.reports(status?.let(::status))
 
+    // 신고 시점 명함 사진(native-v1.md "프로필 사진"). 없으면 404
+    @Transactional(readOnly = true)
+    fun photo(id: UUID): ByteArray = safety.reportPhoto(id) ?: throw NotFoundException("신고 시점 사진이 없습니다", "card report photo not found: $id")
+
     @Transactional
     fun update(id: UUID, status: String?, note: String?, adminId: UserId?): CardReportListing {
         val parsed = status?.let(::status) ?: throw InvalidInputException("상태를 골라 주세요")

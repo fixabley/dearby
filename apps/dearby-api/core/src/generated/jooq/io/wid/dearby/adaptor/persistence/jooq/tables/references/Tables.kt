@@ -13,9 +13,11 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
+import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReportPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -118,6 +120,11 @@ val ACTIVITY_TAGS: ActivityTags = ActivityTags.ACTIVITY_TAGS
 val APPLE_SIGN_IN_STATES: AppleSignInStates = AppleSignInStates.APPLE_SIGN_IN_STATES
 
 /**
+ * The table <code>public.business_card_photos</code>.
+ */
+val BUSINESS_CARD_PHOTOS: BusinessCardPhotos = BusinessCardPhotos.BUSINESS_CARD_PHOTOS
+
+/**
  * The table <code>public.business_cards</code>.
  */
 val BUSINESS_CARDS: BusinessCards = BusinessCards.BUSINESS_CARDS
@@ -131,6 +138,11 @@ val CARD_BLOCKS: CardBlocks = CardBlocks.CARD_BLOCKS
  * The table <code>public.card_qr_codes</code>.
  */
 val CARD_QR_CODES: CardQrCodes = CardQrCodes.CARD_QR_CODES
+
+/**
+ * The table <code>public.card_report_photos</code>.
+ */
+val CARD_REPORT_PHOTOS: CardReportPhotos = CardReportPhotos.CARD_REPORT_PHOTOS
 
 /**
  * The table <code>public.card_reports</code>.

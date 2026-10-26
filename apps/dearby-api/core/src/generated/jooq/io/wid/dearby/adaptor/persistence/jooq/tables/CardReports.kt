@@ -8,6 +8,8 @@ import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.CARD_REPORTS_CARD_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.CARD_REPORTS_STATUS_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.CARD_REPORTS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.CARD_REPORT_PHOTOS__CARD_REPORT_PHOTOS_REPORT_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReportPhotos.CardReportPhotosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardReportsRecord
 
 import java.time.OffsetDateTime
@@ -24,6 +26,7 @@ import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.JSONB
 import org.jooq.Name
+import org.jooq.Path
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
 import org.jooq.Record
@@ -156,9 +159,38 @@ open class CardReports(
      * Create a <code>public.card_reports</code> table reference
      */
     constructor(): this(DSL.name("card_reports"), null)
+
+    constructor(path: Table<out Record>, childPath: ForeignKey<out Record, CardReportsRecord>?, parentPath: InverseForeignKey<out Record, CardReportsRecord>?): this(Internal.createPathAlias(path, childPath, parentPath), path, childPath, parentPath, CARD_REPORTS, null, null)
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    open class CardReportsPath : CardReports, Path<CardReportsRecord> {
+        constructor(path: Table<out Record>, childPath: ForeignKey<out Record, CardReportsRecord>?, parentPath: InverseForeignKey<out Record, CardReportsRecord>?): super(path, childPath, parentPath)
+        private constructor(alias: Name, aliased: Table<CardReportsRecord>): super(alias, aliased)
+        override fun `as`(alias: String): CardReportsPath = CardReportsPath(DSL.name(alias), this)
+        override fun `as`(alias: Name): CardReportsPath = CardReportsPath(alias, this)
+        override fun `as`(alias: Table<*>): CardReportsPath = CardReportsPath(alias.qualifiedName, this)
+    }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(CARD_REPORTS_CARD_ID_IDX, CARD_REPORTS_STATUS_IDX)
     override fun getPrimaryKey(): UniqueKey<CardReportsRecord> = CARD_REPORTS_PKEY
+
+    private lateinit var _cardReportPhotos: CardReportPhotosPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.card_report_photos</code> table
+     */
+    fun cardReportPhotos(): CardReportPhotosPath {
+        if (!this::_cardReportPhotos.isInitialized)
+            _cardReportPhotos = CardReportPhotosPath(this, null, CARD_REPORT_PHOTOS__CARD_REPORT_PHOTOS_REPORT_ID_FKEY.inverseKey)
+
+        return _cardReportPhotos;
+    }
+
+    val cardReportPhotos: CardReportPhotosPath
+        get(): CardReportPhotosPath = cardReportPhotos()
     override fun getChecks(): List<Check<CardReportsRecord>> = listOf(
         Internal.createCheck(this, DSL.name("card_reports_check"), "((num_nonnulls(reporter_user_id, reporter_guest_digest) <= 1))", true),
         Internal.createCheck(this, DSL.name("card_reports_reason_check"), "(((reason)::text = ANY ((ARRAY['SPAM'::character varying, 'IMPERSONATION'::character varying, 'INAPPROPRIATE'::character varying, 'OTHER'::character varying])::text[])))", true),

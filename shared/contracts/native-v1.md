@@ -255,20 +255,20 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 - **`photoUrl`**: `GET`·`PUT /v1/profile`·`restore` 응답과 `PUT /v1/profile/photo` 응답에 `"/v1/profile/photo?v=<바뀐 시각 epoch ms>"` 또는 null. API 경로라 앱이 API base를 붙인다. 사진을 바꾸면 `v`가 바뀌므로 앱은 `v`가 같으면 캐시를 그대로 쓴다. 조회는 Bearer가 필요해 시스템 이미지 로더(`AsyncImage`·Coil 기본)로 바로 못 열고, 앱의 인증 HTTP 클라이언트로 받는다.
 - **동의**: `PUT`·`DELETE`는 다른 프로필 쓰기처럼 현재 버전 필수 동의가 없으면 403 `CONSENT_REQUIRED`("개인정보 동의"). `GET`은 막지 않는다.
 - **계정 삭제**: `users` cascade로 함께 지운다(아래 "계정 삭제").
-- **명함에 싣기(설계, 서버 미구현 — 명함 발행 코드 변경과 겹쳐 따로 구현한다)**:
+- **명함에 싣기**:
   - 요청: `POST /v1/cards`·`PUT /v1/cards/:id`에 `includePhoto?: boolean`(생략하면 true). 제작 화면의 "사진 넣기" 스위치(기본 켬, 프로필 사진이 없으면 스위치 대신 "프로필에서 사진을 넣을 수 있어요"). 프로필 사진이 없으면 true여도 사진 없는 명함이 된다.
-  - **발행 시점 복사**: 명함은 발행 시점 스냅샷이므로 프로필 사진을 참조하지 않고 그때의 바이트를 명함 쪽에 복사한다(예: `business_card_photos(card_id pk → business_cards on delete cascade, data bytea, updated_at)`). 프로필 사진을 바꾸거나 지워도 이미 낸 명함의 사진은 그대로이고, 바꾸려면 명함을 고치거나(`PUT /v1/cards/:id`가 그때 프로필 사진으로 다시 복사, `includePhoto=false`면 비움) 지운다. 앱은 프로필 사진을 지울 때 "이미 만든 명함의 사진은 명함을 고치거나 지워야 바뀌어요" 안내를 둔다(사용자 확인 필요한 결과).
-  - 응답: Card에 `photoUrl: "/v1/cards/:id/photo?v=<ms>" | null`. `GET /v1/cards/:id/photo`는 `GET /v1/cards/:id`와 같은 조회 권한(주인·받은 명함·게스트 저장·유효한 `?code=`, "명함 QR 코드")이고 실패도 같은 403·404다. `Cache-Control: private`.
+  - **발행 시점 복사**: 명함은 발행 시점 스냅샷이므로 프로필 사진을 참조하지 않고 그때의 바이트를 명함 쪽에 복사한다. V59 `business_card_photos(card_id pk → business_cards on delete cascade, data bytea)`와 `business_cards.photo_updated_at`(복사한 프로필 사진의 `updated_at`, 없으면 null). 프로필 사진을 바꾸거나 지워도 이미 낸 명함의 사진은 그대로이고, 바꾸려면 명함을 고치거나(`PUT /v1/cards/:id`가 그때 프로필 사진으로 다시 복사, `includePhoto=false`면 비움) 지운다. 앱은 프로필 사진을 지울 때 "이미 만든 명함의 사진은 명함을 고치거나 지워야 바뀌어요" 안내를 둔다(사용자 확인 필요한 결과).
+  - 응답: Card(내 명함 목록·발행·고치기·공개 조회·지갑·게스트 목록)에 `photoUrl: "/v1/cards/:id/photo?v=<ms>" | null`. `GET /v1/cards/:id/photo`는 `GET /v1/cards/:id`와 같은 조회 권한(주인·받은 명함·게스트 저장·유효한 `?code=`, "명함 QR 코드")이고 실패도 같은 403·404다(사진이 없으면 404). `image/jpeg`, `Cache-Control: private, max-age=31536000, immutable`.
   - 명함 지우기·어드민 내리기는 내용과 함께 사진도 바로 지운다(위 "명함 지우기", V56 규칙과 같다).
-  - 웹 `/cards/:id`: 로드 뒤 주소에서 `code`를 지우므로 `<img>`가 코드를 실을 수 없다. 웹 서버가 명함을 조회할 때 사진도 같은 권한(코드·게스트 쿠키)으로 받아 페이지에 data URI로 넣는다. 오픈그래프에는 넣지 않는다("오픈그래프" — 이름·사진 미포함 그대로).
-  - 신고 스냅샷: 사칭·부적절 신고의 근거라 신고 시점 명함 사진도 함께 복사해 둔다(`card_snapshot`과 같은 수명: 신고일 1개월 뒤 삭제, 내 명함에 대한 신고는 계정 삭제 때 삭제).
+  - 웹 `/cards/:id`: 로드 뒤 주소에서 `code`를 지우므로 `<img>`가 코드를 실을 수 없다. 웹 프록시(`/api/cards/:id`)가 명함을 조회할 때 `photoUrl`이 있으면 사진도 같은 권한(코드·게스트 쿠키)으로 받아 응답에 `photo: "data:image/jpeg;base64,…"`로 넣고, 카드 면은 이니셜 원 대신 원형 사진을 그린다. 사진을 못 받으면 이니셜 그대로. `/saved` 목록 행은 이니셜 그대로다. 오픈그래프에는 넣지 않는다("오픈그래프" — 이름·사진 미포함 그대로).
+  - 신고 스냅샷: 사칭·부적절 신고의 근거라 신고 시점 명함 사진도 V59 `card_report_photos(report_id pk → card_reports on delete cascade, data bytea)`에 복사해 둔다(`card_snapshot`과 같은 수명: 신고일 1개월 뒤 삭제, 내 명함에 대한 신고는 계정 삭제 때 삭제). 24시간 안 재신고(기존 신고 200)는 다시 복사하지 않는다. 어드민 `GET /v1/admin/card-reports/:id/photo`(ADMIN, `image/jpeg`, `no-store`, 없으면 404).
 
 ### 명함·지갑
 
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
+| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[], includePhoto?}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. 옛 앱이 보내는 `template`은 받기만 하고 무시한다(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |

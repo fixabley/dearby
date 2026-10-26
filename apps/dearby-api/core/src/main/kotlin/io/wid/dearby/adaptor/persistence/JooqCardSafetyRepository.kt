@@ -2,6 +2,8 @@ package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardBlocksRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.BUSINESS_CARDS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.BUSINESS_CARD_PHOTOS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.CARD_REPORT_PHOTOS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.CARD_BLOCKS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.CARD_REPORTS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.GUEST_SESSIONS
@@ -37,6 +39,15 @@ class JooqCardSafetyRepository(private val dsl: DSLContext) : CardSafetyReposito
             .set(CARD_REPORTS.CREATED_AT, report.createdAt)
             .execute()
     }
+
+    override fun copyCardPhoto(reportId: UUID, cardId: UUID) {
+        dsl.insertInto(CARD_REPORT_PHOTOS, CARD_REPORT_PHOTOS.REPORT_ID, CARD_REPORT_PHOTOS.DATA)
+            .select(dsl.select(DSL.`val`(reportId), BUSINESS_CARD_PHOTOS.DATA).from(BUSINESS_CARD_PHOTOS).where(BUSINESS_CARD_PHOTOS.CARD_ID.eq(cardId)))
+            .execute()
+    }
+
+    override fun reportPhoto(reportId: UUID): ByteArray? =
+        dsl.select(CARD_REPORT_PHOTOS.DATA).from(CARD_REPORT_PHOTOS).where(CARD_REPORT_PHOTOS.REPORT_ID.eq(reportId)).fetchOne(CARD_REPORT_PHOTOS.DATA)
 
     override fun recentReport(cardId: UUID, reporterUserId: UserId?, reporterGuestDigest: String?, since: OffsetDateTime): CardReport? {
         val reporter = when {

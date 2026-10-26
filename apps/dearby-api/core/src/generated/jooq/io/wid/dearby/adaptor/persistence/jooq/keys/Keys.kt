@@ -13,9 +13,11 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
+import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReportPhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -82,9 +84,11 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityParticipati
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityTagsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.AppleSignInStatesRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardPhotosRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardBlocksRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardQrCodesRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardReportPhotosRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardReportsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionFeedbackRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
@@ -166,10 +170,12 @@ val ACTIVITY_PARTICIPATIONS_USER_ID_ACTIVITY_ID_KEY: UniqueKey<ActivityParticipa
 val ACTIVITY_ROLES_PKEY: UniqueKey<ActivityRolesRecord> = Internal.createUniqueKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_pkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID, ActivityRoles.ACTIVITY_ROLES.POSITION), true)
 val ACTIVITY_TAGS_PKEY: UniqueKey<ActivityTagsRecord> = Internal.createUniqueKey(ActivityTags.ACTIVITY_TAGS, DSL.name("activity_tags_pkey"), arrayOf(ActivityTags.ACTIVITY_TAGS.ACTIVITY_ID, ActivityTags.ACTIVITY_TAGS.TAG_ID), true)
 val APPLE_SIGN_IN_STATES_PKEY: UniqueKey<AppleSignInStatesRecord> = Internal.createUniqueKey(AppleSignInStates.APPLE_SIGN_IN_STATES, DSL.name("apple_sign_in_states_pkey"), arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.ID), true)
+val BUSINESS_CARD_PHOTOS_PKEY: UniqueKey<BusinessCardPhotosRecord> = Internal.createUniqueKey(BusinessCardPhotos.BUSINESS_CARD_PHOTOS, DSL.name("business_card_photos_pkey"), arrayOf(BusinessCardPhotos.BUSINESS_CARD_PHOTOS.CARD_ID), true)
 val BUSINESS_CARDS_PKEY: UniqueKey<BusinessCardsRecord> = Internal.createUniqueKey(BusinessCards.BUSINESS_CARDS, DSL.name("business_cards_pkey"), arrayOf(BusinessCards.BUSINESS_CARDS.ID), true)
 val CARD_BLOCKS_PKEY: UniqueKey<CardBlocksRecord> = Internal.createUniqueKey(CardBlocks.CARD_BLOCKS, DSL.name("card_blocks_pkey"), arrayOf(CardBlocks.CARD_BLOCKS.ID), true)
 val CARD_QR_CODES_CODE_HASH_KEY: UniqueKey<CardQrCodesRecord> = Internal.createUniqueKey(CardQrCodes.CARD_QR_CODES, DSL.name("card_qr_codes_code_hash_key"), arrayOf(CardQrCodes.CARD_QR_CODES.CODE_HASH), true)
 val CARD_QR_CODES_PKEY: UniqueKey<CardQrCodesRecord> = Internal.createUniqueKey(CardQrCodes.CARD_QR_CODES, DSL.name("card_qr_codes_pkey"), arrayOf(CardQrCodes.CARD_QR_CODES.ID), true)
+val CARD_REPORT_PHOTOS_PKEY: UniqueKey<CardReportPhotosRecord> = Internal.createUniqueKey(CardReportPhotos.CARD_REPORT_PHOTOS, DSL.name("card_report_photos_pkey"), arrayOf(CardReportPhotos.CARD_REPORT_PHOTOS.REPORT_ID), true)
 val CARD_REPORTS_PKEY: UniqueKey<CardReportsRecord> = Internal.createUniqueKey(CardReports.CARD_REPORTS, DSL.name("card_reports_pkey"), arrayOf(CardReports.CARD_REPORTS.ID), true)
 val COLLECTION_FEEDBACK_PKEY: UniqueKey<CollectionFeedbackRecord> = Internal.createUniqueKey(CollectionFeedback.COLLECTION_FEEDBACK, DSL.name("collection_feedback_pkey"), arrayOf(CollectionFeedback.COLLECTION_FEEDBACK.ID), true)
 val COLLECTION_RUNS_PKEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_pkey"), arrayOf(CollectionRuns.COLLECTION_RUNS.ID), true)
@@ -249,7 +255,9 @@ val ACTIVITY_EMBEDDINGS__ACTIVITY_EMBEDDINGS_ACTIVITY_ID_FKEY: ForeignKey<Activi
 val ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY: ForeignKey<ActivityRolesRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_activity_id_fkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val ACTIVITY_TAGS__ACTIVITY_TAGS_ACTIVITY_ID_FKEY: ForeignKey<ActivityTagsRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityTags.ACTIVITY_TAGS, DSL.name("activity_tags_activity_id_fkey"), arrayOf(ActivityTags.ACTIVITY_TAGS.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val ACTIVITY_TAGS__ACTIVITY_TAGS_TAG_ID_FKEY: ForeignKey<ActivityTagsRecord, TagsRecord> = Internal.createForeignKey(ActivityTags.ACTIVITY_TAGS, DSL.name("activity_tags_tag_id_fkey"), arrayOf(ActivityTags.ACTIVITY_TAGS.TAG_ID), io.wid.dearby.adaptor.persistence.jooq.keys.TAGS_PKEY, arrayOf(Tags.TAGS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val BUSINESS_CARD_PHOTOS__BUSINESS_CARD_PHOTOS_CARD_ID_FKEY: ForeignKey<BusinessCardPhotosRecord, BusinessCardsRecord> = Internal.createForeignKey(BusinessCardPhotos.BUSINESS_CARD_PHOTOS, DSL.name("business_card_photos_card_id_fkey"), arrayOf(BusinessCardPhotos.BUSINESS_CARD_PHOTOS.CARD_ID), io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARDS_PKEY, arrayOf(BusinessCards.BUSINESS_CARDS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val CARD_QR_CODES__CARD_QR_CODES_CARD_ID_FKEY: ForeignKey<CardQrCodesRecord, BusinessCardsRecord> = Internal.createForeignKey(CardQrCodes.CARD_QR_CODES, DSL.name("card_qr_codes_card_id_fkey"), arrayOf(CardQrCodes.CARD_QR_CODES.CARD_ID), io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARDS_PKEY, arrayOf(BusinessCards.BUSINESS_CARDS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val CARD_REPORT_PHOTOS__CARD_REPORT_PHOTOS_REPORT_ID_FKEY: ForeignKey<CardReportPhotosRecord, CardReportsRecord> = Internal.createForeignKey(CardReportPhotos.CARD_REPORT_PHOTOS, DSL.name("card_report_photos_report_id_fkey"), arrayOf(CardReportPhotos.CARD_REPORT_PHOTOS.REPORT_ID), io.wid.dearby.adaptor.persistence.jooq.keys.CARD_REPORTS_PKEY, arrayOf(CardReports.CARD_REPORTS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val COLLECTION_FEEDBACK__COLLECTION_FEEDBACK_PROGRAM_ID_FKEY: ForeignKey<CollectionFeedbackRecord, ProgramsRecord> = Internal.createForeignKey(CollectionFeedback.COLLECTION_FEEDBACK, DSL.name("collection_feedback_program_id_fkey"), arrayOf(CollectionFeedback.COLLECTION_FEEDBACK.PROGRAM_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY, arrayOf(Programs.PROGRAMS.ID), true, ForeignKeyRule.SET_NULL, ForeignKeyRule.NO_ACTION)
 val COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY: ForeignKey<CollectionWatchlistRecord, ActivitiesRecord> = Internal.createForeignKey(CollectionWatchlist.COLLECTION_WATCHLIST, DSL.name("collection_watchlist_canonical_activity_id_fkey"), arrayOf(CollectionWatchlist.COLLECTION_WATCHLIST.CANONICAL_ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.SET_NULL, ForeignKeyRule.NO_ACTION)
 val COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_PROGRAM_ID_FKEY: ForeignKey<CollectionWatchlistRecord, ProgramsRecord> = Internal.createForeignKey(CollectionWatchlist.COLLECTION_WATCHLIST, DSL.name("collection_watchlist_program_id_fkey"), arrayOf(CollectionWatchlist.COLLECTION_WATCHLIST.PROGRAM_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY, arrayOf(Programs.PROGRAMS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)

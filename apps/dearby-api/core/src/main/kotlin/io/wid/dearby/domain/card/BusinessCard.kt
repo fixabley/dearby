@@ -20,4 +20,6 @@ data class BusinessCard(
     val histories: List<History>,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
+    // 복사해 둔 사진의 버전(프로필 사진 updated_at). 사진이 없으면 null(native-v1.md "프로필 사진")
+    val photoUpdatedAt: OffsetDateTime? = null,
 )

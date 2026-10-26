@@ -76,6 +76,10 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
         set(value): Unit = set(13, value)
         get(): OffsetDateTime? = get(13) as OffsetDateTime?
 
+    open var photoUpdatedAt: OffsetDateTime?
+        set(value): Unit = set(14, value)
+        get(): OffsetDateTime? = get(14) as OffsetDateTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -85,7 +89,7 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
     /**
      * Create a detached, initialised BusinessCardsRecord
      */
-    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, template: String? = null, introduction: String? = null, profileName: String? = null, job: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, template: String? = null, introduction: String? = null, profileName: String? = null, job: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, photoUpdatedAt: OffsetDateTime? = null): this() {
         this.id = id
         this.userId = userId
         this.name = name
@@ -100,6 +104,7 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
         this.seq = seq
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.photoUpdatedAt = photoUpdatedAt
         resetTouchedOnNotNull()
     }
 }

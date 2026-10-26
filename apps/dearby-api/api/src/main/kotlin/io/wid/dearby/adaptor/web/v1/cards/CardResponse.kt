@@ -22,11 +22,14 @@ data class CardResponse(
     val histories: List<HistoryResponse>,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
+    // "/v1/cards/:id/photo?v=<ms>" 또는 null(native-v1.md "프로필 사진")
+    @get:JsonInclude(JsonInclude.Include.ALWAYS) val photoUrl: String?,
 ) {
     companion object {
         fun from(card: BusinessCard, includeTemplate: Boolean) = CardResponse(
             card.id, card.ownerId, card.name, card.description, card.template.takeIf { includeTemplate }, card.introduction,
             card.profileName, card.job, card.contacts.map(ContactResponse::from), card.histories.map(HistoryResponse::from), card.createdAt, card.updatedAt,
+            card.photoUpdatedAt?.let { "/v1/cards/${card.id}/photo?v=${it.toInstant().toEpochMilli()}" },
         )
     }
 }
