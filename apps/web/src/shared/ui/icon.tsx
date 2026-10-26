@@ -308,6 +308,25 @@ const paths = {
       <rect x="13" y="13" width="7" height="7" rx="1" />
     </>
   ),
+  // 내 활동 진행 트랙 (contract "내 활동 진행 트랙", mobile `paperplane`·`flag.checkered`/`flag`·`tablecells`): 지원, 마감·활동 기간, 시간표.
+  paperplane: (
+    <>
+      <path d="M21 3 3 10.5l7.5 3 3 7.5L21 3Z" />
+      <path d="m10.5 13.5 5-5" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-2.5 4.5L18 13H5" />
+    </>
+  ),
+  table: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18M3 14.5h18M9 5v14M15 5v14" />
+    </>
+  ),
 };
 
 export function Icon({

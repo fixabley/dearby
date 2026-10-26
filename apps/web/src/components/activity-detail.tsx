@@ -38,6 +38,7 @@ import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { TimetableSheet, type TimetableTarget } from "@/widgets/activity/timetable";
 import { statusVariant } from "@/widgets/activity/activity-card";
+import { MineToggle } from "@/features/mine/ui/mine-toggle";
 
 /** One row of a schedule section: the block it stands for, its heading, the date text and an optional `D-n` badge (모집 기간 only). */
 type ScheduleRow = { schedule: Schedule; title: string; label: string; badge?: string };
@@ -216,6 +217,8 @@ export function ActivityDetail({ id }: { id: number }) {
                 {categoryLabel(activity.category)}
               </Badge>
             )}
+            {/* 내 활동에 추가 / 내 활동으로 (contract "내 활동 서버 저장" › 상세 행동 정리; web 2단계 B puts it beside the capsules). */}
+            <MineToggle activity={activity} source="link" className="-my-1.5 ml-auto" />
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>
           <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>

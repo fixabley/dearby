@@ -33,6 +33,39 @@ export function errorMessage(error: unknown): string {
     return "요청이 많아 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.";
   return "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.";
 }
+/** Headers every same-origin mutation carries (the proxy's CSRF guard). */
+export const JSON_HEADERS = { "Content-Type": "application/json", "X-Dearby-Request": "1" };
+
+/**
+ * Refreshes the session once (contract "웹 로그인" › refresh 회전): `POST /api/auth/refresh` under a Web Lock so tabs take turns, and the
+ * route itself skips the rotation when another caller just did it. `false` means the refresh token was refused — signed out.
+ */
+async function refreshOnce(): Promise<boolean> {
+  const work = async () => {
+    try {
+      await request<unknown>("/auth/refresh", { method: "POST", headers: JSON_HEADERS, body: "{}" });
+      return true;
+    } catch (error) {
+      if (error instanceof RequestError && error.status === 401) return false;
+      throw error;
+    }
+  };
+  return navigator.locks ? navigator.locks.request("dearby-auth-refresh", work) : work();
+}
+/** An account request: on 401 (expired access token) refresh once and retry; a second 401 means the session is over. */
+export async function accountRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await request<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof RequestError && error.status === 401)) throw error;
+    if (!(await refreshOnce())) throw error;
+    return request<T>(path, init);
+  }
+}
+export function accountSend<T>(path: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body: unknown = {}): Promise<T> {
+  return accountRequest<T>(path, { method, headers: JSON_HEADERS, body: JSON.stringify(body) });
+}
+
 // Same origin Web Locks serialize first saves across tabs before a cookie exists.
 export async function mutateGuest<T>(
   path: string,
