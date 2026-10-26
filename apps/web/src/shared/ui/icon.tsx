@@ -202,6 +202,15 @@ const paths = {
   ),
   "trend-up": <path d="M3 20h18M4 16l5-5 4 3 7-7m-5 0h5v5" />,
   heart: <path d="M12 20s-7.5-4.5-7.5-10A4.3 4.3 0 0 1 12 7.5a4.3 4.3 0 0 1 7.5 2.5c0 5.5-7.5 10-7.5 10Z" />,
+  // 계정(person.crop.circle): the signed-in state in the bar (contract "웹 로그인").
+  person: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="10" r="3" />
+      <path d="M6.5 18.5a6 6 0 0 1 11 0" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
   book: <path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5Zm0 0v13" />,
   // 휴대폰과 창(웹·앱).
   devices: (

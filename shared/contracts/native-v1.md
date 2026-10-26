@@ -1206,6 +1206,18 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - 웹에서 쓰지 않는 것: `PUT /v1/me/push-devices`는 `platform`이 `IOS`·`ANDROID`만이라(웹 푸시 없음) 웹은 부르지 않는다. 맞춤 대기열(`/v1/me/discovery-queue*`)·광고 동의는 앱 전용 화면이다.
 
+### 웹 화면 — 1단계(로그인·세션·동의·설정, 2026-10-26 웹 PR)
+
+계정 기능(즐겨찾기·세션 찜·내 활동·받은 명함·프로필)은 다음 PR이다. 이 PR이 정한 웹 쪽 규칙:
+
+- **라우트**: `POST /api/auth/{passkey/options, passkey, apple/nonce, apple, apple/register, google/nonce, google, google/register, refresh, logout}`, `GET /api/auth/session`(로그인 여부 + `GET /v1/profile`의 `consent`·`consentRequired`·`version`; access가 만료됐으면 401 `SIGNED_OUT`). 프록시 `/api/*`의 Bearer 허용 경로는 `me`, `profile`(GET, 동의 필드만 돌려줌), `me/consents`, `me/passkeys[/:id]`, `me/identities/{apple|google}`, `auth/passkeys/registration[/options]`, `wallet/import-guest`. 응답은 zod로 걸러 토큰은 절대 내지 않고, 업스트림 ProblemDetail은 아는 `code`(`CONSENT_REQUIRED`·`CONSENT_VERSION`·`LAST_SIGN_IN_METHOD`·`GUEST_SESSION_INVALID`)와 `detail`만 넘긴다.
+- **쿠키**: `__Host-dearby_access`(Max-Age 60)·`__Host-dearby_refresh`(90일), HttpOnly·Secure·SameSite=Lax·Path=/; 개발은 `dearby_*_dev`. 프록시는 access 쿠키가 없거나 업스트림이 401이면 401 `SIGNED_OUT`을 그대로 돌려주고, 브라우저가 `POST /api/auth/refresh`를 Web Locks(`dearby-auth-refresh`)로 한 번 부른 뒤 재시도한다. 그 라우트는 access 쿠키의 `exp`가 10초 넘게 남아 있으면(다른 탭이 방금 회전) 회전하지 않고 `{refreshed:false}`, 거절(401·400)이면 두 쿠키를 지우고 401, 네트워크·5xx면 502에 쿠키를 남긴다. 로그아웃·계정 삭제(204)는 쿠키를 지운다.
+- **로그인 시트**(하단 시트, `닫기`): 락업 이미지(`shared/assets/brand/sign-in-lockup-{light,dark}.png` 96px) → `Apple로 계속하기`(검정/다크 흰색, Apple 로고 — Apple JS popup) → Google GIS 버튼(`text: continue_with`, `locale: ko`, 라이트 `outline`·다크 `filled_black`) → 로그인 고지 한 줄 → `패스키로 로그인`(텍스트 버튼). 빌드 값 `NEXT_PUBLIC_APPLE_SERVICES_ID`·`NEXT_PUBLIC_GOOGLE_CLIENT_ID`가 비었거나 nonce 요청이 503이면 그 버튼을 숨긴다. Apple JS `redirectURI`는 `NEXT_PUBLIC_APPLE_REDIRECT_URI`(API 콜백 URL)이고, 비어 있으면 페이지 origin을 쓰고 `authorizationCode`를 보내지 않는다. nonce는 시트가 열릴 때(그리고 시도마다) 미리 받아 두어 팝업이 클릭 안에서 열린다. 202는 "처음 보는 {애플|구글} 계정이에요" + `새 계정으로 시작`·`기존 패스키 계정에 연결`(패스키 로그인 뒤 `/me/identities/{provider}`)·`다른 방법으로 로그인`. 진입점: 상단 바 `로그인`, `/settings`의 로그인 CTA, 로그인이 필요한 동작의 공통 훅 `useAuth().requireAccount(action)`(로그인·동의 뒤 action 실행).
+- **동의**: 로그인 직후와 페이지를 불러올 때마다 `consentRequired`이면 동의 시트(앱 문구 그대로, 재동의 제목 `개인정보 처리방침이 바뀌었어요`, `동의하고 계속`, 프로필 version 0은 `가입 취소`(계정 삭제), 아니면 `로그아웃`). 닫으면 로그인은 유지되고 다음에 다시 묻는다. 동의 전에는 `/settings`가 "동의가 필요해요 / 동의하기"만 보이고 `requireAccount`는 동의 시트를 연다. 버전은 `features/auth/model/consent-versions.ts`(`2026-10-26`·`2026-10-22`).
+- **비로그인 저장 → 계정 합치기**: 로그인·동의가 끝나면 `GET /api/guest/cards` 수가 1 이상일 때 "브라우저에 저장한 명함 n개를 계정으로 옮길까요?"(나중에·옮기기). 옮기기는 `POST /api/wallet/import-guest {}` → Next가 게스트 쿠키의 토큰을 본문에 넣음 → 성공하면 `DELETE /api/guest/session`으로 게스트 쿠키를 지우고 "저장해 둔 명함 n개를 계정으로 옮겼어요" 토스트.
+- **상단 바**: 비로그인 `로그인` 버튼, 로그인은 계정 아이콘(`person`, 접근성 이름 `설정`) → `/settings`. `/settings`: 비로그인은 로그인 CTA·`정보`, 로그인은 `계정`(가입일·로그인 수단·로그아웃·계정 삭제 — 앱과 같은 확인 문구)·`패스키`(목록·삭제·`패스키 추가`, 마지막 로그인 수단 규칙)·`정보`. 알림·연결된 로그인·패스키 이름 바꾸기는 다음 PR.
+- **사용 통계**: `signed_in` 사용자 속성을 웹도 보낸다(analytics-v1.md "웹"); 동의 뒤에만 `yes`.
+
 ## 대상자 조건(eligibility) — 2026-10-18 사용자 결정
 
 수집된 활동의 "대상자"를 자유 문장(`audience`)만으로 두지 않고, **중첩 가능한 JSON** `eligibility`로 규격화한다. 원문 `audience`는 그대로 남긴다. 사용자 지시: 필드 어휘는 한글이고 영문 버전도 함께 저장하며, 범위는 `from`·`to`로 표현하고, 검색할 수 있어야 한다. 표기 규칙(2026-10-18 사용자 지시): snake_case는 데이터베이스 열 이름에만 쓰고, JSON 키·영문 어휘·쿼리 키는 기존 API처럼 camelCase다.

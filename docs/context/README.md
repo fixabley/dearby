@@ -29,7 +29,7 @@
 | [API 홈 화면 세션 잇기](api-guest-handoff.md) | 게스트 1회용 코드 발급·교환 |
 | [플랫폼 계약 native-v1.md](../../shared/contracts/native-v1.md) | 발견 프로그램 묶음(열린 활동 판정·정렬 키·마감 숨기기), 활동 종류, 태그(설계), 대상자 조건, 명함·템플릿·명함 표현, 명함 교환(QR·30일 회수), 받은 명함 색인 목록, 내 활동 진행 트랙, 트랙·세션 시간표·세션 찜·찜한 세션 이동 알림(기기 로컬), 패스키·Apple·Google 네이티브 로그인, 계정 삭제, 웹 비로그인 저장·홈 화면 세션 잇기 |
 | [관리자 계약 admin-v1.md](../../shared/contracts/admin-v1.md) | 조직·프로그램(수집 설정·주소 토큰·기본 종류)·활동(추가·편집·묶음 보기), 일정 직접 지정·기간 확인·날짜 문구 피드백·조심 목록, 운영자 지정 필드, 이전 기수 자동완성, 이력 검토·역할·직무 |
-| [사용자 웹](web-implementation-and-handoff.md) | 공개 이력·게스트 명함 보관 |
+| [사용자 웹](web-implementation-and-handoff.md) | 공개 이력·게스트 명함 보관·웹 로그인 1단계(2026-10-26) |
 | [관리자 웹](admin-web-deployment.md) | 탐색 관리·배포 인계 |
 | [활동 수집 배치](activity-collection-batch.md) | Kotlin Spring Batch + Claude Haiku 수집 흐름, 추출·저장 규칙(기수 단위·두 기간·종류·운영자 피드백 반영), 실행·회수 배치, 아직 없는 것 |
 | [도메인 도식도](database-and-domains.md) | 프로그램·활동·명함·계정 관계 |

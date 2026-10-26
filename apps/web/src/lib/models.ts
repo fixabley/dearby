@@ -521,3 +521,11 @@ export function contactHref(
   // 카카오톡 ID has no public link; an open-chat URL saved before 2026-10-26 still opens.
   if (contact.kind === "kakao") return safeWebUrl(contact.value);
 }
+// 개인정보 동의 상태 (contract "개인정보 동의"): the part of `GET /v1/profile` the web needs; the profile itself is not shown on the web yet.
+// `version` 0 means nothing saved since sign-up (가입 취소 applies); a non-null `consent` means an earlier version was agreed (재동의).
+export const profileConsentSchema = z.object({
+  version: z.number().int().nonnegative(),
+  consent: z.object({ privacyVersion: z.string(), termsVersion: z.string(), consentedAt: z.string() }).nullable(),
+  consentRequired: z.boolean(),
+});
+export type ProfileConsent = z.infer<typeof profileConsentSchema>;

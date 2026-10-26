@@ -6,11 +6,14 @@ import { cn } from "@/shared/lib/utils";
 import { BrandSymbol } from "@/shared/ui/brand-symbol";
 import { Icon } from "@/shared/ui/icon";
 import { NavTitleProvider, useNavTitle } from "@/shared/ui/nav-title";
+import { useAuth } from "@/features/auth/model/auth-context";
 
 /**
  * App shell (contract "웹 리디자인 — iOS 앱과 같은 표현" › 셸): an iOS navigation bar — sticky, translucent with a background blur,
  * a hairline once the page scrolls — whose centre shows the page's large title after it scrolls under the bar. Home-level pages
- * carry the brand on the left; the activity detail and a public card get a back link instead. Content is 720px max, 16px gutters.
+ * carry the brand on the left; the activity detail and a public card get a back link instead. On the right: 저장한 명함 and the
+ * sign-in state (contract "웹 로그인": `로그인` opens the sheet; signed in, the account glyph leads to `/settings`). Content is 720px
+ * max, 16px gutters.
  */
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -63,6 +66,7 @@ function NavBar() {
   }, []);
   const back = backFor(path);
   const savedHere = path === "/saved";
+  const auth = useAuth();
   return (
     <>
       <div ref={sentinel} aria-hidden="true" className="absolute top-0 h-px w-px" />
@@ -95,16 +99,34 @@ function NavBar() {
           >
             {title}
           </span>
-          <div className="flex min-w-0 justify-end">
+          <div className="flex min-w-0 items-center justify-end gap-1">
             {!back?.href.startsWith("/saved") && (
               <Link
                 href="/saved"
                 aria-current={savedHere ? "page" : undefined}
-                className="-mr-2 inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
+                className="inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
               >
                 <Icon name="inbox" size="inline" />
                 <span className="truncate">저장한 명함</span>
               </Link>
+            )}
+            {auth.signedIn ? (
+              <Link
+                href="/settings"
+                aria-label="설정"
+                aria-current={path === "/settings" ? "page" : undefined}
+                className="-mr-2 inline-flex size-11 items-center justify-center text-teal aria-[current=page]:font-semibold"
+              >
+                <Icon name="person" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={auth.openSignIn}
+                className={cn("-mr-2 inline-flex min-h-11 items-center px-2 text-body font-semibold text-teal", auth.status === "loading" && "invisible")}
+              >
+                로그인
+              </button>
             )}
           </div>
         </div>

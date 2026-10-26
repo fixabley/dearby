@@ -81,7 +81,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 
 사용자 요청 "웹에도 Google Analytics". 같은 GA4 속성에 웹 데이터 스트림을 더한다(`apps/web` `shared/ui/google-analytics.tsx`, 의존성 없이 `next/script` + gtag; GA 웹 측정 ID `G-C8238MCXS6`은 코드에 두지 않고 Vercel 환경 변수로만 넣는다).
 - 켜는 조건: Vercel 프로덕션 배포(`VERCEL_ENV=production`)이고 `NEXT_PUBLIC_GA_MEASUREMENT_ID`(`G-…`)가 있을 때만 스크립트를 넣는다. 로컬·프리뷰·빈 값은 아무것도 넣지 않는다. 웹에는 끄는 설정이 없다(처리방침에 브라우저 쿠키 차단으로 거부하는 방법을 적는다).
-- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID·사용자 속성 없음. 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 개별 경로를 `/cards/[id]`·`/activities/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다; 활동별 수는 `activity_view`의 `activity_id`로 본다). 규칙은 `shared/lib/analytics.ts` `analyticsUrl` 하나다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
+- 개인정보: `allow_google_signals`·`allow_ad_personalization_signals`는 `false`, 사용자 ID 없음. 사용자 속성은 2026-10-26 웹 로그인부터 `signed_in` 하나만(`shared/lib/analytics.ts` `setSignedIn`; 앱과 같은 규칙으로 로그인 + 현재 동의가 있을 때만 `yes`, 그 외 `no`). 자동 페이지뷰를 끄고 App Router 경로가 바뀔 때마다 `page_view`를 직접 보낸다. `page_location`은 쿼리·프래그먼트를 지우고(명함 `?code=`, 토큰, 검색어 `q`) 개별 경로를 `/cards/[id]`·`/activities/[id]`로 템플릿화한다(명함 id는 한 사람을 가리킨다; 활동별 수는 `activity_view`의 `activity_id`로 본다). 규칙은 `shared/lib/analytics.ts` `analyticsUrl` 하나다. 명함 id·이름·연락처·명함 내용은 어떤 이벤트에도 넣지 않는다.
 
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
