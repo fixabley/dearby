@@ -279,6 +279,8 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
+    /// `/v1/cards/:id/photo?v=<ms>` or nil (contract "프로필 사진 — 명함에 싣기"): the photo copied at publish; absent on servers without it.
+    var photoUrl: String? = nil
 }
 
 /// A blocked card owner (contract "명함 신고·차단"); `name` is the card's name when blocked.

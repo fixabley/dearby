@@ -402,6 +402,8 @@ struct AccountClient: Sendable {
         let description: String
         let contactIds: [String]
         let historyIds: [String]
+        /// 사진 넣기 (contract "프로필 사진 — 명함에 싣기"); nil (left out, the server reads true) when the profile has no photo.
+        let includePhoto: Bool?
     }
     enum ActivityInfoKind: String, Sendable { case organizations, programs, activities, roles, jobs }
     /// `{challengeId, options}` from an options call; the challenge is single use and lasts five minutes.

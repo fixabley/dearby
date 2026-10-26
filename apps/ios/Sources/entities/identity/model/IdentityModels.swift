@@ -62,6 +62,8 @@ struct CardModel: Identifiable, Equatable {
     var histories: [HistoryModel]
     /// Organization of the most recent approved history, shown under the name (contract "명함 표현").
     var organization: String?
+    /// The photo copied at publish (`PublishedCard.photoUrl`); nil shows the initial.
+    var photoUrl: String? = nil
     /// `job` split on ` · ` for the header chips.
     var jobs: [String] { job.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
 }

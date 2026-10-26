@@ -35,7 +35,7 @@ struct CardView: View {
     }
     private var header: some View {
         VStack(spacing: 10) {
-            DearbyAvatar(name: card.profileName, size: 56)
+            DearbyPhotoAvatar(photoUrl: card.photoUrl, name: card.profileName, size: 72)
             Text(card.profileName).font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.center)
             if !card.jobs.isEmpty {
                 ChipFlow(spacing: 6, centered: true) {
