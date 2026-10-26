@@ -22,10 +22,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -48,15 +46,11 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
     private val itemsFlow = MutableStateFlow<List<SessionFavorite>>(emptyList())
     /** 내 시간표 (session start order). */
     val items = itemsFlow.asStateFlow()
-    // The tracks of each block a 찜한 세션 is in, by schedule id: `/me/session-favorites` sends only `trackId`, so the block's timetable is read
-    // once (anonymously) for the track name and room 나만의 시간표 shows. A failed read leaves the card without its track.
-    private val tracksFlow = MutableStateFlow<Map<String, List<TrackState>>>(emptyMap())
-    /** 나만의 시간표 across activities (즐겨찾기 › 찜한 세션), session start order. */
-    val entries = combine(itemsFlow, tracksFlow) { items, tracks ->
+    /** 나만의 시간표 across activities (즐겨찾기 › 찜한 세션), session start order; the track comes with each item (2026-10-26). */
+    val entries = itemsFlow.map { items ->
         items.map { item ->
-            val list = tracks[item.scheduleId].orEmpty()
-            val track = list.firstOrNull { it.id == item.session.trackId }
-            MyTimetableEntry(item.activityId, item.activityName, item.session.toState(), track, list.indexOf(track))
+            val track = item.track?.let { TrackState(it.id, it.name, it.room) }
+            MyTimetableEntry(item.activityId, item.activityName, item.session.toState(), track, item.track?.position ?: -1)
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     private val noticeFlow = MutableStateFlow<String?>(null)
@@ -96,22 +90,11 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
             try {
                 val got = parseSessionFavorites(account.authorized { account.client.sessionFavorites(it) })
                 itemsFlow.value = got; idsFlow.value = got.map { it.session.id }.toSet()
-                readTracks(got)
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 if ((e as? AccountException)?.error == AccountError.NOT_FOUND) { itemsFlow.value = emptyList(); idsFlow.value = emptySet() }
                 else Log.w("Dearby", "Session favorites load from ${ApiOrigin.current} failed: ${(e as? AccountException)?.error ?: e.javaClass.simpleName}")
             }
         }
-    }
-
-    private suspend fun readTracks(items: List<SessionFavorite>) {
-        val missing = items.filter { it.scheduleId !in tracksFlow.value }.distinctBy { it.scheduleId }
-        val read = missing.map { item ->
-            viewModelScope.async(Dispatchers.IO) {
-                runCatching { fetchTimetable(ApiOrigin.current, item.activityId, item.scheduleId) }.getOrNull()?.let { item.scheduleId to it.tracks.map { t -> TrackState(t.id, t.name, t.room) } }
-            }
-        }.awaitAll().filterNotNull()
-        if (read.isNotEmpty()) tracksFlow.update { it + read }
     }
 
     /** A heart tap while [AccountViewModel.ready] (the caller opens sign-in or the consent screen otherwise). */

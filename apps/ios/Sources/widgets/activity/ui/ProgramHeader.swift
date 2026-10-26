@@ -13,8 +13,6 @@ struct ProgramHeader<Accessory: View>: View {
     var logoURL: URL?
     let openCount: Int
     var nearestDeadline: Date?
-    /// `nearestDeadline` is an activity date (no recruitment deadline): the meta line says `M월 d일 행사`, not `마감`.
-    var deadlineIsEvent = false
     /// Activities whose recruitment has not started yet; counted in the badge, and the meta line says `M월 d일 시작` when nothing is recruiting.
     var upcomingCount: Int = 0
     var nearestStart: Date?
@@ -23,13 +21,15 @@ struct ProgramHeader<Accessory: View>: View {
     /// The chip line under the organization: the first 분야 tag, then the 성격 tags.
     var fieldTags: [Tag] = []
     var traitTags: [Tag] = []
+    /// An open or upcoming activity has a 트랙·세션 시간표 (`ProgramSummary.hasTimetable`): a `시간표` badge after the name while collapsed
+    /// (expanded, the activity cards carry their own).
+    var hasTimetable = false
     /// Activities whose name matched the search; the card says `맞는 활동 n개` and stays collapsed.
     var matchedCount = 0
     /// `새 모집` (contract "즐겨찾기(하트)·새 모집 푸시 알림"): a badge after the name in the favorites screen.
     var newRecruitment = false
-    /// 발견 `이벤트` (user 2026-10-26): the meta line is the event date instead of the recruitment deadline. The summary's dates are per
-    /// `kind`, so an open event whose nearest date is its start (`nearestIsActivityStart`) shows that; otherwise the latest event start when
-    /// it is still ahead (`M월 d일 행사`), a past one `최근 yyyy.M`.
+    /// 발견 `이벤트` (user 2026-10-26): the meta line is the event date instead of the recruitment deadline: the latest event start when it
+    /// is still ahead (`M월 d일 행사`), a past one `최근 yyyy.M`.
     var eventDates = false
     /// 알림 목록 (contract "알림 목록(발견 우상단 종)" 2026-10-25): the program's unread count takes the badge's place (no meta line); 0 shows a
     /// quiet badge.
@@ -69,6 +69,7 @@ struct ProgramHeader<Accessory: View>: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                     if newRecruitment { DearbyBadge(title: "새 모집") }
+                    if showsTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
                 }
                 Text(organization).font(.dearby(.subheadline)).foregroundStyle(.secondary)
                 TagChipLine(field: fieldTags.first, traits: traitTags).padding(.top, 6)
@@ -77,8 +78,9 @@ struct ProgramHeader<Accessory: View>: View {
             Spacer(minLength: 0)
         }.contentShape(Rectangle())
     }
+    private var showsTimetable: Bool { hasTimetable && !expanded }
     private var spokenLabel: String {
-        [name, newRecruitment ? "새 모집" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
+        [name, newRecruitment ? "새 모집" : nil, showsTimetable ? "시간표 있음" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
             .compactMap { $0 }.joined(separator: ", ")
     }
     /// The 44-point logo slot: the image filled and clipped to a 14-point continuous corner; the initial avatar until it loads, on failure or without a URL.
@@ -136,11 +138,10 @@ struct ProgramHeader<Accessory: View>: View {
     /// The meta line under the badge (contract): nearest deadline while recruiting, nearest start when only upcoming, else the latest activity month.
     private var meta: String? {
         if unreadCount != nil { return nil }
-        if eventDates, openCount > 0, deadlineIsEvent, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + " 행사" }
         if eventDates, let latestActivity {
             return latestActivity >= SeoulDay(Date()).date ? Self.format(latestActivity, "M월 d일") + " 행사" : "최근 " + Self.format(latestActivity, "yyyy.M")
         }
-        if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + (deadlineIsEvent ? " 행사" : " 마감") }
+        if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + " 마감" }
         if openCount == 0, upcomingCount > 0, let nearestStart { return Self.format(nearestStart, "M월 d일") + " 시작" }
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }
         return nil

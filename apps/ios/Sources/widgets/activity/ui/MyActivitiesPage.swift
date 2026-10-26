@@ -27,7 +27,7 @@ struct MyActivitiesPage: View {
         }
         .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
         .navigationDestination(for: ProgramRoute.self) { route in ProgramDetailPage(state: state, program: route.program, path: $path) }
-        .navigationDestination(for: MySessionsRoute.self) { _ in MySessionsPage(state: state) }
+        .navigationDestination(for: MySessionsRoute.self) { _ in MySessionsPage() }
         // `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): open that activity here — its track when it has stages, else the plain detail.
         .onChange(of: state.showInMine, initial: true) { _, id in
             guard let id, let activity = state.activity(id) else { return }

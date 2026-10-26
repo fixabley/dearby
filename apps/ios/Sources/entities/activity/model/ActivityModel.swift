@@ -66,16 +66,12 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
             if let end, now >= end { return .closed }
             return .open
         }
-        return .unknown
+        // 모집 일정이 없는 활동은 종류와 상관없이 마감 (user 2026-10-26, contract "모집 일정 없는 활동은 마감").
+        return .closed
     }
-    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); with no
-    /// window at all, the activity start. nil when neither is known. Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
-    var upcomingStart: Date? {
-        if recruitmentStartAt != nil || recruitmentEndAt != nil || recruitmentStartDate != nil || recruitmentEndDateExclusive != nil {
-            return Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate)
-        }
-        return activityStage?.anchor
-    }
+    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); nil without one (an activity
+    /// without a recruitment schedule is closed, never upcoming). Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
+    var upcomingStart: Date? { Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate) }
     /// Some block (`schedules[]` or the activity period) has a 트랙·세션 시간표.
     var hasTimetable: Bool { (stages + [activityStage].compactMap { $0 }).contains(where: \.hasTimetable) }
     /// Everything the overlap check can compare (contract "겹침 확인 시간" 2026-10-22): `schedules[]` and the activity period, each timed
@@ -86,6 +82,16 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     func scheduleText(at now: Date) -> String? { activityStage?.text(now: now) }
     /// The recruitment window as text by the same rule (`~ … 마감` when only the deadline is known); nil without a window or any text for it.
     func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now, recruitment: true) }
+    /// 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): with both bounds, the period `M.d – M.d` (`ActivityStageModel.periodText`)
+    /// and, while 모집 중, `D-n`/`D-DAY` in Seoul days to the last day; otherwise `recruitmentText` (an end alone `~ … 마감`) and no badge.
+    func recruitmentDate(at now: Date) -> (text: String?, dday: String?) {
+        guard let stage = applicationStage, let period = stage.periodText(now: now) else { return (recruitmentText(at: now), nil) }
+        guard recruitment(at: now) == .open, let last = stage.lastDay else { return (period, nil) }
+        var seoul = Calendar(identifier: .gregorian)
+        seoul.timeZone = ActivityText.seoul
+        let days = seoul.dateComponents([.day], from: seoul.startOfDay(for: now), to: seoul.startOfDay(for: last)).day ?? 0
+        return (period, days <= 0 ? "D-DAY" : "D-\(days)")
+    }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         raw.flatMap(seoulDayFormatter.date(from:))
@@ -196,6 +202,21 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     var hasTimetable = false
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
+    /// The last moment within the stage: a timed end, or Seoul midnight of an all-day stage's last day (the exclusive end minus a day).
+    var lastDay: Date? { allDay ? end.flatMap { Self.seoul.date(byAdding: .day, value: -1, to: $0) } : end }
+    /// `M.d – M.d` when both bounds are known (contract "모집 날짜 표기 — 2026-10-26"): no times, the stage's zone (Seoul when all-day),
+    /// a bound outside `now`'s Seoul year as `yyyy.M.d`, one day alone when both fall on it. nil with a missing bound.
+    func periodText(now: Date) -> String? {
+        guard let start, let last = lastDay, last >= start else { return nil }
+        let zone = allDay ? ActivityText.seoul : TimeZone(identifier: timeZone) ?? ActivityText.seoul
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let thisYear = Self.seoul.component(.year, from: now)
+        func day(_ date: Date) -> String {
+            ActivityText.format(date, calendar.component(.year, from: date) == thisYear ? "M.d" : "yyyy.M.d", zone: zone)
+        }
+        return calendar.isDate(start, inSameDayAs: last) ? day(start) : day(start) + " – " + day(last)
+    }
     /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간", "반복 일정" 2026-10-22). With a repeat rule,
     /// one window per occurrence (at most 400): a timed stage's own interval moved by whole Seoul days, a date-only stage's
     /// `overlapCheck` window on each occurrence day from `startDate`. Without one: a timed stage's own non-empty interval; a date-only
@@ -327,14 +348,14 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var upcomingActivityCount: Int = 0
     /// Raw ISO 8601 of the earliest recruitment start among the upcoming ones (activity start without a window); nil when none.
     var nearestRecruitmentStartAt: String? = nil
-    /// `nearestRecruitmentEndAt` is an activity start (an open activity without a recruitment deadline), not a deadline; false on older responses.
-    var nearestIsActivityStart = false
     /// The program's most relevant 분야 tags, at most two (contract "분야·성격 태그와 아이콘"); empty on older responses.
     var fieldTags: [Tag] = []
     /// The program's 성격 tags (vocabulary order); older responses' `tags` stand in.
     var traitTags: [Tag] = []
     /// The program logo (contract "프로그램 로고" 2026-10-19 밤), already resolved against the API origin; nil without a logo.
     var logoURL: URL? = nil
+    /// An open or upcoming activity of the bundle has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): the collapsed card's `시간표` badge.
+    var hasTimetable = false
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
     var nearestRecruitmentStart: Date? { ActivityModel.instant(nearestRecruitmentStartAt) }

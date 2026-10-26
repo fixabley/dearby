@@ -243,9 +243,8 @@ struct QueueStoryCard: View {
         if isEvent, let stage = activity.activityStage, let start = stage.start {
             return (start, stage.allDay ? ActivityText.seoul : TimeZone(identifier: stage.timeZone) ?? ActivityText.seoul)
         }
-        guard let stage = activity.applicationStage, let end = stage.end else { return nil }
-        if stage.allDay { return Self.seoul.date(byAdding: .day, value: -1, to: end).map { ($0, ActivityText.seoul) } }
-        return (end, TimeZone(identifier: stage.timeZone) ?? ActivityText.seoul)
+        guard let stage = activity.applicationStage, let last = stage.lastDay else { return nil }
+        return (last, stage.allDay ? ActivityText.seoul : TimeZone(identifier: stage.timeZone) ?? ActivityText.seoul)
     }
     /// Seoul days to the counted day; nil without one.
     private var days: Int? {

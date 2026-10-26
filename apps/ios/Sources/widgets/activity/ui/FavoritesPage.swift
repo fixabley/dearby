@@ -68,9 +68,9 @@ struct FavoritesPage: View {
     private func programRow(_ favorite: FavoriteProgram) -> some View {
         let program = favorite.program
         return ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
-                             nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
+                             nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                              nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
-                             fieldTags: program.fieldTags, traitTags: program.traitTags, newRecruitment: favorite.newRecruitment, expanded: false) {
+                             fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable, newRecruitment: favorite.newRecruitment, expanded: false) {
             FavoriteControls(target: .program(program.id), showsLevel: true)
         } toggle: {
             favorites.seen(program.id)
@@ -79,11 +79,11 @@ struct FavoritesPage: View {
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
     }
     private func activityRow(_ favorite: FavoriteActivity) -> some View {
-        let activity = favorite.activity, now = Date()
+        let activity = favorite.activity, now = Date(), recruitmentDate = activity.recruitmentDate(at: now)
         return ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: now),
-                            recruitmentText: activity.recruitmentText(at: now), scheduleText: activity.scheduleText(at: now),
+                            recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday, scheduleText: activity.scheduleText(at: now),
                             place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
-                            surface: Color(.secondarySystemGroupedBackground)) {
+                            surface: Color(.secondarySystemGroupedBackground), hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), {
                 state.remember(activity)
                 state.addToMine(activity.id, source: "favorites")
@@ -112,9 +112,9 @@ struct ProgramDetailPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
-                              nearestDeadline: program.nearestRecruitmentEnd, deadlineIsEvent: program.nearestIsActivityStart, upcomingCount: program.upcomingActivityCount,
+                              nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                               nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
-                              fieldTags: program.fieldTags, traitTags: program.traitTags, expanded: false,
+                              fieldTags: program.fieldTags, traitTags: program.traitTags, hasTimetable: program.hasTimetable, expanded: false,
                               accessory: { FavoriteControls(target: .program(program.id)) }, toggle: nil)
                     .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
                     .padding(.bottom, 8)

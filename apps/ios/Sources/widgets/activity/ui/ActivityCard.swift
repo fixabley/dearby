@@ -7,8 +7,11 @@ struct ActivityCard<Accessory: View>: View {
     let activityID: String
     let title: String
     let recruitment: ActivityModel.Recruitment
-    /// Recruitment window text (`ActivityModel.recruitmentText`: structured dates before the collected label); nil reads as `미정`.
+    /// Recruitment window text (`ActivityModel.recruitmentDate`: `M.d – M.d` with both bounds, else structured dates before the collected
+    /// label); nil reads as `일정 없음` (모집 일정 없음, a closed activity).
     var recruitmentText: String?
+    /// `D-3`/`D-DAY` beside the period while recruiting (contract "모집 날짜 표기 — 2026-10-26"); nil for none.
+    var recruitmentDDay: String?
     /// Activity period text (`ActivityModel.scheduleText`); nil reads as `미정`.
     var scheduleText: String?
     /// Place name (contract "활동 장소"); nil omits the row.
@@ -32,14 +35,16 @@ struct ActivityCard<Accessory: View>: View {
                 HStack(alignment: .top, spacing: 10) {
                     Text(title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary)
                         .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
-                    if hasTimetable {
-                        Label("시간표", systemImage: "tablecells").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                            .padding(.horizontal, 8).padding(.vertical, 3).background(DearbyStyle.mint, in: Capsule())
-                    }
+                    if hasTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
                     statusChip
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    LabeledContent("모집") { Text(recruitmentText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
+                    LabeledContent("모집") {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(recruitmentText ?? "일정 없음")
+                            if let recruitmentDDay { DearbyMiniBadge(title: recruitmentDDay, filled: true) }
+                        }
+                    }.labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
                     LabeledContent("활동") { Text(scheduleText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle())
                     if let place, !place.isEmpty { LabeledContent("장소") { Text(place) }.labeledContentStyle(DiscoveryRowStyle()) }
                 }
@@ -50,7 +55,7 @@ struct ActivityCard<Accessory: View>: View {
             .contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([title, statusText, hasTimetable ? "시간표 있음" : nil, "모집 " + (recruitmentText ?? "미정"), "활동 " + (scheduleText ?? "미정"),
+            .accessibilityLabel([title, statusText, hasTimetable ? "시간표 있음" : nil, "모집 " + (recruitmentText ?? "일정 없음") + (recruitmentDDay.map { " " + $0 } ?? ""), "활동 " + (scheduleText ?? "미정"),
                                  place.map { "장소 " + $0 }, TagChipLine.label(field: fieldTag, traits: traitTags)].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")
@@ -103,12 +108,12 @@ struct ActivityCardSample: View {
     var body: some View {
         VStack(spacing: 8) {
             ActivityCard(activityID: "1", title: "부스트캠프 Web·Mobile 10기", recruitment: .open,
-                         recruitmentText: "10월 20일 (화) 10:00 ~ 11월 10일 (화) 18:00", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남",
+                         recruitmentText: "10.20 – 11.10", recruitmentDDay: "D-3", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남",
                          fieldTag: Tag(id: 10, name: "웹·앱", nameEn: "webApp", kind: .field),
                          traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")],
                          accessory: { EmptyView() }) {}
             ActivityCard(activityID: "2", title: "SK AIGEN 1기", recruitment: .upcoming,
-                         recruitmentText: "11월 1일 (일) ~ 11월 15일 (일)", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩", accessory: { EmptyView() }) {}
+                         recruitmentText: "11.1 – 11.15", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩", accessory: { EmptyView() }) {}
             ActivityCard(activityID: "3", title: "우아콘 2025", recruitment: .closed, scheduleText: "2025년 10월 30일 (목)", accessory: { EmptyView() }) {}
         }.padding(10).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
             .padding(16).background(Color(.systemGroupedBackground))
