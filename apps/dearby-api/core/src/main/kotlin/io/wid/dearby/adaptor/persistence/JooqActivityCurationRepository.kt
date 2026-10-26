@@ -296,8 +296,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
             .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
             .set(SCHEDULES.RECURRENCE, item.recurrence?.rule)
-            // 보내지 않았으면 저장값 유지. 운영자가 정한 값은 curated라 재수집이 덮어쓰지 않는다
-            .set(SCHEDULES.PHASE, DSL.coalesce(DSL.`val`(item.phase?.name, SCHEDULES.PHASE), SCHEDULES.PHASE))
+            .set(SCHEDULES.PHASE, item.phase?.name) // 보내지 않은 요청은 패치가 저장값을 그대로 넘긴다. null은 자동 판정으로 되돌림
             .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
             .set(SCHEDULES.UPDATED_AT, now)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED_DELETED.isFalse)

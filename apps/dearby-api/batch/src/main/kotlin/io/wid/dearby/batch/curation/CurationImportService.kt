@@ -163,7 +163,7 @@ class CurationImportService(
     }
 
     // [{id, delete: true}] 지우기(curated_deleted: 재수집이 되살리지 않음, 어드민 DELETE와 같다. 붙은 세션은 블록과 함께 숨는다),
-    // [{id, title?, kind?, status?, phase?(SELECTION|ACTIVITY), startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}] 보낸 필드만 고치기(어드민 PATCH와 같다, curated가 된다),
+    // [{id, title?, kind?, status?, phase?(SELECTION|ACTIVITY|null=자동 판정), startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}] 보낸 필드만 고치기(어드민 PATCH와 같다, curated가 된다),
     // [{ref, title, kind?(기본 EVENT), phase?(없으면 서버 규칙), …}] 만들기(어드민 POST와 같다, curated). 같은 제목·시각의 보이는 세부 일정이 있으면 만들지 않고 그 블록을 ref로 쓴다(다시 실행해도 같다).
     // 지우기 → 고치기 → 만들기 순서. 하나라도 검증에 걸리면 이 활동 항목 전체를 건너뛴다(apply도 아무것도 남기지 않는다)
     private fun schedules(activity: Activity, ops: JsonNode, refs: MutableMap<String, Pair<Id, ScheduleItem>>, apply: Boolean): List<Line> {
@@ -196,7 +196,7 @@ class CurationImportService(
             val schedule = detail(op, target, SCHEDULE_EDIT) ?: return@each
             val item = schedulePatch(op, defaultKind = null).toItem(existing = schedule)
             val unchanged = ScheduleItemPatch(null, null, null, false, null, null, null, null, null, null, null).toItem(existing = schedule)
-            if (item.copy(time = null, phase = null) == unchanged.copy(time = null) && sameTime(item.time, unchanged.time) && (item.phase ?: schedule.phase) == schedule.phase) return@each run { lines += Line(target, SCHEDULE_EDIT, SKIP, "이미 같음") }
+            if (item.copy(time = null) == unchanged.copy(time = null) && sameTime(item.time, unchanged.time)) return@each run { lines += Line(target, SCHEDULE_EDIT, SKIP, "이미 같음") }
             if (apply) curations.updateDetailSchedule(activityId, schedule.id, item)
             lines += Line(target, SCHEDULE_EDIT, SET, if (item.title == schedule.title) item.title else "${schedule.title} → ${item.title}")
         }
@@ -232,7 +232,8 @@ class CurationImportService(
             timeZone = text("timeZone")?.let(ZoneId::of),
             dateLabel = text("dateLabel"),
             note = text("note"),
-            phase = text("phase")?.let(SchedulePhase::valueOf),
+            hasPhase = op.has("phase"),
+            phase = text("phase")?.let(SchedulePhase::valueOf), // JSON null은 저장값을 지워 자동 판정으로
         )
     }
 

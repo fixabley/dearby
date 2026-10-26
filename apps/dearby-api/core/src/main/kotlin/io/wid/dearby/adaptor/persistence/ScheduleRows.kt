@@ -33,6 +33,7 @@ internal fun SchedulesRecord.toSchedule(statuses: List<ProgressStatus> = emptyLi
     recurrence = recurrence?.let(::Recurrence),
     hasTimetable = hasTimetable,
     phase = SchedulePhase.resolve(phase?.let(SchedulePhase::valueOf), slot, ScheduleKind.valueOf(kind!!), statuses.isNotEmpty()),
+    storedPhase = phase?.let(SchedulePhase::valueOf),
 )
 
 // 일정들의 어드민 상태를 한 번에 읽는다(일정 id → sort_order 순 목록)
