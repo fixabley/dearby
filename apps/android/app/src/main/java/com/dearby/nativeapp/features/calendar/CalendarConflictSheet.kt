@@ -61,7 +61,7 @@ import java.util.Locale
 /**
  * The result (contract "반복 일정과 겹침 결과 묶음"): a check or warning symbol and the title; one overlap keeps its sentence and the
  * timeline; several show the summary "n일 겹침 · 반복 일정 a개 · 단일 일정 b개", one row per repeating device event (tap to list its
- * dates), then one-off events nearest first, five until "더 보기".
+ * dates), then one-off events nearest first, five until "더 보기" (tap to see its timetable).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun CalendarResultSheet(overlaps: List<CalendarOverlapState>, schedule: ScheduleModel, close: () -> Unit) {
@@ -70,7 +70,12 @@ import java.util.Locale
     val zone = ZoneId.of(schedule.timeZone)
     val date = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN).withZone(zone)
     val clock = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN).withZone(zone)
-    fun span(start: Long, end: Long) = "${clock.format(Instant.ofEpochMilli(start))} – ${clock.format(Instant.ofEpochMilli(end))}"
+    val day = DateTimeFormatter.ofPattern("M월 d일", Locale.KOREAN).withZone(zone)
+    // An event running past midnight names its end date ("23:00 – 11월 2일 15:00").
+    fun span(start: Long, end: Long): String {
+        val from = Instant.ofEpochMilli(start); val to = Instant.ofEpochMilli(end)
+        return "${clock.format(from)} – ${if (day.format(from) == day.format(to)) "" else "${day.format(to)} "}${clock.format(to)}"
+    }
     val (repeating, oneOff) = groups.partition { it.repeating }
     var allOneOff by remember(overlaps) { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = close, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
@@ -96,9 +101,9 @@ import java.util.Locale
                     else -> Column(Modifier.fillMaxWidth()) {
                         repeating.forEach { group -> RepeatingRow(group, describe(group, ::span), { date.format(Instant.ofEpochMilli(it)) }, ::span) }
                         (if (allOneOff) oneOff else oneOff.take(5)).forEach { group ->
-                            val overlap = group.overlaps.first()
-                            ListItem(headlineContent = { Text(group.title ?: "제목 없는 일정") },
-                                supportingContent = { Text("${date.format(Instant.ofEpochMilli(overlap.busy.start))} ${span(overlap.busy.start, overlap.busy.end)}") })
+                            OneOffRow(group, "${date.format(Instant.ofEpochMilli(group.overlaps.first().busy.start))} ${span(group.overlaps.first().busy.start, group.overlaps.first().busy.end)}") {
+                                date.format(Instant.ofEpochMilli(it))
+                            }
                         }
                         if (!allOneOff && oneOff.size > 5) TextButton({ allOneOff = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("더 보기 (${oneOff.size - 5}개)") }
                     }
@@ -116,6 +121,20 @@ import java.util.Locale
 private fun describe(group: OverlapGroupState, span: (Long, Long) -> String): String {
     val busy = group.overlaps.first().busy
     return Recurrence.parse(group.rule)?.let { "${it.describe()} ${span(busy.start, busy.end)}" } ?: "반복 일정"
+}
+
+/** One one-off device event; tapping opens the timetable of each stretch it overlaps (contract "겹침 하나의 시간표"), one per activity session. */
+@Composable private fun OneOffRow(group: OverlapGroupState, time: String, day: (Long) -> String) {
+    var open by remember(group) { mutableStateOf(false) }
+    ListItem(headlineContent = { Text(group.title ?: "제목 없는 일정") }, supportingContent = { Text(time) },
+        trailingContent = { Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, if (open) "시간표 접기" else "겹친 시간표 보기") },
+        modifier = Modifier.clickable { open = !open })
+    if (open) group.overlaps.forEach { overlap ->
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("${overlap.activity.title} · ${day(overlap.start)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            CalendarOverlapTimeline(overlap)
+        }
+    }
 }
 
 /** One repeating device event: "n번 겹침(first~last)"; tapping lists every overlapping date. */
