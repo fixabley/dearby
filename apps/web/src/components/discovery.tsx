@@ -27,14 +27,34 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
+import { Segmented } from "@/shared/ui/segmented";
 import { Switch } from "@/shared/ui/switch";
 import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { groupByCategory } from "@/lib/category";
 
-function programsPath(q: string, openOnly: boolean, cursor?: number) {
+/**
+ * 프로그램 | 이벤트: 이벤트 is the short-event 활동 종류 (컨퍼런스·워크샵·밋업·강연, the server's short-event set); 프로그램 is every other
+ * 종류. The API filters by listed codes only, so 미분류 activities fall in neither.
+ */
+const KINDS = {
+  program: "BOOTCAMP,STUDY,CLUB,HACKATHON,CONTEST,OTHER",
+  event: "CONFERENCE,WORKSHOP,MEETUP,LECTURE",
+};
+export type Kind = keyof typeof KINDS;
+const KIND_LABEL: Record<Kind, string> = { program: "프로그램", event: "이벤트" };
+/** `/` or `/?kind=event`, plus the search; the kind lives in the URL so a search or 전체 보기 keeps it. */
+function homePath(kind: Kind, q = "") {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
+  if (kind === "event") params.set("kind", kind);
+  return params.size ? `/?${params}` : "/";
+}
+
+function programsPath(q: string, openOnly: boolean, kind: Kind, cursor?: number) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  params.set("category", KINDS[kind]);
   if (!openOnly) params.set("openOnly", "false");
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
@@ -47,7 +67,8 @@ function programsPath(q: string, openOnly: boolean, cursor?: number) {
  * with the API cursor. A card expands only when tapped — never on first load, search or coming back (contract
  * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's open activities as the usual activity cards.
  */
-export function Discovery({ q }: { q: string }) {
+export function Discovery({ q, kind }: { q: string; kind: Kind }) {
+  const router = useRouter();
   const [page, setPage] = useState<ProgramPage>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -58,18 +79,18 @@ export function Discovery({ q }: { q: string }) {
   const [openOnly, setOpenOnly] = useState(true);
   useEffect(() => {
     const controller = new AbortController();
-    request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
+    request<ProgramPage>(programsPath(q, openOnly, kind), { signal: controller.signal })
       .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [q, openOnly, attempt]);
+  }, [q, openOnly, kind, attempt]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, openOnly, page.nextCursor))
+    request<ProgramPage>(programsPath(q, openOnly, kind, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -90,7 +111,17 @@ export function Discovery({ q }: { q: string }) {
   return (
     <>
       <LargeTitle>활동 둘러보기</LargeTitle>
-      <SearchField q={q} />
+      <SearchField q={q} kind={kind} />
+      <Segmented
+        label="활동 묶음"
+        className="mt-3"
+        options={[
+          { value: "program", label: KIND_LABEL.program },
+          { value: "event", label: KIND_LABEL.event },
+        ]}
+        value={kind}
+        onChange={(next) => next !== kind && router.replace(homePath(next, q), { scroll: false })}
+      />
       {/* 마감 숨기기 as an inset-grouped switch row; the whole row (the label) toggles (contract "발견 검색·토글"). */}
       <label
         htmlFor="open-only"
@@ -121,14 +152,22 @@ export function Discovery({ q }: { q: string }) {
         q ? (
           <CenteredMessage
             icon="search"
-            title={`‘${q}’에 맞는 프로그램이 없어요`}
-            message="다른 검색어로 찾아보거나 전체 프로그램을 확인해 보세요."
-            primary={{ label: "전체 프로그램 보기", href: "/" }}
+            title={`‘${q}’에 맞는 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
+            message={`다른 검색어로 찾아보거나 전체 ${kind === "event" ? "이벤트를" : "프로그램을"} 확인해 보세요.`}
+            primary={{ label: `전체 ${KIND_LABEL[kind]} 보기`, href: homePath(kind) }}
           />
         ) : (
           <CenteredMessage
             icon="explore"
-            title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}
+            title={
+              kind === "event"
+                ? openOnly
+                  ? "지금 열린 이벤트가 없어요"
+                  : "최근 3년 안에 열린 이벤트가 없어요"
+                : openOnly
+                  ? "지금 모집 중인 프로그램이 없어요"
+                  : "최근 3년 안에 활동한 프로그램이 없어요"
+            }
             message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. 잠시 후 다시 찾아와 주세요."
           />
         )
@@ -142,6 +181,7 @@ export function Discovery({ q }: { q: string }) {
                 open={expanded.has(program.id)}
                 toggle={() => toggle(program.id)}
                 openOnly={openOnly}
+                category={KINDS[kind]}
               />
             ))}
           </ul>
@@ -176,9 +216,9 @@ export function Discovery({ q }: { q: string }) {
 
 /**
  * Discovery search (contract "발견 검색·토글"): a stacked label over a system-looking `type="search"` field with a magnifier and a
- * clear button; Enter submits the form so `/?q=` stays the source of truth. Clearing an applied query returns to `/`.
+ * clear button; Enter submits the form so `/?q=` stays the source of truth. Clearing an applied query returns to `/` (keeping `?kind=event`).
  */
-function SearchField({ q }: { q: string }) {
+function SearchField({ q, kind }: { q: string; kind: Kind }) {
   const router = useRouter();
   const [value, setValue] = useState(q);
   return (
@@ -201,6 +241,7 @@ function SearchField({ q }: { q: string }) {
           className="pr-10 pl-8"
           onChange={(event) => setValue(event.target.value)}
         />
+        {kind === "event" && <input type="hidden" name="kind" value={kind} />}
         {value && (
           <button
             type="button"
@@ -208,7 +249,7 @@ function SearchField({ q }: { q: string }) {
             className="absolute right-0 grid size-11 place-items-center text-secondary-label"
             onClick={() => {
               setValue("");
-              if (q) router.push("/");
+              if (q) router.push(homePath(kind));
             }}
           >
             <Icon name="clear" size="inline" />
@@ -355,10 +396,13 @@ function ProgramRow({
   open,
   toggle,
   openOnly,
+  category,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
+  /** The 프로그램 | 이벤트 종류 codes, so an expanded program lists only that side's activities. */
+  category: string;
   /** 마감 숨기기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
   openOnly: boolean;
 }) {
@@ -373,15 +417,15 @@ function ProgramRow({
     const controller = new AbortController();
     const { signal } = controller;
     Promise.all([
-      request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, { signal }),
-      request<ActivityPage>(`/activities?programId=${program.id}&size=20`, { signal }),
+      request<ActivityPage>(`/activities?programId=${program.id}&category=${category}&open=true&size=100`, { signal }),
+      request<ActivityPage>(`/activities?programId=${program.id}&category=${category}&size=20`, { signal }),
     ])
       .then(([open, all]) => setActivities({ open, all }))
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [open, activities, program.id, attempt]);
+  }, [open, activities, program.id, category, attempt]);
   useEffect(() => {
     if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
