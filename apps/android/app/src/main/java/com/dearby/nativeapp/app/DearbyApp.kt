@@ -106,7 +106,8 @@ private sealed interface Route {
     LaunchedEffect(ready) { Tracking.signedIn(ready) }
     val consentNeeded = signedIn && profileState.phase == ProfilePhase.LOADED && profileState.consentRequired
     var resumed by remember { mutableIntStateOf(0) }
-    LaunchedEffect(consentNeeded, resumed) { if (consentNeeded && route == null && !signingIn) route = Route.Consent }
+    // Right after sign-up (profile version 0) the consent comes at once, over whatever screen the sign-in started from (설정 too).
+    LaunchedEffect(consentNeeded, resumed) { if (consentNeeded && !signingIn && (route == null || profileState.settingUp)) route = Route.Consent }
     // Agreed (or signed out): the screen goes; right after sign-up on to 프로필 만들기.
     LaunchedEffect(consentNeeded) { if (!consentNeeded && route == Route.Consent) { route = null; if (profileState.settingUp) tab = Tab.Profile } }
     val consentScope = rememberCoroutineScope()
@@ -165,7 +166,7 @@ private sealed interface Route {
     val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true, entry = "queue_row") }
     LaunchedEffect(ready, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && ready && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
-        QueueEntryRow(ready) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
+        QueueEntryRow(ready, signedIn) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
     }
     // A card link to save: after sign-in and consent it carries on; signed in without consent it asks for the consent first.
     LaunchedEffect(ready, walletState.needSignIn) { if (ready && walletState.needSignIn) wallet.retryPending() }
