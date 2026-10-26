@@ -13,9 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /** A contact the card can show. */
-data class ComposerContact(val id: String, val label: String, val value: String, val isPublic: Boolean)
+data class ComposerContact(val id: String, val kind: String, val value: String, val isPublic: Boolean)
 /** A history the card can show; [reason] explains why it cannot be chosen (not approved yet / rejected). */
 data class ComposerHistory(val id: String, val title: String, val detail: String, val isPublic: Boolean, val reason: String?)
 
@@ -44,7 +45,8 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
             Section("공개할 연락처") {
                 if (contacts.isEmpty()) Text("프로필에 연락처가 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 contacts.forEach { contact ->
-                    ToggleRow("${contact.label} · ${contact.value}", null, contact.isPublic, enabled = true, description = "${contact.label} 공개") { onContactPublic(contact.id, it) }
+                    ToggleRow(contact.value, null, contact.isPublic, enabled = true, description = "${contactKindName(contact.kind)} 공개",
+                        leading = contactIcon(contact.kind)) { onContactPublic(contact.id, it) }
                 }
             }
             Section("공개할 활동 이력") {
@@ -75,7 +77,8 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
 }
 
 /** One `ListItem` whose whole row toggles the `Switch` (contract "폼은 플랫폼 기본 컴포넌트"); [error] colours the supporting line. */
-@Composable private fun ToggleRow(title: String, detail: String?, checked: Boolean, enabled: Boolean, description: String, error: Boolean = false, onChecked: (Boolean) -> Unit) = ListItem(
+@Composable private fun ToggleRow(title: String, detail: String?, checked: Boolean, enabled: Boolean, description: String, error: Boolean = false, leading: ImageVector? = null, onChecked: (Boolean) -> Unit) = ListItem(
     { Text(title) }, Modifier.toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChecked),
+    leadingContent = leading?.let { { Icon(it, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } },
     supportingContent = detail?.let { { Text(it, color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) } },
     trailingContent = { Switch(checked, null, Modifier.semantics { contentDescription = description }, enabled = enabled) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))

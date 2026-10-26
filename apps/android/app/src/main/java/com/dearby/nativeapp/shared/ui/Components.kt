@@ -214,36 +214,23 @@ fun contactKindName(kind: String) = when (kind) {
     else -> kind
 }
 
-/** 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20): 입력 행이 쓰고, 표시 행의 브랜드 네 종류는 [ContactKindIcon]이 마크로 바꾼다. */
-fun contactIcon(kind: String): ImageVector = when (kind) {
+/**
+ * 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20, "연락처 아이콘·바로가기" 2026-10-26): GitHub·Instagram·Behance·카카오톡은
+ * Simple Icons 단색 마크(`res/drawable/ic_brand_*`, Material 기호와 같은 여백), 그 밖은 Material 기호. 표시 행·입력 행·`연락처 추가` 목록이 모두 이것을 보조색 틴트로 쓴다.
+ */
+@Composable fun contactIcon(kind: String): ImageVector = when (kind) {
     "phone" -> Icons.Rounded.Call
     "email" -> Icons.Rounded.Mail
-    "kakao" -> Icons.Rounded.ChatBubble
-    "instagram" -> Icons.Rounded.CameraAlt
-    "github" -> Icons.Rounded.Code
-    "behance" -> Icons.Rounded.Palette
+    "kakao" -> ImageVector.vectorResource(R.drawable.ic_brand_kakaotalk)
+    "instagram" -> ImageVector.vectorResource(R.drawable.ic_brand_instagram)
+    "github" -> ImageVector.vectorResource(R.drawable.ic_brand_github)
+    "behance" -> ImageVector.vectorResource(R.drawable.ic_brand_behance)
     else -> Icons.Rounded.Link
 }
 
-/**
- * 표시 행(명함 면·받은 명함·내 프로필 카드)의 왼쪽 아이콘(contract "연락처 아이콘·바로가기", 2026-10-26): GitHub·Instagram·Behance·카카오톡은 Simple Icons 원본 경로
- * 그대로의 브랜드 마크(`res/drawable/ic_brand_*`)를 24 열 안에 20으로, 색은 GitHub `#181717`·Instagram 검정(다크는 둘 다 흰색), Behance `#1769FF`, 카카오톡 `#FFCD00`.
- * 그 밖의 종류는 [contactIcon] 기호를 보조색으로.
- */
-@Composable fun ContactKindIcon(kind: String, contentDescription: String, modifier: Modifier = Modifier) {
-    val dark = isSystemInDarkTheme()
-    val brand = when (kind) {
-        "github" -> R.drawable.ic_brand_github to if (dark) Color.White else Color(0xFF181717)
-        "instagram" -> R.drawable.ic_brand_instagram to if (dark) Color.White else Color.Black
-        "behance" -> R.drawable.ic_brand_behance to Color(0xFF1769FF)
-        "kakao" -> R.drawable.ic_brand_kakaotalk to Color(0xFFFFCD00)
-        else -> null
-    }
-    Box(modifier.size(24.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-        if (brand == null) Icon(contactIcon(kind), contentDescription, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        else Icon(ImageVector.vectorResource(brand.first), contentDescription, Modifier.size(20.dp), tint = brand.second)
-    }
-}
+/** 표시 행(명함 면·받은 명함·내 프로필 카드)의 왼쪽 아이콘: [contactIcon]을 24, 보조색으로. */
+@Composable fun ContactKindIcon(kind: String, contentDescription: String, modifier: Modifier = Modifier) =
+    Icon(contactIcon(kind), contentDescription, modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
 
 @Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
     Row(modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {

@@ -60,7 +60,7 @@ data class ProfileFormState(
             val phone = profile.contacts.firstOrNull { it.kind == "phone" }
             val email = profile.contacts.firstOrNull { it.kind == "email" }
             return ProfileFormState(profile.name, profile.jobs, profile.introduction, phone?.value.orEmpty(), email?.value.orEmpty(),
-                profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, it.value) },
+                profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, ContactRules.shown(it.kind, it.value)) }, // a profile URL saved before 2026-10-26 reads as its username
                 profile.histories, profile.version, phone?.id ?: UUID.randomUUID().toString(), email?.id ?: UUID.randomUUID().toString())
         }
     }

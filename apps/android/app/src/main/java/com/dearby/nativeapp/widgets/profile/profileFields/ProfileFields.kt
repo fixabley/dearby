@@ -24,14 +24,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-
-/** 사용자가 골라 추가한 연락처 한 줄의 값. */
-data class ProfileExtraContact(val id: String, val kind: String, val value: String)
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /** 연락처 추가 시트에서 고를 수 있는 종류와 이름·안내 문구. */
 val ProfileContactKinds = listOf(
-    Triple("kakao", "카카오톡", "오픈채팅 링크 또는 ID"), Triple("instagram", "Instagram", "@아이디"),
-    Triple("github", "GitHub", "github.com/아이디"), Triple("behance", "Behance", "behance.net/아이디"),
+    Triple("kakao", "카카오톡", "카카오톡 ID"), Triple("instagram", "Instagram", "사용자 이름"),
+    Triple("github", "GitHub", "사용자 이름"), Triple("behance", "Behance", "사용자 이름"),
 )
 
 /**
@@ -57,7 +55,10 @@ val ProfileContactKinds = listOf(
         extras.forEachIndexed { index, item ->
             val meta = ProfileContactKinds.firstOrNull { it.first == item.kind }
             val label = meta?.second ?: item.kind
-            DearbyField(label, item.value, { onExtraChange(item.copy(value = it)) }, placeholder = meta?.third, imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next,
+            // Username kinds take the username only; a pasted URL is reduced to it (contract "연락처 사용자명 입력", 2026-10-26).
+            DearbyField(label, item.value, { onExtraChange(item.typed(it)) }, placeholder = meta?.third,
+                imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next, prefix = item.prefix,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
                 leadingIcon = contactIcon(item.kind), trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
         }
         AddRow("연락처 추가") { choosing = true }
@@ -66,7 +67,8 @@ val ProfileContactKinds = listOf(
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text("추가할 연락처", Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
             ProfileContactKinds.forEach { (kind, label, hint) ->
-                ListItem({ Text(label) }, Modifier.clickable(role = Role.Button) { choosing = false; onAdd(kind) }, supportingContent = { Text(hint) })
+                ListItem({ Text(label) }, Modifier.clickable(role = Role.Button) { choosing = false; onAdd(kind) }, supportingContent = { Text(hint) },
+                    leadingContent = { Icon(contactIcon(kind), null, tint = MaterialTheme.colorScheme.onSurfaceVariant) })
             }
         }
     }

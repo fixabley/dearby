@@ -7,6 +7,8 @@ data class ContactState(val id: String, val kind: String, val label: String, val
     val target: String? get() = ContactRules.link(kind, value)
     /** 주소가 아닌 카카오톡 ID: 누르면 복사한다(행에 복사 아이콘). */
     val copyText: String? get() = ContactRules.copyText(kind, value)
+    /** 행에 보이는 값: 사용자명 종류는 사용자명(2026-10-26 전에 저장된 프로필 URL도). */
+    val shown: String get() = ContactRules.shown(kind, value)
 }
 /** [title] is 조직 · 프로그램 · 활동; [verified] picks the 확인됨/미확인 badge; [description] is the optional one-line note (contract "이력"). */
 data class CardHistoryState(val id: String, val title: String, val role: String, val date: String, val verified: Boolean = false, val description: String = "")
