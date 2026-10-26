@@ -10,7 +10,7 @@
 - **웹** `dearby.wid.io.kr`: Vercel GitHub 연동 자동 배포는 2026-10-26부터 **main 푸시만**(PR #413, 미리보기 배포 중단). 같은 날 Hobby 일일 배포 한도에 걸려 main 배포가 `Deployment rate limited — retry in 24 hours`로 막혔고 자동 재시도는 없다 — 한도가 풀리면 수동 Redeploy가 필요하다(아래 "남은 일"). **어드민** `admin.dearby.wid.io.kr`: Vercel 프로젝트 `dearby-admin`은 연동이 없어 `git archive origin/main apps/admin` 사본에서 `npx vercel link --project dearby-admin && npx vercel deploy --prod`로 배포(사용자 작업, 2026-10-26 phase·시간표 편집 반영 여부는 이 문서에서 확인하지 않음).
 - **기기**: iPhone(UDID `00008120-0011258C2107C01E`)·Android(`R3CY10GNW9F`, 패키지 `io.wid.dearby`). 2026-10-26은 iPhone USB가 연결되지 않아 그날 PR의 iOS 실기기 화면 확인을 모두 미실행으로 기록했다(각 PR 본문). 시뮬레이터·에뮬레이터는 쓰지 않는다. 실기기 Debug 설치에는 운영 origin·Google 값이 필수다(2026-10-25 기록).
 - **운영 데이터**(2026-10-26 조율 세션 보고 + 이 세션 HTTP 확인): 컨퍼런스의 수집 조각 일정을 큐레이션 가져오기(`--import-curation`, PR #402)로 "큰 블록 + 트랙·세션 시간표"로 정리했다. 조율 보고는 컨퍼런스 8건이고, 공개 API(`GET /v1/activities?kind=event&status=…`)에서 `hasTimetable`인 활동은 7건 — 156 우아콘 2026, 202 FECONF 2026, 203 FEConf 2025, 204 드로이드나이츠 2026, 205 드로이드나이츠 2025, 213 GDG DevFest Cloud x Seoul 2025, 228 삼성 AI 포럼 2026(차이 1건은 미공개 활동일 수 있다 — 추정). 정리 전 백업 파일은 조율 세션이 보관하며 경로는 이 문서에 적지 않았다(저장소·`~/.dearby-deploy`에서 찾지 못함). PR #405 적용으로 모집 일정이 없는 204 드로이드나이츠 2026·227 파이토치 데이 코리아 2026은 열린 활동에서 마감(`NO_RECRUITMENT`)으로 바뀌었다.
-- **동의 버전**: 서버 `CONSENT_PRIVACY_VERSION` 기본값 `2026-10-26`(application.yaml·compose), iOS·Android 앱 상수는 `2026-10-28`(PR #441·#440), 웹 `consent-versions.ts`는 `2026-10-26`. 서버 값을 올리기 전까지 10-28 빌드의 새 동의는 400 `CONSENT_VERSION`이다(아래 "남은 일").
+- **동의 버전**: 서버 `CONSENT_PRIVACY_VERSION` 기본값 `2026-10-26`(application.yaml·compose), iOS·Android 앱 상수는 `2026-10-28`(PR #441·#440), 웹 `consent-versions.ts`는 `2026-10-26`. 서버 값을 올리기 전까지 2026-10-28 빌드의 새 동의는 400 `CONSENT_VERSION`이다(아래 "남은 일").
 - **로그인**: 패스키·Apple·Google(네이티브) 운영 중. 새 계정은 애플·구글만(2026-10-25). 웹 로그인 1단계(PR #438)는 코드만 main에 있고 Vercel env(Apple Services ID·Google 웹 클라이언트)와 서버 `GOOGLE_WEB_CLIENT_ID`·`WEBAUTHN_ALLOWED_ORIGINS`가 아직 없어 운영에서 쓸 수 없다.
 - **연락처 인증**: GitHub·이메일 인증 코드는 배포됐지만 `GITHUB_CLIENT_ID/SECRET/CALLBACK_URL`·`MAIL_HOST/FROM` 등이 없어 503 → 앱은 그 버튼을 숨긴다.
 - **배치**: 매일 00:00 수집, 04:00 명함 회수(Asia/Seoul). 일회성 옵션(`--collect-now`·`--recall-now`·`--import-curation` 등)으로 띄운 `run --rm` 컨테이너는 2026-10-26부터 `@Scheduled` 정기 작업을 켜지 않는다(PR #402).
@@ -74,13 +74,13 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 - **후속 묶음(워크트리 `polish`, 진행 중)**: 청록 채움 면 위 흰 글자(`tealFill`), 비스크롤 화면 중앙 배치·CTA·`CenteredMessage`·카드 최소화, 아이콘 통일(토스 참고, 의미별 고정 이름), 다섯 탭 알림+설정 버튼, 설정 화면(계정·연결된 로그인·패스키·정보). 설정 API(`GET /v1/me`, identities·passkeys 목록/해제/이름/삭제, 409 `LAST_SIGN_IN_METHOD`)는 워크트리 `settings`.
 - **대기 중 사용자 결정**: 이력에 "신청만 한 활동"(역할 선택, 일정 기반 상태, 명함 공개 범위, 내 활동과의 연결) — 제안 6개 항목 중 1·4·5 확정 필요.
 
-## 2026-10-26 결정 — 우아콘(10/28) 전 묶음 (PR #376~#442)
+## 2026-10-26 결정 — 우아콘(2026-10-28) 전 묶음 (PR #376~#442)
 
 하루에 PR #376~#442가 main에 들어갔다(KST 10:50~23:26). 세부 규칙은 계약의 해당 절(절 이름을 적음), 사용자 발언은 각 PR 본문에 있다. 같은 날 안에서 바뀐 결정은 최종 상태를 적고 중간 상태는 "변경 이력"으로 남긴다. 아래 모든 PR의 앱 화면 흐름은 실기기 미연결로 미실행이고 lint·빌드·API 테스트만 통과했다.
 
 ### 쐐기와 성공 지표
 
-- **쐐기(조율 세션 기록)**: 비공개 테스트에서 가치를 처음 증명할 지점은 **컨퍼런스 당일 + 명함 교환**으로 정했다. 10/28 우아콘에 맞춰 오늘 내 행사 카드·시간표 모달·세션 이동 알림·교환 세션 맥락·테스터 모집 CTA를 그 전에 넣었다.
+- **쐐기(조율 세션 기록)**: 쐐기는 **컨퍼런스 당일 + 명함 교환**으로 결정(결정문 그대로; "비공개 테스트에서 가치를 처음 증명할 지점"은 이 문서의 해석). 2026-10-28 우아콘에 맞춰 오늘 내 행사 카드·시간표 모달·세션 이동 알림·교환 세션 맥락·테스터 모집 CTA를 그 전에 넣었다.
 - **성공 지표 2개**(PR #426): ① 내 활동에 추가한 활동이 실제 참석까지 이어지는가, ② 테스터 1인이 맞교환 3회. 이벤트는 analytics-v1.md "비공개 테스트 성공 지표"(`stage_mark`·`participation_reached`·`activity_day_action`·`favorite_add type=session`·`card_received`·`card_exchange_completed`·`card_exchange_milestone`·사용자 속성 `card_exchanges`·화면 `card_qr`), 정의·GA4 계산식·목표값(추정)·일정·테스터 부탁은 [비공개 테스트 계획](test-plan-2026-10.md). 우아콘 2026(활동 156)은 `신청 기간`·`입장권 추첨 결과 발송` 두 선발 단계가 있어 통과 표시가 있어야 `참여 중`이 된다.
 - **GA 맞춤 측정기준**(조율 세션 보고): analytics-v1.md "GA 콘솔에서 할 일(사용자)" 목록의 **23개**(사용자 범위 5: 기존 4 + `card_exchanges`, 이벤트 범위 18: 기존 14 + `activity_id`·`via`·`action`·`reciprocal`)를 2026-10-26 등록 완료. 그 뒤 PR #442가 더한 웹 `tester_cta_tap`의 `platform`·`target`은 등록 여부를 확인하지 못했다(미등록으로 추정).
 
@@ -115,7 +115,7 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 
 - **연락처 인증**(PR #437 서버 V64·#440 Android·#441 iOS): 사용자 "깃헙·인스타처럼 앱 로그인을 지원하는 것들은 연락처에 등록할 때 로그인으로 등록", "이메일도 Spring Mail 활용해서 인증". **GitHub**은 OAuth 연결(start → 콜백 → 1회용 code → complete; 콜백만으로 끝내지 않는 이유는 계정 연결 CSRF), **이메일**은 6자리 인증번호(10분, 1분당 1회·하루 10회, 5회 오류 폐기). `Contact.verified`·`verifiedAt`은 서버만 켜고 값을 고치면 풀림, 성공 시 프로필 버전 +1. **조율 판단으로 범위는 둘만**: Instagram은 Basic Display API 종료(비즈니스 계정만), 카카오 로그인은 카카오톡 ID·오픈프로필 URL을 주지 않음, LinkedIn OIDC는 이름만, Behance API 신규 발급 중단 — 수동 입력만. 운영 env(`GITHUB_*`, `MAIL_*`)가 없으면 503이고 앱은 버튼을 숨긴다. 통계 `contact_verify`. 계약 "연락처 인증".
 - **웹 로그인 1단계**(PR #433 서버·#438 웹): 사용자 "웹도 로그인이랑 관련 기능 추가해줘". 서버: `POST /v1/wallet/import-guest`(비로그인 저장 → 계정 지갑, 받은 날·활동 맥락 유지, 400 `GUEST_SESSION_INVALID`), `GOOGLE_WEB_CLIENT_ID` 허용 aud. 웹: `__Host-dearby_access`(60초)·`__Host-dearby_refresh`(90일) HttpOnly 쿠키, 전용 `POST /api/auth/refresh`(Web Locks, 회전 경쟁 방지), 로그인 시트(Apple JS·Google GIS·WebAuthn 표준 JSON), 동의 시트, `/settings`(계정·패스키·정보), 비로그인 저장은 **물어서** 옮김(자동 아님), GA 사용자 속성 `signed_in`. 계정 기능(즐겨찾기·내 활동·받은 명함·프로필 등)은 2단계. 계약 "웹 로그인"·"웹 화면 — 1단계", [사용자 웹](web-implementation-and-handoff.md).
-- **처리방침 2026-10-28판**(PR #439, 사용자 승인 2026-10-26): 연락처 인증 상태·GitHub 사용자명, 교환 시점 일정 블록·세션, 세션 이동 알림(기기 안), 웹 로그인 세션 쿠키, 이메일 인증 요청(하루 보관), 처리 위탁 `Google LLC (Gmail SMTP)`·국외 이전 행, 시행 10-28(고지 10-27). **재동의 순서**: 앱 상수 먼저(iOS `ConsentVersions.privacy`·Android `Consent.PRIVACY` = `2026-10-28`, #441·#440 완료) → 서버 `CONSENT_PRIVACY_VERSION`은 앱 빌드가 배포된 뒤 올린다(아직 `2026-10-26`). 서버만 먼저 올리면 옛 빌드의 동의가 400·프로필 쓰기 403, 올리지 않으면 10-28 빌드의 새 동의가 400 `CONSENT_VERSION`이다. 미해결 불일치: #439는 SMTP 공급자를 Gmail로 적었지만 #437은 공급자를 사용자가 고르는 것으로 두었다(다른 공급자면 5·6절·변경 이력 수정). 변경 이력: 오전 #385로 처리방침 버전 `2026-10-26`(사진·소개 링크·웹 사용 통계)을 먼저 올렸다.
+- **처리방침 2026-10-28판**(PR #439, 사용자 승인 2026-10-26): 연락처 인증 상태·GitHub 사용자명, 교환 시점 일정 블록·세션, 세션 이동 알림(기기 안), 웹 로그인 세션 쿠키, 이메일 인증 요청(하루 보관), 처리 위탁 `Google LLC (Gmail SMTP)`·국외 이전 행, 시행 2026-10-28(고지 2026-10-27). **재동의 순서**: 클라이언트 상수 먼저(iOS `ConsentVersions.privacy`·Android `Consent.PRIVACY` = `2026-10-28`, #441·#440 완료; 웹 `apps/web/src/features/auth/model/consent-versions.ts`는 아직 `2026-10-26`이라 올려서 Vercel Redeploy에 묶는다) → 서버 `CONSENT_PRIVACY_VERSION`은 앱·웹 빌드가 배포된 뒤 올린다(아직 `2026-10-26`). 서버만 먼저 올리면 옛 빌드의 동의가 400·프로필 쓰기 403, 올리지 않으면 10-28 빌드의 새 동의가 400 `CONSENT_VERSION`이다. 미해결 불일치: #439는 SMTP 공급자를 Gmail로 적었지만 #437은 공급자를 사용자가 고르는 것으로 두었다(다른 공급자면 5·6절·변경 이력 수정). 변경 이력: 오전 #385로 처리방침 버전 `2026-10-26`(사진·소개 링크·웹 사용 통계)을 먼저 올렸다.
 - **광고 기본 꺼짐**(PR #429 Android·#431 iOS): 초기 테스트 기간은 맞춤 대기열 끝 광고·광고 동의 요청·ATT를 빌드 플래그 `DEARBY_ADS_ENABLED`(기본 false)로 끈다. 코드·SDK·동의 흐름은 유지, 다시 켤 때는 CI·릴리스 워크플로에 변수가 필요. 부작용: 꺼진 동안 설정의 광고 동의 스위치도 숨어 이미 남은 동의를 앱에서 철회할 수 없다. 계약 "맞춤 대기열 끝 광고" › "광고 끄기".
 
 ### 배포·운영
@@ -129,11 +129,11 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 이전 목록은 [`dc93f57d`](https://github.com/fixabley/dearby/blob/dc93f57d/docs/context/coordinator-current-task-and-decisions.md). 태그·Google OAuth 클라이언트·일회성 batch 종료는 끝나 지웠다.
 
 - **사용자 작업(스토어·배포)**: iOS TestFlight 외부 테스터 그룹 만들기·베타 앱 심사 제출(조율 세션 기록, 2026-10-26 미완). Play 비공개 테스트 릴리스 상태 확인(테스터 그룹·검토 상태). 웹 Vercel **Redeploy**(한도 해제 뒤; PR #413 시점에 #407 이후 main 배포가 막혀 있었고 그 뒤 반영 여부는 미확인 — #438 웹 로그인·#442 테스터 CTA의 첫 실제 확인도 그 뒤). 어드민 Vercel CLI 배포(phase 구분·시간표 편집 포함). 테스터 CTA Vercel env 3개 입력.
-- **사용자 결정 — 서버 동의 버전 올리기 시점**: iOS·Android 10-28 빌드(TestFlight·Play 테스트)가 테스터 기기에 배포된 뒤 `CONSENT_PRIVACY_VERSION=2026-10-28`로 api·admin 재생성. 그 전에는 10-28 빌드의 새 가입이 400이고, 올리면 옛 빌드 사용자는 업데이트 전까지 프로필 쓰기 403. 처리방침의 SMTP 공급자(Gmail 명시)도 함께 확정.
+- **사용자 결정 — 서버 동의 버전 올리기 시점**: iOS·Android 2026-10-28 빌드(TestFlight·Play 테스트)가 테스터 기기에 배포되고 웹 `consent-versions.ts`도 `2026-10-28`로 올려 Redeploy한 뒤 `CONSENT_PRIVACY_VERSION=2026-10-28`로 api·admin 재생성. 그 전에는 2026-10-28 빌드의 새 가입이 400이고, 올리면 옛 빌드 사용자는 업데이트 전까지 프로필 쓰기 403. 처리방침의 SMTP 공급자(Gmail 명시)도 함께 확정.
 - **사용자 작업(운영 env)**: 연락처 인증 — GitHub OAuth App(콜백 `https://api.dearby.wid.io.kr/v1/me/contacts/github/callback`) → `GITHUB_CLIENT_ID`·`GITHUB_CLIENT_SECRET`·`GITHUB_CALLBACK_URL`; SMTP 공급자 → `MAIL_HOST`·`MAIL_PORT`·`MAIL_USERNAME`·`MAIL_PASSWORD`·`MAIL_FROM`, `wid.io.kr` SPF·DKIM. 웹 로그인 — Vercel `NEXT_PUBLIC_APPLE_SERVICES_ID`(`io.wid.dearby.web`, Services ID 도메인·Return URL 등록)·`NEXT_PUBLIC_APPLE_REDIRECT_URI`·`NEXT_PUBLIC_GOOGLE_CLIENT_ID`, 서버 `GOOGLE_WEB_CLIENT_ID`·`WEBAUTHN_ALLOWED_ORIGINS`에 `https://dearby.wid.io.kr`. GA 맞춤 측정기준에 `platform`·`target` 등록(표시 이름 구분).
 - **검증 미실행**: iPhone USB 미연결로 2026-10-26 PR 전부의 iOS 실기기 화면 확인 미실행(기기 연결 뒤 세션 이동 알림 발화·탭 라우팅, 오늘 카드, 필터 시트, 연락처 인증, 자동 통과 시트 순으로 확인). XCUITest(#388) 재실행. 스토어 스크린샷 재촬영·그래픽 이미지 재제작(필터 시트·종류 라벨·진행 단계 화면이 바뀜).
-- **앱 구현 — 분석 이벤트**(계약·계획은 #426, 코드 확인 2026-10-26 밤): 있음 — `stage_mark`(iOS는 수동 표시·제안 모두, Android는 제안 경로만), `today_card_tap`, `contact_verify`, `session_reminder_scheduled`, Android 화면 `card_qr`. 없음 — `participation_reached`, `activity_day_action`, `card_received`, `card_exchange_completed`, `card_exchange_milestone`, 사용자 속성 `card_exchanges`, iOS 화면 `card_qr`, `favorite_add/remove type=session`, Android 수동 `stage_mark`. 10/27 빌드에 들어가지 않으면 우아콘 지표는 test-plan "구현 전 상태"의 대체 계산.
-- **다음 기능(순서, 조율 세션 기록)**: 세션 이동 알림 2단계 — iOS 라이브 액티비티 → Android 진행 중(ongoing) 알림 → 홈 화면 위젯. 웹 계정 기능 2단계(즐겨찾기·세션 찜·내 활동·받은 명함·프로필·알림 설정·연결된 로그인·패스키 이름). `If-Match`·`Accept-Language` 전달·`requireAccount` 호출처(#438 미완).
+- **앱 구현 — 분석 이벤트**(계약·계획은 #426, 코드 확인 2026-10-26 밤): 있음 — `stage_mark`(iOS는 수동 표시·제안 모두, Android는 제안 경로만), `today_card_tap`, `contact_verify`, `session_reminder_scheduled`, Android 화면 `card_qr`. 없음 — `participation_reached`, `activity_day_action`, `card_received`, `card_exchange_completed`, `card_exchange_milestone`, 사용자 속성 `card_exchanges`, iOS 화면 `card_qr`, `favorite_add/remove type=session`, Android 수동 `stage_mark`. 2026-10-27 빌드에 들어가지 않으면 우아콘 지표는 test-plan "구현 전 상태"의 대체 계산.
+- **다음 기능(순서는 조율 세션 기록)**: #425의 1단계(기기 로컬 알림)에 이어 iOS 라이브 액티비티 → Android 진행 중(ongoing) 알림 → 홈 화면 위젯. 웹 계정 기능 2단계(즐겨찾기·세션 찜·내 활동·받은 명함·프로필·알림 설정·연결된 로그인·패스키 이름). `If-Match`·`Accept-Language` 전달·`requireAccount` 호출처(#438 미완).
 - **운영 환경**: OrbStack을 로그인 시 자동 시작하도록 하고 api·admin·batch 컨테이너 가동 감시를 둔다(조율 세션 기록, 미착수).
 - **이전부터 남은 것**: 활동 이력에 "신청만 한 활동" 처리, 수집기 세 가지 수정안(턴 20·URL 추측 금지·피드백 자동 첨부), 프로그램 상세 화면 여부, 내 명함 용도별 프리셋, SSAFY 수집 설정, Vercel 미사용 환경값 4개 삭제, Android 출시 서명(SHA-1·SHA-256), Google 로고 자산, 인증서(`wid.io.kr`, `api.dearby.wid.io.kr`) 2027-01-04 만료(수동 dns-01), 운영자 지정 해제 API 없음, 비로그인 저장자는 맞교환할 수 없어 30일 뒤 회수(의도).
 
@@ -200,7 +200,7 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 
 ### 2026-10-26
 
-위 "2026-10-26 결정 — 우아콘(10/28) 전 묶음"에 주제별로 있다(지난 선발 단계 통과 제안·즐겨찾기 캘린더만·명함 교환 세션 맥락 포함).
+위 "2026-10-26 결정 — 우아콘(2026-10-28) 전 묶음"에 주제별로 있다(지난 선발 단계 통과 제안·즐겨찾기 캘린더만·명함 교환 세션 맥락 포함).
 
 ## 통합된 작업
 
