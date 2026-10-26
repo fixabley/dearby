@@ -1,9 +1,9 @@
 # 연락처 브랜드 아이콘
 
 2026-10-26. 명함·프로필 연락처 행 앞의 GitHub·Instagram·Behance·카카오톡 마크 원본이다(계약 `shared/contracts/native-v1.md` "연락처 아이콘·바로가기").
-파일은 받은 그대로이며 바꾸지 않는다. 각 앱은 색만 넣은 사본을 쓴다(iOS `apps/ios/Resources/Assets.xcassets/Contact*.imageset`).
+파일은 받은 그대로이며 바꾸지 않는다. 각 앱은 경로 그대로의 단색 템플릿 사본을 쓰고 색은 앱의 보조색으로 입힌다(2026-10-26 사용자 결정; iOS `apps/ios/Resources/Assets.xcassets/Contact*.imageset`, Android `res/drawable/ic_brand_*`).
 
-| 파일 | 출처 | Simple Icons 기록 원출처·가이드 | 표시 색 | SHA256 |
+| 파일 | 출처 | Simple Icons 기록 원출처·가이드 | 표시 색(2026-10-26 오전, 지금은 앱 보조색 단색) | SHA256 |
 | --- | --- | --- | --- | --- |
 | `github.svg` | Simple Icons 16.36.0 `icons/github.svg` | https://github.com/logos (가이드 같은 곳) | 라이트 `#181717`, 다크 `#FFFFFF` | `3bf8cceead820aec50d4ee825a3fd02c5a1cd6665cc9cf4cbf3d9c8861a204bb` |
 | `instagram.svg` | Simple Icons 16.36.0 `icons/instagram.svg` | https://about.meta.com/brand/resources/instagram (가이드 같은 곳) | 라이트 `#000000`, 다크 `#FFFFFF` | `f53af2d1fc5292ba1433b5c1faf50005ce6a997fa302d1816989929f379a59dc` |
