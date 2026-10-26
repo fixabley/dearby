@@ -224,7 +224,7 @@ private sealed interface Route {
                             cancelSignUp = if (profileState.profile?.version == 0) {
                                 { consentScope.launch { runCatching { account.deleteAccount() }.onFailure { notice = "가입을 취소하지 못했어요. 잠시 후 다시 시도해 주세요." }; profile.load() } }
                             } else null,
-                            signOut = { consentScope.launch { account.signOut(); profile.load() } })
+                            signOut = { consentScope.launch { account.signOut(); profile.load() } }, renewal = profileState.profile?.consent != null)
                     }
                     Route.Inbox -> {
                         BackHandler { route = null }
