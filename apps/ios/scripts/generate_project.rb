@@ -43,6 +43,12 @@ app.resources_build_phase.add_file_reference(resources.new_file(firebase_config)
 # 맞춤 대기열 끝 광고 (AdMob, native-v1.md): Debug uses Google's sample app and native test unit. Release takes ADMOB_IOS_APP_ID and
 # ADMOB_IOS_QUEUE_NATIVE_UNIT_ID from the environment (CI: the repository variables of those names); without both the unit is empty, the app
 # never starts the SDK and the ad page is left out. GADApplicationIdentifier still gets the sample app ID then, because the SDK aborts at launch when it is missing.
+# UI flow tests (XCUITest, 2026-10-26 사용자 결정): run by hand on a real iPhone only (README "UI 흐름 테스트"). The target sits in its own
+# `DearbyUITests` scheme; the `Dearby` scheme that CI builds and archives (native.yml, ios-testflight.yml) does not contain it.
+uitests = project.new_target(:ui_test_bundle, 'DearbyUITests', :ios, '18.0')
+uitests.add_dependency(app)
+ui_sources = project.main_group.new_group('UITests')
+Dir.glob('UITests/**/*.swift').sort.each { |file| uitests.source_build_phase.add_file_reference(ui_sources.new_file(file)) }
 admob_test_app = 'ca-app-pub-3940256099942544~1458002511'
 admob_release = [ENV.fetch('ADMOB_IOS_APP_ID', ''), ENV.fetch('ADMOB_IOS_QUEUE_NATIVE_UNIT_ID', '')]
 admob_release = [admob_test_app, ''] if admob_release.any?(&:empty?)
@@ -63,6 +69,7 @@ project.targets.each do |target|
         'PROVISIONING_PROFILE_SPECIFIER' => ENV['DEARBY_RELEASE_PROFILE'], 'DEVELOPMENT_TEAM' => ENV.fetch('DEARBY_TEAM_ID')
       })
     end
+    config.build_settings['TEST_TARGET_NAME'] = 'Dearby' if target == uitests
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',
@@ -96,3 +103,8 @@ scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(app)
 scheme.set_launch_target(app)
 scheme.save_as(project.path, 'Dearby', true)
+ui_scheme = Xcodeproj::XCScheme.new
+ui_scheme.add_build_target(app)
+ui_scheme.add_test_target(uitests)
+ui_scheme.set_launch_target(app)
+ui_scheme.save_as(project.path, 'DearbyUITests', true)

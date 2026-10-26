@@ -32,7 +32,7 @@
 - 일정: `CalendarConflictState.swift`의 2026-10-24 14–15시 Asia/Seoul 고정 바쁜 시간.
   컨퍼런스 60분/1건, 캠프·밋업 0건. 결과는 30분 2열 격자로 표시합니다.
 - 신청: 상세 하단 CTA가 `applicationUrl ?? officialUrl`(https만)을 외부 브라우저로 연다(목록에는 신청 바로가기가 없다). 내 활동 표시는 사용자가 남기는 표시다.
-- 테스트: 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. Debug 전용 launch 환경값 `DEARBY_API_ORIGIN` 덮어쓰기는 남겨 두었다. Release에는 덮어쓰기가 없다.
+- 테스트: 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. 2026-10-26 사용자 결정으로 실기기 수동 UI 흐름 테스트(XCUITest)만 다시 두었다(아래 "UI 흐름 테스트"). Debug 전용 launch 환경값 `DEARBY_API_ORIGIN` 덮어쓰기는 남겨 두었다. Release에는 덮어쓰기가 없다.
 - 내 명함(`MyCardsPage`): `GET /v1/cards`의 발행 명함 목록을 2열 격자(첫 칸 `+ 새 명함`, 각 칸은 명함 이름·프로필 이름·직무, 선택 칸은 민트 바탕·청록 테두리, 접근성 글자 크기에서는 1열)로 보이고, 격자 아래에 고른 명함의 카드와 "QR 보이기"·"이 명함 고치기"·"이 명함 지우기"를 둔다. QR 보이기(`CardQRSheet`, 계약 "명함 교환" 2026-10-19)는 `<DearbyWebOrigin>/cards/<id>?activity=<n>`을 CoreImage로 그린 전체 화면 시트이며, 활동 칩은 신청한 활동 중 다음 단계가 가장 가까운 것이 자동으로 골라지고 메뉴로 다른 신청 활동이나 `활동 없이`로 바꾼다. 시트가 열려 있는 동안 화면 밝기를 최대로 올리고 닫으면 되돌린다. 앱 안 스캔은 없다.
 - 유니버설 링크·활동 공유(계약 "유니버설 링크·App Links·활동 공유·오픈그래프" 2026-10-22): `Dearby.entitlements`에 `applinks:dearby.wid.io.kr`, `Dearby-Debug.entitlements`에 `applinks:dearby.wid.io.kr?mode=developer`(개발자 모드 기기에서 Apple CDN 캐시 없이 확인)를 `webcredentials:wid.io.kr` 옆에 둔다. 링크는 `DearbyApp`의 `.onOpenURL`이 받아 `app/entrypoint/IncomingLink.swift` 파서 하나로 나눈다: `dearby://cards/…`(웹 `Dearby 앱에 저장`)는 `.saveCard`로 지금처럼 바로 저장하고, 웹 origin(`AppOrigins.web`, `DearbyWebOrigin`)과 scheme·host·port가 같은 `/cards/<cardId>?activity=&code=`는 `.viewCard`로 `WalletModel.view`가 받은 명함에 이미 있으면 그 받은 명함 상세를 열고(저장 요청 없음), 아니면(로그아웃 포함) 같은 상세 시트에 **공유받은 명함 보기**(`WalletPage.sharedCard`: 공개 `GET /v1/cards/:id?code=`의 명함을 받은 명함 상세와 같은 `CardView`로, 위에 `<프로그램> <활동>에서 받은 명함`, 아래 `받은 명함에 저장`, 더 보기 메뉴 `신고하기`)를 연다. 저장은 기존 `receive` 흐름(로그아웃이면 이 화면에서 로그인 뒤 이어서, 만료·내 명함·차단 안내 그대로)이고, 저장되면 시트가 같은 카드 id라 닫히지 않고 그 명함의 받은 명함 상세로 바뀐다. 로그인 상태에서 내 명함이면 저장 버튼 대신 내 명함 안내, 조회 실패(만료·회수·없음)는 화면 안 오류에 저장 안내와 같은 문구. `/activities/<숫자 id>`(웹 origin만)는 `ActivityViewModel.openLinked`가 발견에서 못 본 활동이면 `GET /v1/activities/:id`로 불러온 뒤 `showInDiscovery`에 넣어 `DearbyApp`이 발견 탭으로 바꾸고 `ActivityListPage`가 상세를 민다(404면 상세가 "활동을 찾을 수 없어요", 그 밖 실패는 알림만). 그 밖의 모양은 무시한다. 활동 상세 상단 공유는 활동이 불러와지면 늘 보이는 `ShareLink(item: <웹 origin>/activities/<id>, subject: 활동 이름)`(접근성 라벨 `활동 공유`, 캘린더 링크와 같은 `calendarLink`)이고 공식 안내 링크는 본문 출처 행에 남는다.
 - 명함 카드(`CardView`, 계약 "명함 표현" 2026-10-18, Mobbin 참고): 내 명함·받은 명함 상세가 같은 카드를 쓴다. `secondarySystemGroupedBackground` 바탕·모서리 20·구분선 테두리·안쪽 여백 20인 한 장의 카드 안에 가운데 머리(이니셜 아바타 56 → 이름 → `job`을 ` · `로 나눈 직무 칩(줄바꿈) → 가장 최근 승인 이력의 조직; 이름 옆에 소개 링크 버튼 — Notion 페이지면 Notion 단색 마크, 아니면 `link` + `소개`, 2026-10-26 계약 "소개 링크·소개 글 폐지"), `연락처` 절(왼쪽 종류 아이콘 24 보조색·값, 글자 라벨 없음, 열 수 있으면 외부 링크 표시와 행 전체 버튼), `활동 이력` 절(기간·조직 · 프로그램 · 활동·역할과 `확인됨`/`미확인` 배지·설명)이 쌓인다. 비면 `공개된 연락처가 없어요`/`공개된 활동 이력이 없어요`. 행동 버튼은 카드 바깥에 둔다.
@@ -136,9 +136,32 @@
 - 사용 통계: `queue_ad_shown`(광고 장면이 처음 화면에 올 때), `queue_ad_skipped_unloaded`(`reason` `loading`·`failed`, 광고가 켜진 빌드에서 받지 못한 채 끝 화면에 닿을 때). 광고 장면에서 닫으면 `queue_exit`의 `position`은 마지막 활동 카드 번호다.
 - 개인정보 매니페스트: 앱 매니페스트는 그대로 둔다(SDK가 자체 `PrivacyInfo.xcprivacy`를 갖는다). 13.11.0 매니페스트는 광고 데이터·제품 상호작용·대략적 위치·진단·성능·충돌과 함께 `NSPrivacyCollectedDataTypeDeviceID`를 **추적 true**로 선언하므로 아카이브 Privacy Report와 App Store 라벨의 "추적에 사용되는 데이터"에 기기 ID가 잡힐 수 있다. 라벨은 Privacy Report로 맞춘다(docs/store/ads-2026-10-25.md).
 
+## UI 흐름 테스트 (2026-10-26, XCUITest, CI 미포함)
+
+2026-10-26 사용자 결정. `UITests/`의 `DearbyUITests` 타깃은 별도 스킴 `DearbyUITests`에만 들어 있다. CI(native.yml·ios-testflight.yml)가 쓰는 `Dearby` 스킴에는 없어 CI는 빌드도 실행도 하지 않는다. SwiftLint 범위(`.swiftlint.yml`의 `Sources`)에도 들지 않는다. 실행은 무선 연결한 실기기 iPhone에서만 수동으로 하고 시뮬레이터는 쓰지 않는다.
+
+- 흐름: `AccountFlowTests` (a) 재동의 화면 `개인정보 처리방침이 바뀌었어요`와 동의, (b) 로그인 시트 순서(락업·Apple·Google·고지·패스키, 로그아웃일 때만), (h) 설정 알림·개인정보 섹션과 `광고 목적 정보 제공` 스위치. `ProfileCardFlowTests` (c) 프로필 보기(명함형 카드·소개 링크·이력)와 수정(맨 아래 스크롤 뒤 키보드 없음, 연락처 추가 목록, GitHub 칸, `완료 → 버리기`), (d) 명함 만들기의 사진 넣기·소개 링크 넣기와 QR 보이기. `DiscoveryFlowTests` (e) 오늘의 맞춤 대기열을 끝까지 넘기고 닫기(광고 동의는 `동의하지 않음`, ATT는 추적 금지 요청), (f) 즐겨찾기가 캘린더만이고 `날짜 없는 즐겨찾기` 묶음, (g) 활동 상세 › 겹치는 시간 확인(캘린더 권한 허용). 단계마다 스크린샷을 결과 번들에 남긴다.
+- 기기 앱의 로그인 상태와 데이터를 그대로 쓴다. 로그인·계정 삭제·재가입·신고·차단·광고 클릭·프로필 저장·명함 발행은 하지 않는다(프로필 수정은 버리고, 명함 만들기는 닫는다). 다른 상태가 필요한 흐름(로그인, 명함, 즐겨찾기)은 이유와 함께 건너뛴다(skipped). 재동의 동의, 광고 동의 거절, 대기열 넘김 신호, QR 발급은 실제로 기록된다.
+- 기기 준비: 개발자 모드, 설정 > 개발자 > `UI 자동화 활성화`(없으면 러너가 `Timed out while enabling automation mode`로 멈춘다), 잠금 해제. 테스트 앱은 같은 번들 ID(`io.wid.dearby`)로 덮어 설치되어 앱 데이터가 남는다.
+- 재동의 화면은 새 버전마다 한 번만 뜨므로 (a)를 먼저 따로 돌린다. 큰 글씨 테스트는 여기 없다.
+
+```sh
+mkdir -p apps/ios/Config && cp ~/.dearby-deploy/GoogleService-Info.plist apps/ios/Config/
+set -a; source ~/.dearby-deploy/mobile.env; set +a
+export DEARBY_API_ORIGIN=https://api.dearby.wid.io.kr DEARBY_WEB_ORIGIN=https://dearby.wid.io.kr
+ruby apps/ios/scripts/generate_project.rb
+DEVICE=<UDID>   # xcrun devicectl list devices
+TEAM=$(gh variable get APPLE_TEAM_ID)
+xcodebuild test -project apps/ios/Dearby.xcodeproj -scheme DearbyUITests -destination "id=$DEVICE" -allowProvisioningUpdates DEVELOPMENT_TEAM=$TEAM \
+  -only-testing:DearbyUITests/AccountFlowTests/testAConsentRenewal -resultBundlePath /tmp/ios-ui-consent.xcresult
+xcodebuild test -project apps/ios/Dearby.xcodeproj -scheme DearbyUITests -destination "id=$DEVICE" -allowProvisioningUpdates DEVELOPMENT_TEAM=$TEAM \
+  -resultBundlePath /tmp/ios-ui.xcresult
+xcrun xcresulttool export attachments --path /tmp/ios-ui.xcresult --output-path /tmp/ios-ui-shots   # manifest.json이 파일과 단계 이름을 잇는다
+```
+
 ## 검증
 
-`Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다.
+`Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다(실기기 수동 UI 흐름 테스트는 위 "UI 흐름 테스트").
 
 ```sh
 ruby apps/ios/scripts/generate_project.rb

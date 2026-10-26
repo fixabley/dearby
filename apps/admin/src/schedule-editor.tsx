@@ -21,6 +21,7 @@ import {
   scheduleText,
   SEOUL,
 } from "./activities";
+import { TimetableButton } from "./timetable-editor";
 
 /** 세부 일정 편집기 (contract admin-v1 "세부 일정 편집기", 2026-10-19): calendar and list views over an activity's detail schedules. */
 
@@ -123,6 +124,10 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
           일정 추가
         </Button>
         <span className="muted">
+          활동 기간 {scheduleText(activity.activitySchedule)}
+        </span>
+        <TimetableButton activityId={activity.id} schedule={activity.activitySchedule} />
+        <span className="muted">
           <span className="schedule-band-swatch application" /> 모집 기간 <span className="schedule-band-swatch activity" /> 활동 기간 · 날짜 칸을 누르면 그 날짜로 일정을 추가해요.
         </span>
       </Space>
@@ -152,6 +157,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
                   <Button size="small" onClick={() => setStatusesFor(schedule)}>
                     진행 상태
                   </Button>
+                  <TimetableButton activityId={activity.id} schedule={schedule} />
                   <Popconfirm title="이 일정을 지울까요?" description="수집이 같은 일정을 다시 넣지 않아요." okText="지우기" okButtonProps={{ danger: true }} onConfirm={() => remove.mutate(schedule.id)}>
                     <Button size="small" danger>
                       삭제

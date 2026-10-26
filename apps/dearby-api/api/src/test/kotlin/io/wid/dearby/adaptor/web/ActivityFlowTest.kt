@@ -146,6 +146,22 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(3), nearestSeoulDate)
         // 가장 가까운 값이 모집 마감이 아니라 활동 시작이면 앱이 `마감`이라 쓰지 않도록 알린다
         assertEquals(true, withUpcoming["nearestIsActivityStart"].asBoolean())
+        // 발견 프로그램·이벤트 전환(native-v1.md, 2026-10-26): kind=event는 컨퍼런스·워크샵·밋업·강연, kind=program은 그 밖과 미분류(null).
+        // 묶음은 그 kind의 활동만으로 세고 마감을 고른다. 생략하면 전부, 모르는 값은 400
+        jdbc.sql("update activities set category = 'CONFERENCE' where id = ?").param(upcomingId).update()
+        val eventSummary = programs("kind=event")["items"].single()
+        assertEquals(1, eventSummary["openActivityCount"].asInt())
+        assertEquals(true, eventSummary["nearestIsActivityStart"].asBoolean())
+        val programSummary = programs("kind=PROGRAM")["items"].single()
+        assertEquals(1, programSummary["openActivityCount"].asInt())
+        assertEquals(false, programSummary["nearestIsActivityStart"].asBoolean())
+        assertTrue(java.time.OffsetDateTime.parse(programSummary["nearestRecruitmentEndAt"].asString()).isAfter(nearest))
+        assertEquals(2, programs("")["items"].single()["openActivityCount"].asInt())
+        assertEquals(listOf(upcomingId), search("open=true&kind=event")["items"].toList().map { it["id"].asLong() })
+        assertEquals(listOf(openId), search("open=true&kind=program")["items"].toList().map { it["id"].asLong() })
+        assertEquals(0, programs("kind=event&q=묶음 확인")["items"].size())
+        mvc.get("/v1/discovery/programs?kind=course").andExpect { status { isBadRequest() } }
+        mvc.get("/v1/activities?kind=course").andExpect { status { isBadRequest() } }
         jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(upcomingId).update()
         // 열린 활동 판정 일원화(native-v1.md): 날짜 일정(ALL_DAY) 모집 기간도 서울 오늘을 포함하면 열린 활동이고, GET /v1/activities?open=true가 같은 규칙을 쓴다
         fun applicationAllDay(activityId: Long, startOffset: Int, endOffset: Int) = jdbc.sql(

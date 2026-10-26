@@ -920,15 +920,22 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 ### 앱 — 겹침 확인과 결과 묶음
 
 - 활동 일정 쪽: 반복이 있으면 규칙을 풀어 회차 창을 만든다(최대 400회, 6개월 넘는 반복도 400회까지만). 반복이 없으면 지금 규칙(시각 일정, 또는 날짜 + overlapCheck 날마다) 그대로.
-- 기기 일정 쪽 묶음:
-  - 같은 기기 일정의 회차는 하나로 묶는다 — iOS `calendarItemIdentifier`(분리된 예외 회차 포함), Android `Instances.EVENT_ID`(예외는 `ORIGINAL_ID`).
+- 기기 일정 쪽 세기(요약용):
+  - 같은 기기 일정의 회차는 하나로 센다 — iOS `calendarItemIdentifier`(분리된 예외 회차 포함), Android `Instances.EVENT_ID`(예외는 `ORIGINAL_ID`).
   - 다른 캘린더에 동기화된 같은 일정(제목·시작·끝 같음)은 하나로 합친다.
-  - 반복 기기 일정 묶음 한 줄: "제목 · 반복 문구(매주 화 10:00~11:00) — n번 겹침(첫 날짜~마지막 날짜)". 반복 문구는 기기 일정의 규칙에서 만든다(iOS `recurrenceRules`, Android `Events.RRULE`); 읽을 수 없으면 "반복 일정".
-  - 단일 일정은 가까운 날짜순 5개까지, 나머지는 "더 보기".
   - 맨 위 요약: "n일 겹침 · 반복 일정 a개 · 단일 일정 b개". 겹침이 없으면 지금처럼 "겹치는 일정이 없어요".
-  - 묶음 줄을 누르면 겹친 날짜 목록이 펼쳐진다(특정 회차만 시간이 다른 경우 확인용).
+- 결과 목록은 아래 "겹침 결과 시간표 연달아"(2026-10-26)를 따른다. 2026-10-22~10-26에는 기기 일정별 묶음 줄(반복 일정 "제목 · 매주 화 10:00~11:00 — n번 겹침", 단일 일정 5개 뒤 "더 보기")을 누르면 날짜·시간표가 펼쳐졌다.
 - 겹침 하나의 시간표(2026-10-26 사용자 요청): 보이는 구간은 겹침 앞 활동 최대 1시간~겹침 끝 30분 뒤이고, 왼쪽 눈금과 두 블록(활동·기기 일정)·겹침 띠는 같은 분당 높이로 비례 배치한다. 눈금 간격은 15분·30분·1시간·2시간·3시간·4시간·6시간·12시간 중 구간을 6칸 이하(라벨 약 6개)로 나누는 가장 작은 값이고, 활동 시간대의 자정 기준 정시에 맞춘다. 전체 높이는 최소·최대를 두고(Android 192~288dp, iOS 190~280pt), 아주 짧은 겹침 띠·블록도 라벨이 읽히는 최소 높이를 갖는다. 구간 밖으로 이어지는 블록은 구간에 맞춰 자르고 '이전부터 계속'/'이후에도 계속'을 붙인다. 이 구간에는 두 블록이 모두 없는 긴 빈 구간이 생기지 않으므로 접기는 두지 않는다.
 - 기기 일정 제목은 여전히 화면에만 보이고 저장·전송하지 않는다.
+
+### 겹침 결과 시간표 연달아 — 2026-10-26 사용자 결정
+
+사용자: "겹치는 일정 찾기는 항목마다 하기가 너무 불편해서 초기처럼 연달아 보여 줬으면 좋겠어."
+
+- 겹침이 둘 이상이면 요약 아래에 **모든 겹침의 시간표를 날짜순으로 차례로 이어서** 바로 보인다. 누르거나 펼칠 것이 없다(초기 2026-10-06 판은 한 화면에 하나씩 `확인했어요 · 다음 일정`으로 넘겼다).
+- 겹침마다 머리글 두 줄: "날짜(요일) · 기기 일정 제목", "시간 범위 · n분 겹침 · 반복 문구"(반복 기기 일정만; 문구는 기기 일정 규칙에서, 읽을 수 없으면 "반복 일정"). 그 아래 "겹침 하나의 시간표" 그대로.
+- 처음 10개만 보이고 `더 보기 (n개 남음)`을 누를 때마다 10개씩 더 보인다(긴 부트캠프와 주간 일정처럼 수백 번 겹칠 수 있음).
+- 겹침이 하나면 지금처럼 그 문장과 시간표, 없으면 "겹치는 일정이 없어요".
 
 ## 트랙·세션 시간표 — 2026-10-26 사용자 결정
 
@@ -1032,19 +1039,20 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **펼침**: 머리글을 누르면 `GET /v1/activities?programId=<id>&open=true`로 그 프로그램의 모집 중 활동을 불러와 기존 활동 카드로 보인다. 종류별 소제목으로 묶고(아래 "활동 종류", 종류가 하나뿐이면 소제목 생략) 각 묶음 안은 정렬 키 순. 그 아래 **다른 활동**(같은 `GET /v1/activities?programId=`, 20개, 종류 소제목 없음)을 `모집 예정`(모집 시작 또는 활동 시작이 아직 오지 않은 것, 가까운 순)과 `지난 활동`(최근 3년, 활동 시작 최근 순) 두 묶음으로 보인다. `모집 예정`은 토글과 무관하게 항상, `지난 활동`은 토글을 **껐을 때만** 보인다(2026-10-19 밤 정정; 그 전에는 켜진 상태에서 모집 중이 없을 때만 두 묶음을 보였다). 모집 중·모집 예정·지난 활동이 모두 비면 "지금 모집 중인 활동이 없어요"만 남긴다. 빈 묶음은 생략한다. 기본은 접힘이며, 토글이 켜진 상태에서 열린 활동이 1개인 프로그램과 검색어가 활동 이름에 맞은 프로그램은 펼친 채로 시작한다. 펼침 상태는 앱 실행 중 메모리에만 두고, 동작 줄이기에서는 애니메이션 없이 바뀐다.
 - **검색**: 검색어는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). 활동 이름으로만 맞은 프로그램도 목록에 나온다. 태그 이름 검색과 태그 필터는 "태그" 절(설계 완료, 구현 예정).
 - **유형(참가등록·선발)**: 세 플랫폼의 발견 화면에는 유형 칩이 없다. API의 `participationType` 필터는 칩을 다시 넣을 때 쓰도록 둔다. 칩이 생기면 펼친 활동과 열린 활동 수에 함께 적용하고 맞는 활동이 없는 프로그램은 숨긴다.
+- **프로그램·이벤트 전환**(2026-10-26 사용자 결정: 발견 화면에 `프로그램 | 이벤트` 전환). `kind?` query(`program`\|`event`, 대소문자 무시, 모르는 값 400, 생략하면 전부 — 옛 앱 호환). `event`는 종류 `CONFERENCE`·`WORKSHOP`·`MEETUP`·`LECTURE`(서버의 단기 행사 종류, "활동 이력에서 단기 행사 제외"와 같은 목록), `program`은 그 밖의 모든 종류와 **미분류(`category` null)**. `category` 목록으로 거르면 미분류가 어느 쪽에도 안 나오므로 전환에는 `kind`를 쓴다. 활동 행 자체를 거르므로 프로그램 묶음은 그 kind의 활동(모집 중·모집 예정, `openOnly=false`면 최근 3년)이 하나라도 있는 프로그램만 나오고, `openActivityCount`·`upcomingActivityCount`·`nearestRecruitmentEndAt`·`nearestIsActivityStart`·`nearestRecruitmentStartAt`·`latestActivityAt`·`matchedActivityIds`(검색 포함)가 모두 그 kind의 활동 기준이다. 펼친 활동(`GET /v1/activities?programId=…`)에도 같은 `kind`를 넘긴다. 묶음 머리의 `category`(프로그램 기본 종류)와 태그는 kind와 무관하다.
 
 ### API
 
 | 메서드·경로 | 인증 | query | 응답 |
 | --- | --- | --- | --- |
-| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `category?`(종류 코드, 쉼표 목록), 대상자 필터(아래 "대상자 조건"), `openOnly?`(기본 `true`), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
-| GET /v1/activities | 없음 | 기존 query에 `open?`(기본 false: 전부, `true`: 위 열린 활동만), `category?` | 200 `{items: Activity[], nextCursor}` |
+| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `category?`(종류 코드, 쉼표 목록), `kind?`(program\|event, 위 "프로그램·이벤트 전환"), 대상자 필터(아래 "대상자 조건"), `openOnly?`(기본 `true`), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
+| GET /v1/activities | 없음 | 기존 query에 `open?`(기본 false: 전부, `true`: 위 열린 활동만), `category?`, `kind?` | 200 `{items: Activity[], nextCursor}` |
 
 - 경로가 `/v1/programs`가 아닌 이유: `/v1/programs`는 이력 선택 창의 활동 정보 검색(로그인)이 이미 쓴다. `nextCursor`는 정렬 결과의 정수 오프셋이다(활동 조회의 id 커서와 다르다).
 - ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, category: string|null, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, latestActivityAt: ISO-8601|null, matchedActivityIds: number[]}`. `openActivityCount`는 열린 활동 수(`participationType`·`category`·대상자 2차 판정까지 통과한 것)이고 `openOnly=false`에서는 0일 수 있다. `nearestRecruitmentEndAt`은 열린 활동의 정렬 키 최솟값(없으면 null), `nearestIsActivityStart: boolean`(2026-10-26)은 그 최솟값이 어느 모집 마감과도 같지 않아 활동 시작으로 대체된 값인지(앱·웹은 이때 `마감` 대신 `행사`), `latestActivityAt`은 조회 범위 안 게시 활동의 가장 최근 활동 시작. `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
 - 펼쳤는데 모집 중 활동이 없으면 "지금 모집 중인 활동이 없어요" 아래에 그 프로그램의 다른 활동(`GET /v1/activities?programId=`, 20개)을 `모집 예정`(모집 시작 또는 활동 시작이 아직 오지 않음, 가까운 순)과 `지난 활동`(최근 3년, 활동 시작 최근 순) 두 묶음으로 보인다. 둘 다 없으면 안내만(2026-10-19 PR #272, SK AIGEN 1기처럼 모집이 11/1에 시작하는 활동이 어느 묶음에도 들지 않던 문제).
 - `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
-- 변경 이력: 2026-10-18 최초(서버는 시각 모집 기간만 보고 열림 판정, 펼친 활동은 클라이언트가 걸러냄, 열린 활동 1개 이상인 프로그램만) [`b14acca1`](https://github.com/fixabley/dearby/blob/b14acca1/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-19 정렬 키에 활동 시작 대체(사용자 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급") [`6e2834e0`](https://github.com/fixabley/dearby/blob/6e2834e0/shared/contracts/native-v1.md) · 2026-10-19 날짜 모집 기간을 서버가 "없음"으로, 앱이 `확인 필요`로 다뤄 펼친 활동이 비던 버그(운영 활동 126)를 계기로 판정 일원화·`open=true`·`openOnly`·`지난 활동` [`352f20b7`](https://github.com/fixabley/dearby/blob/352f20b7/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정).
+- 변경 이력: 2026-10-18 최초(서버는 시각 모집 기간만 보고 열림 판정, 펼친 활동은 클라이언트가 걸러냄, 열린 활동 1개 이상인 프로그램만) [`b14acca1`](https://github.com/fixabley/dearby/blob/b14acca1/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-19 정렬 키에 활동 시작 대체(사용자 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급") [`6e2834e0`](https://github.com/fixabley/dearby/blob/6e2834e0/shared/contracts/native-v1.md) · 2026-10-19 날짜 모집 기간을 서버가 "없음"으로, 앱이 `확인 필요`로 다뤄 펼친 활동이 비던 버그(운영 활동 126)를 계기로 판정 일원화·`open=true`·`openOnly`·`지난 활동` [`352f20b7`](https://github.com/fixabley/dearby/blob/352f20b7/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-26 `kind`(프로그램·이벤트 전환, 미분류는 프로그램 쪽).
 
 ## 구글 로그인 — 네이티브 SDK (2026-10-18 결정, 2026-10-19 네이티브로 전환)
 

@@ -1,6 +1,7 @@
 package io.wid.dearby.application.program
 
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.Tag
@@ -41,6 +42,7 @@ data class ProgramSummarySearch(
     val size: Int,
     val eligibility: EligibilityFilter? = null, // 대상자 검색(native-v1.md "대상자 조건"). 있으면 열린 활동을 2차 판정까지 거쳐 세고 묶는다
     val categories: Set<ActivityCategory>? = null, // 활동 종류 필터(native-v1.md "활동 종류"). 열린 활동 수·맞은 id에 함께 적용
+    val kind: DiscoveryKind? = null, // 프로그램·이벤트 전환(native-v1.md "발견 프로그램·이벤트 전환"). 활동 행을 걸러 묶음 수·마감·맞은 id 모두 그 kind 활동 기준. null이면 전부
     val openOnly: Boolean = true, // true면 모집 중·모집 예정 활동이 있는 프로그램(마감만 숨김), false면 최근 3년 안에 활동이 있었던 프로그램까지. 대상자 필터와 함께 쓰면 열린 것만
     val tagIds: Set<Id>? = null, // 태그 필터(native-v1.md "태그"): 모두 가진 활동만(AND). 열린 활동 수·맞은 id에 함께 적용
     val programIds: Set<Id>? = null, // 이 프로그램들만(즐겨찾기). 있으면 openOnly와 상관없이 게시 활동이 있는 프로그램을 모두 준다
