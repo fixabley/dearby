@@ -455,9 +455,10 @@ struct MineServer: Sendable {
 }
 
 /// One program's activities by 활동 상태 (contract "활동 상태" 2026-10-26), each list in display order: 모집 중 (the page groups them by
-/// 활동 종류), 모집 예정 (nearest recruitment start first), 진행 중 and 지난 활동 (모집 마감·모집 정보 없음·종료 whose activity falls within the
-/// last three years — the server's `status` has no window here; an undated one stays), both latest activity start first. `groups` are the ones it was loaded for; an
-/// activity outside them (an older server ignores `status`) is left out.
+/// 활동 종류), 모집 예정 (nearest recruitment start first), 진행·예정 (진행 중·모집 마감·모집 정보 없음, the running ones first, then the nearest
+/// activity start, undated last) and 지난 활동 (종료 whose activity falls within the last three years — the server's `status` has no window
+/// here; an undated one stays, latest activity start first). `groups` are the ones it was loaded for; an activity outside them (an older
+/// server ignores `status`) is left out.
 struct ProgramActivities {
     let groups: Set<StatusGroup>
     /// The 종류 they were read with; empty is every 종류.
@@ -481,7 +482,8 @@ struct ProgramActivities {
         recruiting = byStatus[.recruiting] ?? []
         upcoming = (byStatus[.recruitingUpcoming] ?? [])
             .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
-        inProgress = latestFirst(byStatus[.inProgress] ?? [])
+        inProgress = StatusGroup.inProgress.statuses.flatMap { byStatus[$0] ?? [] }
+            .sorted { ($0.activityStage?.anchor ?? .distantFuture, $0.title) < ($1.activityStage?.anchor ?? .distantFuture, $1.title) }
         past = latestFirst(StatusGroup.past.statuses.flatMap { byStatus[$0] ?? [] }.filter { $0.activityStage?.anchor.map { $0 >= since } ?? true })
     }
 }

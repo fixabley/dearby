@@ -90,10 +90,15 @@ export function applicable(status: ActivityStatus | undefined): boolean {
   return status === "RECRUITING" || status === "RECRUITING_UPCOMING";
 }
 /** 발견 상태 필터의 세 묶음 (contract "활동 상태"): ids are the `?status=` URL values and the GA `groups` values. */
+/**
+ * 발견 상태 필터의 세 묶음 (contract "활동 상태", regrouped 2026-10-26 by the activity's own schedule): 지원 가능 = applying ahead or open;
+ * 진행·예정 = every activity that has not ended (the server judges ENDED first, so 모집 마감·모집 정보 없음 are unfinished ones); 지난 활동 = ENDED.
+ * The ids stay (`in_progress` keeps old `?status=` links).
+ */
 export const STATUS_GROUPS = {
   available: { label: "지원 가능", statuses: ["RECRUITING_UPCOMING", "RECRUITING"] },
-  in_progress: { label: "진행 중", statuses: ["IN_PROGRESS"] },
-  past: { label: "지난 활동", statuses: ["RECRUITMENT_CLOSED", "NO_RECRUITMENT", "ENDED"] },
+  in_progress: { label: "진행·예정", statuses: ["IN_PROGRESS", "RECRUITMENT_CLOSED", "NO_RECRUITMENT"] },
+  past: { label: "지난 활동", statuses: ["ENDED"] },
 } as const satisfies Record<string, { label: string; statuses: readonly ActivityStatus[] }>;
 export type StatusGroup = keyof typeof STATUS_GROUPS;
 export const STATUS_GROUP_IDS = Object.keys(STATUS_GROUPS) as StatusGroup[];

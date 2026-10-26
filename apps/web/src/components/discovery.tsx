@@ -381,8 +381,9 @@ function latestFirst(a: Activity, b: Activity): number {
 
 /**
  * A program's activities by 활동 상태 for the chosen groups (contract "활동 상태"): 모집 중 (grouped by 활동 종류 on the page), 모집 예정
- * (nearest recruitment start first), 진행 중 and 지난 활동 (모집 마감·모집 정보 없음·종료 started within three years, undated ones kept),
- * latest start first. An activity outside the groups (an older server ignores `status`) is left out.
+ * (nearest recruitment start first), 진행·예정 (진행 중·모집 마감·모집 정보 없음: running ones first, then the nearest activity start, undated
+ * last) and 지난 활동 (종료 started within three years, undated ones kept, latest start first). An activity outside the groups (an older
+ * server ignores `status`) is left out.
  */
 function byStatus(items: Activity[], groups: StatusGroup[], now: number) {
   const of = (group: StatusGroup) =>
@@ -395,7 +396,9 @@ function byStatus(items: Activity[], groups: StatusGroup[], now: number) {
     upcoming: available
       .filter((activity) => activityStatus(activity, now) === "RECRUITING_UPCOMING")
       .sort((a, b) => (upcomingKey(a) || Infinity) - (upcomingKey(b) || Infinity) || a.name.localeCompare(b.name, "ko")),
-    inProgress: of("in_progress").sort(latestFirst),
+    inProgress: of("in_progress").sort(
+      (a, b) => (activityStart(a) || Infinity) - (activityStart(b) || Infinity) || a.name.localeCompare(b.name, "ko"),
+    ),
     past: of("past")
       .filter((activity) => {
         const start = activityStart(activity);
@@ -532,7 +535,7 @@ function ProgramRow({
           </section>
         ))}
       <StatusSection label="모집 예정" items={shown.upcoming} now={now} />
-      <StatusSection label="진행 중" items={shown.inProgress} now={now} />
+      <StatusSection label={STATUS_GROUPS.in_progress.label} items={shown.inProgress} now={now} />
       <StatusSection label="지난 활동" items={shown.past} now={now} />
     </>
   );
