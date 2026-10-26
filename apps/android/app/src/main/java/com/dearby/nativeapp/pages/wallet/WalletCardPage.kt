@@ -57,10 +57,9 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Where the card was exchanged; with a session context (2026-10-26) the place, the session title and the day are three lines.
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(received.origin, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                // The session the QR was shown in (2026-10-26), on its own line under the place.
-                received.sessionTitle?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                received.originLines.forEach { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
             CardContent(received.card, onContact = contact)
             if (received.reciprocal) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ExampleBadge("맞교환했어요", accent = true) }

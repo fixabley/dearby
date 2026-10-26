@@ -271,19 +271,20 @@ class ActivityViewModel(
     fun stageWindows(id: String, stage: Int) = models[id]?.stages()?.getOrNull(stage)?.windows.orEmpty()
 
     /**
-     * 오늘 내 행사 (2026-10-26 사용자 결정): among the 진행 중 내 활동 of [shown] (탈락·끝난 활동 excluded) the 활동 일정 blocks (`phase: ACTIVITY`, the period
-     * slot included) that are on today or start within 7 days, Seoul dates; the activity with the nearest one makes the card and the others count
-     * as `외 n개`. Today's body is the activity's next 찜 session in [favorites] (`endAt > now`; `지금` while it runs), else its current/next block;
-     * a coming activity's body is its first block. The card opens the 찜 session's block (else the nearest block, when it has a 트랙·세션 시간표)
-     * as the timetable sheet, otherwise the progress page. Null without a qualifying activity.
+     * 오늘 내 행사 (contract "오늘 내 행사 카드", 2026-10-26): among the 진행 중 내 활동 of [shown] (탈락·끝난 활동 excluded) the 활동 일정 blocks
+     * (`phase: ACTIVITY`, the period slot included; a block longer than 7 days is not counted) that cover today or start within 7 days, Seoul
+     * dates; today stays today after its blocks ended. The activity with the nearest one makes the card and the others count as `외 n개`.
+     * Today's body is the activity's next 찜 session in [favorites] (`endAt > now`; `지금` while it runs), else its running/next block
+     * (`오후 세션 · 13:50–17:30`, all-day `활동 · 종일`; the last block once every one ended); a coming activity's body is its first block with
+     * its date. The card opens the 찜 session's block (else the shown block, when it has a 트랙·세션 시간표) as the timetable sheet, otherwise
+     * the progress page. Null without a qualifying activity.
      */
     fun todayEvent(shown: ActivityListState, favorites: List<SessionFavorite>, now: Instant): TodayEventState? {
-        val today = now.atZone(ZoneId.of("Asia/Seoul")).toLocalDate()
+        val today = now.atZone(seoul).toLocalDate()
         val limit = today.plusDays(7)
-        // A block is over once its last day passed or, for a one-off timed block, once its end passed.
-        fun Stage.over() = lastDay!! < today || (recurrence == null && eventEnd != null && eventEnd <= now)
         val candidates = shown.activeActivities.mapNotNull { active ->
-            val blocks = models[active.id]?.stages().orEmpty().filter { !it.selection && it.day != null && it.lastDay != null && it.day <= limit && !it.over() }
+            val blocks = models[active.id]?.stages().orEmpty()
+                .filter { !it.selection && it.day != null && it.lastDay != null && it.lastDay >= today && it.day <= limit && ChronoUnit.DAYS.between(it.day, it.lastDay) <= 7 }
                 .sortedWith(compareBy<Stage> { it.day }.thenBy(nullsLast()) { it.eventStart })
             val first = blocks.firstOrNull() ?: return@mapNotNull null
             Triple(active, blocks, maxOf(first.day!!, today))
@@ -298,8 +299,11 @@ class ActivityViewModel(
             val body = listOfNotNull(time, next.track?.name, next.track?.room, next.session.title).joinToString(" · ")
             return TodayEventState(active.id, active.title, "오늘", body, true, others, next.scheduleId, favoritesFirst = true)
         }
-        val block = blocks.first()
-        return TodayEventState(active.id, active.title, "오늘", "${block.name} · ${block.dateText}", true, others, block.scheduleId?.takeIf { block.hasTimetable })
+        // The running or next block of today; once every block's end passed, the last one (the day stays 오늘 for card exchanges).
+        val block = blocks.firstOrNull { it.eventEnd == null || it.eventEnd > now } ?: blocks.last()
+        val time = if (block.allDay || block.eventStart == null || block.eventEnd == null) "종일"
+            else sessionTime.format(block.eventStart.atZone(seoul)) + "–" + sessionTime.format(block.eventEnd.atZone(seoul))
+        return TodayEventState(active.id, active.title, "오늘", "${block.name} · $time", true, others, block.scheduleId?.takeIf { block.hasTimetable })
     }
     /** The user picks one of a stage's statuses; the track is rebuilt from today's date. Signed in, it is saved on the server too. */
     fun mark(id: String, stage: Int, option: StatusOption) {
@@ -510,7 +514,8 @@ private fun deletedActivity(id: String) = ActivityState(id, "삭제된 활동", 
 private const val MAX_PROGRAM_PAGES = 5
 /** 지난 활동 window: the last three years (2026-10-19 저녁, 2년 → 3년). */
 private const val PAST_DAYS = 1095L
-private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
+private val seoul: ZoneId = ZoneId.of("Asia/Seoul")
+private fun today(): LocalDate = LocalDate.now(seoul)
 /** When a stage is over for the 자동 통과 제안: its end, else its start (date-only steps end at the next Seoul midnight); null when undated. */
 private fun Stage.end(): Instant? = eventEnd ?: eventStart
 /** A 찜 session's start in the block's own offset, as the timetable shows it. */

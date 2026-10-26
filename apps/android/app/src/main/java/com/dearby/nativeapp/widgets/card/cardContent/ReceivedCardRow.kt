@@ -22,8 +22,8 @@ import com.dearby.nativeapp.shared.ui.*
  */
 /**
  * One received card in the wallet list: initial, name, job and chips (조직, then [program] where it was exchanged), and a trailing
- * status [badge] (`맞교환` with [badgeAccent], or `N일 뒤 사라져요`; contract "명함 교환"). [context] is the block·track·session the card was
- * exchanged in (2026-10-26), one line under the chips when known. The row's texts form its accessibility label.
+ * status [badge] (`맞교환` with [badgeAccent], or `N일 뒤 사라져요`; contract "명함 교환"). [context] is the caption `프로그램 · 블록 · 트랙 · 방` the
+ * card was exchanged in (contract "교환 세션 맥락", 2026-10-26), one line under the chips when known. The row's texts form its accessibility label.
  */
 @Composable fun ReceivedCardRow(name: String, job: String, open: () -> Unit, modifier: Modifier = Modifier, organization: String? = null,
                                 program: String? = null, badge: String? = null, badgeAccent: Boolean = false, context: String? = null) {

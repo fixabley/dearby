@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,20 +27,21 @@ data class TodayEventState(val activityId: String, val name: String, val badge: 
 
 /**
  * The 발견 top card for [state] (discovery card look, Material 3 `Card`): the badge and the activity name read as `오늘 · {활동 이름}`, the body
- * line under them, and a secondary `명함 QR` button ([qr]) that is its own tap; the rest of the card is [open].
+ * line under them, and on a today card a secondary `명함 QR` button ([qr]) that is its own tap; the rest of the card is [open]. Test tags
+ * `today-card`·`today-card-qr` (contract).
  */
 @Composable fun TodayEventCard(state: TodayEventState, open: () -> Unit, qr: () -> Unit, modifier: Modifier = Modifier) {
     val (container, content) = if (state.today) TealFill to Color.White else MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-    Card(open, modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Card(open, modifier.fillMaxWidth().testTag("today-card"), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = if (state.today) 6.dp else 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(state.badge, Modifier.background(container, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp), color = content, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 Text(state.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (state.others > 0) Text("외 ${state.others}개", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
             Text(state.body, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(qr, Modifier.heightIn(min = 40.dp)) {
+            if (state.today) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(qr, Modifier.heightIn(min = 40.dp).testTag("today-card-qr")) {
                     Icon(Icons.Rounded.QrCode2, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("명함 QR")
