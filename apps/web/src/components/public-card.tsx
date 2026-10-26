@@ -19,6 +19,7 @@ import { Button } from "@/shared/ui/button";
 import { CardCodeRequired, MissingCard } from "@/widgets/card/missing-card";
 import { PublicCardBody, PublicCardBodySkeleton } from "@/widgets/card/public-card-body";
 import { InstallOffer } from "./install-offer";
+import { TesterInvite } from "@/features/tester-invite/ui/tester-invite";
 import { BlockCard, ReportCard } from "@/widgets/card/report-dialog";
 /**
  * `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card.
@@ -133,7 +134,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
     );
   return (
     <>
-      <article className="mx-auto max-w-[480px] pt-3 pb-64">
+      <article className="mx-auto max-w-[480px] pt-3 pb-80">
         {place && <p className="mb-3 text-center text-footnote text-secondary-label">{place}에서 받은 명함</p>}
         <PublicCardBody card={card} />
         {/* 신고·차단 (contract "명함 신고·차단"): small text buttons under the card. */}
@@ -189,6 +190,8 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
             <p className="text-caption text-secondary-label">앱이 없으면 브라우저에 저장할 수 있어요.</p>
           </>
         )}
+        {/* 비공개 테스트 초대: shown in both states — after a browser save the app is still the way to keep the card. */}
+        <TesterInvite variant="card" />
       </BottomBar>
     </>
   );

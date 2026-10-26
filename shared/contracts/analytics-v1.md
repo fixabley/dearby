@@ -97,6 +97,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `discovery_status_filter` | 발견 필터 시트 `적용`·칩 ×·`지난 활동도 보기`로 `활동 상태`를 바꿈(앱과 같음) | `groups` |
 | `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표") | `activity_id` |
+| `tester_cta_tap` | 비공개 테스트 초대의 링크를 누름 — 공개 명함 저장 버튼 아래·`/saved` 상단(비로그인)·로그인 시트의 `비공개 테스트로 앱 받기`(2026-10-26, [native-v1.md](native-v1.md) "명함 교환" › 받는 사람(웹)). iOS는 버튼이 곧 TestFlight 링크, Android·데스크톱은 시트 안의 단계 링크를 누를 때 보낸다(시트를 여는 것만으로는 보내지 않음) | `platform`(`ios`·`android`·`desktop`, UA 판정), `target`(`testflight`·`play_group`·`play_test`) |
 
 Vercel Web Analytics(`@vercel/analytics` `<Analytics />`, 같은 PR에서 사용자 요청): 프로덕션 배포에서만 렌더하고 `beforeSend`로 같은 `analyticsUrl`을 적용해 페이지뷰만 보낸다(쿠키 없음, 커스텀 이벤트 없음 — Hobby 플랜 제한). Speed Insights는 넣지 않는다. 대시보드 프로젝트 › Analytics 사용 설정은 사용자가 켠다.
 `activity_view`·`apply_click`은 앱과 같은 이름이라 GA에서 플랫폼(스트림) 측정기준으로 나눠 본다. 웹은 공개 태그 사전을 불러오지 않으므로 `field`를 보내지 않는다.
@@ -130,4 +131,4 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 
 ## GA 콘솔에서 할 일(사용자)
 맞춤 정의 › 맞춤 측정기준에 위 사용자 속성 4개(사용자 범위)와 매개변수 `step`, `entry`, `tab`, `menu`, `position`, `field`, `category`, `source`, `type`, `level`, `kind`, `reason`, `groups`, `status`(이벤트 범위; `status`는 iOS `att_prompt_result`를 넣을 때)을 등록한다. 등록 전 데이터는 보고서 측정기준으로 쓸 수 없다.
-비공개 테스트 지표(2026-10-26)용으로 `activity_id`, `via`, `action`, `reciprocal`(이벤트 범위)과 `card_exchanges`(사용자 범위)를 더 등록한다. `activity_id`는 기존 `activity_view`·`myactivity_add`에도 있지만 등록되어 있지 않아 활동별로 나눠 볼 수 없었다 — 10/28 우아콘 전에 등록해야 그날 데이터를 활동별로 볼 수 있다. `count`는 값이 3 하나라 등록하지 않아도 된다.
+비공개 테스트 지표(2026-10-26)용으로 `activity_id`, `via`, `action`, `reciprocal`(이벤트 범위)과 `card_exchanges`(사용자 범위)를 더 등록한다. 웹 `tester_cta_tap`의 `platform`·`target`(이벤트 범위)도 등록한다(`platform`은 GA 기본 '플랫폼' 측정기준과 이름이 겹치므로 표시 이름을 구분한다). `activity_id`는 기존 `activity_view`·`myactivity_add`에도 있지만 등록되어 있지 않아 활동별로 나눠 볼 수 없었다 — 10/28 우아콘 전에 등록해야 그날 데이터를 활동별로 볼 수 있다. `count`는 값이 3 하나라 등록하지 않아도 된다.

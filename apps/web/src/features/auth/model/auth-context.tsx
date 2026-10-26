@@ -32,7 +32,7 @@ const signedOut: State = { status: "signedOut", consent: undefined };
  * never automatic). Consent is asked again on every load while required, like the apps ask at launch; closing it keeps the
  * session. GA's `signed_in` user property follows (`yes` only with consent, analytics-v1.md).
  */
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children, signInFooter }: { children: React.ReactNode; signInFooter?: React.ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading", consent: undefined });
   const [sheet, setSheet] = useState<"none" | "signIn" | "consent">("none");
   const [notice, setNotice] = useState<Notice>();
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext value={value}>
       {children}
-      <SignInSheet open={sheet === "signIn"} onOpenChange={(open) => setSheet(open ? "signIn" : "none")} onSignedIn={signedInNow} />
+      <SignInSheet open={sheet === "signIn"} onOpenChange={(open) => setSheet(open ? "signIn" : "none")} onSignedIn={signedInNow} footer={signInFooter} />
       <ConsentSheet
         open={sheet === "consent"}
         onOpenChange={(open) => setSheet(open ? "consent" : "none")}
