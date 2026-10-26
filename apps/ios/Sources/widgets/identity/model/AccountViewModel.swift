@@ -187,6 +187,12 @@ import SwiftUI
     }
     /// Runs an owner call. A 401 refreshes the tokens once and retries; if that is refused, the tokens are
     /// forgotten and the screens fall back to signing in.
+    /// A Profile or Card `photoUrl`'s bytes (`PhotoLoader`): with the session when signed in, so 내 프로필·내 명함·받은 명함 can read it;
+    /// signed out only a card link's `&code=` opens it.
+    func photo(_ photoUrl: String) async throws -> Data {
+        guard session != nil else { return try await client.photo(photoUrl, nil) }
+        return try await authorized { [client] in try await client.photo(photoUrl, $0) }
+    }
     func authorized<Value: Sendable>(_ call: @Sendable (TokenPair) async throws -> Value) async throws -> Value {
         guard let session else { throw AccountError.unauthorized }
         do { return try await call(session) } catch AccountError.unauthorized {}

@@ -1,6 +1,7 @@
+import PhotosUI
 import SwiftUI
 
-/// 내 프로필: data only (name, job, introduction, contacts, histories). A profile that was never saved (`version` 0)
+/// 내 프로필: data only (name, 소개 링크, job, contacts, histories). A profile that was never saved (`version` 0)
 /// starts with the step funnel (`ProfileFunnelPage`). Afterwards the tab is **read mode** (`ProfileReadView`, contract "프로필 읽기/수정 모드" 2026-10-20);
 /// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
 /// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
@@ -35,7 +36,13 @@ struct ProfilePage: View {
     @State private var saving = false
     @State private var error: String?
     @State private var tried = false
-    /// Editor rows (`name`·`introduction`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
+    /// 프로필 사진 (contract "프로필 사진" 2026-10-26): the library pick (no permission prompt), then the crop screen, then the upload.
+    @State private var photoItem: PhotosPickerItem?
+    @State private var croppingPhoto: PickedPhoto?
+    @State private var photoBusy = false
+    @State private var confirmingPhotoDelete = false
+    @State private var photoError: String?
+    /// Editor rows (`name`·`introLink`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
     @FocusState private var field: String?
     @FocusState private var jobSearch: Bool
     /// Never saved yet: the step funnel replaces the editor until the first save.
@@ -88,6 +95,19 @@ struct ProfilePage: View {
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $eligibilityInput) { EligibilityFlow(model: eligibility) }
+        .onChange(of: photoItem) { _, item in pick(item) }
+        .fullScreenCover(item: $croppingPhoto) { picked in
+            NavigationStack {
+                PhotoCropView(image: picked.image) { croppingPhoto = nil } done: { jpeg in croppingPhoto = nil; upload(jpeg) }
+            }
+        }
+        .confirmationDialog("프로필 사진을 지울까요?", isPresented: $confirmingPhotoDelete, titleVisibility: .visible) {
+            Button("사진 지우기", role: .destructive) { runPhoto { await state.deletePhoto() } }
+            Button("취소", role: .cancel) {}
+        } message: { Text("프로필 사진을 지워도 이미 만든 명함의 사진은 명함을 고치거나 지울 때까지 남아요.") }
+        .alert(photoError ?? "", isPresented: Binding(get: { photoError != nil }, set: { if !$0 { photoError = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
         .confirmationDialog("지원 자격 정보", isPresented: $eligibilityChoice, titleVisibility: .hidden) {
             Button("고치기") { eligibilityInput = true }
             Button("지원 자격 정보 지우기", role: .destructive) { Task { eligibilityError = await eligibility.delete() } }
@@ -96,6 +116,14 @@ struct ProfilePage: View {
         .alert(eligibilityError ?? "", isPresented: Binding(get: { eligibilityError != nil }, set: { if !$0 { eligibilityError = nil } })) {
             Button("확인", role: .cancel) {}
         }
+    }
+    /// Under the card face (contract "프로필 보기 모드 = 명함 디자인" 2026-10-26): the same 수정 as the toolbar, and a new card from this profile.
+    private var readActions: some View {
+        VStack(spacing: 10) {
+            Button { composing = true } label: { Text("이 내용으로 명함 만들기").frame(maxWidth: .infinity) }
+                .buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("profile-make-card")
+            Button { done() } label: { Text("수정").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+        }.controlSize(.large).font(.dearby(.body).weight(.semibold))
     }
     /// `추천` 묶음; `지원 자격 정보` is hidden on servers without its API.
     private var recommendationGroup: some View {
@@ -172,6 +200,7 @@ struct ProfilePage: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             ProfileReadView(profile: profile).padding(20)
+                            readActions.padding(.horizontal, 20).padding(.bottom, 24)
                             recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
                         }
                     }
@@ -187,13 +216,18 @@ struct ProfilePage: View {
     /// Rows are floating-label boxes (`DearbyFormRow`, contract "플로팅 라벨" 2026-10-20); headers and footers are `.subheadline`.
     private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
         Form {
+            photoSection(saved)
             Section {
                 DearbyFormRow(label: "이름", required: true, text: form.name, focus: $field, value: "name") { $0.textContentType(.name) }
+                // 소개 링크 (contract "소개 링크·소개 글 폐지" 2026-10-26): right after the name; the server checks it is an https page.
+                DearbyFormRow(label: "소개 링크", symbol: .system("link"), text: form.introLink, focus: $field, value: "introLink") {
+                    $0.keyboardType(.URL).textContentType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                }
             } header: {
                 Text("기본 정보").font(.dearby(.subheadline))
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("명함과 공개 프로필에 보여요.")
+                    Text("명함과 공개 프로필에 보여요. 소개 링크(노션·포트폴리오, 선택)는 이름 옆 버튼이 돼요.")
                     if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
                 }.font(.dearby(.subheadline))
             }
@@ -203,9 +237,6 @@ struct ProfilePage: View {
                 Text("직무").font(.dearby(.subheadline))
             } footer: {
                 if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.subheadline)) }
-            }
-            Section {
-                DearbyFormRow(label: "소개", text: form.introduction, multiline: true, focus: $field, value: "introduction")
             }
             ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras, focus: $field,
                                  phoneError: tried ? form.wrappedValue.phoneError : nil, emailError: tried ? form.wrappedValue.emailError : nil) { form.wrappedValue.addContact($0) }
@@ -226,6 +257,49 @@ struct ProfilePage: View {
             }
         }
         .font(.dearby(.body)).dearbyDismissKeyboard { field = nil; jobSearch = false }
+    }
+    /// Saved at once (its own API), unlike the rows below that wait for 저장.
+    private func photoSection(_ saved: AccountProfile) -> some View {
+        Section {
+            HStack(spacing: 16) {
+                DearbyPhotoAvatar(photoUrl: saved.photoUrl, name: saved.name, filled: true, size: 64)
+                VStack(alignment: .leading, spacing: 4) {
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        Text(saved.photoUrl == nil ? "사진 고르기" : "사진 바꾸기").frame(minHeight: 44)
+                    }.accessibilityIdentifier("profile-photo-pick")
+                    if saved.photoUrl != nil {
+                        Button("사진 지우기", role: .destructive) { confirmingPhotoDelete = true }.frame(minHeight: 44)
+                    }
+                }.buttonStyle(.borderless).disabled(photoBusy)
+                Spacer(minLength: 0)
+                if photoBusy { ProgressView() }
+            }
+        } header: {
+            Text("사진").font(.dearby(.subheadline))
+        } footer: {
+            Text("고르면 바로 저장돼요. 프로필과 명함에 둥글게 보여요.").font(.dearby(.subheadline))
+        }
+    }
+    /// The picked photo upright and shrunk (`PhotoCrop.upright`; HEIC included), then the crop screen.
+    private func pick(_ item: PhotosPickerItem?) {
+        guard let item else { return }
+        photoItem = nil
+        photoBusy = true
+        Task {
+            let data = try? await item.loadTransferable(type: Data.self)
+            photoBusy = false
+            if let image = data.flatMap({ PhotoCrop.upright($0) }) { croppingPhoto = PickedPhoto(image: image) } else { photoError = "사진을 열지 못했어요. 다른 사진을 골라 주세요." }
+        }
+    }
+    private func upload(_ jpeg: Data) { runPhoto { await state.putPhoto(jpeg: jpeg) } }
+    /// 403 CONSENT_REQUIRED leaves the message to the consent gate the model switches on.
+    private func runPhoto(_ call: @escaping () async -> String?) {
+        photoBusy = true
+        Task {
+            let message = await call()
+            photoBusy = false
+            if !state.consentPending { photoError = message }
+        }
     }
     private func saveBar(_ form: ProfileForm) -> some View {
         VStack(spacing: 8) {
@@ -256,6 +330,12 @@ struct ProfilePage: View {
             if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false; editing = false }
         }
     }
+}
+
+/// A photo picked for 프로필 사진, upright, waiting for its crop.
+struct PickedPhoto: Identifiable {
+    let id = UUID()
+    let image: UIImage
 }
 
 /// Which history the funnel sheet edits; `saved` enables evidence uploads.

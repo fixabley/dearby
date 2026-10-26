@@ -37,7 +37,7 @@ data class WalletSection(val key: String, val cards: List<ReceivedCard>)
 /** Cards whose name, job, card title, description, body, history titles or exchange program match every search term. */
 fun filterWallet(cards: List<ReceivedCard>, query: String): List<ReceivedCard> = cards.filter { received ->
     val card = received.card
-    matchesSearch(query, listOfNotNull(card.person, card.job, card.title, card.description, card.introduction, received.program) + card.histories.map { it.title })
+    matchesSearch(query, listOfNotNull(card.person, card.job, card.title, card.description, received.program) + card.histories.map { it.title })
 }
 
 /** Groups cards by the first letter of the person's name (contract "받은 명함 목록 표시"); empty groups are omitted. */

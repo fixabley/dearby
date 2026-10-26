@@ -64,6 +64,8 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     private val refreshing = Mutex()
     private val mutable = MutableStateFlow(AccountState(if (session == null) AccountPhase.SIGNED_OUT else AccountPhase.SIGNED_IN, pending = savedPending(), googleAvailable = googleServerClientId.isNotBlank()))
     val state = mutable.asStateFlow()
+    /** Profile and card photos read with this account (contract "프로필 사진"); forgotten with the tokens. */
+    val photos = PhotoStore(this)
     /** The current required consent as the profile last said (contract "개인정보 동의" 2026-10-25); null until read, and again once signed out. */
     private val consentGiven = MutableStateFlow<Boolean?>(null)
     /**
@@ -375,6 +377,7 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     private fun forget() {
         runCatching { vault.clear() }
         session = null
+        photos.clear()
         mutable.update { it.copy(phase = AccountPhase.SIGNED_OUT) }
     }
 }

@@ -116,6 +116,33 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         }
     }
 
+    // --- 프로필 사진 (contract "프로필 사진"): saved on its own right away, like evidence; 403 CONSENT_REQUIRED brings the consent screen back.
+    /** Uploads the cropped square; [done] runs once the server has it (the crop screen closes). */
+    fun uploadPhoto(jpeg: ByteArray, done: () -> Unit) = photo("사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.") {
+        val url = account.authorized { account.client.uploadProfilePhoto(jpeg, it) }
+        account.photos.put(url, jpeg)
+        mutable.update { it.copy(profile = it.profile?.copy(photoUrl = url)) }
+        done()
+    }
+    fun deletePhoto() = photo("사진을 지우지 못했어요. 잠시 후 다시 시도해 주세요.") {
+        account.authorized { account.client.deleteProfilePhoto(it) }
+        mutable.update { it.copy(profile = it.profile?.copy(photoUrl = null)) }
+    }
+    fun dismissPhotoError() = mutable.update { it.copy(photoError = null) }
+    /** The picked file could not be opened as an image. */
+    fun photoFailed(message: String) = mutable.update { it.copy(photoError = message) }
+    private fun photo(fallback: String, call: suspend () -> Unit) {
+        if (mutable.value.photoBusy) return
+        mutable.update { it.copy(photoBusy = true, photoError = null) }
+        viewModelScope.launch {
+            try { call(); mutable.update { it.copy(photoBusy = false) } }
+            catch (e: AccountException) {
+                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(photoBusy = false, consentRequired = true) }; account.consentKnown(false); return@launch }
+                mutable.update { it.copy(photoBusy = false, photoError = message(e, fallback)) }
+            }
+        }
+    }
+
     // --- history funnel
     /** Rows for the profile list: the form's histories, marked saved when the server has them. */
     val rows get() = mutable.value.let { s -> s.form?.histories?.map { h -> h.rowState(s.profile?.histories?.any { it.id == h.id } == true) }.orEmpty() }
@@ -244,7 +271,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     /** `PUT /v1/profile` body. Empty added contacts are left out. */
     private fun profile(form: ProfileFormState): AccountProfile {
         val labels = ProfileContactKinds.associate { (kind, label, _) -> kind to label }
-        return AccountProfile(form.name.trim(), "", form.introduction.trim(),
+        return AccountProfile(form.name.trim(), "", form.introLink.trim().ifEmpty { null },
             listOf(AccountContact(form.phoneId, "phone", "전화번호", form.phone.trim()), AccountContact(form.emailId, "email", "이메일", form.email.trim())) +
                 form.extras.filter { it.value.isNotBlank() }.map { AccountContact(it.id, it.kind, labels[it.kind] ?: it.kind, it.value.trim()) },
             form.histories, form.version, form.jobs)

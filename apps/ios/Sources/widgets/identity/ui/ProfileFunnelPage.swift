@@ -21,14 +21,13 @@ struct ProfileFunnelPage: View {
     @FocusState private var focus: Step?
     @FocusState private var jobSearch: Bool
     enum Step: CaseIterable {
-        case name, jobs, phone, email, introduction
+        case name, jobs, phone, email
         var label: String {
             switch self {
             case .name: "이름"
             case .jobs: "직무"
             case .phone: "전화번호"
             case .email: "이메일"
-            case .introduction: "소개"
             }
         }
     }
@@ -65,16 +64,14 @@ struct ProfileFunnelPage: View {
             case .jobs:
                 JobTagPicker(form: $form, account: account, focus: $jobSearch)
             case .phone:
-                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "phone"), required: true, text: $form.phone, focus: $focus, value: step) {
+                DearbyFormRow(label: step.label, symbol: ContactModel.glyph(kind: "phone"), required: true, text: $form.phone, focus: $focus, value: step) {
                     $0.keyboardType(.phonePad).textContentType(.telephoneNumber)
                 }
             case .email:
-                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "email"), required: true, text: $form.email, focus: $focus, value: step) {
+                DearbyFormRow(label: step.label, symbol: ContactModel.glyph(kind: "email"), required: true, text: $form.email, focus: $focus, value: step) {
                     $0.keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                         .submitLabel(.next).onSubmit(next)
                 }
-            case .introduction:
-                DearbyFormRow(label: step.label, text: $form.introduction, multiline: true, focus: $focus, value: step)
             }
         } header: {
             Text(question(step)).font(.dearby(.title3).bold()).foregroundStyle(.primary)
@@ -144,7 +141,6 @@ struct ProfileFunnelPage: View {
         case .jobs: form.jobsText
         case .phone: form.phone
         case .email: form.email
-        case .introduction: form.introduction
         }
     }
     private func question(_ step: Step) -> String {
@@ -153,7 +149,6 @@ struct ProfileFunnelPage: View {
         case .jobs: "어떤 일을 하세요? (선택)"
         case .phone: "연락받을 전화번호를 알려 주세요"
         case .email: "이메일 주소는요?"
-        case .introduction: "처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)"
         }
     }
     private func hint(_ step: Step) -> String? {
@@ -161,8 +156,8 @@ struct ProfileFunnelPage: View {
         case .name: "명함과 공개 프로필에 이 이름으로 보여요."
         case .jobs: ["검색해서 여러 개 고를 수 있어요. 명함에 직무로 보여요.", JobTagPicker.note(for: form)].compactMap { $0 }.joined(separator: " ")
         case .phone: "명함에 넣을지는 명함을 만들 때 골라요."
-        case .email: nil
-        case .introduction: allReached ? "활동 이력은 저장한 뒤 단계별로 추가할 수 있어요." : nil
+        // The last step; 소개 is gone (contract "소개 링크·소개 글 폐지" 2026-10-26) and the 소개 링크 is added later in 수정.
+        case .email: allReached ? "활동 이력은 저장한 뒤 단계별로 추가할 수 있어요." : nil
         }
     }
 }

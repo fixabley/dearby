@@ -46,6 +46,9 @@ data class AccountHistory(
     val hasCustomEntry get() = (organization == null && organizationName != null) || (program == null && programName != null) ||
         (activity == null && activityName != null) || (role == null && roleName != null)
 }
+/** 명함 머리의 소속(contract "받은 명함 목록 표시"): 승인된 이력 중 진행 중인 것, 그다음 시작일이 늦은 것의 조직 이름. */
+fun List<AccountHistory>.currentOrganization(): String? = filter { it.isApproved }.sortedWith(compareBy<AccountHistory> { it.endDate != null }.thenByDescending { it.startDate })
+    .firstNotNullOfOrNull { it.organization?.name ?: it.organizationName }?.takeIf { it.isNotBlank() }
 /** A 직무 tag (contract "직무"): picked from the job tree ([job]) or free-typed ([jobName] only, approval pending until an admin accepts it). */
 data class ProfileJob(val id: String, val job: ActivityInfoRef?, val jobName: String?, val approval: String = "approved", val approvalReason: String? = null) {
     val title get() = job?.name ?: jobName.orEmpty()
@@ -56,20 +59,25 @@ data class ProfileJob(val id: String, val job: ActivityInfoRef?, val jobName: St
  * `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). [version] goes back as `If-Match`.
  * [job] is the server's read-only join of approved job names (what cards show); [jobs] is what the profile edits.
  */
-data class AccountProfile(val name: String, val job: String, val introduction: String, val contacts: List<AccountContact>,
+/** [introLink] is the 소개 링크 next to the name (contract "소개 링크·소개 글 폐지", 2026-10-26), or null. */
+data class AccountProfile(val name: String, val job: String, val introLink: String?, val contacts: List<AccountContact>,
     val histories: List<AccountHistory>, val version: Int = 0, val jobs: List<ProfileJob> = emptyList(),
     /** 개인정보 동의 기록 (contract "개인정보 동의"); null until the account agreed. Not sent on PUT. */
     val consent: ConsentRecord? = null,
     /** True when the server wants (re-)consent before any profile write; missing in older responses → false. */
-    val consentRequired: Boolean = false)
+    val consentRequired: Boolean = false,
+    /** 프로필 사진 (contract "프로필 사진", 2026-10-26): `/v1/profile/photo?v=<ms>` (API path, Bearer) or null. Read-only; its own `PUT`/`DELETE`, never in `PUT /v1/profile`. */
+    val photoUrl: String? = null)
 
 /** `GET /v1/profile.consent`: the agreed document versions and when. */
 data class ConsentRecord(val privacyVersion: String, val termsVersion: String, val consentedAt: String)
 /**
- * A published card snapshot from `POST /v1/cards`; [introduction] is the markdown body (the profile introduction at publish).
+ * A published card snapshot from `POST /v1/cards`; [introLink] is the profile 소개 링크 copied at publish (null when left out).
  */
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
-    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "")
+    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introLink: String? = null,
+    /** The card's own copy of the photo at publish (contract "프로필 사진": `/v1/cards/:id/photo?v=<ms>`), or null — also while the server does not send it. */
+    val photoUrl: String? = null)
 /** One saved profile version (`GET /v1/profile/versions`), newest first. */
 data class ProfileVersionSummary(val version: Int, val createdAt: String)
 data class ProfileVersionList(val items: List<ProfileVersionSummary>, val nextCursor: Int?)
@@ -103,7 +111,7 @@ fun JSONObject.toWebSignIn(): WebSignIn =
     if (has("linkToken")) WebSignIn.NeedsAccount(getString("linkToken"), if (isNull("email")) "" else getString("email")) else WebSignIn.SignedIn(toSession())
 fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"), getJSONObject("options").toString())
 
-fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("introduction", introduction)
+fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("introLink", introLink ?: JSONObject.NULL)
     .put("jobs", JSONArray(jobs.map { JSONObject().put("id", it.id).put("jobId", it.job?.id ?: JSONObject.NULL).put("jobName", it.job?.let { JSONObject.NULL } ?: it.jobName ?: JSONObject.NULL) }))
     .put("contacts", JSONArray(contacts.map { JSONObject().put("id", it.id).put("kind", it.kind).put("label", it.label).put("value", it.value) }))
     .put("histories", JSONArray(histories.map { it.toJson() }))
@@ -115,15 +123,15 @@ fun AccountHistory.toJson(): JSONObject = JSONObject().put("id", id).put("kind",
     .put("roleId", role?.id ?: JSONObject.NULL).put("roleName", role?.let { JSONObject.NULL } ?: roleName ?: JSONObject.NULL)
     .put("startDate", startDate).put("endDate", endDate ?: JSONObject.NULL).put("description", description)
 
-fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"), optString("introduction"),
+fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"), text("introLink"),
     optJSONArray("contacts")?.objects()?.map { it.toContact() }.orEmpty(), optJSONArray("histories")?.objects()?.map { it.toHistory() }.orEmpty(), optInt("version", 0),
     optJSONArray("jobs")?.objects()?.map { it.toProfileJob() }.orEmpty(),
     consent = optJSONObject("consent")?.let { ConsentRecord(it.getString("privacyVersion"), it.getString("termsVersion"), it.getString("consentedAt")) },
-    consentRequired = optBoolean("consentRequired", false))
+    consentRequired = optBoolean("consentRequired", false), photoUrl = text("photoUrl"))
 fun JSONObject.toProfileJob() = ProfileJob(getString("id"), optJSONObject("job")?.toRef(), text("jobName"), optString("approval", "approved"), text("approvalReason"))
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },
-    getString("createdAt"), optString("introduction"))
+    getString("createdAt"), text("introLink"), text("photoUrl"))
 fun JSONObject.toVersionList() = ProfileVersionList(getJSONArray("items").objects().map { ProfileVersionSummary(it.getInt("version"), it.getString("createdAt")) },
     if (isNull("nextCursor")) null else getInt("nextCursor"))
 fun JSONObject.toVersionDetail() = ProfileVersionDetail(getInt("version"), getString("createdAt"), getJSONObject("profile").toProfile())

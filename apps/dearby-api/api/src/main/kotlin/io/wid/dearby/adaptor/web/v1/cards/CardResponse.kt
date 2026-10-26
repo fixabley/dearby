@@ -15,7 +15,9 @@ data class CardResponse(
     val name: String,
     val description: String,
     val template: String?,
+    // 2026-10-26 폐지 예정(소개 글 폐지): 옛 앱 호환으로 늘 빈 문자열. 이미 발행된 명함의 옛 본문도 싣지 않는다
     val introduction: String,
+    @get:JsonInclude(JsonInclude.Include.ALWAYS) val introLink: String?,
     val profileName: String,
     val job: String,
     val contacts: List<ContactResponse>,
@@ -27,7 +29,7 @@ data class CardResponse(
 ) {
     companion object {
         fun from(card: BusinessCard, includeTemplate: Boolean) = CardResponse(
-            card.id, card.ownerId, card.name, card.description, card.template.takeIf { includeTemplate }, card.introduction,
+            card.id, card.ownerId, card.name, card.description, card.template.takeIf { includeTemplate }, "", card.introLink,
             card.profileName, card.job, card.contacts.map(ContactResponse::from), card.histories.map(HistoryResponse::from), card.createdAt, card.updatedAt,
             card.photoUpdatedAt?.let { "/v1/cards/${card.id}/photo?v=${it.toInstant().toEpochMilli()}" },
         )

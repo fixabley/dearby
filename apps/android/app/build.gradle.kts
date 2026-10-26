@@ -106,6 +106,8 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // 애플 로그인(계약 "애플 로그인", 웹 방식): Apple's page opens in a Custom Tab (Apache-2.0).
     implementation("androidx.browser:browser:1.10.0")
+    // 프로필 사진 자르기(contract "프로필 사진"): EXIF orientation of the picked photo. Already in the APK through Coil/Play services; declared because the app uses it (Apache-2.0).
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
     // QR encoding only for 내 명함 QR 보이기 (contract "명함 교환"); no camera, no scanning.
     implementation("com.google.zxing:core:3.5.3")
     // 새 모집 푸시: FCM token and messages (Apache-2.0); inert, like Analytics below, until google-services.json configures Firebase.

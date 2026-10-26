@@ -7,6 +7,7 @@ import io.wid.dearby.domain.profile.Profile
 import io.wid.dearby.domain.profile.ApprovalStatus
 import io.wid.dearby.domain.profile.ProfileJob
 import io.wid.dearby.domain.profile.ProfileVersion
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.jooq.DSLContext
 import org.jooq.JSONB
 import org.jooq.impl.DSL
@@ -20,7 +21,7 @@ import java.util.*
 class JooqProfileVersionRepository(private val dsl: DSLContext) : ProfileVersionRepository {
 
     override fun append(profile: Profile) {
-        val snapshot = Snapshot(profile.name, profile.introduction, ProfileJson.contacts(profile.contacts), ProfileJson.histories(profile.histories), ProfileJson.jobs(profile.jobs))
+        val snapshot = Snapshot(profile.name, profile.introLink, ProfileJson.contacts(profile.contacts), ProfileJson.histories(profile.histories), ProfileJson.jobs(profile.jobs))
         dsl.insertInto(PROFILE_VERSIONS)
             .set(PROFILE_VERSIONS.USER_ID, profile.userId)
             .set(PROFILE_VERSIONS.VERSION, profile.version)
@@ -38,12 +39,14 @@ class JooqProfileVersionRepository(private val dsl: DSLContext) : ProfileVersion
     override fun find(userId: UserId, version: Int): ProfileVersion? {
         val row = dsl.selectFrom(PROFILE_VERSIONS).where(PROFILE_VERSIONS.USER_ID.eq(userId), PROFILE_VERSIONS.VERSION.eq(version)).fetchOne() ?: return null
         val s = ProfileJson.read<Snapshot>(row.snapshot!!.data())
-        val profile = Profile(userId, s.name, s.profileJobs(), s.introduction, ProfileJson.readContacts(s.contacts), ProfileJson.readHistories(s.histories), version, row.createdAt!!)
+        val profile = Profile(userId, s.name, s.profileJobs(), s.introLink, ProfileJson.readContacts(s.contacts), ProfileJson.readHistories(s.histories), version, row.createdAt!!)
         return ProfileVersion(version, row.createdAt!!, profile)
     }
 
-    // contacts·histories·jobs는 ProfileJson 형식의 JSON 문자열. job은 V18 이전 스냅샷의 직함 문자열(있으면 승인된 직접 입력 직무로 읽는다)
-    data class Snapshot(val name: String, val introduction: String, val contacts: String, val histories: String, val jobs: String = "[]", val job: String? = null) {
+    // contacts·histories·jobs는 ProfileJson 형식의 JSON 문자열. job은 V18 이전 스냅샷의 직함 문자열(있으면 승인된 직접 입력 직무로 읽는다).
+    // 2026-10-26 전 스냅샷의 introduction(소개 글, 폐지)은 읽지 않는다 — 되돌려도 소개 글은 돌아오지 않는다
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    data class Snapshot(val name: String, val introLink: String? = null, val contacts: String, val histories: String, val jobs: String = "[]", val job: String? = null) {
         fun profileJobs(): List<ProfileJob> {
             val read = ProfileJson.readJobs(jobs)
             if (read.isNotEmpty() || job.isNullOrBlank()) return read

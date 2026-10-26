@@ -8,12 +8,12 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 
 ## 모델
 
-- Profile: `id`, `name`, `job`, `introduction`, `contacts: Contact[]`, `histories: History[]`, `updatedAt`.
-- Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`. kakao value는 URL 또는 ID, label로 구분. 외부 URL 열기는 허용 scheme 검증.
+- Profile: `id`, `name`, `job`, `introLink`(소개 링크; `introduction`은 2026-10-26 폐지 예정), `contacts: Contact[]`, `histories: History[]`, `updatedAt`.
+- Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`. github·instagram·behance·kakao의 value는 사용자명(ID)만이다("연락처 아이콘·바로가기" 절의 사용자명 입력, 2026-10-26; 그 전에 저장된 카카오톡 오픈채팅 URL은 표시·열기 유지). 외부 URL 열기는 허용 scheme 검증.
 - 필수 연락처(2026-10-06 사용자 결정): 프로필은 `phone`과 `email`을 각각 하나 이상 가져야 한다. 나머지 종류는 사용자가 골라 추가한다. `PUT /profile`에서 빠지면 422 `INVALID_INPUT`(필드 `contacts`)이다. phone은 숫자·`+`·`-`·공백만 허용하고 숫자 8~15자리, email은 기본 형식을 검사한다. (2026-10-10 패스키 로그인 전환으로 로그인 이메일이 없어져, 앱이 email을 미리 채우던 규칙은 없앴다.) 명함 발행 때 공개할 연락처를 고르는 방식은 그대로이며, 필수는 프로필 기준이지 명함 공개 의무가 아니다.
 - History: `id`, `title`, `role`, `startDate`(YYYY-MM-DD), `endDate`(nullable), `description`.
 - 활동 이력 날짜 입력(2026-10-06 사용자 결정): 앱 프로필 편집에서 이력마다 시작일(필수)과 종료일(선택, `진행 중`이면 비움)을 날짜 선택기로 입력한다. 연·월만 고르는 경우 일은 1일로 저장한다. 종료일은 시작일보다 앞설 수 없다(API도 422). 표시는 `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`이다.
-- Card: `id`, `ownerId`, `name`(명함 이름), `description`, `profileName`, `job`, `introduction`, `contacts: Contact[]`, `histories: History[]`, `createdAt`. 공개 연락처·이력만 포함. 원본 프로필 전체를 클라이언트에서 가리는 방식 금지.
+- Card: `id`, `ownerId`, `name`(명함 이름), `description`, `profileName`, `job`, `introLink`(`introduction`은 폐지 예정), `contacts: Contact[]`, `histories: History[]`, `createdAt`. 공개 연락처·이력만 포함. 원본 프로필 전체를 클라이언트에서 가리는 방식 금지.
 - ExchangeContext: `{ activityId: string|null, label: string|null }`. 등록 활동, 자유 입력, 둘 다 null 중 하나. 활동 선택은 참가 인증이 아니다.
 - Receipt: `id`, `card: Card`, `context: ExchangeContext`, `receivedAt`, `reciprocal: boolean`.
 - GuestSavedCard (기기 전용): `cardId`, `context`, `savedAt`. 영구 원본은 ID 중심, 오프라인 표시 캐시와 구분. 가져오기 성공 항목만 이관 완료 처리. 실패/미선택 보존.
@@ -26,7 +26,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 | --- | --- | --- |
 | (인증) | 아래 "패스키 로그인"의 `/auth/passkeys/*`, `/auth/refresh`, `/auth/logout`, "애플 로그인"의 `/auth/apple/*` | 2026-10-10 이메일 인증번호(`/auth/challenges`, `/auth/sessions`, `DELETE /auth/session`)를 대체 |
 | GET /profile | 없음 | 200 Profile |
-| PUT /profile | `{name,job,introduction,contacts,histories}` | 200 Profile |
+| PUT /profile | `{name,job,introLink,contacts,histories}` | 200 Profile |
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
 | POST /cards | `{name,description,contactIds,historyIds}` | 201 Card |
 | GET /cards/:id | 없음·비로그인 가능 | 200 Card |
@@ -205,14 +205,14 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/profile | Bearer | — | 200 Profile. 아직 없으면 빈 프로필(`version` 0) |
-| PUT /v1/profile | Bearer, `If-Match: <version>` 선택 | `{name, jobs[], introduction, contacts[], histories[]}` | 200 Profile(`version`+1). `If-Match`가 현재 버전과 다르면 409 |
+| PUT /v1/profile | Bearer, `If-Match: <version>` 선택 | `{name, jobs[], introLink?, contacts[], histories[]}`(옛 앱의 `introduction`은 받고 무시) | 200 Profile(`version`+1). `If-Match`가 현재 버전과 다르면 409 |
 | GET /v1/profile/versions | Bearer | `cursor?`, `size?` | 200 `{items: [{version, createdAt}], nextCursor}` 최신순 |
 | GET /v1/profile/versions/:n | Bearer | — | 200 `{version, createdAt, profile}` 그때의 프로필 |
 | POST /v1/profile/versions/:n/restore | Bearer | — | 200 Profile. 그 버전 내용으로 새 버전을 만든다(이력은 지우지 않는다) |
 
-- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt, photoUrl}`. `photoUrl`은 아래 "프로필 사진"(없으면 null, 버전 스냅샷에는 싣지 않는다). `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
+- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction(폐지 예정, 늘 ""), introLink, contacts: Contact[], histories: History[], version, updatedAt, photoUrl}`. `photoUrl`은 아래 "프로필 사진"(없으면 null, 버전 스냅샷에는 싣지 않는다). `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
 - 직무(2026-10-17 사용자 결정, 이전 "직함" 문자열을 대체): 직무는 조직처럼 계층을 가진 활동 정보이고 프로필은 여러 개를 태그로 둔다. ProfileJob: `{id(클라이언트 UUID), job: {id, name} | null, jobName, approval: approved|pending|rejected, approvalReason}`. PUT에는 `{id, jobId?, jobName?}`를 보낸다(둘 다 보내면 `jobId`). 검색에 없으면 `jobName`만 적는 직접 입력이고 이력과 같은 규칙으로 관리자 승인 전(`pending`)에는 명함 `job`에 들어가지 않는다. 직접 입력 값이 그대로면 승인·거절 결과가 유지되고 바뀌면 다시 `pending`. 최대 10개, 같은 직무 중복 400. 검색은 `GET /v1/jobs`(아래 "이력"의 선택 창 검색과 같은 형식, `q?`, `parentId?`, `rootsOnly?`, `cursor?`, `size?`; 항목에 바로 위 직무 `parent: {id, name}`). V18 이전 버전 스냅샷의 `job` 문자열은 승인된 직접 입력 직무로 읽힌다.
-- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 명함 본문은 이 글을 그대로 복사한다(아래 "템플릿", 2026-10-26 템플릿 폐지).
+- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). 자기소개 글(`introduction`)은 2026-10-26 폐지되어 이름 옆 소개 링크(`introLink`)가 대신한다(아래 "소개 링크·소개 글 폐지").
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
 
@@ -273,15 +273,15 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], photoUrl, createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introduction`은 발행(고치기) 시점 프로필 자기소개를 **그대로 복사한** 공개 본문(마크다운)이다. `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. `photoUrl`(`includePhoto`)은 위 "프로필 사진".
-- **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
+- Card: `{id, ownerId, name, description, template, introduction, introLink, profileName, job, contacts: Contact[], histories: History[], photoUrl, createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introLink`는 발행(고치기) 시점 프로필 소개 링크의 복사본(`includeIntroLink: false`면 null), `introduction`은 **폐지 예정**(2026-10-26, 늘 빈 문자열; 아래 "소개 링크·소개 글 폐지"). `template`은 **폐지 예정**(2026-10-26): 옛 앱 호환으로 주인 조회에만 남고 새 스냅샷은 빈 문자열이다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. `photoUrl`(`includePhoto`)은 위 "프로필 사진".
+- **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`introLink`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
 
 ### 템플릿
 
-**2026-10-26 폐지(사용자 결정).** 명함 본문(`introduction`)은 발행·고치기 시점 프로필 자기소개(`profile.introduction`)를 서버가 그대로 복사한 것이다. 템플릿·토큰 채우기는 없다.
+**2026-10-26 폐지(사용자 결정).** 템플릿·토큰 채우기는 없다. 같은 날 명함 본문(`introduction`, 프로필 자기소개 복사)도 폐지되었다(아래 "소개 링크·소개 글 폐지") — 아래 본문 관련 줄은 그 전까지의 규칙이다.
 
 - 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고 `template`을 보내지 않는다. 제작 화면은 자기소개를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그린다.
 - 서버는 `POST`·`PUT /v1/cards`의 `template`을 선택값으로 받고 **무시**한다(이미 배포된 옛 앱이 보내므로 400을 내지 않는다). 응답 Card의 `template`(주인 조회만)은 옛 앱 호환으로 당분간 남기며 새 스냅샷은 빈 문자열이다. DB 열 `business_cards.template`은 이번에 지우지 않는다.
@@ -721,7 +721,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **안전 영역 배경**: 페이지 배경색이 상태 표시줄·홈 인디케이터·노치 영역까지 채운다. iOS는 배경 `Color`를 `.ignoresSafeArea()`로 깔고 내용만 안전 영역 안에 둔다(시트·`Form`·`List`는 시스템이 알아서 함). Android는 `enableEdgeToEdge()` 아래에서 루트 `Surface(color = colorScheme.background)`가 창 전체를 채우고 inset padding은 그 안쪽 내용에만 준다. 키보드 영역도 같은 배경.
 - **토글 라벨은 바로 옆**: `Switch`/`Toggle`의 라벨은 같은 행의 바로 왼쪽에 두고(iOS `Toggle("라벨", isOn:)` 기본 배치, Android `ListItem(headlineContent = 라벨, trailingContent = Switch)`), 라벨과 스위치 사이에 다른 요소를 두지 않는다. 발견 탭 `마감 숨기기`는 라벨과 스위치가 붙은 한 묶음이며 묶음 전체를 눌러도 토글된다. 라벨을 스위치 바로 옆에 두면 배치가 어색한 곳(짧은 라벨이 넓은 행 오른쪽 끝에 홀로 가는 경우, 동의 항목처럼 여러 줄 라벨)은 스위치 대신 **체크박스**(iOS는 `Toggle` + `.toggleStyle(.checkbox)`가 없으므로 `Label`+`checkmark.circle(.fill)` 버튼, Android `Checkbox` + `ListItem`)로 바꾼다(사용자 2026-10-20 "바로 근처에 있을 때 별로라면 체크박스로 변경"). 발견 `마감 숨기기`는 검색창 아래 한 줄에 라벨+스위치를 왼쪽 정렬로 붙여 둔다.
 - **폼 라벨·입력 크기(사용자 2026-10-20 "프로필의 라벨이 너무 작아, 토스 참고해서 키워줘")**: 토스 입력 화면([계좌 입력](https://mobbin.com/screens/bb17bf31-062b-4b19-94e4-08f8c8d2d615), [거래 추가](https://mobbin.com/screens/6963fb34-5544-4c53-96fa-19fa70dbc5ae))처럼 **라벨을 입력 위에 쌓고** 입력 글자를 크게 둔다. 프로필·이력·명함 폼의 행은 세로 스택: 라벨 iOS `.subheadline`(15) 중간 굵기 보조색 / Android `labelLarge`(14) `onSurfaceVariant` → 입력 iOS `.title3`(20) / Android `titleLarge`(22) 본문색, 행 최소 높이 64, placeholder는 입력 크기 그대로 보조색. 섹션 머리·도움말은 `.footnote`(13)/`bodyMedium`가 아니라 `.subheadline`/`bodyMedium`(14) 이상. `LabeledContent`의 가로 라벨(왼쪽 라벨·오른쪽 값)은 쓰지 않는다. Android `OutlinedTextField`는 `textStyle = titleLarge`, `label`은 기본(포커스 시 떠오름) 대신 위에 별도 `Text`로 둔다(같은 쌓기).
-- **연락처 행은 라벨 대신 왼쪽 아이콘(사용자 2026-10-20 "연락처의 경우 전화번호·이메일 같은 라벨 대신 좌측에 아이콘으로")**: 프로필 편집·퍼널의 연락처 입력 행과 명함·프로필의 연락처 표시 행은 위에 쌓는 글자 라벨을 두지 않고 행 왼쪽에 24 보조색 글리프(전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 카카오톡 `bubble.left`/`ChatBubble`, Instagram `camera`/`CameraAlt`, GitHub `chevron.left.forwardslash.chevron.right`/`Code`, Behance `paintpalette`/`Palette`, 기타 `link`/`Link`)를 둔다. 입력 글자는 `.title3`/`titleLarge` 그대로, placeholder가 종류 이름("전화번호", "이메일", "@아이디" 등)을 대신 말한다. 접근성 라벨은 종류 이름을 유지한다. 행 전체 탭 → 포커스 규칙 동일.
+- **연락처 행은 라벨 대신 왼쪽 아이콘(사용자 2026-10-20 "연락처의 경우 전화번호·이메일 같은 라벨 대신 좌측에 아이콘으로")**: 프로필 편집·퍼널의 연락처 입력 행과 명함·프로필의 연락처 표시 행은 위에 쌓는 글자 라벨을 두지 않고 행 왼쪽에 24 보조색 글리프(전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 카카오톡 `bubble.left`/`ChatBubble`, Instagram `camera`/`CameraAlt`, GitHub `chevron.left.forwardslash.chevron.right`/`Code`, Behance `paintpalette`/`Palette`, 기타 `link`/`Link`)를 둔다(GitHub·Instagram·Behance·카카오톡 네 종류는 2026-10-26부터 아래 "연락처 아이콘·바로가기"의 단색 브랜드 글리프). 입력 글자는 `.title3`/`titleLarge` 그대로, placeholder가 종류 이름("전화번호", "이메일", "사용자 이름" 등)을 대신 말한다. 접근성 라벨은 종류 이름을 유지한다. 행 전체 탭 → 포커스 규칙 동일.
 - **플로팅 라벨·필수 표시(사용자 2026-10-20 "필수 항목은 빨간 *로 표시. placeholder에 label을 넣어 주고 클릭 시 placeholder가 작아지면서 라벨 위치로 가는 효과")**: 위 "폼 라벨·입력 크기"의 고정 쌓기 대신 **플로팅 라벨**로 바꾼다. 비어 있고 포커스가 없을 때는 라벨 글자가 입력 자리에 placeholder처럼 크게(`.title3`/`titleLarge`, 보조색) 보이고, 포커스가 가거나 값이 있으면 짧은 애니메이션(iOS `.snappy(duration: 0.2)`, Android 기본 라벨 전환)으로 작아져 입력 위 라벨 위치(`.subheadline`/`bodySmall`, 보조색·포커스 시 청록)로 올라간다. **입력 칸은 검색창처럼 글자 한 줄만 담는 작은 칸이고, 라벨은 칸 바깥 좌상단으로 이동한다**(사용자 2026-10-20 "바깥 좌상단으로 하고 영역은 검색창처럼 글자만 들어가도 되는 크기"): 칸은 발견 검색창과 같은 모양(둥근 10, `tertiarySystemFill`/`surfaceContainerHighest` 채움, 높이 44/48, 테두리 없음, 여러 줄 입력은 3줄 높이)이며 포커스·값에 따라 모양이 바뀌지 않는다. 비어 있고 포커스 없으면 라벨이 칸 안에 placeholder로(`.body`/`bodyLarge` 보조색) 보이고, 포커스가 가거나 값이 있으면 라벨이 칸 **위 왼쪽**(바깥)으로 작아지며 올라간다(`.subheadline`/`bodySmall` 보조색, 포커스 시 청록). 행은 처음부터 라벨 줄(20) + 간격 4 + 칸 높이를 확보해 레이아웃이 튀지 않는다. 둘 다 플랫폼 기본 플로팅 라벨이 칸 안/테두리로 뜨므로 쓰지 않고, iOS `DearbyFormRow`·Android `DearbyField`가 `TextField`/`BasicTextField` 위에 라벨 `Text`를 애니메이션(`scaleEffect`+`offset` / `animateFloatAsState`로 위치·크기)으로 옮겨 구현한다(SwiftUI·Compose만). 필수 항목은 라벨 끝에 **빨간 `*`**(`Text("*").foregroundStyle(.red)` 이어 붙임 / Android 라벨 `AnnotatedString`에 `error` 색 `*`)를 붙이고, 접근성 라벨에는 ", 필수"를 넣는다. 2026-10-19의 "필수 표시는 도움말 문장" 규칙은 이것으로 대체한다. 연락처 행처럼 왼쪽 아이콘이 있는 행도 같은 플로팅 라벨을 쓴다(아이콘 + 플로팅 라벨 입력).
 - **입력 영역 터치(사용자 "텍스트에어리어랑 연락처 추가 등 영역이 터치가 잘 안 돼")**: 입력 행은 행 어디를 눌러도 그 필드에 포커스가 간다(iOS 행 `.contentShape(Rectangle())` + 탭 → `@FocusState`, Android `Modifier.clickable { focusRequester.requestFocus() }` 또는 필드가 행 전체를 채움). 여러 줄 입력은 최소 3줄 높이·행 너비 전체. `연락처 추가`·`이력 추가`·`인증자료 추가` 같은 추가 행은 행 전체가 `Button`/`ListItem(clickable)`이며 아이콘+라벨이 왼쪽, 높이 48 이상.
 - **키보드 내리기와 터치 충돌 점검(사용자 2026-10-20)**: 점검 결과 — 버튼·링크·스위치는 자식 제스처가 우선이라 루트 탭 제스처와 충돌하지 않는다. 충돌은 **버튼이 아닌 영역**에서 난다: iOS 루트 `.onTapGesture`가 행의 라벨 글자·여백 탭을 받아 첫 응답자를 내려 버리고(그래서 필드 옆을 누르면 포커스가 가는 대신 키보드가 닫힘), Android 루트 `detectTapGestures`도 `clickable`이 아닌 라벨 `Text` 탭에서 `clearFocus()`를 부른다. 조치: ① 위 "입력 영역 터치" 규칙대로 입력 행 전체가 그 필드에 포커스를 주면 루트 제스처가 받을 영역이 사라진다. ② iOS는 **SwiftUI만** 쓴다(사용자 2026-10-20 "SwiftUI만 사용"): 루트 탭으로 키보드를 내리는 제스처를 아예 두지 않고, `.scrollDismissesKeyboard(.interactively)` + 키보드 툴바 `완료` 버튼 + 입력 행 전체 포커스로 해결한다(애플 기본 앱과 같은 방식; 빈 곳 탭으로 내리기는 iOS 관례가 아니다). `DearbyDismissKeyboard`는 scroll dismiss와 툴바만 남긴다. ③ Android는 **Jetpack Compose만** 쓴다(사용자 2026-10-20; 현재도 `AndroidView`·XML 레이아웃·Fragment·appcompat 없음): 루트 제스처는 Compose `pointerInput`+`LocalFocusManager`로 유지하되 모든 행이 `clickable`이면 도달하지 않는다. 앞으로도 View 기반 컴포넌트를 섞지 않는다.
@@ -769,6 +769,40 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 신청 확인 시트(외부 브라우저에서 돌아올 때)는 그대로 둔다. 둘 다 같은 기기 저장소를 쓴다.
 - **빼기는 눈에 보이게(사용자 2026-10-20 "내 활동에 추가하고 삭제가 가능해야 해")**: 길게 누르기·작은 펼침 아이콘 같은 숨은 동작에만 두지 않는다. ① 활동 상세: 이미 내 활동에 있으면 `내 활동에서 보기` 버튼 아래에 텍스트 버튼 `내 활동에서 빼기`(빨강, iOS `.borderless` role destructive / Android `TextButton` error 색)를 항상 보이게 두고, 누르면 확인("내 활동에서 뺄까요? 단계 표시와 참여 확정도 함께 지워져요.") 뒤 뺀다. ② 내 활동 탭 목록: 각 행에서 빼기 — iOS 왼쪽으로 밀기 `.swipeActions` `빼기`(목록이 `List`가 아니면 행 `contextMenu`와 함께 상세의 버튼으로 충분하도록 ③을 둔다), Android 행 끝 `MoreVert` → `DropdownMenu` `내 활동에서 빼기`. ③ 진행 단계 상세(내 활동 행을 눌렀을 때): 맨 아래 `내 활동에서 빼기` 텍스트 버튼(같은 확인). 뺀 뒤 그 화면은 닫고 목록으로 돌아간다. 실수 방지 확인은 항상 둔다.
 
+## 연락처 아이콘·바로가기 — 2026-10-26 사용자 결정
+
+사용자: GitHub·Instagram·Behance·카카오톡 연락처 아이콘을 각 회사 공식 브랜드 마크로 바꾸고, 연락처를 누르면 그 서비스로 바로 간다. 같은 날 이어서 "SVG 아이콘이 적용이 안 됐는데? https://expo.dev/blog/supporting-iphone-duo 이런 거(페이지 하단 GitHub·X·Discord·Bluesky처럼) 단색 아이콘 차용해서 색깔 적용해 주면 돼", "외부 링크는 직접 치게 하지 말고, 태그나 사용자명을 입력하면 링크를 생성해 주도록 해". 위 "아이콘 통일"의 브랜드 심볼 예외이고, "연락처 행은 라벨 대신 왼쪽 아이콘"의 해당 네 종류 글리프를 대신한다(전화·메일·기타는 그대로).
+
+- **아이콘 원본**: [Simple Icons](https://simpleicons.org) 16.36.0(저장소 CC0-1.0)의 `github`·`instagram`·`behance`·`kakaotalk` SVG를 바꾸지 않고 `shared/assets/prototype/contact-icons/`에 둔다. 출처·라이선스·브랜드 가이드·SHA256은 그 폴더 README. 마크 자체는 각 회사 상표이며 CC0가 상표권을 주지 않는다 — 모양을 바꾸지 않는다.
+- **색·크기(2026-10-26 사용자 결정, 브랜드 고유색 규칙 대체)**: 네 마크는 **단색 글리프**이고 색은 앱이 정한다 — 연락처 글리프 자리의 보조색(iOS `.secondary`, Android `onSurfaceVariant`; 라이트·다크 자동)으로 전화·메일 기호와 같은 색. 크기는 글리프 열(24) 안에 20(글자 배율 따름)으로 SF Symbols·Material 기호와 같은 여백. 참고: expo.dev 블로그 하단 소셜 글리프. 이전 브랜드 색 규칙(GitHub·Instagram 검정/흰색, Behance `#1769FF`, 카카오톡 `#FFCD00`)은 [`006b118a`](https://github.com/fixabley/dearby/blob/006b118a/shared/contracts/native-v1.md#연락처-아이콘바로가기--2026-10-26-사용자-결정).
+- **적용 위치**: 연락처를 그리는 모든 곳 — 명함 면·받은 명함 상세·내 프로필 카드(보기 모드), 프로필 수정의 연락처 입력 행, `연락처 추가` 목록, 명함 만들기의 연락처 선택 행. 한 함수(iOS `ContactModel.glyph(kind:)` → `DearbyGlyphView`, Android `contactIcon(kind)`)가 모두에 쓰인다. 웹 `/cards/:id`도 같은 Simple Icons 경로를 채운 단색 글리프(`Icon` 청록)로 그리고, 사용자명 값으로 같은 링크를 만든다(옛 URL 값은 사용자명으로 읽음).
+- **플랫폼**: iOS는 asset catalog 벡터(`preserves-vector-representation`, Render As Template, `Image(...).renderingMode(.template)` + `foregroundStyle`). Android는 같은 경로를 vector drawable로 옮기고(28.8 viewport 안에 2.4 이동해 24dp에 20으로) `Icon(tint = …)`.
+- **사용자명 입력(2026-10-26 사용자 결정)**: GitHub·Instagram·Behance·카카오톡은 링크를 치지 않고 **사용자명(ID)만** 입력한다. 링크는 앱이 만든다.
+  - 허용: 영문·숫자·`.`·`_`·`-`. 길이 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20(공식 상한을 확인하지 못해 넉넉히 둔 값). 앞의 `@`와 공백은 지운다.
+  - 입력 칸: GitHub·Instagram·Behance는 라벨이 떠 있을 때 값 앞에 고정 접두어 `github.com/`·`instagram.com/`·`behance.net/`를 보조색으로 보인다(카카오톡은 없음). 입력·붙여넣기는 허용 문자만 남기고 길이에서 자르며, 그 서비스의 프로필 URL(`[https://][www.|m.]host/이름[/…]`)을 붙여 넣으면 이름만 남긴다. 카카오톡 칸에 URL을 넣으면 ID가 아니므로 비운다(오픈채팅 URL 입력 지원 없음). placeholder `사용자 이름`/`카카오톡 ID`.
+  - 서버(`PUT /v1/profile`): 같은 규칙으로 정규화(프로필 URL → 사용자명, `@`·공백 제거)해 사용자명만 저장하고, 정규화 뒤 형식이 틀리면 400(`사용자명은 영문·숫자·.·_·-로 N자까지입니다`). 옛 앱이 URL을 보내도 400이 아니라 정규화. 이미 저장된 값과 같은 값(같은 연락처 id·종류)은 다시 검사하지 않는다 — 2026-10-26 전에 저장된 카카오톡 오픈채팅 URL이 변경 없는 저장을 막지 않게. 버전 되돌리기에서 지금 프로필에 없는 옛 오픈채팅 URL은 400이 될 수 있다. 저장된 값의 일괄 마이그레이션은 하지 않는다(운영 DB 변경은 사용자 승인 필요).
+  - 이미 저장된 URL 형태의 값: 앱은 표시·링크에서 사용자명으로 읽고(프로필 수정 폼도 사용자명으로 채움), 카카오톡 오픈채팅 URL은 그대로 보이고 연다.
+  - 웹사이트처럼 본래 URL인 종류는 지금 연락처 종류(phone/email/kakao/instagram/github/behance)에 없다.
+- **바로가기(행 전체 터치)**: 값의 앞뒤 공백을 지우고 —
+  - 전화 `tel:`(숫자와 `+`만), 이메일 `mailto:`.
+  - GitHub `https://github.com/{id}`, Instagram `https://instagram.com/{id}`, Behance `https://www.behance.net/{id}`. `{id}`는 위 사용자명이며 규칙에 맞지 않으면 링크 없이 값만. 앱이 설치돼 있으면 시스템이 앱으로 연다(유니버설 링크·App Links).
+  - 카카오톡: ID는 공개 링크로 열 수 없으므로 **복사**하고(앞 `@` 지움) "ID를 복사했어요"를 잠깐 보인다(iOS 행 끝 문구 + VoiceOver 알림, Android 스낵바 또는 시스템 복사 알림). 2026-10-26 전에 저장된 오픈채팅 URL(`http`/`https`, 또는 스킴 없는 `도메인/경로`에 `https://`)은 연다. 그 밖의 스킴(`javascript:` 등)은 열지 않는다.
+  - 행 끝 표시: 열기 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 복사 `doc.on.doc`/`ContentCopy`, 동작이 없으면 표시 없음. 접근성 힌트: 전화 "전화를 걸어요", 메일 "메일을 보내요", 링크 "링크를 열어요", 복사 "ID를 복사해요".
+
+## 소개 링크·소개 글 폐지 — 2026-10-26 사용자 결정
+
+사용자: "소개 노션 같은 링크를 이름 다음에 추가할 수 있게 해 줘." 이어서 "소개 글 기능 전체 삭제 — 자기소개는 이름 옆 소개 링크로 대신", "내 프로필의 활동 이력을 명함처럼". iOS·Android·웹·API.
+
+- **소개 링크(`introLink`, 선택, 하나)**: 노션·포트폴리오 같은 외부 문서 주소. 위 "외부 링크는 직접 치지 않는다"(연락처 사용자명 입력)의 예외 — 사용자명으로 만들 수 없는 링크라 URL을 입력한다.
+  - 서버(`PUT /v1/profile` `introLink`): 앞뒤 공백 제거, 비면 null, 스킴이 없으면 `https://`를 붙이고 `https` 주소(호스트에 `.`, 공백 없음)만, 500자까지. 그 밖(`http:`·`javascript:` 등)은 400 `소개 링크는 https 주소만 쓸 수 있습니다`. 프로필 버전 스냅샷에 들어가고 되돌리기도 따른다. 저장: `profiles.intro_link`·`business_cards.intro_link`(V60).
+  - 입력: 프로필 수정의 이름 칸 바로 아래 `소개 링크` 칸(URL 키보드, 자동 고침·대문자 끔, placeholder `notion.so/…`), 선택. 형식 오류 문구는 서버 문구와 같다. 처음 입력 퍼널에는 넣지 않는다(수정에서 추가).
+  - 표시: 프로필 보기 카드·명함 면·받은 명함·웹 `/cards/:id`에서 **이름 바로 옆**(같은 줄, 넘치면 다음 줄)에 작은 링크 버튼 — 글리프 + `소개`. 호스트가 `notion.so`·`notion.site`(하위 도메인 포함)면 Notion 단색 글리프(Simple Icons `notion` 16.36.0, `shared/assets/prototype/contact-icons/notion.svg`, 연락처 브랜드 글리프와 같은 단색 규칙), 그 밖은 링크 글리프(`link`/`Link`). 색은 청록(iOS `DearbyStyle.teal`, Android `primary`, 웹 `text-teal`), 캡슐 옅은 배경(iOS `.buttonStyle(.bordered)` 소형 + `.tint(teal)`, Android `AssistChip` 또는 `FilledTonalButton` 소형, 웹 둥근 버튼). 누르면 시스템 브라우저/앱으로 연다(iOS `openURL`, Android `CustomTabs`/`ACTION_VIEW`, 웹 `target=_blank rel=noopener`). 접근성 라벨 `소개 링크 열기`. `introLink`가 없으면 버튼 없음.
+  - 명함: 발행·고치기 요청에 `includeIntroLink: Boolean`(생략 시 true). 명함 만들기에서 프로필에 소개 링크가 있으면 `소개 링크 넣기` 스위치(기본 켬, 사진 넣기와 같은 모양). 명함 지우기·어드민 내리기는 비운다. 신고 스냅샷에 들어간다.
+- **소개 글(`introduction`) 폐지**: 앱·웹에서 소개 입력·표시를 모두 없앤다 — 프로필 수정의 `소개` 칸, 처음 입력 퍼널의 `소개` 단계, 프로필 보기의 `소개` 절, 명함 만들기의 본문 미리보기, 명함 면·받은 명함·웹 `/cards/:id`의 소개 절(이미 발행된 명함의 옛 본문도 보이지 않는다). 마크다운 렌더러는 쓰는 곳이 없어 지운다.
+  - 서버: `PUT /v1/profile`의 `introduction`은 받고 무시(옛 앱 호환, 400 없음), 명함 발행·고치기는 본문을 비운다(`business_cards.introduction` = `""`). 응답의 `introduction`(Profile·Card)은 **폐지 예정**으로 당분간 늘 `""`. 버전 스냅샷의 옛 `introduction`은 읽지 않는다(되돌려도 돌아오지 않는다). DB 열 `profiles.introduction`·`business_cards.introduction`과 그 안의 기존 값은 지우지 않는다(운영 데이터 일괄 삭제는 사용자 승인 필요). 2026-10-26 전 신고 스냅샷의 소개 글은 어드민 신고 상세에 `소개 글(폐지 전)`로 남는다.
+- **내 프로필 활동 이력 = 명함 이력**: 프로필 보기 모드의 활동 이력 목록은 명함 면(명함 상세·받은 명함)의 이력 행 컴포넌트를 그대로 쓴다(기간·조직 · 프로그램 · 활동·역할·`확인됨`/`미확인` 배지·설명).
+- 처리방침: 수집 항목에서 `소개`(자기소개 글)를 빼고 `소개 링크(선택)`를 더해야 한다(#344와 별도, 사용자 확인 후).
+
 ## 프로필 읽기/수정 모드·상단 바 메뉴 — 2026-10-20 사용자 결정
 
 사용자: "내 프로필에서 수정이 바로 가능하게 하지 말고, 상단 탭바에 수정 버튼을 눌렀을 때 노출되도록. 수정과 설정·알림 버튼을 제외하고 알림 버튼 오른쪽에 햄버거 메뉴 버튼을 눌렀을 때 드롭다운으로 라벨과 함께 표시." iOS·Android.
@@ -777,6 +811,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **수정 모드**: 상단 바의 `수정`(`pencil`/`Edit`, 텍스트 버튼 또는 아이콘, 접근성 `수정`)을 누르면 같은 화면이 편집 폼(플로팅 라벨 입력·이력 추가·연락처 추가)으로 바뀌고 아래에 `저장`/`원래대로` 막대가 나타난다. 상단 `수정`은 `완료`로 바뀌며 변경이 없으면 읽기 모드로 돌아가고, 변경이 있으면 저장 여부를 묻는 확인(저장 / 버리기 / 취소). 저장 성공 시 읽기 모드로 돌아간다. 모드는 앱 실행 중 메모리.
 - **상단 바 구성(네 탭 공통)**: 오른쪽에 [탭 고유 주 행동(프로필의 `수정`만)] [설정] [알림] [**메뉴** `line.3.horizontal`/`Menu`] 순. 메뉴를 누르면 드롭다운(iOS `Menu` → 항목은 `Label(제목, systemImage:)`, Android `DropdownMenu` → `DropdownMenuItem(leadingIcon + text)`)에 나머지 보조 행동이 **아이콘 + 라벨**로 나온다: 프로필 — `변경 이력`, `명함 만들기`; 내 활동 — 항목 없음(예시 데이터셋이 없어 `예시` 배지는 지우고 메뉴도 숨긴다; 2026-10-20 구현 확인); 발견·명함 — 지금은 항목이 없으면 메뉴 버튼을 숨긴다. 설정·알림·수정은 메뉴에 넣지 않는다.
 - iOS는 `ToolbarItemGroup(.topBarTrailing)` 안에 순서대로, Android는 `TopAppBar.actions` 안에 순서대로. 메뉴 아이콘 접근성 이름 `더 보기`.
+- **보기 모드 = 명함 디자인(2026-10-26 사용자 결정)**: 보기 모드 맨 위는 명함 면 컴포넌트를 그대로 쓴 카드(사진·이름·직무·연락처, 연락처는 아래 "연락처 아이콘·바로가기"대로 누르면 열림), 그 아래 `활동 이력` 목록(명함의 이력 행과 같은 컴포넌트·인증 배지; `소개` 절은 2026-10-26 폐지), 그 아래 `이 내용으로 명함 만들기`(주 버튼, 명함 만들기 시트)·`수정`(보조 버튼, 상단 `수정`과 같다). 수정 모드 입력 화면은 그대로이며 맨 위에 `사진` 칸("프로필 사진")이 더해진다. 변경 이력의 버전 상세도 같은 표현(버전에는 사진이 없어 머리글자).
 
 ## 명함 고치기는 같은 명함을 수정 — 2026-10-20 사용자 결정
 
@@ -1092,7 +1127,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 - `POST /v1/cards/:id/reports` 인증: Bearer 또는 게스트 토큰(웹 프록시) 또는 없음(웹에서 코드로 본 사람, 본문에 `code`). 명함을 볼 권한이 있는 사람만(위 "명함 QR 코드" 조회 권한과 같음, 아니면 403). 본문 `{reason: SPAM|IMPERSONATION|INAPPROPRIATE|OTHER, detail?: string(≤500), code?: string}`. 201. 같은 신고자(계정·게스트)가 같은 명함을 24시간 안에 다시 신고하면 200으로 기존 신고를 돌려준다(중복 방지). 자기 명함은 400.
 - 사유 표시: 스팸·광고 / 다른 사람 사칭 / 부적절한 내용 / 기타(기타는 설명 필수).
-- 저장: `card_reports(id uuid, card_id, reporter_user_id null, reporter_guest_id null, reason, detail, created_at, status OPEN|RESOLVED|DISMISSED, resolved_at, resolved_by, note)`(V48). 신고 시점의 명함 스냅샷(이름·직무·소개·연락처)을 `card_snapshot jsonb`로 함께 둔다(주인이 고치거나 지워도 근거가 남게).
+- 저장: `card_reports(id uuid, card_id, reporter_user_id null, reporter_guest_id null, reason, detail, created_at, status OPEN|RESOLVED|DISMISSED, resolved_at, resolved_by, note)`(V48). 신고 시점의 명함 스냅샷(이름·직무·소개 링크·연락처; 2026-10-26 전 신고는 소개 글)을 `card_snapshot jsonb`로 함께 둔다(주인이 고치거나 지워도 근거가 남게).
 - 보유 기간(2026-10-25 사용자 결정): 신고 기록은 신고일(`created_at`)로부터 1개월이 지나면 상태(`OPEN` 포함)와 관계없이 지운다(batch 매일 04:00 명함 회수와 함께). 차단(`card_blocks`) 보유 기간은 아래 "차단".
 - 화면: 받은 명함 상세(iOS 툴바 `ellipsis.circle` Menu, Android TopAppBar 더 보기 메뉴)와 웹 `/cards/:id`·`/saved` 상세의 카드 아래 작은 글자 버튼 `신고하기`. 사유 고르기(iOS confirmationDialog 또는 시트의 Picker, Android 라디오 목록 다이얼로그, 웹 shadcn Dialog) → 선택 설명 → 보내기. 성공하면 "신고를 받았어요. 24시간 안에 확인할게요." 신고만으로 명함이 사라지지는 않는다(차단은 따로).
 
@@ -1155,7 +1190,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - **카드 면**: 흰 바탕, 모서리 20, 1px 구분선 색 테두리, 안쪽 여백 20. 웹은 최대 너비 480px 가운데 정렬. 명함은 "한 장의 카드"로 보이고 행동 버튼(고치기·저장)은 카드 바깥 아래에 둔다.
 - **머리**: 가운데 정렬. 이니셜 아바타 56(민트 바탕·청록 글자) → 이름(title 굵게) → 직무 칩(`job`을 ` · `로 나눈 각 항목을 옅은 배경 칩으로, 없으면 생략) → 소속(가장 최근 승인 이력의 조직 이름, 보조색 작은 글자, 없으면 생략).
-- **소개**: `introduction`(발행 시점 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
+- **소개**: 2026-10-26 폐지(절 자체를 그리지 않음, 이미 발행된 명함의 옛 본문도). 이름 옆 소개 링크가 대신한다(아래 "소개 링크·소개 글 폐지").
 - **연락처**: 절 제목 `연락처`. 행마다 왼쪽 종류 아이콘(전화·메일·카카오톡·Instagram·GitHub·Behance), 라벨(보조색 작은 글자: `label`이 있으면 그것, 없으면 종류 이름), 값(본문색), 열 수 있으면 오른쪽 외부 링크 아이콘. 행 전체가 눌려 기존 동작(전화·메일·링크 열기)을 한다. 연락처가 없으면 `공개된 연락처가 없어요`.
 - **활동 이력**: 절 제목 `활동 이력`. 행마다 기간(보조색 작은 글자, `2026.03 – 진행 중`), 제목(굵게, 조직 · 프로그램 · 활동), 역할과 인증 배지(`확인됨`/`미확인`, 기존 배지). 설명이 있으면 아래 한 줄. 이력이 없으면 `공개된 활동 이력이 없어요`.
 - **내 명함 탭**: 가로 스크롤 타일 대신 2열 격자. 첫 칸 `+ 새 명함`, 각 칸은 명함 이름(굵게)·프로필 이름·직무 한 줄. 선택한 칸은 민트 바탕·청록 테두리. 격자 아래에 선택한 명함의 카드(위 규칙)와 `이 명함 고치기` 버튼, 그 아래 위험 색 `이 명함 지우기`(확인 대화상자 "공개 링크도 더 열리지 않아요. 되돌릴 수 없어요." → `DELETE /v1/cards/:id`, 2026-10-18 사용자 요청 "내 명함 삭제가 없어"), 그리고 `QR 보이기`("명함 교환"). 지운 뒤 다음 명함(가장 새 것)을 고르고, 마지막 명함이면 첫 명함 안내로 돌아간다. 명함이 없을 때의 안내 카드는 유지.

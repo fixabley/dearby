@@ -1,12 +1,13 @@
 import Foundation
 
-/// 내 프로필 data (contract "프로필과 버전 이력"): name, job, introduction, required phone and email, other contacts
+/// 내 프로필 data (contract "프로필과 버전 이력"): name, job, 소개 링크 (contract "소개 링크·소개 글 폐지" 2026-10-26), required phone and email, other contacts
 /// by kind, and histories entered through the step funnel. `version` goes back as `If-Match`.
 struct ProfileForm: Equatable {
     static let maxJobs = 10
     var name: String
     var jobs: [ProfileJob]
-    var introduction: String
+    /// Typed as is; the server adds `https://` and answers 400 for anything but an https page.
+    var introLink: String
     var phone: String
     var email: String
     var extras: [ProfileExtraContact]
@@ -18,7 +19,7 @@ struct ProfileForm: Equatable {
     init(profile: AccountProfile) {
         name = profile.name
         jobs = profile.jobs
-        introduction = profile.introduction
+        introLink = profile.introLink ?? ""
         version = profile.version
         let phoneRow = profile.contacts.first { $0.kind == "phone" }, emailRow = profile.contacts.first { $0.kind == "email" }
         phone = phoneRow?.value ?? ""
@@ -26,7 +27,8 @@ struct ProfileForm: Equatable {
         phoneID = phoneRow?.id ?? UUID().uuidString.lowercased()
         emailID = emailRow?.id ?? UUID().uuidString.lowercased()
         extras = profile.contacts.filter { $0.id != phoneRow?.id && $0.id != emailRow?.id }
-            .map { ProfileExtraContact(id: $0.id, kind: $0.kind, value: $0.value) }
+            // A profile URL saved before 2026-10-26 reads as its username (contract "연락처 사용자명 입력").
+            .map { ProfileExtraContact(id: $0.id, kind: $0.kind, value: ContactModel.username(kind: $0.kind, $0.value) ?? $0.value) }
         histories = profile.histories
     }
     mutating func addContact(_ kind: String) { extras.append(ProfileExtraContact(id: UUID().uuidString.lowercased(), kind: kind, value: "")) }
@@ -66,7 +68,7 @@ struct ProfileForm: Equatable {
         let labels = Dictionary(uniqueKeysWithValues: ProfileContactFields.kinds.map { ($0.kind, $0.label) })
         let trimmed = { (text: String) in text.trimmingCharacters(in: .whitespacesAndNewlines) }
         return AccountProfile(
-            name: trimmed(name), jobs: jobs, introduction: trimmed(introduction),
+            name: trimmed(name), jobs: jobs, introLink: trimmed(introLink).isEmpty ? nil : trimmed(introLink),
             contacts: [AccountContact(id: phoneID, kind: "phone", label: "전화번호", value: trimmed(phone)),
                        AccountContact(id: emailID, kind: "email", label: "이메일", value: trimmed(email))]
                 + extras.filter { !trimmed($0.value).isEmpty }
@@ -75,7 +77,7 @@ struct ProfileForm: Equatable {
     }
     /// What the server would receive, for change detection against the loaded profile.
     var changed: Bool { ProfileForm(profile: profile).profile != ProfileForm(profile: original).profile }
-    private var original: AccountProfile { AccountProfile(name: name, jobs: jobs, introduction: introduction, contacts: [], histories: [], version: version) }
+    private var original: AccountProfile { AccountProfile(name: name, jobs: jobs, introLink: introLink, contacts: [], histories: [], version: version) }
 
     private static func formatter() -> DateFormatter {
         let formatter = DateFormatter()

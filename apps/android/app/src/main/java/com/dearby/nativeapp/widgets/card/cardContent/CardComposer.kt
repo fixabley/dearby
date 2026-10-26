@@ -13,35 +13,40 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /** A contact the card can show. */
-data class ComposerContact(val id: String, val label: String, val value: String, val isPublic: Boolean)
+data class ComposerContact(val id: String, val kind: String, val value: String, val isPublic: Boolean)
 /** A history the card can show; [reason] explains why it cannot be chosen (not approved yet / rejected). */
 data class ComposerHistory(val id: String, val title: String, val detail: String, val isPublic: Boolean, val reason: String?)
 
 /**
- * 명함 제작(contract "템플릿", 2026-10-18 앱 안 꾸미기 삭제): 명함 이름을 적고 공개할 연락처·이력을 고른다. 본문은 프로필 자기소개를
- * 읽기 전용 미리보기로 보인다(2026-10-26 템플릿 폐지). 로그인·발행·오류는 화면이 맡고, 이 위젯은 값과 콜백만 받는다. 내용이 바뀌면 "원래대로"가 나타난다.
+ * 명함 제작(contract "템플릿", 2026-10-18 앱 안 꾸미기 삭제): 명함 이름을 적고 사진·소개 링크 넣기와 공개할 연락처·이력을 고른다(본문은 2026-10-26 폐지). 로그인·발행·오류는 화면이 맡고, 이 위젯은 값과 콜백만 받는다. 내용이 바뀌면 "원래대로"가 나타난다.
  * 명함 이름은 라벨을 위에 쌓은 큰 입력 `DearbyField`(contract "폼 라벨·입력 크기", 2026-10-20), 공개 스위치는 `ListItem` 줄 전체가 토글이다(contract "폼은 플랫폼 기본 컴포넌트").
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable fun CardComposer(
-    cardTitle: String, onCardTitleChange: (String) -> Unit, preview: String,
+    cardTitle: String, onCardTitleChange: (String) -> Unit,
     contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
     changed: Boolean, onRevert: () -> Unit, onPublish: () -> Unit, modifier: Modifier = Modifier, publishing: Boolean = false, errorMessage: String? = null,
     publishLabel: String = "명함 발행",
+    /** 사진 넣기 switch; null hides it (no profile photo). */
+    photo: Boolean? = null, onPhoto: (Boolean) -> Unit = {},
+    /** 소개 링크 넣기 switch; null hides it (no 소개 링크 on the profile). */
+    introLink: Boolean? = null, onIntroLink: (Boolean) -> Unit = {},
 ) {
     Column(modifier.fillMaxSize().dismissKeyboardOnTap()) {
-        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Section("명함") {
                 DearbyField("명함 이름", cardTitle, onCardTitleChange, hint = "선택이에요. 비워 두면 '내 명함'으로 저장해요.")
+                // 사진 넣기 (contract "프로필 사진"): only when the profile has a photo; the card keeps its own copy from now.
+                if (photo != null) ToggleRow("사진 넣기", "프로필 사진을 명함에 넣어요", photo, enabled = true, description = "사진 넣기", onChecked = onPhoto)
+                if (introLink != null) ToggleRow("소개 링크 넣기", "이름 옆에 소개 링크를 보여요", introLink, enabled = true, description = "소개 링크 넣기", onChecked = onIntroLink)
             }
-            // The preview sits on the page background, no card around it (contract "카드는 섹션을 나눌 때만").
-            Section("미리보기") { MarkdownBody(preview) }
             Section("공개할 연락처") {
                 if (contacts.isEmpty()) Text("프로필에 연락처가 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 contacts.forEach { contact ->
-                    ToggleRow("${contact.label} · ${contact.value}", null, contact.isPublic, enabled = true, description = "${contact.label} 공개") { onContactPublic(contact.id, it) }
+                    ToggleRow(contact.value, null, contact.isPublic, enabled = true, description = "${contactKindName(contact.kind)} 공개",
+                        leading = contactIcon(contact.kind)) { onContactPublic(contact.id, it) }
                 }
             }
             Section("공개할 활동 이력") {
@@ -72,7 +77,8 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
 }
 
 /** One `ListItem` whose whole row toggles the `Switch` (contract "폼은 플랫폼 기본 컴포넌트"); [error] colours the supporting line. */
-@Composable private fun ToggleRow(title: String, detail: String?, checked: Boolean, enabled: Boolean, description: String, error: Boolean = false, onChecked: (Boolean) -> Unit) = ListItem(
+@Composable private fun ToggleRow(title: String, detail: String?, checked: Boolean, enabled: Boolean, description: String, error: Boolean = false, leading: ImageVector? = null, onChecked: (Boolean) -> Unit) = ListItem(
     { Text(title) }, Modifier.toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChecked),
+    leadingContent = leading?.let { { Icon(it, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } },
     supportingContent = detail?.let { { Text(it, color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) } },
     trailingContent = { Switch(checked, null, Modifier.semantics { contentDescription = description }, enabled = enabled) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
