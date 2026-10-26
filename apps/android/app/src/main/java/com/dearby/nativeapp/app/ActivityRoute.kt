@@ -32,8 +32,13 @@ import com.dearby.nativeapp.pages.activity.TimetableSheet
 import com.dearby.nativeapp.pages.activity.MySessionsPage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
+import com.dearby.nativeapp.widgets.activity.activityCard.TodayEventCard
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
+import java.time.Instant
+import kotlinx.coroutines.delay
 
 /**
  * [settings] and [notify] are the fixed 설정·알림 header buttons of both tab roots (contract "설정"). [openInMine] asks the shell to show an activity's
@@ -46,6 +51,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     signIn: () -> Unit = {}, unread: Int = 0,
     /** 트랙·세션 시간표 and its 찜 (contract "트랙·세션 시간표"); [sessionHeart] opens sign-in or the consent screen when the account is not ready. */
     sessions: SessionFavoritesViewModel? = null, sessionHeart: (String) -> Unit = {},
+    /** 오늘 내 행사 (2026-10-26) shows on the 발견 root only while [ready] (signed in with consent); its `명함 QR` is [showQr] with the activity for the chip. */
+    ready: Boolean = false, showQr: (String) -> Unit = {},
     active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
@@ -111,14 +118,23 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         val notes = listOfNotNull(of?.let { activityLink(it.id) }, of?.officialUrl).joinToString("\n").ifBlank { null }
         if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
+    // 오늘 내 행사 (2026-10-26 사용자 결정), atop 발견 while signed in: [now] moves to the next minute so `지금 · 세션` and the next 찜 follow the clock.
+    var now by remember { mutableStateOf(Instant.now()) }
+    val showToday = !mine && ready
+    if (showToday) LaunchedEffect(Unit) { while (true) { delay(60_000 - System.currentTimeMillis() % 60_000); now = Instant.now() } }
+    val favoriteItems = sessions?.items?.collectAsStateWithLifecycle()?.value.orEmpty()
+    val todayEvent = if (showToday) model.todayEvent(state, favoriteItems, now) else null
+    // The today card's timetable sheet over the list: the activity it opened for (찜한 세션 first travels in the view model's `Open`).
+    var todaySheet by remember { mutableStateOf<String?>(null) }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
-    // The timetable sheet opened from this detail's block row, or from the 진행 단계 page's stage row (the view model is shared by both tabs,
-    // so it shows only over its own activity).
-    val sheetActivity = activity ?: progressActivity
-    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == (selected ?: progressId) }
+    // The timetable sheet opened from this detail's block row, from the 진행 단계 page's stage row, or from the today card (the view model is
+    // shared by both tabs, so it shows only over its own activity).
+    val sheetActivity = activity ?: progressActivity ?: todaySheet?.let(state.known::get)
+    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == (selected ?: progressId ?: todaySheet) }
     // The sheet belongs to this detail or 진행 단계 page: leaving it (back, another activity, the consent screen or a tab switch disposing this
     // route) closes it, so it does not come back on its own the next time the activity is opened.
-    DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null) } }
+    DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null); todaySheet = null } }
+    val closeTimetable = { sessions?.show(null, null); todaySheet = null }
     // A 세션 이동 알림 tap (MainActivity → openLinked): once that activity's detail is up, its block's timetable opens on 찜한 세션. After the
     // DisposableEffect above, whose disposal on the detail change would otherwise close the sheet this opens.
     val pendingReminder = sessions?.pending?.collectAsStateWithLifecycle()?.value
@@ -126,6 +142,18 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     val sheetNotices = remember { SnackbarHostState() }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
     val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
+    // The card opens the block's timetable (찜한 세션 first when the body is a 찜), else the progress page; `명함 QR` goes to the card QR with this activity.
+    val discoveryHeader: (@Composable () -> Unit)? = if (todayEvent == null) header else { {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            TodayEventCard(todayEvent, open = {
+                if (todayEvent.scheduleId != null && sessions != null) {
+                    Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "timetable")
+                    todaySheet = todayEvent.activityId; sessions.show(todayEvent.activityId, todayEvent.scheduleId, favoritesOnly = todayEvent.favoritesFirst)
+                } else { Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "progress"); progressId = todayEvent.activityId }
+            }, qr = { Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "qr"); showQr(todayEvent.activityId) })
+            header?.invoke()
+        }
+    } }
     BackHandler(mySessions && selected == null) { mySessions = false }
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
@@ -147,7 +175,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                     signIn, favorites::load, sessionEntries.size, sessionEntries.map { it.session.startAt.toLocalDate() }.toSet()) { sessions?.load(); mySessions = true }
             }
         }
-        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread, model::setKind, model::applyFilters)
+        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, notify, model::clearRefreshFailure, settings, discoveryHeader, hearts, plus, unread, model::setKind, model::applyFilters)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
@@ -160,7 +188,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         val block = sheetActivity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
         val blockTitle = openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: block?.name ?: "세션"
         TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
-            sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly)
+            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly)
     }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).

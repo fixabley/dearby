@@ -34,8 +34,10 @@ import com.dearby.nativeapp.widgets.activity.progress.StatusOption
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.pages.activity.ScheduleItemState
 import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
+import com.dearby.nativeapp.entities.activity.model.SessionFavorite
 import com.dearby.nativeapp.entities.activity.model.Stage
 import com.dearby.nativeapp.entities.activity.model.Tag
+import com.dearby.nativeapp.widgets.activity.activityCard.TodayEventState
 import com.dearby.nativeapp.shared.ui.TagLabel
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
@@ -45,6 +47,8 @@ import com.dearby.nativeapp.entities.account.model.MyScheduleStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -265,6 +269,42 @@ class ActivityViewModel(
     fun schedules(id: String) = models[id]?.schedules.orEmpty()
     /** The calendar-comparison windows of one stage (contract "겹침 확인 시간"); empty for an uncomparable or unknown stage. */
     fun stageWindows(id: String, stage: Int) = models[id]?.stages()?.getOrNull(stage)?.windows.orEmpty()
+
+    /**
+     * 오늘 내 행사 (contract "오늘 내 행사 카드", 2026-10-26): among the 진행 중 내 활동 of [shown] (탈락·끝난 활동 excluded) the 활동 일정 blocks
+     * (`phase: ACTIVITY`, the period slot included; a block longer than 7 days is not counted) that cover today or start within 7 days, Seoul
+     * dates; today stays today after its blocks ended. The activity with the nearest one makes the card and the others count as `외 n개`.
+     * Today's body is the activity's next 찜 session in [favorites] (`endAt > now`; `지금` while it runs), else its running/next block
+     * (`오후 세션 · 13:50–17:30`, all-day `활동 · 종일`; the last block once every one ended); a coming activity's body is its first block with
+     * its date. The card opens the 찜 session's block (else the shown block, when it has a 트랙·세션 시간표) as the timetable sheet, otherwise
+     * the progress page. Null without a qualifying activity.
+     */
+    fun todayEvent(shown: ActivityListState, favorites: List<SessionFavorite>, now: Instant): TodayEventState? {
+        val today = now.atZone(seoul).toLocalDate()
+        val limit = today.plusDays(7)
+        val candidates = shown.activeActivities.mapNotNull { active ->
+            val blocks = models[active.id]?.stages().orEmpty()
+                .filter { !it.selection && it.day != null && it.lastDay != null && it.lastDay >= today && it.day <= limit && ChronoUnit.DAYS.between(it.day, it.lastDay) <= 7 }
+                .sortedWith(compareBy<Stage> { it.day }.thenBy(nullsLast()) { it.eventStart })
+            val first = blocks.firstOrNull() ?: return@mapNotNull null
+            Triple(active, blocks, maxOf(first.day!!, today))
+        }.sortedWith(compareBy<Triple<ActivityState, List<Stage>, LocalDate>> { it.third }.thenBy(nullsLast()) { it.second.first().eventStart })
+        val (active, blocks, day) = candidates.firstOrNull() ?: return null
+        val others = candidates.size - 1
+        if (day != today) return TodayEventState(active.id, active.title, "D-${ChronoUnit.DAYS.between(today, day)}", "${blocks.first().name} · ${blocks.first().dateText}", false, others)
+        val todayBlocks = blocks.filter { it.day!! <= today }.mapNotNull { it.scheduleId }.toSet()
+        val next = favorites.filter { it.activityId == active.id && it.scheduleId in todayBlocks && it.session.endAt.toInstant() > now }.minByOrNull { it.session.startAt.toInstant() }
+        if (next != null) {
+            val time = if (next.session.startAt.toInstant() <= now) "지금" else next.session.startAt.format(sessionTime)
+            val body = listOfNotNull(time, next.track?.name, next.track?.room, next.session.title).joinToString(" · ")
+            return TodayEventState(active.id, active.title, "오늘", body, true, others, next.scheduleId, favoritesFirst = true)
+        }
+        // The running or next block of today; once every block's end passed, the last one (the day stays 오늘 for card exchanges).
+        val block = blocks.firstOrNull { it.eventEnd == null || it.eventEnd > now } ?: blocks.last()
+        val time = if (block.allDay || block.eventStart == null || block.eventEnd == null) "종일"
+            else sessionTime.format(block.eventStart.atZone(seoul)) + "–" + sessionTime.format(block.eventEnd.atZone(seoul))
+        return TodayEventState(active.id, active.title, "오늘", "${block.name} · $time", true, others, block.scheduleId?.takeIf { block.hasTimetable })
+    }
     /** The user picks one of a stage's statuses; the track is rebuilt from today's date. Signed in, it is saved on the server too. */
     fun mark(id: String, stage: Int, option: StatusOption) {
         val model = models[id] ?: return
@@ -474,9 +514,12 @@ private fun deletedActivity(id: String) = ActivityState(id, "삭제된 활동", 
 private const val MAX_PROGRAM_PAGES = 5
 /** 지난 활동 window: the last three years (2026-10-19 저녁, 2년 → 3년). */
 private const val PAST_DAYS = 1095L
-private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
+private val seoul: ZoneId = ZoneId.of("Asia/Seoul")
+private fun today(): LocalDate = LocalDate.now(seoul)
 /** When a stage is over for the 자동 통과 제안: its end, else its start (date-only steps end at the next Seoul midnight); null when undated. */
 private fun Stage.end(): Instant? = eventEnd ?: eventStart
+/** A 찜 session's start in the block's own offset, as the timetable shows it. */
+private val sessionTime: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 /** The system "add event" prefill for one stage (contract "내 캘린더에 추가"): "활동명 · 일정 제목"; null for an undated stage. */
 private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
     val start = stage.eventStart ?: return null

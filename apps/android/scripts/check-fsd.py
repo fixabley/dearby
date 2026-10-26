@@ -14,7 +14,7 @@ LAYERS = {name: i for i, name in enumerate(('app', 'pages', 'widgets', 'features
 API = {
     'widgets.activity.applyPrompt': {'ApplyConfirmationSheet'},
     'widgets.profile.profileFields': {'ProfileContactFields', 'ProfileExtraContact', 'ProfileContactKinds', 'EmailCodeEntry', 'HistoryPeriodFields', 'historyPeriod', 'ActivityInfoPicker', 'PickerItem', 'EvidenceFields', 'EvidenceRow', 'JobTagPicker', 'JobTag'},
-    'widgets.activity.activityCard': {'ActivityCard'},
+    'widgets.activity.activityCard': {'ActivityCard', 'TodayEventCard', 'TodayEventState'},
     'widgets.activity.programCard': {'ProgramCard'},
     'widgets.activity.sessionCard': {'SessionCard', 'SessionBand', 'TrackBadge'},
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},

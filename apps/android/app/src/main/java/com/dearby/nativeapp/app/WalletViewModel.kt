@@ -162,7 +162,8 @@ private fun WalletReceipt.toReceived(): ReceivedCard {
         else -> null
     }
     val received = runCatching { OffsetDateTime.parse(receivedAt).atZoneSameInstant(seoul).format(dayText) }.getOrDefault(receivedAt.take(10))
-    return ReceivedCard(id, card.toState(), context.programName, context.activityName, received, reciprocal, badge)
+    return ReceivedCard(id, card.toState(), context.programName, context.activityName, received, reciprocal, badge,
+        context.scheduleTitle, context.trackName, context.room, context.sessionTitle)
 }
 
 fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introLink,

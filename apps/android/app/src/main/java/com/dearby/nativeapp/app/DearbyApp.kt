@@ -25,6 +25,7 @@ import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.inbox.InboxPage
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
+import com.dearby.nativeapp.pages.cards.MyCardsPhase
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector, val code: String) {
@@ -36,8 +37,8 @@ private sealed interface Route {
     data class Detail(val id: String) : Route
     /** 공유받은 명함 보기 for a card App Link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the card lives in [WalletState.shared]. */
     data object Shared : Route
-    /** 내 명함 QR 보이기 for one of the account's cards. */
-    data class Qr(val card: PublishedCard) : Route
+    /** 내 명함 QR 보이기 for one of the account's cards; [activityId] presets the activity chip (오늘 내 행사 `명함 QR`, 2026-10-26). */
+    data class Qr(val card: PublishedCard, val activityId: String? = null) : Route
     data object Composer : Route
     /** 설정 (contract "설정"), opened from every tab's header. */
     data object Settings : Route
@@ -182,6 +183,23 @@ private sealed interface Route {
     val recoHeader: @Composable () -> Unit = {
         QueueEntryRow(ready, signedIn) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
     }
+    // 오늘 내 행사 `명함 QR` (2026-10-26): the chosen card's QR with the activity chip on that activity. The cards are read on the 명함 tab, so when
+    // they are not in yet the tab opens on 내 명함, whose read then brings the QR up ([qrActivity]); no card (or a failed read) just leaves the tab.
+    val myCardsState by myCards.state.collectAsStateWithLifecycle()
+    var qrActivity by remember { mutableStateOf<String?>(null) }
+    val showTodayQr: (String) -> Unit = { id ->
+        val card = myCardsState.selectedId?.let(myCards::card)
+        // `load()` first: a stale SIGNED_OUT·NO_CARD·FAILED phase from an earlier visit would otherwise drop [qrActivity] before 내 명함's own read starts.
+        if (card != null) route = Route.Qr(card, id) else { qrActivity = id; myCards.load(); tab = Tab.Cards; cardsSegment = CardsSegment.MINE }
+    }
+    LaunchedEffect(myCardsState.phase, myCardsState.selectedId, qrActivity) {
+        val id = qrActivity ?: return@LaunchedEffect
+        when (myCardsState.phase) {
+            MyCardsPhase.LOADING -> Unit
+            MyCardsPhase.LOADED -> myCardsState.selectedId?.let(myCards::card)?.let { route = Route.Qr(it, id); qrActivity = null }
+            else -> qrActivity = null
+        }
+    }
     // A card link to save: after sign-in and consent it carries on; signed in without consent it asks for the consent first.
     LaunchedEffect(ready, walletState.needSignIn) { if (ready && walletState.needSignIn) wallet.retryPending() }
     LaunchedEffect(signedIn, ready, walletState.needSignIn) { if (signedIn && !ready && walletState.needSignIn && consentNeeded) route = Route.Consent }
@@ -225,7 +243,7 @@ private sealed interface Route {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
                         ?: LaunchedEffect(screen) { route = null }
                     Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
-                    is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
+                    is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards, screen.activityId) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) {
                         (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
                         route = null
@@ -267,7 +285,7 @@ private sealed interface Route {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
                                 openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; route = Route.Consent }, header = recoHeader,
                                 hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread,
-                                sessions = sessions, sessionHeart = sessionHeart) { activityDetail = it }
+                                sessions = sessions, sessionHeart = sessionHeart, ready = ready, showQr = showTodayQr) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)

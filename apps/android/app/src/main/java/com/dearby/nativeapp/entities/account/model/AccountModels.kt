@@ -101,8 +101,12 @@ data class PasskeyItem(val id: String, val label: String, val createdAt: String,
 
 /** `GET /v1/wallet`: the account's saved cards (receipts). */
 data class Wallet(val items: List<WalletReceipt>)
-/** Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. */
-data class ExchangeContext(val activityId: Long?, val activityName: String?, val programName: String?)
+/**
+ * Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. [scheduleTitle]·[sessionTitle]·
+ * [trackName]·[room] (2026-10-26, server `feat/receipt-session-context`) say which block, session and track the QR was shown in; null until the server sends them.
+ */
+data class ExchangeContext(val activityId: Long?, val activityName: String?, val programName: String?,
+    val scheduleTitle: String? = null, val sessionTitle: String? = null, val trackName: String? = null, val room: String? = null)
 /** One received card. [reciprocal]: the owner holds one of mine too, so it is never recalled; otherwise [expiresAt] is the recall time. */
 /** A QR code for one card (contract "명함 QR 코드"): many people may use it until it is revoked or [expiresAt] passes. */
 data class QrCode(val id: String, val code: String, val expiresAt: String)
@@ -156,7 +160,8 @@ fun JSONObject.toQrCode() = QrCode(getString("id"), getString("code"), getString
 fun JSONObject.toReceipt(): WalletReceipt {
     val context = optJSONObject("context")
     return WalletReceipt(getString("id"), getJSONObject("card").toPublishedCard(), getString("receivedAt"),
-        ExchangeContext(context?.takeUnless { it.isNull("activityId") }?.getLong("activityId"), context?.text("activityName"), context?.text("programName")),
+        ExchangeContext(context?.takeUnless { it.isNull("activityId") }?.getLong("activityId"), context?.text("activityName"), context?.text("programName"),
+            context?.text("scheduleTitle"), context?.text("sessionTitle"), context?.text("trackName"), context?.text("room")),
         optBoolean("reciprocal", false), text("expiresAt"))
 }
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }

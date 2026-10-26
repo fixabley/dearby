@@ -18,15 +18,17 @@ import com.dearby.nativeapp.shared.config.cardQrUrl
 
 /**
  * 내 명함 QR 보이기 (contracts "명함 교환", "명함 QR 코드"): the QR encodes the card page, the activity chip and the current QR code. The chip starts on the
- * 진행 중 activity whose next stage is nearest (the progress track's order), and the screen brightness is raised while shown.
+ * 진행 중 activity whose next stage is nearest (the progress track's order) unless [activityId] names one, and the screen brightness is raised while shown.
  */
-@Composable fun CardQrRoute(card: PublishedCard, activityModel: ActivityViewModel, myCards: MyCardsViewModel, close: () -> Unit) {
+@Composable fun CardQrRoute(card: PublishedCard, activityModel: ActivityViewModel, myCards: MyCardsViewModel,
+    /** The activity the chip starts on (오늘 내 행사 `명함 QR`, 2026-10-26); null picks the nearest 진행 중 activity. */
+    activityId: String? = null, close: () -> Unit) {
     val activities by activityModel.state.collectAsStateWithLifecycle()
     val qr by myCards.qr.collectAsStateWithLifecycle()
     // Contract "명함 QR 코드": a code on open, revoked on leaving (top-bar back, system back or tab change all dispose this route).
     LaunchedEffect(card.id) { myCards.openQr(card.id) }
     DisposableEffect(card.id) { onDispose { myCards.closeQr() } }
-    var selected by remember { mutableStateOf(activities.activeActivities.firstOrNull()?.id) }
+    var selected by remember { mutableStateOf(activityId ?: activities.activeActivities.firstOrNull()?.id) }
     val applied = activities.appliedActivities.map { QrActivity(it.id, it.title) }
     val activity = LocalActivity.current
     DisposableEffect(activity) {
