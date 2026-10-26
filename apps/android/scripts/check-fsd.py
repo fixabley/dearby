@@ -31,6 +31,8 @@ API = {
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'SharedCardPage', 'SharedCard', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
+    # Contract "프로필 사진" (2026-10-26): the user's own circular crop and the square JPEG upload.
+    'features.photo': {'PhotoCropPage', 'decodeForCrop', 'squareJpeg'},
     'pages.recommendation': {'RecommendationViewState', 'RecommendationFunnelState', 'FunnelStep', 'ChipOption', 'FieldNode', 'EducationChoice', 'EligibilityStep', 'EligibilityFormState', 'RecommendationFunnelPage', 'EligibilityConsentSheet', 'EligibilityActionsSheet', 'EligibilityFormPage'},
     'pages.inbox': {'InboxPage', 'InboxViewState', 'InboxPhase', 'InboxCard', 'InboxRow'},
     'pages.queue': {'DiscoveryQueuePage', 'QueueViewState', 'QueueCardState', 'QueueSceneState', 'QueueFact', 'QueueIcon', 'QueueReaction', 'QueueUndo'},

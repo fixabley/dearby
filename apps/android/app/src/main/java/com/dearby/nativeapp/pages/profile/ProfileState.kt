@@ -26,6 +26,8 @@ data class ProfileViewState(
     val consentRequired: Boolean = false, val consenting: Boolean = false, val consentError: String? = null,
     /** 직무 tag picker search (setup funnel and editor). */
     val jobSearch: PickerSearchState = PickerSearchState(),
+    /** 프로필 사진 (contract "프로필 사진"): its own upload/delete, saved at once and not part of 저장. */
+    val photoBusy: Boolean = false, val photoError: String? = null,
 ) {
     /** Never saved yet: the setup funnel replaces the editor and the tab bar hides. */
     val settingUp get() = phase == ProfilePhase.LOADED && profile?.version == 0

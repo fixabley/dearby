@@ -61,7 +61,9 @@ data class AccountProfile(val name: String, val job: String, val introduction: S
     /** 개인정보 동의 기록 (contract "개인정보 동의"); null until the account agreed. Not sent on PUT. */
     val consent: ConsentRecord? = null,
     /** True when the server wants (re-)consent before any profile write; missing in older responses → false. */
-    val consentRequired: Boolean = false)
+    val consentRequired: Boolean = false,
+    /** 프로필 사진 (contract "프로필 사진", 2026-10-26): `/v1/profile/photo?v=<ms>` (API path, Bearer) or null. Read-only; its own `PUT`/`DELETE`, never in `PUT /v1/profile`. */
+    val photoUrl: String? = null)
 
 /** `GET /v1/profile.consent`: the agreed document versions and when. */
 data class ConsentRecord(val privacyVersion: String, val termsVersion: String, val consentedAt: String)
@@ -119,7 +121,7 @@ fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"),
     optJSONArray("contacts")?.objects()?.map { it.toContact() }.orEmpty(), optJSONArray("histories")?.objects()?.map { it.toHistory() }.orEmpty(), optInt("version", 0),
     optJSONArray("jobs")?.objects()?.map { it.toProfileJob() }.orEmpty(),
     consent = optJSONObject("consent")?.let { ConsentRecord(it.getString("privacyVersion"), it.getString("termsVersion"), it.getString("consentedAt")) },
-    consentRequired = optBoolean("consentRequired", false))
+    consentRequired = optBoolean("consentRequired", false), photoUrl = text("photoUrl"))
 fun JSONObject.toProfileJob() = ProfileJob(getString("id"), optJSONObject("job")?.toRef(), text("jobName"), optString("approval", "approved"), text("approvalReason"))
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },

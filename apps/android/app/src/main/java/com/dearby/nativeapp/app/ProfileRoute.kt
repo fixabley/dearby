@@ -1,6 +1,14 @@
 package com.dearby.nativeapp.app
 
 import android.content.Intent
+import android.graphics.Bitmap
+import androidx.activity.result.PickVisualMediaRequest
+import com.dearby.nativeapp.features.photo.PhotoCropPage
+import com.dearby.nativeapp.features.photo.decodeForCrop
+import com.dearby.nativeapp.features.photo.squareJpeg
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.net.Uri
 import android.provider.Settings
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -76,6 +84,20 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
     }
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { read(it, "image/jpeg", "photo.jpg") }
     val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { read(it, "application/pdf", "evidence.pdf") }
+    // 프로필 사진 (contract "프로필 사진"): the system Photo Picker (no permission), then the crop screen with the upright, downsized photo.
+    val scope = rememberCoroutineScope()
+    var cropping by remember { mutableStateOf<Bitmap?>(null) }
+    var preparing by remember { mutableStateOf(false) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        model.dismissPhotoError()
+        preparing = true
+        scope.launch {
+            val bitmap = withContext(Dispatchers.IO) { decodeForCrop(resolver, uri) }
+            preparing = false
+            if (bitmap == null) model.photoFailed("이 사진은 열 수 없어요. 다른 사진을 골라 주세요.") else cropping = bitmap
+        }
+    }
     when {
         eligibilityForm != null -> eligibilityForm?.let { form ->
             BackHandler(onBack = recommendation::formBack)
@@ -85,6 +107,14 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         signedIn && state.phase == ProfilePhase.LOADED && state.consentRequired -> Column {
             DearbyTopBar("내 프로필") { TabActions(settings, notify) }
             ConsentRequiredMessage(askConsent, Modifier.weight(1f).fillMaxWidth())
+        }
+        cropping != null -> cropping?.let { bitmap ->
+            PhotoCropPage(bitmap, state.photoBusy, state.photoError, cancel = { cropping = null; model.dismissPhotoError() }) { square ->
+                scope.launch {
+                    val jpeg = withContext(Dispatchers.Default) { squareJpeg(bitmap, square) }
+                    model.uploadPhoto(jpeg) { cropping = null }
+                }
+            }
         }
         funnel != null -> funnel?.let { current ->
             HistoryFunnelPage(current, model::changeDraft, model::goTo, model::next, model::search,
@@ -102,7 +132,9 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) askConsent() else model.save() }, model::revert,
-            { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, leaveSetup)
+            { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, leaveSetup,
+            pickPhoto = { if (state.consentRequired) askConsent() else if (!preparing) pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            deletePhoto = { if (state.consentRequired) askConsent() else model.deletePhoto() })
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
     eligibilitySheet?.let { sheet ->

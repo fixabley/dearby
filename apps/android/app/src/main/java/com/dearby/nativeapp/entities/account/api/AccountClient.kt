@@ -139,12 +139,22 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun restoreProfile(version: Int, session: AccountSession) = send("POST", "profile/versions/$version/restore", JSONObject(), session).toProfile()
     /** Multipart upload of one evidence file (max 3 per history, 5MB, image or PDF). */
     suspend fun uploadEvidence(historyId: String, fileName: String, contentType: String, bytes: ByteArray, session: AccountSession): EvidenceMeta {
-        val boundary = "dearby-" + java.util.UUID.randomUUID()
-        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"${fileName.replace("\"", "")}\"\r\nContent-Type: $contentType\r\n\r\n"
-        val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
-        val text = request(HttpRequest("POST", "$api/v1/profile/histories/$historyId/evidence", session.accessToken, null, body, "multipart/form-data; boundary=$boundary"))
+        val text = upload("POST", "profile/histories/$historyId/evidence", fileName, contentType, bytes, session)
         return try { JSONObject(text).toEvidence() } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
+    /** 프로필 사진 (contract "프로필 사진"): the square JPEG the crop screen made; replaces any earlier one. Returns the new `photoUrl`. */
+    suspend fun uploadProfilePhoto(jpeg: ByteArray, session: AccountSession): String {
+        val text = upload("PUT", "profile/photo", "photo.jpg", "image/jpeg", jpeg, session)
+        return try { JSONObject(text).getString("photoUrl") } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
+    }
+    /** 204, also when there was none. Cards already made keep their own copy. */
+    suspend fun deleteProfilePhoto(session: AccountSession) { request("DELETE", "profile/photo", null, session) }
+    /**
+     * A photo by its API path (`photoUrl`, e.g. `/v1/profile/photo?v=…`, `/v1/cards/:id/photo?v=…`): the profile one needs the owner's [session];
+     * a card's has the card's read permission (owner, holder or `?code=`). Asks for an image, not the JSON the other calls accept.
+     */
+    suspend fun photo(path: String, session: AccountSession?): ByteArray =
+        exchange(HttpRequest("GET", api + path, session?.accessToken, null, headers = mapOf("Accept" to "image/jpeg, image/*"))).bytes ?: throw AccountException(AccountError.UNAVAILABLE)
     suspend fun deleteEvidence(historyId: String, evidenceId: String, session: AccountSession) { request("DELETE", "profile/histories/$historyId/evidence/$evidenceId", null, session) }
     /**
      * Picker searches for the history steps (organizations, programs, roles need a session; activities are public). Activities go with `forHistory=true`
@@ -279,12 +289,20 @@ class AccountClient(private val api: String, private val transport: Transport = 
         val text = request(method, path, body, session, headers)
         return try { JSONObject(text) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
+    /** One `file` part (multipart/form-data). */
+    private suspend fun upload(method: String, path: String, fileName: String, contentType: String, bytes: ByteArray, session: AccountSession): String {
+        val boundary = "dearby-" + java.util.UUID.randomUUID()
+        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"${fileName.replace("\"", "")}\"\r\nContent-Type: $contentType\r\n\r\n"
+        val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
+        return request(HttpRequest(method, "$api/v1/$path", session.accessToken, null, body, "multipart/form-data; boundary=$boundary"))
+    }
     private suspend fun request(method: String, path: String, body: JSONObject?, session: AccountSession?, headers: Map<String, String> = emptyMap()): String =
         request(HttpRequest(method, "$api/v1/$path", session?.accessToken, body?.toString(), headers = headers))
-    private suspend fun request(http: HttpRequest): String {
+    private suspend fun request(http: HttpRequest): String = exchange(http).body
+    private suspend fun exchange(http: HttpRequest): HttpResponse {
         val response = try { transport.send(http) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
         return when (response.status) {
-            in 200..299 -> response.body
+            in 200..299 -> response
             // RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
             400 -> throw AccountException(AccountError.BAD_REQUEST, runCatching { JSONObject(response.body).optString("detail").ifBlank { null } }.getOrNull())
             401 -> throw AccountException(AccountError.UNAUTHORIZED)

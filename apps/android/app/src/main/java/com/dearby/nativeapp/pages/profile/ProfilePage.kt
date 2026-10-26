@@ -47,6 +47,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     recommendation: (@Composable () -> Unit)? = null,
     /** `나중에` on the first-profile funnel ([ProfileSetupPage]). */
     leaveSetup: () -> Unit = {},
+    /** 프로필 사진 (contract "프로필 사진"): opens the system photo picker, then the crop screen; [deletePhoto] after the confirmation below. */
+    pickPhoto: () -> Unit = {}, deletePhoto: () -> Unit = {},
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
@@ -54,6 +56,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     val settingUp = state.settingUp
     val loaded = state.phase == ProfilePhase.LOADED && !settingUp
     var asking by remember { mutableStateOf(false) }
+    var confirmPhotoDelete by remember { mutableStateOf(false) }
     // 완료 and system back do the same thing in edit mode (lead 2026-10-20): ask when something changed, otherwise leave edit mode.
     val finish = { if (changed) asking = true else edit(false) }
     BackHandler(enabled = loaded && state.editing && !asking, onBack = finish)
@@ -80,6 +83,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation); return@let }
                 Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                    PhotoRow(form.name, state.profile?.photoUrl, state.photoBusy, state.photoError, pickPhoto) { confirmPhotoDelete = true }
                     // Floating-label rows (contract "플로팅 라벨·필수 표시"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
                     DearbyField("이름", form.name, { change(form.copy(name = it)) }, placeholder = "실명 또는 활동명", error = state.errors?.name, required = true, imeAction = ImeAction.Next)
                     Labeled("직무", Modifier.pointerInput(jobSearchFocus) { detectTapGestures { runCatching { jobSearchFocus.requestFocus() } } }) {
@@ -118,6 +122,27 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             TextButton({ asking = false; revert(); edit(false) }) { Text("버리기") }
             TextButton({ asking = false }) { Text("취소") }
         }, title = { Text("바꾼 내용을 저장할까요?") }, text = { Text("저장하지 않으면 바꾼 내용이 사라져요.") })
+    // Cards copy the photo when they are made (contract "프로필 사진": 발행 시점 복사), so they keep it.
+    if (confirmPhotoDelete) AlertDialog({ confirmPhotoDelete = false }, title = { Text("프로필 사진을 지울까요?") },
+        text = { Text("프로필 사진을 지워도 이미 만든 명함의 사진은 명함을 고치거나 지울 때까지 남아요.") },
+        confirmButton = { TextButton({ confirmPhotoDelete = false; deletePhoto() }) { Text("지우기", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirmPhotoDelete = false }) { Text("취소") } })
+}
+
+/** The photo in edit mode: the round photo (or initial) with 사진 넣기/바꾸기 and 지우기. Optional; it saves at once, apart from 저장. */
+@Composable private fun PhotoRow(name: String, photoUrl: String?, busy: Boolean, error: String?, pick: () -> Unit, delete: () -> Unit) = Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(contentAlignment = Alignment.Center) {
+            PersonAvatar(name, photoUrl, 72.dp)
+            if (busy) CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
+        }
+        Column {
+            TextButton(pick, enabled = !busy) { Text(if (photoUrl == null) "사진 넣기" else "사진 바꾸기") }
+            if (photoUrl != null) TextButton(delete, enabled = !busy) { Text("사진 지우기", color = if (busy) MaterialTheme.colorScheme.onSurface.copy(alpha = .38f) else MaterialTheme.colorScheme.error) }
+        }
+    }
+    Text("선택이에요. 명함을 만들 때 넣을 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+    error?.let { DearbyFieldError(it) }
 }
 
 /** Read mode (contract "프로필 탭은 읽기 모드가 기본"): the same sections as the editor as read-only rows in the card body's idiom; no inputs, no bar. */

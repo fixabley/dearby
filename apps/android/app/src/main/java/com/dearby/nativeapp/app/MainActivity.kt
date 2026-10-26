@@ -37,6 +37,8 @@ import android.content.Context
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
 import com.dearby.nativeapp.shared.ui.DearbyTheme
+import com.dearby.nativeapp.shared.ui.LocalPhotoLoader
+import androidx.compose.runtime.CompositionLocalProvider
 
 class MainActivity : ComponentActivity() {
     private val activityModel: ActivityViewModel by viewModels {
@@ -116,12 +118,13 @@ class MainActivity : ComponentActivity() {
         account.beforeSignOut = notifications::unregister
         ContextCompat.registerReceiver(this, timeZoneChanged, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContent {
-            DearbyTheme {
+            // Photos (contract "프로필 사진") need the session, so every avatar loads through the account's store.
+            DearbyTheme { CompositionLocalProvider(LocalPhotoLoader provides account.photos::load) {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
                     favoritesLink, { favoritesLink = null }, screenshot)
                 PendingAccountRoute(account)
-            }
+            } }
         }
     }
     override fun onDestroy() {
