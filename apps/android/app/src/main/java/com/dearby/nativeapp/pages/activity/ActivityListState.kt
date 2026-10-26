@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.activity
 
+import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.shared.ui.TagLabel
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
@@ -8,13 +9,22 @@ import java.time.Instant
 import java.time.LocalDate
 
 enum class ActivityListPhase { LOADING, FAILED, LOADED }
+/** One 종류 dropdown item: the API category code (also the icon key) and its Korean label. */
+data class CategoryOption(val code: String, val label: String)
 /**
  * 발견 `프로그램 | 이벤트` (2026-10-26, contract "프로그램·이벤트 전환"): the API `kind` code. 이벤트 is 컨퍼런스·워크샵·밋업·강연; 프로그램 is every
- * other kind and 미분류 (해커톤 included).
+ * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (2026-10-26 사용자 요청), in menu order.
  */
-enum class DiscoveryKind(val code: String, val label: String) { PROGRAM("program", "프로그램"), EVENT("event", "이벤트");
+enum class DiscoveryKind(val code: String, val label: String, val categories: List<CategoryOption>) {
+    PROGRAM("program", "프로그램", options(ActivityCategory.BOOTCAMP, ActivityCategory.CLUB, ActivityCategory.HACKATHON, ActivityCategory.CONTEST, ActivityCategory.STUDY, ActivityCategory.OTHER)),
+    EVENT("event", "이벤트", options(ActivityCategory.CONFERENCE, ActivityCategory.MEETUP, ActivityCategory.LECTURE, ActivityCategory.WORKSHOP));
+    /** The chosen [categories] in menu order; codes of the other kind (or unknown) are dropped. */
+    fun chosen(codes: Set<String>) = categories.filter { it.code in codes }
+    /** The `category=` value, or null for 전체 (nothing chosen). */
+    fun categoryQuery(codes: Set<String>) = chosen(codes).joinToString(",") { it.code }.ifEmpty { null }
     companion object { fun of(code: String?) = entries.firstOrNull { it.code == code } ?: PROGRAM }
 }
+private fun options(vararg categories: ActivityCategory) = categories.map { CategoryOption(it.name, it.label) }
 /**
  * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the dropdown's three groups and the server states each sends as `status=`. [code] is what the
  * device keeps and what analytics `discovery_status_filter` reports.
@@ -140,6 +150,8 @@ data class ActivityListState(
     val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
     /** 발견 `프로그램 | 이벤트`, kept on the device. */
     val kind: DiscoveryKind = DiscoveryKind.PROGRAM,
+    /** The 종류 dropdown's chosen codes for [kind] (kept on the device per kind); empty = 전체. */
+    val categories: Set<String> = emptySet(),
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

@@ -71,16 +71,18 @@ import kotlinx.coroutines.launch
  * loaded (`GET /v1/activities/:id`, null when it is gone → "삭제된 활동"). Signing out drops the account's records from memory.
  */
 class ActivityViewModel(
-    private val fetchPrograms: suspend (String?, String?, String, String) -> ProgramPage, // query, cursor, status, kind
-    private val fetch: suspend (String?, String?, String?, String, String?) -> ActivityPage, // query, cursor, programId, status, kind
+    private val fetchPrograms: suspend (String?, String?, String, String, String?) -> ProgramPage, // query, cursor, status, kind, category
+    private val fetch: suspend (String?, String?, String?, String, String?, String?) -> ActivityPage, // query, cursor, programId, status, kind, category
     private val fetchOne: suspend (String) -> ActivityModel? = { null },
     private val account: AccountViewModel? = null,
     /** 발견 `프로그램 | 이벤트` remembered on the device (2026-10-26): the starting choice and where a change is saved. */
     kind: DiscoveryKind = DiscoveryKind.PROGRAM, private val saveKind: (DiscoveryKind) -> Unit = {},
     /** The 상태 dropdown remembered on the device (2026-10-26), like [kind]. */
     statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, private val saveStatusGroups: (Set<StatusGroup>) -> Unit = {},
+    /** The 종류 dropdown remembered on the device per kind (2026-10-26): read when the kind changes, saved on each change. */
+    private val loadCategories: (DiscoveryKind) -> Set<String> = { emptySet() }, private val saveCategories: (DiscoveryKind, Set<String>) -> Unit = { _, _ -> },
 ) : ViewModel() {
-    private val mutable = MutableStateFlow(ActivityListState(kind = kind, statusGroups = statusGroups))
+    private val mutable = MutableStateFlow(ActivityListState(kind = kind, statusGroups = statusGroups, categories = loadCategories(kind)))
     val state = mutable.asStateFlow()
     private var models: Map<String, ActivityModel> = emptyMap()
     // The user's own stage statuses by activity id, then schedule id (contract "내 활동 서버 저장·일정 상태").
@@ -130,10 +132,19 @@ class ActivityViewModel(
         Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(groups))
         start(debounce = false)
     }
-    /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind. */
+    /** The 종류 dropdown (2026-10-26 사용자 요청): the list and expanded programs are read again with `category=`; nothing chosen is 전체. */
+    fun setCategories(value: Set<String>) {
+        if (value == state.value.categories) return
+        val kind = state.value.kind
+        mutable.update { it.copy(categories = value) }
+        saveCategories(kind, value)
+        Analytics.event("discovery_category_filter", "categories" to kind.chosen(value).joinToString(",") { it.code.lowercase() })
+        start(debounce = false)
+    }
+    /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind and its kept 종류. */
     fun setKind(value: DiscoveryKind) {
         if (value == state.value.kind) return
-        mutable.update { it.copy(kind = value) }
+        mutable.update { it.copy(kind = value, categories = loadCategories(value)) }
         saveKind(value)
         Analytics.event("discovery_mode", "mode" to value.code)
         start(debounce = false)
@@ -187,7 +198,7 @@ class ActivityViewModel(
         }
     }
     private suspend fun programPage(cursor: String?): ProgramPage? = try {
-        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, StatusGroup.query(state.value.statusGroups), state.value.kind.code)
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, StatusGroup.query(state.value.statusGroups), state.value.kind.code, state.value.kind.categoryQuery(state.value.categories))
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
@@ -213,13 +224,14 @@ class ActivityViewModel(
         mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities())) }
         val kind = state.value.kind.code
         val status = StatusGroup.query(state.value.statusGroups)
+        val category = state.value.kind.categoryQuery(state.value.categories)
         programJobs[programId] = viewModelScope.launch {
             val items = mutableListOf<ActivityModel>()
             var cursor: String? = null
             try {
                 // Every page of the program's activities in the chosen states (contract "활동 상태": the server decides each state).
                 for (attempt in 1..MAX_PROGRAM_PAGES) {
-                    val page = fetch(null, cursor, programId, status, kind)
+                    val page = fetch(null, cursor, programId, status, kind, category)
                     items += page.items
                     // `break`, not `return@repeat`: the latter only skips to the next pass, which fetched page 1 again (each activity shown 5 times).
                     cursor = page.nextCursor ?: break

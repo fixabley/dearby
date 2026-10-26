@@ -46,12 +46,13 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 ActivityViewModel(
-                    { query, cursor, status, kind -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, status, kind) } },
-                    { query, cursor, programId, status, kind -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, status, kind) } },
+                    { query, cursor, status, kind, category -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, status, kind, category) } },
+                    { query, cursor, programId, status, kind, category -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, status, kind, category) } },
                     { id -> withContext(Dispatchers.IO) { fetchActivity(ApiOrigin.current, id) } },
                     account,
                     DiscoveryKind.of(device.discoveryKind), { device.discoveryKind = it.code },
                     StatusGroup.of(device.discoveryStatus), { device.discoveryStatus = StatusGroup.codes(it) },
+                    { device.discoveryCategories(it.code) }, { kind, codes -> device.setDiscoveryCategories(kind.code, codes) },
                 )
             }
         }

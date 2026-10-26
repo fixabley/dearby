@@ -77,6 +77,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     unread: Int = 0,
     /** 발견 `프로그램 | 이벤트` (2026-10-26). */
     setKind: (DiscoveryKind) -> Unit = {},
+    /** 종류 dropdown (2026-10-26): the chosen category codes for the current kind; empty = 전체. */
+    setCategories: (Set<String>) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
@@ -106,7 +108,10 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                 }
                 DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
                     Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
-                StatusFilter(state.statusGroups, setStatusGroups, Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
+                Row(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusFilter(state.statusGroups, setStatusGroups)
+                    CategoryFilter(state.kind.categories, state.categories, setCategories)
+                }
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
             PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
@@ -116,8 +121,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
-                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "상태에서 ‘진행 중’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
-                    programs.isEmpty() -> DearbyEmptyState("고른 상태의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
+                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "상태에서 ‘진행 중’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
+                    programs.isEmpty() -> DearbyEmptyState("고른 조건의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
                     else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
@@ -210,6 +215,36 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
             StatusGroup.entries.forEach { group ->
                 val checked = group in groups
                 DropdownMenuItem({ Text(group.label) }, { change(if (checked) groups - group else groups + group) },
+                    Modifier.semantics { role = Role.Checkbox; toggleableState = ToggleableState(checked) },
+                    leadingIcon = { Checkbox(checked, null) })
+            }
+        }
+    }
+}
+
+/**
+ * 종류 필터 (2026-10-26 사용자 요청), the same idiom as [StatusFilter]: the current kind's [options] as checkbox items with the category icon.
+ * Nothing chosen is 전체 (`종류: 전체`); one or two chosen read `부트캠프·동아리`, three or more `부트캠프 외 2`.
+ */
+@Composable private fun CategoryFilter(options: List<CategoryOption>, chosen: Set<String>, change: (Set<String>) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    val labels = options.filter { it.code in chosen }.map { it.label }
+    val summary = when {
+        labels.isEmpty() -> "종류: 전체"
+        labels.size <= 2 -> labels.joinToString("·")
+        else -> "${labels.first()} 외 ${labels.size - 1}"
+    }
+    Box(modifier) {
+        FilterChip(labels.isNotEmpty(), { open = true }, { Text(summary, maxLines = 1) }, Modifier.heightIn(min = 48.dp), trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, null) })
+        DropdownMenu(open, { open = false }) {
+            options.forEach { option ->
+                val checked = option.code in chosen
+                DropdownMenuItem({
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(categoryIcon(option.code), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(option.label)
+                    }
+                }, { change(if (checked) chosen - option.code else chosen + option.code) },
                     Modifier.semantics { role = Role.Checkbox; toggleableState = ToggleableState(checked) },
                     leadingIcon = { Checkbox(checked, null) })
             }

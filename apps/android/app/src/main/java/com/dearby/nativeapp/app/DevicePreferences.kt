@@ -25,6 +25,9 @@ class DevicePreferences(context: Context) {
     var discoveryStatus: String
         get() = preferences.getString("discoveryStatus", null) ?: "available"
         set(value) = preferences.edit { putString("discoveryStatus", value) }
+    /** 발견 종류 dropdown (2026-10-26) per kind (`program`·`event`): the chosen category codes; empty (전체) until changed. */
+    fun discoveryCategories(kind: String): Set<String> = preferences.getString("discoveryCategories.$kind", null).orEmpty().split(',').filter { it.isNotEmpty() }.toSet()
+    fun setDiscoveryCategories(kind: String, codes: Set<String>) = preferences.edit { putString("discoveryCategories.$kind", codes.joinToString(",")) }
     var pushStarted: Boolean
         get() = preferences.getBoolean("pushStarted", false)
         set(value) = preferences.edit { putBoolean("pushStarted", value) }
