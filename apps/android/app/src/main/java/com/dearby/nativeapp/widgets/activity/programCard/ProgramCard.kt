@@ -70,8 +70,9 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
     /** [deadline] is an activity date, not a recruitment deadline: `M월 d일 행사` instead of `마감`. */
     deadlineIsEvent: Boolean = false,
     /**
-     * 발견 `이벤트` (2026-10-26, same as iOS): the line shows the event date instead of the deadline — [latestActivityAt] (the kind's most recent
-     * activity start) as `M월 d일 행사` while it is ahead, else `최근 yyyy.M`.
+     * 발견 `이벤트` (2026-10-26, same as iOS #398): the line shows the event date instead of the deadline. The summary's dates are per kind, so an
+     * open event whose nearest date is its start ([deadlineIsEvent]) shows [deadline] as `M월 d일 행사`; otherwise [latestActivityAt] (the kind's
+     * most recent activity start) as `M월 d일 행사` while it is ahead, else `최근 yyyy.M`.
      */
     eventDates: Boolean = false,
     /** An open or upcoming activity has a 트랙·세션 시간표 (`ProgramSummary.hasTimetable`): a `시간표` line under the tags, as on the activity card. */
@@ -87,6 +88,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
     LaunchedEffect(expanded) { rotation.animateTo(if (expanded) 180f else 0f, if (reduceMotion) snap() else spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)) }
     val count = openCount + upcomingCount
     val meta = when {
+        eventDates && openCount > 0 && deadlineIsEvent && deadline != null -> dayFormat.format(deadline) + " 행사"
         eventDates -> latestActivityAt?.let { if (it > Instant.now()) dayFormat.format(it) + " 행사" else "최근 " + monthFormat.format(it) }
         openCount > 0 && deadline != null -> dayFormat.format(deadline) + if (deadlineIsEvent) " 행사" else " 마감"
         openCount == 0 && upcomingCount > 0 && nearestStart != null -> dayFormat.format(nearestStart) + " 시작"
