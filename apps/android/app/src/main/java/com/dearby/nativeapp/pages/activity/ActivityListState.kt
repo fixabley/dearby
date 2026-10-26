@@ -85,6 +85,8 @@ data class ActivityState(
     val periodDetail: String? = null, val deadlineCount: String? = null, val deadlineDraft: CalendarDraft? = null,
     /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no badge; [status] stands where the recruitment dates go. */
     val noRecruitment: Boolean = false,
+    /** `시작 D-5`/`오늘 시작` beside the `모집 예정` badge (user 2026-10-26); null unless 모집 예정 with a known recruitment start. */
+    val startCount: String? = null,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"

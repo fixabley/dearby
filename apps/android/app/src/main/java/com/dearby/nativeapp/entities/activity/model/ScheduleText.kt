@@ -48,10 +48,13 @@ fun StageSchedule.scheduleText() = scheduleText(startAt, endAt, startDate, endDa
 private val shortDay = DateTimeFormatter.ofPattern("M.d", Locale.KOREAN)
 private val shortDayWithYear = DateTimeFormatter.ofPattern("yyyy.M.d", Locale.KOREAN)
 
+/** The recruitment start's Seoul day (`startAt`, else `startDate`); null when the window has no start. */
+private fun ApplicationWindow.firstDay(): LocalDate? = instant(startAt)?.atZone(SEOUL)?.toLocalDate() ?: startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+
 /** The recruitment window's first and last Seoul day and the deadline time (null for an all-day end); null unless both ends are known. */
 private fun ApplicationWindow.days(): Triple<LocalDate, LocalDate, Instant?>? {
     val end = instant(endAt)
-    val first = instant(startAt)?.atZone(SEOUL)?.toLocalDate() ?: startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+    val first = firstDay() ?: return null
     val last = end?.atZone(SEOUL)?.toLocalDate() ?: endDateExclusive?.let { runCatching { LocalDate.parse(it).minusDays(1) }.getOrNull() } ?: return null
     return Triple(first, last, end)
 }
@@ -70,4 +73,13 @@ fun ApplicationWindow.rangeText(withTime: Boolean = false, today: LocalDate = Lo
 fun ApplicationWindow.deadlineCount(today: LocalDate = LocalDate.now(SEOUL)): String? {
     val left = ChronoUnit.DAYS.between(today, days()?.second ?: return null)
     return when { left > 0 -> "D-$left"; left == 0L -> "D-DAY"; else -> null }
+}
+
+/**
+ * `시작 D-5` or `오늘 시작` to the recruitment start's Seoul day while 모집 예정 (user 2026-10-26 "모집 예정 활동에 시작 D-5 배지"), the badge
+ * beside the status chip; null without a start (the chip alone) or once it began.
+ */
+fun ApplicationWindow.startCount(today: LocalDate = LocalDate.now(SEOUL)): String? {
+    val left = ChronoUnit.DAYS.between(today, firstDay() ?: return null)
+    return when { left > 0 -> "시작 D-$left"; left == 0L -> "오늘 시작"; else -> null }
 }

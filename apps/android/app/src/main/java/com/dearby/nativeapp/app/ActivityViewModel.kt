@@ -15,6 +15,7 @@ import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.entities.activity.model.scheduleText
 import com.dearby.nativeapp.entities.activity.model.rangeText
 import com.dearby.nativeapp.entities.activity.model.deadlineCount
+import com.dearby.nativeapp.entities.activity.model.startCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
@@ -474,6 +475,8 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
         periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
         deadlineDraft = deadline?.let { draft(it) },
         noRecruitment = this.status == "NO_RECRUITMENT",
+        // 시작 D-n (user 2026-10-26): by the label, so an older API without `status` gets it from the same date judgment.
+        startCount = application?.takeIf { status == "모집 예정" }?.startCount(),
     )
 }
 /**

@@ -45,7 +45,8 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // 모집 일정 미정 has no badge (contract "활동 상태"); it is the 모집 기간 value below.
                 val undated = activity.noRecruitment
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { if (!undated) ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it, icon = categoryIcon(activity.categoryCode)) } }
+                // 시작 D-n (user 2026-10-26) beside the 모집 예정 badge, in the same badge style and colour.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { if (!undated) ExampleBadge(activity.status, true); activity.startCount?.let { ExampleBadge(it, true) }; activity.category?.let { ExampleBadge(it, icon = categoryIcon(activity.categoryCode)) } }
                 Row(verticalAlignment = Alignment.Top) {
                     Text(activity.title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
                     FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { if (activity.applied) viewInMine() else addToMine() }
