@@ -1,11 +1,11 @@
 // Browser side of the web sign-in (contract native-v1.md "웹 로그인"): same-origin `/api/auth/*` and the account routes of `/api/*`.
 // Tokens never arrive here; the server keeps them in HttpOnly cookies.
 // The refresh-once wrapper (`accountRequest`·`accountSend`) lives in `lib/client.ts` since 내 활동 (2단계 B) shares it.
-import { accountRequest as account, accountSend, JSON_HEADERS as json, mutateGuest, request, RequestError } from "@/lib/client";
+import { accountRequest as account, accountSend, JSON_HEADERS, mutateGuest, request, RequestError } from "@/lib/client";
 import type { ProfileConsent } from "@/lib/models";
 
 function send<T>(path: string, method: "POST" | "PATCH" | "DELETE", body: unknown = {}) {
-  return request<T>(path, { method, headers: json, body: JSON.stringify(body) });
+  return request<T>(path, { method, headers: JSON_HEADERS, body: JSON.stringify(body) });
 }
 
 export type Session = { signedIn: boolean; consent?: ProfileConsent | null };
@@ -26,7 +26,7 @@ export type Provider = "apple" | "google";
 /** 200 → signed in; 202 → a first-time account that still has to be created or linked (`linkToken`, 10 minutes, once). */
 export type SocialResult = { kind: "signedIn" } | { kind: "needsAccount"; linkToken: string; email: string | null };
 async function social(path: string, body: unknown): Promise<SocialResult> {
-  const response = await fetch(`/api${path}`, { method: "POST", headers: json, body: JSON.stringify(body), credentials: "same-origin", cache: "no-store" });
+  const response = await fetch(`/api${path}`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body), credentials: "same-origin", cache: "no-store" });
   const payload: unknown = await response.json().catch(() => undefined);
   if (!response.ok) {
     const error = (payload as { error?: { code?: unknown; detail?: unknown } } | undefined)?.error;

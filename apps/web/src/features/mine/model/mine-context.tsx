@@ -20,7 +20,6 @@ export type Mine = {
   status: Status;
   entries: MineEntry[];
   favorites: FavoriteSession[];
-  has: (activityId: number) => boolean;
   entry: (activityId: number) => MineEntry | undefined;
   /** `PUT /me/activities/{id}` (idempotent), 사용 통계 `myactivity_add`, then the 통과 제안 once per activity. Throws on failure. */
   add: (activity: Activity, source: "discovery" | "link") => Promise<void>;
@@ -80,8 +79,6 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!active) return;
     const controller = new AbortController();
-    const settle = (change: (entries: MineEntry[]) => MineEntry[]) =>
-      setLoaded((previous) => (previous && previous.key === key ? { ...previous, entries: change(previous.entries) } : previous));
     Promise.all([listMine(), listSessionFavorites().catch(() => ({ items: [] as FavoriteSession[] }))])
       .then(([mine, sessions]) => {
         if (controller.signal.aborted) return;
@@ -89,12 +86,12 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
         for (const item of mine.items) {
           if (item.deleted) continue;
           fetchActivity(item.activityId, controller.signal).then(
-            (activity) => settle((list) => list.map((entry) => (entry.item.activityId === item.activityId ? { ...entry, activity } : entry))),
+            (activity) => patch((list) => list.map((entry) => (entry.item.activityId === item.activityId ? { ...entry, activity } : entry))),
             (error) => {
               if (controller.signal.aborted) return;
               // A withdrawn activity reads as `삭제된 활동`; any other failure leaves the row loading until `reload`.
               if (error instanceof RequestError && error.status === 404)
-                settle((list) => list.map((entry) => (entry.item.activityId === item.activityId ? { ...entry, activity: null } : entry)));
+                patch((list) => list.map((entry) => (entry.item.activityId === item.activityId ? { ...entry, activity: null } : entry)));
             },
           );
         }
@@ -105,7 +102,7 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
         else setLoaded({ key, status: "error", entries: [], favorites: [] });
       });
     return () => controller.abort();
-  }, [active, key, expired]);
+  }, [active, key, expired, patch]);
 
   const replace = useCallback(
     (item: MyActivity, activity?: Activity) =>
@@ -182,7 +179,6 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
       status,
       entries,
       favorites,
-      has: (activityId) => entries.some((entry) => entry.item.activityId === activityId),
       entry: (activityId) => entries.find((entry) => entry.item.activityId === activityId),
       add,
       remove,

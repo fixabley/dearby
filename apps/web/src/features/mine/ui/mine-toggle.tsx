@@ -18,9 +18,9 @@ export function MineToggle({ activity, source, className }: { activity: Activity
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const base = cn("grid size-9 shrink-0 place-items-center rounded-full transition-opacity active:opacity-70", className);
-  if (mine.has(activity.id))
+  if (mine.entry(activity.id))
     return (
-      <Link href={`/mine/${activity.id}`} aria-label="내 활동으로" title="내 활동으로" className={cn(base, "bg-mint text-teal")}>
+      <Link href={`/mine/${activity.id}`} aria-label="내 활동으로" className={cn(base, "bg-mint text-teal")}>
         <Icon name="check-circle" size="inline" />
       </Link>
     );
@@ -28,7 +28,6 @@ export function MineToggle({ activity, source, className }: { activity: Activity
     <button
       type="button"
       aria-label={error ? "내 활동에 추가하지 못했어요. 다시 시도" : "내 활동에 추가"}
-      title="내 활동에 추가"
       disabled={busy || mine.status === "loading"}
       className={cn(base, "bg-fill text-teal disabled:opacity-50", error && "text-danger")}
       onClick={() =>

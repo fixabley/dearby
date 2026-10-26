@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { type Activity, type ScheduleStatus, activityStatus, applicable, recruitmentDate, scheduleLabel, upcomingStartDday } from "@/lib/models";
+import type { ScheduleStatus } from "@/lib/models";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { useMine } from "@/features/mine/model/mine-context";
 import { type Stage, buildProgress, markedStatus, progressBadge, stageDate, statusOptions } from "@/features/mine/model/stages";
@@ -16,7 +16,7 @@ import { InsetGroup } from "@/shared/ui/inset-group";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Failure } from "@/shared/ui/states";
-import { ActivityCard } from "@/widgets/activity/activity-card";
+import { ActivityCard, activityCardProps } from "@/widgets/activity/activity-card";
 import { TimetableSheet } from "@/widgets/activity/timetable";
 
 /**
@@ -108,7 +108,7 @@ export function ActivityProgress({ id }: { id: number }) {
     <>
       <LargeTitle>진행 단계</LargeTitle>
       <Card className="mt-3 p-2.5">
-        <ActivityCard {...headerProps(activity, now)} />
+        <ActivityCard {...activityCardProps(activity, now)} fieldTag={undefined} traitTags={[]} />
       </Card>
       <p className="mt-1.5 px-4 text-footnote text-secondary-label">
         {activity.program.name} · {activity.organization.name}
@@ -140,24 +140,6 @@ export function ActivityProgress({ id }: { id: number }) {
       </Dialog>
     </>
   );
-}
-
-/** The header card: the discovery card without its tag line (contract "진행 단계 화면 정리" › 활동 정보) and without the toggle. */
-function headerProps(activity: Activity, now: number) {
-  const status = activityStatus(activity, now);
-  const { text, dday } = recruitmentDate(activity.application, now);
-  const recruitmentLabel = status === "NO_RECRUITMENT" ? "" : text;
-  return {
-    id: activity.id,
-    name: activity.name,
-    status,
-    recruitmentLabel,
-    recruitmentDday: dday,
-    startDday: upcomingStartDday(activity, now),
-    recruitmentActive: applicable(status) && recruitmentLabel !== "",
-    activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
-    placeName: activity.place?.name ?? activity.location ?? null,
-  };
 }
 
 const statusKey = (status: ScheduleStatus) => (status.id === null ? `kind:${status.kind}` : `id:${status.id}`);

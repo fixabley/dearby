@@ -20,7 +20,7 @@ const SEOUL = "Asia/Seoul";
 
 /** The user's own mark on a stage: an admin status by id, or a default one by kind; unmarked reads as 대기. Not an organizer result. */
 export type Mark = { statusId: number | null; kind: StatusKind };
-export const WAIT: Mark = { statusId: null, kind: "WAITING" };
+const WAIT: Mark = { statusId: null, kind: "WAITING" };
 /** The default 대기·통과·탈락 a schedule without admin statuses offers (the server fills them in; older responses send none). */
 const DEFAULT_STATUSES: ScheduleStatus[] = [
   { id: null, name: "대기", kind: "WAITING" },

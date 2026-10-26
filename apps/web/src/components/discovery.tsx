@@ -11,16 +11,12 @@ import {
   type StatusGroup,
   STATUS_GROUPS,
   activityStatus,
-  applicable,
   deadlineLabel,
   fieldTagsOf,
   groupStatuses,
   traitTagsOf,
   programLogoSrc,
   startLabel,
-  recruitmentDate,
-  scheduleLabel,
-  upcomingStartDday,
 } from "@/lib/models";
 import { track } from "@/shared/lib/analytics";
 import { errorMessage, request } from "@/lib/client";
@@ -35,7 +31,7 @@ import { Input } from "@/shared/ui/input";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Segmented } from "@/shared/ui/segmented";
-import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
+import { ActivityCard, ActivityCardSkeleton, activityCardProps } from "@/widgets/activity/activity-card";
 import { TodayCard } from "@/widgets/activity/today-card";
 import { MineToggle } from "@/features/mine/ui/mine-toggle";
 import { DiscoveryFilterBar, type DiscoveryFilters } from "@/widgets/activity/discovery-filter";
@@ -298,32 +294,9 @@ function SearchField({ q, kind, groups, categories }: { q: string; kind: Kind; g
   );
 }
 
-/**
- * Props the renewed activity card needs (contract "발견 카드 리뉴얼"·"활동 상태"): the capsule is the server's status; 모집 정보 없음 has
- * none and its `모집` row reads `모집 일정 미정`; the row stands out only while 모집 중·모집 예정 and a period exists.
- */
+/** The card plus the 내 활동 `+`/check (web 2단계 B) where the apps put the heart. */
 function cardProps(activity: Activity, now: number) {
-  const status = activityStatus(activity, now);
-  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` + `D-3` while open; an end alone keeps `~ … 마감`.
-  const { text, dday: recruitmentDday } = recruitmentDate(activity.application, now);
-  const recruitmentLabel = status === "NO_RECRUITMENT" ? "" : text;
-  return {
-    id: activity.id,
-    name: activity.name,
-    status,
-    recruitmentLabel,
-    recruitmentDday,
-    // 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26") beside the 모집 예정 capsule.
-    startDday: upcomingStartDday(activity, now),
-    recruitmentActive: applicable(status) && recruitmentLabel !== "",
-    activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
-    // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
-    placeName: activity.place?.name ?? activity.location ?? null,
-    fieldTag: fieldTagsOf(activity)[0],
-    traitTags: traitTagsOf(activity),
-    // 내 활동 `+`/check (web 2단계 B) where the apps put the heart.
-    action: <MineToggle activity={activity} source="discovery" />,
-  };
+  return { ...activityCardProps(activity, now), action: <MineToggle activity={activity} source="discovery" /> };
 }
 
 /** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */

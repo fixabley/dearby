@@ -4,7 +4,19 @@ import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { TagChipRow } from "@/shared/ui/tag-icon";
-import { type ActivityStatus, type Tag, STATUS_BADGE } from "@/lib/models";
+import {
+  type Activity,
+  type ActivityStatus,
+  type Tag,
+  STATUS_BADGE,
+  activityStatus,
+  applicable,
+  fieldTagsOf,
+  recruitmentDate,
+  scheduleLabel,
+  traitTagsOf,
+  upcomingStartDday,
+} from "@/lib/models";
 
 /**
  * 활동 상태 capsule (contract "활동 상태" 2026-10-26): 모집 중 teal fill / 모집 예정 teal tint / 진행 중 system blue tint / 모집 마감·종료
@@ -18,6 +30,32 @@ export const statusVariant = {
   NO_RECRUITMENT: "neutral",
   ENDED: "neutral",
 } as const satisfies Record<ActivityStatus, string>;
+
+/**
+ * Props the card needs from an activity (contract "발견 카드 리뉴얼"·"활동 상태"): the capsule is the server's status; 모집 정보 없음 has none
+ * and its `모집` row reads `모집 일정 미정`; the row stands out only while 모집 중·모집 예정 and a period exists.
+ */
+export function activityCardProps(activity: Activity, now: number) {
+  const status = activityStatus(activity, now);
+  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` + `D-3` while open; an end alone keeps `~ … 마감`.
+  const { text, dday: recruitmentDday } = recruitmentDate(activity.application, now);
+  const recruitmentLabel = status === "NO_RECRUITMENT" ? "" : text;
+  return {
+    id: activity.id,
+    name: activity.name,
+    status,
+    recruitmentLabel,
+    recruitmentDday,
+    // 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26") beside the 모집 예정 capsule.
+    startDday: upcomingStartDday(activity, now),
+    recruitmentActive: applicable(status) && recruitmentLabel !== "",
+    activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
+    // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
+    placeName: activity.place?.name ?? activity.location ?? null,
+    fieldTag: fieldTagsOf(activity)[0],
+    traitTags: traitTagsOf(activity),
+  };
+}
 
 /**
  * 펼친 프로그램 안의 활동 카드 한 장 (contract "발견 카드 리뉴얼 — 2026-10-19", iOS `ActivityCard`): grouped-background tile inside
