@@ -271,7 +271,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     /** `PUT /v1/profile` body. Empty added contacts are left out. */
     private fun profile(form: ProfileFormState): AccountProfile {
         val labels = ProfileContactKinds.associate { (kind, label, _) -> kind to label }
-        return AccountProfile(form.name.trim(), "", form.introduction.trim(),
+        return AccountProfile(form.name.trim(), "", form.introLink.trim().ifEmpty { null },
             listOf(AccountContact(form.phoneId, "phone", "전화번호", form.phone.trim()), AccountContact(form.emailId, "email", "이메일", form.email.trim())) +
                 form.extras.filter { it.value.isNotBlank() }.map { AccountContact(it.id, it.kind, labels[it.kind] ?: it.kind, it.value.trim()) },
             form.histories, form.version, form.jobs)

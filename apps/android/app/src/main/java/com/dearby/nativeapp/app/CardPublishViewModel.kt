@@ -20,7 +20,7 @@ sealed interface PublishPhase {
 }
 data class CardPublishState(val draft: CardDraft? = null, val phase: PublishPhase = PublishPhase.Editing, val signingIn: Boolean = false, val prefill: PublishedCard? = null)
 
-/** Publishes the composer draft with `POST /v1/cards` (the server copies the profile introduction as the body), or with a [CardPublishState.prefill] saves it onto that same card with `PUT /v1/cards/:id` (contract "명함 고치기는 같은 명함을 수정", 2026-10-20). Profile data is read-only here. */
+/** Publishes the composer draft with `POST /v1/cards` (the server copies the chosen profile data), or with a [CardPublishState.prefill] saves it onto that same card with `PUT /v1/cards/:id` (contract "명함 고치기는 같은 명함을 수정", 2026-10-20). Profile data is read-only here. */
 class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(CardPublishState())
     val state = mutable.asStateFlow()
@@ -51,8 +51,8 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
         try {
             val card = account.authorized {
-                if (editing == null) account.client.publish(draft.cardName, "", draft.contactIds, draft.historyIds, draft.includePhoto, it)
-                else account.client.updateCard(editing.id, draft.cardName, "", draft.contactIds, draft.historyIds, draft.includePhoto, it)
+                if (editing == null) account.client.publish(draft.cardName, "", draft.contactIds, draft.historyIds, draft.includePhoto, draft.includeIntroLink, it)
+                else account.client.updateCard(editing.id, draft.cardName, "", draft.contactIds, draft.historyIds, draft.includePhoto, draft.includeIntroLink, it)
             }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {
