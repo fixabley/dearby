@@ -7,7 +7,8 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
-import android.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface
+import androidx.core.graphics.createBitmap
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -75,7 +76,7 @@ fun decodeForCrop(resolver: ContentResolver, uri: Uri, maxSide: Int = 2048): Bit
 /** The chosen square of [bitmap] as a JPEG no larger than [maxSide] (contract "프로필 사진": 한 변 1024px 이하), on white for transparent images. */
 fun squareJpeg(bitmap: Bitmap, square: Rect, maxSide: Int = 1024): ByteArray {
     val side = min(square.width(), maxSide)
-    val result = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+    val result = createBitmap(side, side)
     Canvas(result).apply { drawColor(android.graphics.Color.WHITE); drawBitmap(bitmap, square, Rect(0, 0, side, side), Paint(Paint.FILTER_BITMAP_FLAG)) }
     return ByteArrayOutputStream().also { result.compress(Bitmap.CompressFormat.JPEG, 90, it) }.toByteArray()
 }
