@@ -381,7 +381,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "프로필 입력하기 전에 개인정보동의 필수로 구할 수 있게". 프로필(이름·연락처·이력)을 처음 저장하기 전에 **개인정보 수집·이용 동의**와 **이용약관 동의**를 필수로 받고 서버에 기록한다.
 
-- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(웹 `/privacy`·`/terms` 시행일과 같다. 처음 `2026-10-19`, 2026-10-22부터 둘 다 `2026-10-22`, 2026-10-26부터 처리방침만 `2026-10-26`(사진·소개 링크·웹 사용 통계·광고 선택 동의 고지 — 약관은 2026-11-01 시행이라 `2026-10-22` 유지)). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
+- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(웹 `/privacy`·`/terms` 시행일과 같다. 처음 `2026-10-19`, 2026-10-22부터 둘 다 `2026-10-22`, 2026-10-26부터 처리방침만 `2026-10-26`(사진·소개 링크·웹 사용 통계·광고 선택 동의 고지 — 약관은 2026-11-01 시행이라 `2026-10-22` 유지), 2026-10-28부터 처리방침 `2026-10-28`(연락처 인증·교환 세션·웹 로그인 쿠키, PR #439; iOS 앱은 `ConsentVersions.privacy`를 먼저 올렸고 서버 `CONSENT_PRIVACY_VERSION`은 테스터가 새 빌드를 받은 뒤 올린다 — 그 사이 새 앱의 동의는 400 `CONSENT_VERSION` 문장을 그대로 보이고, 이미 `2026-10-26`에 동의한 계정은 `consentRequired=false`라 다시 묻지 않는다)). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
 - 저장: V37 `user_consents(user_id pk → users on delete cascade, privacy_version, terms_version, consented_at timestamptz)`. 계정 삭제와 함께 지워진다.
 - API: `POST /v1/me/consents {privacyVersion, termsVersion}`(Bearer) → 204. 현재 버전과 다르면 400 `CONSENT_VERSION`. `GET /v1/profile` 응답에 `consent: {privacyVersion, termsVersion, consentedAt}|null`과 `consentRequired: boolean`(기록이 없거나 버전이 다르면 true)을 더한다. **`PUT /v1/profile`은 `consentRequired`이면 403 `CONSENT_REQUIRED`**(이력 인증자료 업로드 등 프로필 하위 쓰기도 같다). 명함 발행·받은 명함·활동 신청 표시는 프로필이 있어야 하므로 자연히 뒤에 온다.
 - 앱(iOS·Android): 첫 프로필 퍼널의 첫 단계 앞, 그리고 프로필 화면을 열었을 때 `consentRequired`이면 **동의 화면**을 전체 화면으로 보인다. 제목 "시작하기 전에 동의가 필요해요", 필수 체크 두 개(`개인정보 수집·이용에 동의합니다 (필수)`, `이용약관에 동의합니다 (필수)`), 각 항목의 `보기`는 `https://dearby.wid.io.kr/privacy`·`/terms`를 인앱 브라우저(iOS `SFSafariViewController`, Android Custom Tab)로 연다. 둘 다 체크해야 `동의하고 계속`이 켜지고, 누르면 `POST /v1/me/consents` 뒤 원래 흐름으로 간다. 동의 전에는 프로필 입력 단계로 갈 수 없다. 서버가 403 `CONSENT_REQUIRED`를 돌려주면 같은 화면을 보인다. 로그아웃 상태에서는 보이지 않는다(로그인 뒤 프로필에서).
@@ -865,6 +865,7 @@ Spring Mail(SMTP)로 한글 평문 한 통을 보낸다. 제목 `[Dearby] 이메
 - **수동 입력도 계속 허용**: 인증 없이 적은 값은 지금처럼 저장되고 표시만 다르다. 인증된 항목의 값을 고치면 체크가 사라진다는 것을 입력 칸 아래 한 줄로 알린다("값을 바꾸면 인증이 풀려요").
 - **표시(명함 면·받은 명함·내 프로필 보기·웹 `/cards/:id`·명함 만들기 연락처 선택 행)**: `verified`가 true인 행은 값 끝에 작은 체크(iOS `checkmark.seal.fill` 16 청록, Android `Verified` 16 `primary`, 웹 같은 모양 인라인 SVG)를 붙이고 접근성 라벨에 `인증됨`을 더한다(위 "아이콘 통일" 표의 `인증`). 미인증은 표시 없음(배지 없음). 바로가기·복사 동작은 바뀌지 않는다.
 - 503(기능 비활성)이면 그 버튼을 숨긴다(앱은 `start`/`challenges`의 503을 받으면 "지금은 쓸 수 없어요"로 알리고 수동 입력으로 안내).
+- iOS 구현 확인(2026-10-26, `feat/verified-contacts-ios`): 프로필 수정의 연락처 섹션(`ProfileContactFields`)에 이메일 행 아래 `인증번호 받기` → 같은 행의 6자리 칸(숫자 키패드·`oneTimeCode`)·`확인`·`다시 받기 (n초)`(1분), GitHub 행 아래 `GitHub으로 연결`(SwiftUI `webAuthenticationSession`, 콜백 scheme `dearby`; 앱의 `IncomingLink`는 `dearby://contacts/*`를 무시). 성공 응답의 Profile은 `ProfileForm.absorbVerification`이 `version`과 그 종류 행만 받아 다른 수정 중 값을 지킨다. 400·429 detail은 그대로, `CHALLENGE_EXPIRED`는 받기 상태로 되돌림, 503은 그 종류 버튼을 숨김. 인증된 행은 입력 칸 안 값 끝에 `checkmark.seal.fill`(`DearbyVerifiedMark`), 포커스가 가거나 값이 달라지면 "값을 바꾸면 인증이 풀려요". 명함 면·받은 명함·내 프로필 보기·명함 만들기 선택 행은 같은 체크(`ContactModel.verified`). 버전 0 편집은 iOS에서 단계 퍼널(`ProfileFunnelPage`)이라 인증 버튼이 없고 첫 저장 뒤 수정 화면에서 인증한다(비활성 버튼·안내 문구는 두지 않았다).
 
 ### 개인정보처리방침 반영(사용자 확인 후, 웹 `/privacy`)
 
