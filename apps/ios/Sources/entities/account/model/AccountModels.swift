@@ -187,10 +187,12 @@ struct AccountProfile: Codable, Equatable, Sendable {
     /// (missing on older servers → false). Never sent back.
     var consent: ProfileConsent? = nil
     var consentRequired = false
+    /// `/v1/profile/photo?v=<ms>` or nil (contract "프로필 사진" 2026-10-26); read with the session, never sent back, absent from versions.
+    var photoUrl: String? = nil
     init(name: String, job: String = "", jobs: [ProfileJob] = [], introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
         self.name = name; self.job = job; self.jobs = jobs; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
     }
-    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version, consent, consentRequired }
+    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version, consent, consentRequired, photoUrl }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
@@ -202,6 +204,7 @@ struct AccountProfile: Codable, Equatable, Sendable {
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 0
         consent = try c.decodeIfPresent(ProfileConsent.self, forKey: .consent)
         consentRequired = try c.decodeIfPresent(Bool.self, forKey: .consentRequired) ?? false
+        photoUrl = try c.decodeIfPresent(String.self, forKey: .photoUrl)
     }
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -276,6 +279,8 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
+    /// `/v1/cards/:id/photo?v=<ms>` or nil (contract "프로필 사진 — 명함에 싣기"): the photo copied at publish; absent on servers without it.
+    var photoUrl: String? = nil
 }
 
 /// A blocked card owner (contract "명함 신고·차단"); `name` is the card's name when blocked.

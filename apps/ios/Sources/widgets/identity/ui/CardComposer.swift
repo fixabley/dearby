@@ -20,6 +20,21 @@ struct CardComposer: View {
                 Text("비워 두면 ‘내 명함’으로 저장해요.").font(.dearby(.subheadline))
             }
             Section {
+                // 사진 넣기 (contract "프로필 사진 — 명함에 싣기"): a checkbox row, since a switch would sit alone at the row's far end.
+                if draft.profile.photoUrl != nil {
+                    DearbyCheckRow(isOn: $draft.includePhoto) {
+                        HStack(spacing: 12) {
+                            DearbyPhotoAvatar(photoUrl: draft.profile.photoUrl, name: draft.profile.name, filled: true, size: 40)
+                            Text("사진 넣기")
+                        }
+                    }.accessibilityIdentifier("card-include-photo")
+                } else {
+                    Text("프로필에서 사진을 넣을 수 있어요").foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("사진").font(.dearby(.subheadline))
+            }
+            Section {
                 DearbyMarkdownText(source: draft.preview).padding(.vertical, 4)
             } header: {
                 Text("미리보기").font(.dearby(.subheadline))

@@ -5,12 +5,43 @@ struct ContactModel: Identifiable, Equatable {
     let kind: String
     var displayLabel: String
     var value: String
-    /// Phone and email open the phone or mail app; links open only when they are https.
-    var actionURL: URL? {
+    enum Action: Equatable { case open(URL), copy(String) }
+    /// 바로가기 (contract "연락처 아이콘·바로가기" 2026-10-26): phone `tel:`, email `mailto:`, an http(s) value as it is, a GitHub·Instagram·Behance
+    /// ID as its profile page (`@` dropped; the system opens the app when installed). A KakaoTalk ID has no public link, so it is copied;
+    /// an open-chat URL opens. Nil when the value fits none of these.
+    var action: Action? {
+        let text = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
         switch kind {
-        case "phone": URL(string: "tel:" + value.filter { $0.isNumber || $0 == "+" })
-        case "email": URL(string: "mailto:" + value)
-        default: URL(string: value).flatMap { $0.scheme == "https" ? $0 : nil }
+        case "phone": return URL(string: "tel:" + text.filter { $0.isNumber || $0 == "+" }).map(Action.open)
+        case "email": return URL(string: "mailto:" + text).map(Action.open)
+        case "github": return Self.profile(text, base: "https://github.com/").map(Action.open)
+        case "instagram": return Self.profile(text, base: "https://instagram.com/").map(Action.open)
+        case "behance": return Self.profile(text, base: "https://www.behance.net/").map(Action.open)
+        case "kakao": return Self.web(text).map(Action.open) ?? .copy(Self.handle(text) ?? text)
+        default: return Self.web(text).map(Action.open)
+        }
+    }
+    /// An http(s) URL, also typed without the scheme (`open.kakao.com/o/…`, `github.com/name`).
+    private static func web(_ text: String) -> URL? {
+        let candidate = text.contains("://") ? text : text.contains("/") && text.split(separator: "/")[0].contains(".") ? "https://" + text : nil
+        guard let candidate, let url = URL(string: candidate), ["http", "https"].contains(url.scheme?.lowercased()), url.host?.isEmpty == false else { return nil }
+        return url
+    }
+    /// The ID without a leading `@`, when it is letters, digits, `.`, `_` and `-` only.
+    private static func handle(_ text: String) -> String? {
+        let id = text.hasPrefix("@") ? String(text.dropFirst()) : text
+        return !id.isEmpty && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || "._-".contains($0)) } ? id : nil
+    }
+    private static func profile(_ text: String, base: String) -> URL? { web(text) ?? handle(text).flatMap { URL(string: base + $0) } }
+    /// The brand mark in the asset catalog (원본 `shared/assets/prototype/contact-icons`, Simple Icons); nil kinds use `symbol(kind:)`.
+    static func brandImage(kind: String) -> String? {
+        switch kind {
+        case "github": "ContactGitHub"
+        case "instagram": "ContactInstagram"
+        case "behance": "ContactBehance"
+        case "kakao": "ContactKakaoTalk"
+        default: nil
         }
     }
     /// Contract kind → SF Symbol table ("연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20); unknown kinds are a plain link.
@@ -62,6 +93,8 @@ struct CardModel: Identifiable, Equatable {
     var histories: [HistoryModel]
     /// Organization of the most recent approved history, shown under the name (contract "명함 표현").
     var organization: String?
+    /// The photo copied at publish (`PublishedCard.photoUrl`); nil shows the initial.
+    var photoUrl: String? = nil
     /// `job` split on ` · ` for the header chips.
     var jobs: [String] { job.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
 }

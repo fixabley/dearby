@@ -2,30 +2,33 @@ import SwiftUI
 
 /// One published card as a single surface (contract "명함 표현", 2026-10-18): centered header, introduction,
 /// 연락처 rows that open the contact, and 활동 이력 rows. Action buttons belong to the screen, below the card.
+/// `faceOnly` keeps the face (photo, name, 직무, 연락처) for 내 프로필 (contract "프로필 보기 모드 = 명함 디자인" 2026-10-26), which shows 소개·이력 below it.
 struct CardView: View {
     let card: CardModel
-    let onContact: (ContactModel) -> Void
+    var faceOnly = false
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             header
-            if !card.introduction.isEmpty { DearbyMarkdownText(source: card.introduction) }
+            if !faceOnly && !card.introduction.isEmpty { DearbyMarkdownText(source: card.introduction) }
             section("연락처") {
                 if card.contacts.isEmpty {
                     empty("공개된 연락처가 없어요")
                 } else {
                     ForEach(card.contacts) { contact in
-                        ContactRow(contact: contact, open: onContact)
+                        ContactRow(contact: contact)
                         if contact.id != card.contacts.last?.id { Divider() }
                     }
                 }
             }
-            section("활동 이력") {
-                if card.histories.isEmpty {
-                    empty("공개된 활동 이력이 없어요")
-                } else {
-                    ForEach(card.histories) { history in
-                        HistoryRow(history: history)
-                        if history.id != card.histories.last?.id { Divider() }
+            if !faceOnly {
+                section("활동 이력") {
+                    if card.histories.isEmpty {
+                        empty("공개된 활동 이력이 없어요")
+                    } else {
+                        ForEach(card.histories) { history in
+                            HistoryRow(history: history)
+                            if history.id != card.histories.last?.id { Divider() }
+                        }
                     }
                 }
             }
@@ -35,7 +38,7 @@ struct CardView: View {
     }
     private var header: some View {
         VStack(spacing: 10) {
-            DearbyAvatar(name: card.profileName, size: 56)
+            DearbyPhotoAvatar(photoUrl: card.photoUrl, name: card.profileName, size: 72)
             Text(card.profileName).font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.center)
             if !card.jobs.isEmpty {
                 ChipFlow(spacing: 6, centered: true) {
@@ -61,27 +64,46 @@ struct CardView: View {
     }
 }
 
-/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20): kind glyph on the left, the value, and an external-link mark when the row
-/// can open something. The kind (or the owner's label) is VoiceOver-only.
+/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20, "연락처 아이콘·바로가기" 2026-10-26): kind glyph on the left, the value, and
+/// a mark for what a tap does — open (`arrow.up.right`) or copy a KakaoTalk ID (`doc.on.doc`, then "ID를 복사했어요" for a moment).
+/// The kind (or the owner's label) is VoiceOver-only.
 private struct ContactRow: View {
     let contact: ContactModel
-    let open: (ContactModel) -> Void
+    @Environment(\.openURL) private var openURL
+    @State private var copied = false
     var body: some View {
-        if let url = contact.actionURL {
-            Button { open(contact) } label: { content(openable: true) }.buttonStyle(.plain)
+        switch contact.action {
+        case .open(let url):
+            Button { openURL(url) } label: { content(mark: "arrow.up.right") }.buttonStyle(.plain)
                 .accessibilityLabel(contact.rowLabel + ": " + contact.value)
-                .accessibilityHint(url.scheme == "https" ? "링크를 열어요" : contact.kind == "phone" ? "전화를 걸어요" : "메일을 보내요")
-        } else {
-            content(openable: false).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.value)
+                .accessibilityHint(contact.kind == "phone" ? "전화를 걸어요" : contact.kind == "email" ? "메일을 보내요" : "링크를 열어요")
+        case .copy(let id):
+            Button { copy(id) } label: { content(mark: "doc.on.doc") }.buttonStyle(.plain)
+                .accessibilityLabel(contact.rowLabel + ": " + contact.value).accessibilityHint("ID를 복사해요")
+        case nil:
+            content(mark: nil).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.value)
         }
     }
-    private func content(openable: Bool) -> some View {
+    private func content(mark: String?) -> some View {
         HStack(spacing: 12) {
             ContactSymbol(kind: contact.kind)
             Text(contact.value).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
             Spacer(minLength: 0)
-            if openable { Image(systemName: "arrow.up.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet) }
+            if copied {
+                Text("ID를 복사했어요").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+            } else if let mark {
+                Image(systemName: mark).font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+            }
         }.padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())
+    }
+    private func copy(_ id: String) {
+        UIPasteboard.general.string = id
+        AccessibilityNotification.Announcement("ID를 복사했어요").post()
+        withAnimation { copied = true }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation { copied = false }
+        }
     }
 }
 
