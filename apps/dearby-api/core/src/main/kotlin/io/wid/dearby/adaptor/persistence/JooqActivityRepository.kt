@@ -43,6 +43,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             condition.after?.let { add(ACTIVITIES.ID.gt(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+            condition.kind?.let { add(OpenActivityConditions.kind(it)) }
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             // 열린 활동만(발견 묶음과 같은 규칙)
             if (condition.openOnly) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.open(OffsetDateTime.now(ZoneOffset.UTC)))))
