@@ -416,6 +416,19 @@ export function recruitmentDate(application: Schedule | null, now = Date.now()):
   const days = Math.round((Date.parse(calendarDay(last, timeZone)) - Date.parse(seoulDay(now))) / DAY);
   return { text, dday: days <= 0 ? "D-DAY" : `D-${days}` };
 }
+/**
+ * 모집 시작 D-day (contract "모집 예정 시작 D-day — 2026-10-26"): while 모집 예정 with a known recruitment start (`startAt`, or `startDate`
+ * of a date-only window), `시작 D-n` in Seoul days to the start day, `오늘 시작` on that day; undefined otherwise (the badge stays `모집 예정`).
+ */
+export function upcomingStartDday(activity: Activity, now = Date.now()): string | undefined {
+  const application = activity.application;
+  if (!application || activityStatus(activity, now) !== "RECRUITING_UPCOMING") return undefined;
+  const startAt = parseTime(application.startAt);
+  const startDay = startAt === undefined ? application.startDate : calendarDay(startAt, "Asia/Seoul");
+  if (!startDay) return undefined;
+  const days = Math.round((Date.parse(startDay) - Date.parse(seoulDay(now))) / DAY);
+  return days <= 0 ? "오늘 시작" : `시작 D-${days}`;
+}
 /** `yyyy-MM-dd` of an instant in a zone. */
 function calendarDay(time: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
