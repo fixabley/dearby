@@ -159,6 +159,16 @@ native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`PO
 - **어드민 화면**: 활동 편집기 안의 `일정` 탭(또는 상세의 `일정 편집` 버튼)에 두 가지 보기. ① **달력 보기**: 월 달력(Ant `Calendar`)에 모집 기간·활동 기간을 바탕 띠로, 세부 일정을 날짜 칸의 칩으로 그린다. 날짜 칸을 누르면 그 날짜가 채워진 `일정 추가` 폼이 열리고, 칩을 누르면 편집 폼이 열린다(끌어서 옮기기는 두지 않는다). ② **목록 보기**: 시각 순 표에 제목·종류·상태·기간·원문·사유, 행마다 편집·삭제. 폼은 기존 기간 블록(날짜/시각 전환, 시작 선택 비움 가능, 사유)을 재사용한다.
 - 공개 API·앱은 바뀌지 않는다(세부 일정은 이미 `schedules[]`로 내려가고 진행 트랙이 쓴다).
 
+### 선발 과정·활동 일정(phase) — 2026-10-26 사용자 결정
+
+native-v1.md "선발 과정·활동 일정 분리"의 어드민 쪽.
+
+- 응답 Schedule(어드민·공개 공통)에 `phase: SELECTION|ACTIVITY`. 늘 값이 있다: 모집 기간(`application`)은 `SELECTION`, 활동 기간(`activitySchedule`)은 `ACTIVITY`로 고정이고, 세부 일정은 저장값(`schedules.phase`, V62) 또는 저장값이 없을 때 서버 판정(`kind`가 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`이거나 일정 상태를 지정했으면 `SELECTION`, 아니면 `ACTIVITY`).
+- 입력: ScheduleItemInput에 `phase?: SELECTION|ACTIVITY`(대소문자 무시, 모르는 값 400). POST에서 생략하면 저장하지 않고 위 판정을 쓴다. PATCH에서 생략하면 저장값을 유지한다(지우기는 없다). 고치면 기존 규칙대로 `curated`라 재수집이 덮어쓰지 않는다. 모집·활동 기간 행에 `phase`를 보내면 400(겹침 확인 시간·반복 규칙만 보내는 요청이 아니므로 기존 슬롯 규칙).
+- 기존 행: V62가 위 판정으로 한 번 채웠다. 그래서 이미 `ACTIVITY`로 채워진 `EVENT` 일정은 나중에 상태를 지정해도 저절로 `SELECTION`이 되지 않는다. 코딩테스트·과제처럼 선발인 `EVENT`는 `phase`를 `SELECTION`으로 바꾼다.
+- 수집: 수집기 제출 `schedules[].phase`(모르면 null → 저장하지 않고 판정). 재수집은 `curated` 세부 일정을 덮어쓰지 않으므로 운영자가 정한 값이 남는다. 큐레이션 가져오기(`--import-curation`)의 `schedules[]` 항목도 `phase?`를 받는다.
+- **어드민 화면**(어드민 웹 담당): 세부 일정 폼에 `선발 과정 / 활동 일정` 선택(기본은 응답 값), 목록 보기에 `구분` 열. 모집·활동 기간 블록에는 두지 않는다.
+
 ### 일정 상태·겹침 확인 시간 — 2026-10-22 사용자 결정
 
 native-v1.md "내 활동 서버 저장·일정 상태·겹침 확인 시간"의 어드민 쪽. 응답 Schedule(어드민·공개 공통)에 `statuses: [{id: number|null, name, kind: WAITING|PASSED|FAILED|OTHER}]`(어드민 지정 행을 순서대로, 없으면 기본 `대기`·`통과`·`탈락`, id null)과 `overlapCheck: {startTime, endTime}|null`(서울 `HH:mm`)이 더해진다.
@@ -308,6 +318,6 @@ native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정
   - 조직: 같은 상위 조직 아래 같은 이름(띄어쓰기·대소문자 무시)이 있으면 그것을 쓰고(`reused`), 없으면 어드민 조직 만들기와 같은 검증(core `CatalogWrites`)으로 만든다.
   - 새 프로그램: 같은 조직에 같은 이름이 있으면 건너뛴다. 어드민 프로그램 만들기·수집 설정 PUT과 같은 검증(https 공식 주소 — 허용 호스트에 적은 호스트는 http — ·주소 토큰·허용 호스트), `category`는 프로그램 기본 종류.
   - `publish: true`: 어드민 게시와 같다(상태만 PUBLISHED, 이미 게시면 건너뜀). `dismiss: true`: 어드민 활동 삭제와 같다(수집 출처를 `dismissed_activity_sources`에 남기고 `DRAFT_DISMISSED` 피드백) — 게시된 활동은 지우지 않고 건너뛴다. 지우는 항목의 다른 필드는 보지 않는다.
-  - 세부 일정 블록(2026-10-26, 수집된 조각 일정을 "큰 블록 + 시간표"로 정리): `activities[].schedules: [{id, delete: true} | {id, title?, kind?, status?, startAt?, endAt?, startDate?, endDate?, timeZone?, dateLabel?, note?} | {ref, title, kind?(기본 EVENT), startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}]`. 위 "세부 일정 편집기"의 DELETE·PATCH·POST와 같은 검증·의미다: 지우면 `curated_deleted`(재수집이 되살리지 않고, 붙은 세션은 블록과 함께 숨는다), 고치거나 만든 블록은 `curated`. 모집·활동 기간 행·없는 일정·바뀔 것이 없는 고치기는 건너뛴다. 같은 제목·시각의 보이는 세부 일정이 이미 있으면 만들지 않고 그 블록을 `ref`로 쓴다(다시 실행해도 같다). 순서는 지우기 → 고치기 → 만들기 → `timetables`이고, `timetables[].scheduleRef`로 같은 항목에서 만든 블록을 가리킨다(dry run은 새 블록 시각으로 시간표를 검증). 한 동작이라도 검증에 걸리면 그 활동 항목 전체를 건너뛴다. 게시 여부와 상관없이 적용된다(재수집은 게시 활동 일정을 덮어쓰지 않으므로 게시 활동 정리는 이 경로나 어드민으로 한다). 시간표 세션 제목만 고치는 별도 동작은 없다: 그 블록 시간표 전체를 `overwrite: true`로 다시 보낸다(세션 id가 바뀌어 그 블록의 세션 찜이 지워진다).
+  - 세부 일정 블록(2026-10-26, 수집된 조각 일정을 "큰 블록 + 시간표"로 정리): `activities[].schedules: [{id, delete: true} | {id, title?, kind?, status?, phase?, startAt?, endAt?, startDate?, endDate?, timeZone?, dateLabel?, note?} | {ref, title, kind?(기본 EVENT), phase?, startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}]`(`phase`는 2026-10-26 아래 "선발 과정·활동 일정(phase)"). 위 "세부 일정 편집기"의 DELETE·PATCH·POST와 같은 검증·의미다: 지우면 `curated_deleted`(재수집이 되살리지 않고, 붙은 세션은 블록과 함께 숨는다), 고치거나 만든 블록은 `curated`. 모집·활동 기간 행·없는 일정·바뀔 것이 없는 고치기는 건너뛴다. 같은 제목·시각의 보이는 세부 일정이 이미 있으면 만들지 않고 그 블록을 `ref`로 쓴다(다시 실행해도 같다). 순서는 지우기 → 고치기 → 만들기 → `timetables`이고, `timetables[].scheduleRef`로 같은 항목에서 만든 블록을 가리킨다(dry run은 새 블록 시각으로 시간표를 검증). 한 동작이라도 검증에 걸리면 그 활동 항목 전체를 건너뛴다. 게시 여부와 상관없이 적용된다(재수집은 게시 활동 일정을 덮어쓰지 않으므로 게시 활동 정리는 이 경로나 어드민으로 한다). 시간표 세션 제목만 고치는 별도 동작은 없다: 그 블록 시간표 전체를 `overwrite: true`로 다시 보낸다(세션 id가 바뀌어 그 블록의 세션 찜이 지워진다).
   - dry run에서는 새 조직·프로그램이 없으므로 그 아래 항목은 계획만 보인다. `--apply`가 끝나면 로그 `New program ids: …`.
 - 특정 프로그램만 수집: `--collect-now=<programId,…>`(비우면 전부). 주기·하루 한 번 규칙은 그대로다.
