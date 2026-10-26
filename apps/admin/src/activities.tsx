@@ -45,17 +45,26 @@ export type Schedule = {
   hasTimetable?: boolean;
   /** 선발 과정·활동 일정 (native-v1 "선발 과정·활동 일정 분리", 2026-10-26): the server's resolved value, always present on current responses. */
   phase?: SchedulePhase;
+  /** admin-v1 "phaseSource" (2026-10-26): `STORED` when an operator or the collector saved the 구분, `RESOLVED` when the server inferred it. */
+  phaseSource?: "STORED" | "RESOLVED";
 };
 export type SchedulePhase = "SELECTION" | "ACTIVITY";
 export const phaseLabels: Record<SchedulePhase, string> = { SELECTION: "선발 과정", ACTIVITY: "활동 일정" };
-/** The resolved 구분 of a schedule as the server sent it; `—` on older responses. */
-export function PhaseTag({ phase, fixed = false }: { phase: SchedulePhase | undefined; fixed?: boolean }) {
+/** The 구분 of a schedule as the server sent it (`—` on older responses); `fixed` for the 모집·활동 기간 rows, `stored` marks a saved value. */
+export function PhaseTag({ phase, fixed = false, stored = false }: { phase: SchedulePhase | undefined; fixed?: boolean; stored?: boolean }) {
   if (!phase) return <span className="muted">—</span>;
   return (
-    <Tag color={phase === "SELECTION" ? "geekblue" : "green"}>
-      {phaseLabels[phase]}
-      {fixed && " · 고정"}
-    </Tag>
+    <>
+      <Tag color={phase === "SELECTION" ? "geekblue" : "green"}>
+        {phaseLabels[phase]}
+        {fixed && " · 고정"}
+      </Tag>
+      {stored && (
+        <Tooltip title="운영자나 수집기가 정한 구분이에요. 자동 판정보다 우선해요.">
+          <span className="muted" style={{ fontSize: 12 }}>지정</span>
+        </Tooltip>
+      )}
+    </>
   );
 }
 export type OverlapCheck = { startTime: string; endTime: string };
