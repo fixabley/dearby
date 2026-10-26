@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   return (
     <article className="legal pt-0 pb-6">
       <LargeTitle>개인정보 처리방침</LargeTitle>
-      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 25일</p>
+      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 26일</p>
       <p className="mt-4 px-1 text-body leading-relaxed">
         Dearby(이하 &ldquo;서비스&rdquo;)는 활동을 찾고, 활동에서 만난 사람과 명함을 교환하는 데 필요한 최소한의 정보만 다룹니다. 이 문서는
         어떤 정보를 왜 받고, 어디에 두고, 어떻게 지우는지 설명합니다.
