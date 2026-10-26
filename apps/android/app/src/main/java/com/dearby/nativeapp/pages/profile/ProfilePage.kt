@@ -13,6 +13,7 @@ import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,10 +26,15 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
+import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryRow
+import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 import com.dearby.nativeapp.widgets.profile.profileFields.JobTagPicker
@@ -85,18 +91,20 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, leaveSetup, Modifier.weight(1f)); return@let }
-                if (!state.editing) { ReadOnlyProfile(form.cardState(state.profile?.photoUrl), form.introduction, rows, { edit(true) }, compose, contact, Modifier.weight(1f), recommendation); return@let }
+                if (!state.editing) { ReadOnlyProfile(form.cardState(state.profile?.photoUrl), form.histories.historyCards(), { edit(true) }, compose, contact, Modifier.weight(1f), recommendation); return@let }
                 Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     PhotoRow(form.name, state.profile?.photoUrl, state.photoBusy, state.photoError, pickPhoto) { confirmPhotoDelete = true }
                     // Floating-label rows (contract "플로팅 라벨·필수 표시"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
                     DearbyField("이름", form.name, { change(form.copy(name = it)) }, placeholder = "실명 또는 활동명", error = state.errors?.name, required = true, imeAction = ImeAction.Next)
+                    // 소개 링크(contract "소개 링크·소개 글 폐지"): 노션·포트폴리오 주소 하나, 선택. 형식은 서버가 보고 400 문구가 아래 오류 줄에 나온다.
+                    DearbyField("소개 링크", form.introLink, { change(form.copy(introLink = it)) }, placeholder = "notion.so/…", imeAction = ImeAction.Next, leadingIcon = Icons.Rounded.Link,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Uri))
                     Labeled("직무", Modifier.pointerInput(jobSearchFocus) { detectTapGestures { runCatching { jobSearchFocus.requestFocus() } } }) {
                         JobTagPicker(form.jobTags, state.jobSearch.query, searchJobs, state.jobSearch.items.map { PickerItem(it.id, it.name, it.parent?.name ?: it.nameEn) },
                             state.jobSearch.loading, state.jobSearch.failed, { change(form.withJob(it.id, it.name)) }, { change(form.withJob(null, null, it)) },
                             { change(form.withoutJob(it)) }, full = form.jobs.size >= ProfileFormState.MAX_JOBS, searchFocus = jobSearchFocus)
                     }
-                    DearbyField("소개", form.introduction, { change(form.copy(introduction = it)) }, placeholder = "처음 만난 사람에게 건넬 한두 문장", minLines = 3)
                     Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },
                         { row -> change(form.copy(extras = form.extras.map { if (it.id == row.id) row else it })) },
@@ -152,20 +160,15 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /**
  * Read mode (contract "프로필 탭은 읽기 모드가 기본"; 2026-10-26 사용자 결정 "프로필 보기 모드 = 명함 디자인"): the card face on top (photo, name, 직무, contacts),
- * then 소개 (markdown) and the history rows, then `이 내용으로 명함 만들기` (primary) and `수정` (same as the top bar). No inputs, no bar.
+ * then the history rows as the card draws them ([CardHistoryRow], contract "내 프로필 활동 이력 = 명함 이력"), then `이 내용으로 명함 만들기` (primary) and `수정` (same as the top bar). No inputs, no bar.
  */
-@Composable private fun ReadOnlyProfile(card: CardState, introduction: String, rows: List<HistoryRowState>, edit: () -> Unit, compose: () -> Unit, contact: (ContactState) -> Unit,
+@Composable private fun ReadOnlyProfile(card: CardState, histories: List<CardHistoryState>, edit: () -> Unit, compose: () -> Unit, contact: (ContactState) -> Unit,
                                         modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         CardContent(card, body = false, onContact = contact)
-        // 소개 as the card body renders it (markdown).
-        if (introduction.isNotBlank()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("소개", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-            MarkdownBody(introduction)
-        }
         Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-        if (rows.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        rows.forEach { HistoryRow(it, null, null) }
+        if (histories.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Column { histories.forEach { CardHistoryRow(it) } }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DearbyButton(compose, Modifier.fillMaxWidth()) { Text("이 내용으로 명함 만들기") }
             DearbyOutlineButton(edit, Modifier.fillMaxWidth()) { Text("수정") }
@@ -174,12 +177,12 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     }
 }
 
-/** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. With [open] the card opens the funnel; with [remove] it carries the remove button; read mode passes neither. */
-@Composable private fun HistoryRow(row: HistoryRowState, open: (() -> Unit)?, remove: (() -> Unit)?) {
+/** One history in edit mode: 조직 · 프로그램 · 활동, role, period and the approval / verification tags; the card opens the funnel and carries the remove button. */
+@Composable private fun HistoryRow(row: HistoryRowState, open: () -> Unit, remove: () -> Unit) {
     // The whole card opens the history (contract "터치 컴포넌트": `Card(onClick)`); the trailing remove button keeps its own tap.
     val border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)
     val shape = RoundedCornerShape(12.dp)
-    val content: @Composable ColumnScope.() -> Unit = {
+    OutlinedCard(open, Modifier.fillMaxWidth().semantics { onClick("고치거나 인증자료 올리기") { open(); true } }, border = border, shape = shape) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(row.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
@@ -190,11 +193,9 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     if (!row.saved) Tag("저장 전", false)
                 }
             }
-            if (remove != null) IconButton(remove) { Icon(Icons.Rounded.RemoveCircle, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            IconButton(remove) { Icon(Icons.Rounded.RemoveCircle, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
-    if (open != null) OutlinedCard(open, Modifier.fillMaxWidth().semantics { onClick("고치거나 인증자료 올리기") { open(); true } }, border = border, shape = shape, content = content)
-    else OutlinedCard(Modifier.fillMaxWidth(), border = border, shape = shape, content = content)
 }
 
 @Composable private fun Tag(text: String, strong: Boolean) = Surface(color = if (strong) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(999.dp)) {

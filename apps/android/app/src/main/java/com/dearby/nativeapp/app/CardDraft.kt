@@ -7,18 +7,19 @@ import com.dearby.nativeapp.widgets.card.cardContent.ComposerContact
 import com.dearby.nativeapp.widgets.card.cardContent.ComposerHistory
 
 /**
- * Composer state: the saved profile's data and which contacts and histories the card shows. The body is the profile's
- * introduction as it is (contract "템플릿" 폐지, 2026-10-26); the user does not edit it here.
+ * Composer state: the saved profile's data and which contacts, histories, photo and 소개 링크 the card shows (there is no body since 2026-10-26,
+ * contract "소개 링크·소개 글 폐지").
  */
 data class CardDraft(
-    val profile: AccountProfile, val cardTitle: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>, val includePhoto: Boolean, val initial: Initial,
+    val profile: AccountProfile, val cardTitle: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>, val includePhoto: Boolean, val includeIntroLink: Boolean, val initial: Initial,
 ) {
-    data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>, val includePhoto: Boolean)
-    val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds, includePhoto) != initial
-    fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories, includePhoto = initial.includePhoto)
+    data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>, val includePhoto: Boolean, val includeIntroLink: Boolean)
+    val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds, includePhoto, includeIntroLink) != initial
+    fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories, includePhoto = initial.includePhoto, includeIntroLink = initial.includeIntroLink)
     /** 사진 넣기 (contract "프로필 사진"): the switch shows only when the profile has a photo; without one the server makes the card without, whatever is sent. */
     val hasPhoto get() = profile.photoUrl != null
-    val preview get() = profile.introduction
+    /** 소개 링크 넣기: the switch shows only when the profile has a link. */
+    val hasIntroLink get() = profile.introLink != null
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
     val contactIds get() = profile.contacts.map { it.id }.filter { it in publicContactIds }
     val historyIds get() = profile.histories.map { it.id }.filter { it in publicHistoryIds }
@@ -42,7 +43,8 @@ data class CardDraft(
             val histories = prefill?.histories?.map { it.id }?.toSet()?.intersect(approved) ?: approved
             // 고치기 starts from what the card shows now: a card without a photo stays without unless the switch is turned on.
             val photo = prefill?.let { it.photoUrl != null } ?: true
-            return CardDraft(profile, title, contacts, histories, photo, Initial(title, contacts, histories, photo))
+            val introLink = prefill?.let { it.introLink != null } ?: true
+            return CardDraft(profile, title, contacts, histories, photo, introLink, Initial(title, contacts, histories, photo, introLink))
         }
     }
 }

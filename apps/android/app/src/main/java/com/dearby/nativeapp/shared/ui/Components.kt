@@ -188,14 +188,13 @@ data class MenuAction(val label: String, val icon: ImageVector, val onClick: () 
 }
 
 /** [filled]: 청록 채움 원(`TealFill`)에 흰 이니셜. */
-@Composable fun PersonHeader(name: String, job: String, introduction: String, filled: Boolean = false) {
+@Composable fun PersonHeader(name: String, job: String, filled: Boolean = false) {
     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(Modifier.size(76.dp).background(if (filled) TealFill else MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
             Text(name.take(1), color = if (filled) Color.White else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 32.sp, fontWeight = FontWeight.Bold)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(name, style = MaterialTheme.typography.headlineMedium)
-            if (introduction.isNotBlank()) Text(introduction, style = MaterialTheme.typography.bodyMedium)
             if (job.isNotBlank()) Text(job, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -231,20 +230,3 @@ fun contactKindName(kind: String) = when (kind) {
 /** 표시 행(명함 면·받은 명함·내 프로필 카드)의 왼쪽 아이콘: [contactIcon]을 24, 보조색으로. */
 @Composable fun ContactKindIcon(kind: String, contentDescription: String, modifier: Modifier = Modifier) =
     Icon(contactIcon(kind), contentDescription, modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-
-@Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
-    Row(modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.width(10.dp).fillMaxHeight(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
-            if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerHighest))
-            Box(Modifier.padding(top = 5.dp).size(8.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
-        }
-        if (compact) Row(Modifier.weight(1f).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(date, Modifier.weight(.4f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Text(title, Modifier.weight(.6f), style = MaterialTheme.typography.bodySmall)
-        } else Column(Modifier.weight(1f).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (date.isNotBlank()) Text(date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            if (subtitle.isNotBlank()) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}

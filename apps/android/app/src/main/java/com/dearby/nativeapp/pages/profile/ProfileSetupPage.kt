@@ -88,7 +88,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 }
 
 private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
-    SetupStep.NAME -> form.name; SetupStep.JOBS -> form.jobsText; SetupStep.PHONE -> form.phone; SetupStep.EMAIL -> form.email; SetupStep.INTRODUCTION -> form.introduction
+    SetupStep.NAME -> form.name; SetupStep.JOBS -> form.jobsText; SetupStep.PHONE -> form.phone; SetupStep.EMAIL -> form.email
 }
 
 /** The question for the open section with its one control: a default-size `OutlinedTextField` (label, supporting text, error) or the job picker. */
@@ -122,10 +122,6 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
                 SetupField("이메일", form.email, { change(form.copy(email = it)) }, "name@example.com", shownError, null, focus,
                     KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction, leadingIcon = contactIcon("email"), required = true)
             }
-            SetupStep.INTRODUCTION -> {
-                Question("처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)")
-                SetupField("소개", form.introduction, { change(form.copy(introduction = it)) }, "예: 커뮤니티 운영과 행사 기획을 해요", shownError, null, focus, minLines = 3)
-            }
         }
     }
 }
@@ -133,9 +129,9 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
 /** One floating-label field (shared `DearbyField`, contract "플로팅 라벨·필수 표시"); contact steps add [leadingIcon] (contract "연락처 행은 라벨 대신 왼쪽 아이콘"); single-line fields answer Next with the section's `next`. */
 @Composable private fun SetupField(
     label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, error: String?, hint: String?, focus: FocusRequester,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1, leadingIcon: ImageVector? = null, required: Boolean = false,
-) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, minLines = minLines, focusRequester = focus,
-    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next, leadingIcon = leadingIcon, required = required)
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, leadingIcon: ImageVector? = null, required: Boolean = false,
+) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, focusRequester = focus,
+    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = ImeAction.Next, leadingIcon = leadingIcon, required = required)
 
 /** An answered section: label and value on a row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {
