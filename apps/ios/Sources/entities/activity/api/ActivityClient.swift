@@ -331,17 +331,20 @@ enum ActivityClient {
     private static func stage(_ schedule: Schedule) -> ActivityStageModel {
         let zone = schedule.timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul"
         let kind = schedule.kind.flatMap(ActivityStageModel.Kind.init(rawValue:)) ?? .event
+        let phase = schedule.phase.flatMap(ActivityStageModel.Phase.init(rawValue:))
         let startAt = ActivityModel.instant(schedule.startAt), endAt = ActivityModel.instant(schedule.endAt)
         if startAt != nil || endAt != nil {
             return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt, end: endAt,
                                       allDay: false, dateLabel: schedule.dateLabel, timeZone: zone, statuses: statuses(schedule),
-                                      recurrence: ScheduleRecurrence(schedule.recurrence?.value), hasTimetable: schedule.hasTimetable ?? false)
+                                      recurrence: ScheduleRecurrence(schedule.recurrence?.value), hasTimetable: schedule.hasTimetable ?? false,
+                                      phase: phase)
         }
         let startDate = ActivityModel.seoulDay(schedule.startDate), endDate = ActivityModel.seoulDay(schedule.endDateExclusive)
         return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate,
                                   allDay: startDate != nil || endDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul",
                                   statuses: statuses(schedule), overlapCheck: overlapCheck(schedule),
-                                  recurrence: ScheduleRecurrence(schedule.recurrence?.value), hasTimetable: schedule.hasTimetable ?? false)
+                                  recurrence: ScheduleRecurrence(schedule.recurrence?.value), hasTimetable: schedule.hasTimetable ?? false,
+                                  phase: phase)
     }
     /// The schedule's statuses (contract "일정 상태" 2026-10-22); an unknown kind reads as OTHER, and none (older responses) the default three.
     private static func statuses(_ schedule: Schedule) -> [ScheduleStatus] {
@@ -393,6 +396,8 @@ enum ActivityClient {
         let recurrence: Lenient<String>?
         /// 트랙·세션 시간표 (2026-10-26); absent on older responses.
         let hasTimetable: Bool?
+        /// 선발 과정·활동 일정 (2026-10-26); absent on older responses, and an unknown value reads as absent.
+        let phase: String?
         /// The zone session times are shown in: a known `timeZone`, else Seoul (an all-day block's).
         var zone: String { timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul" }
     }

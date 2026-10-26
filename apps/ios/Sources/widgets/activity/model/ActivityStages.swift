@@ -30,9 +30,12 @@ struct ActivityStage: Identifiable, Equatable {
     /// The schedule behind the stage; for `지원` only the application window's end (README: 날짜는 모집 마감). Its `id` is the
     /// schedule id the marks are keyed by and the server stores them under.
     let source: ActivityStageModel
-    /// A 선발 단계 (contract "통과 여부는 선발 단계에만" 2026-10-26): only these take 통과·대기·탈락; any other stage keeps the date and
-    /// 예정/지남 by time, and its stored mark is not read (`.wait`).
+    /// A 선발 과정 stage (contract "선발 과정·활동 일정 분리" 2026-10-26): only these take 통과·대기·탈락; an 활동 일정 stage keeps the date
+    /// and 예정/지남 by time, and its stored mark is not read (`.wait`).
     let selection: Bool
+    /// The `활동 일정` section holds the activity stages and, whatever its phase, any block with a 트랙·세션 시간표 (contract: 시간표 블록은
+    /// `phase`와 상관없이 `활동 일정`); the rest is `선발 과정`.
+    var inActivitySection: Bool { !selection || source.hasTimetable }
     var mark: StageMark
     var state: State
     /// The marked status as the schedule names it (대기·통과·탈락 or the admin's names).
@@ -135,11 +138,11 @@ enum ActivityStages {
         ActivityStage(id: source.id, name: name, badgeName: badgeName, icon: icon, source: source, selection: selection,
                       mark: selection ? marks[source.id] ?? .wait : .wait, state: .upcoming)
     }
-    /// 선발 단계 (contract "통과 여부는 선발 단계에만" 2026-10-26): 마감·발표·면접 (`DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`), and an `EVENT`
-    /// whose statuses the admin set (an id: e.g. 코딩테스트, which collection files as EVENT like any 행사). The `지원` stage always is; the
-    /// activity period never.
+    /// 선발 과정 (contract "선발 과정·활동 일정 분리" 2026-10-26): the server's `phase`. An older server sends none, and then the superseded
+    /// "통과 여부는 선발 단계에만" rule decides: 마감·발표·면접 (`DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`), and an `EVENT` whose statuses the admin
+    /// set (an id: e.g. 코딩테스트, which collection files as EVENT like any 행사). The `지원` stage always is; the activity period never.
     private static func isSelection(_ source: ActivityStageModel) -> Bool {
-        source.kind != .event || source.statuses.contains { $0.id != nil }
+        source.phase.map { $0 == .selection } ?? (source.kind != .event || source.statuses.contains { $0.id != nil })
     }
     /// Timed: over once its end (its start, with no end) fell before today. All-day: over once the exclusive end reached today.
     /// Date-less: never by time.

@@ -43,7 +43,30 @@ export type Schedule = {
   recurrence?: string | null;
   /** 트랙·세션 시간표가 붙어 있다 (native-v1 "트랙·세션 시간표", 2026-10-26); absent on older responses. */
   hasTimetable?: boolean;
+  /** 선발 과정·활동 일정 (native-v1 "선발 과정·활동 일정 분리", 2026-10-26): the server's resolved value, always present on current responses. */
+  phase?: SchedulePhase;
+  /** admin-v1 "phaseSource" (2026-10-26): `STORED` when an operator or the collector saved the 구분, `RESOLVED` when the server inferred it. */
+  phaseSource?: "STORED" | "RESOLVED";
 };
+export type SchedulePhase = "SELECTION" | "ACTIVITY";
+export const phaseLabels: Record<SchedulePhase, string> = { SELECTION: "선발 과정", ACTIVITY: "활동 일정" };
+/** The 구분 of a schedule as the server sent it (`—` on older responses); `fixed` for the 모집·활동 기간 rows, `stored` marks a saved value. */
+export function PhaseTag({ phase, fixed = false, stored = false }: { phase: SchedulePhase | undefined; fixed?: boolean; stored?: boolean }) {
+  if (!phase) return <span className="muted">—</span>;
+  return (
+    <>
+      <Tag color={phase === "SELECTION" ? "geekblue" : "green"}>
+        {phaseLabels[phase]}
+        {fixed && " · 고정"}
+      </Tag>
+      {stored && (
+        <Tooltip title="운영자나 수집기가 정한 구분이에요. 자동 판정보다 우선해요.">
+          <span className="muted" style={{ fontSize: 12 }}>지정</span>
+        </Tooltip>
+      )}
+    </>
+  );
+}
 export type OverlapCheck = { startTime: string; endTime: string };
 /** `PATCH activities/:id` schedule value: all-day dates or Korea-time instants (either end may be missing for 모집 기간), an optional 사유, or null to drop the structured dates. */
 type ScheduleInput = { startDate?: string; endDate?: string; startAt?: string; endAt?: string; note?: string; overlapCheck?: OverlapCheck | null; recurrence?: string | null } | null;
@@ -773,6 +796,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               recurrenceName="applicationRecurrence"
               timed={applicationTimed}
               startOptional
+              phase="SELECTION"
             />
             <ScheduleBlock
               title="활동 기간"
@@ -783,6 +807,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               overlapName="activityOverlap"
               recurrenceName="activityRecurrence"
               timed={activityTimed}
+              phase="ACTIVITY"
             />
           </>
         )}
@@ -1229,8 +1254,8 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
             ]}
           />
         </Form.Item>
-        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" noteName="applicationNote" overlapName="applicationOverlap" recurrenceName="applicationRecurrence" timed={applicationTimed} startOptional />
-        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" noteName="activityNote" overlapName="activityOverlap" recurrenceName="activityRecurrence" timed={activityTimed} />
+        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" noteName="applicationNote" overlapName="applicationOverlap" recurrenceName="applicationRecurrence" timed={applicationTimed} startOptional phase="SELECTION" />
+        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" noteName="activityNote" overlapName="activityOverlap" recurrenceName="activityRecurrence" timed={activityTimed} phase="ACTIVITY" />
         <Form.Item name="activityDateLabel" label="활동 기간 원문(선택)" extra="날짜를 고르지 않으면 이 문구만 남아요. 예: 2026년 상반기">
           <Input maxLength={200} />
         </Form.Item>
@@ -1293,6 +1318,7 @@ export function ScheduleBlock({
   recurrenceName,
   timed,
   startOptional = false,
+  phase,
 }: {
   title: string;
   schedule: Schedule | null | undefined;
@@ -1304,11 +1330,14 @@ export function ScheduleBlock({
   timed: boolean;
   /** 모집 기간 may be a deadline alone (contract "마감일만 지정"); 활동 기간 needs both ends. */
   startOptional?: boolean;
+  /** 모집·활동 기간 rows have a fixed 구분 the server refuses to change (contract "선발 과정·활동 일정 분리"); shown, never edited. */
+  phase?: SchedulePhase;
 }) {
   return (
     <div className="schedule-block">
       <div className="schedule-block-heading">
         <strong>{title}</strong>
+        {phase && <PhaseTag phase={phase} fixed />}
         {schedule?.curated && <CuratedTag />}
       </div>
       <p className="field-note">
