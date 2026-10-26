@@ -229,6 +229,11 @@ open class Schedules(
      */
     val RECURRENCE: TableField<SchedulesRecord, String?> = createField(DSL.name("recurrence"), SQLDataType.VARCHAR(200), this, "")
 
+    /**
+     * The column <code>public.schedules.phase</code>.
+     */
+    val PHASE: TableField<SchedulesRecord, String?> = createField(DSL.name("phase"), SQLDataType.VARCHAR(20), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -324,7 +329,9 @@ open class Schedules(
         Internal.createCheck(this, DSL.name("schedules_check2"), "((((lat IS NULL) AND (lng IS NULL) AND (address_line1 IS NULL) AND (address_line2 IS NULL)) OR ((lat IS NOT NULL) AND (lng IS NOT NULL) AND (address_line1 IS NOT NULL) AND (address_line2 IS NOT NULL))))", true),
         Internal.createCheck(this, DSL.name("schedules_kind_check"), "(((kind)::text = ANY ((ARRAY['DEADLINE'::character varying, 'ANNOUNCEMENT'::character varying, 'INTERVIEW'::character varying, 'EVENT'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_overlap_time_check"), "((((overlap_start_time IS NULL) AND (overlap_end_time IS NULL)) OR ((overlap_start_time IS NOT NULL) AND (overlap_end_time IS NOT NULL) AND (overlap_end_time > overlap_start_time))))", true),
+        Internal.createCheck(this, DSL.name("schedules_phase_check"), "(((phase)::text = ANY ((ARRAY['SELECTION'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_slot_check"), "(((slot)::text = ANY ((ARRAY['APPLICATION'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
+        Internal.createCheck(this, DSL.name("schedules_slot_phase_check"), "(((slot IS NULL) OR (phase IS NULL) OR (((slot)::text = 'APPLICATION'::text) AND ((phase)::text = 'SELECTION'::text)) OR (((slot)::text = 'ACTIVITY'::text) AND ((phase)::text = 'ACTIVITY'::text))))", true),
         Internal.createCheck(this, DSL.name("schedules_status_check"), "(((status)::text = ANY ((ARRAY['TENTATIVE'::character varying, 'CONFIRMED'::character varying, 'CANCELLED'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_time_type_check"), "(((time_type)::text = ANY ((ARRAY['TIMED'::character varying, 'ALL_DAY'::character varying])::text[])))", true)
     )
