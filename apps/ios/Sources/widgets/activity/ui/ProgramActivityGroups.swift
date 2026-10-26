@@ -8,10 +8,12 @@ struct ProgramActivityGroups: View {
     let programID: Int64
     @Binding var path: NavigationPath
     let groups: Set<StatusGroup>
+    /// The 종류 the activities are read with (discovery's 종류 필터); empty on a program page (every 종류).
+    var categories: Set<ActivityCategory> = []
     /// 사용 통계 `myactivity_add` source: `discovery`, or `favorites` on a favorite program's page.
     var source = "discovery"
     var body: some View {
-        if let loaded = state.activities(programID, for: groups) {
+        if let loaded = state.activities(programID, for: groups, categories: categories) {
             let available = groups.contains(.available)
             let activities = available ? loaded.recruiting : [], upcoming = available ? loaded.upcoming : []
             let inProgress = groups.contains(.inProgress) ? loaded.inProgress : [], past = groups.contains(.past) ? loaded.past : []
@@ -31,7 +33,7 @@ struct ProgramActivityGroups: View {
             group("진행 중", inProgress)
             group("지난 활동", past)
         } else if state.failedPrograms.contains(programID) {
-            Button("활동 다시 불러오기") { state.retryActivities(programID, groups: groups) }.frame(maxWidth: .infinity, minHeight: 44)
+            Button("활동 다시 불러오기") { state.retryActivities(programID, groups: groups, categories: categories) }.frame(maxWidth: .infinity, minHeight: 44)
         } else {
             // Until the activities arrive (contract "내용 로딩은 스켈레톤" 2026-10-22).
             VStack(alignment: .leading, spacing: 8) {

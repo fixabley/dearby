@@ -9,9 +9,10 @@ enum ActivityClient {
     /// `kind` (발견 `프로그램 | 이벤트`) keeps an expanded program to that side's activities.
     /// `status` (contract "활동 상태") keeps the activities in those states; nil sends none.
     static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil,
-                      kind: DiscoveryKind? = nil, status: [ActivityStatus]? = nil) async throws -> ActivityPage {
+                      kind: DiscoveryKind? = nil, status: [ActivityStatus]? = nil, categories: [ActivityCategory] = []) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
         if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
+        if !categories.isEmpty { items.append(URLQueryItem(name: "category", value: categories.map(\.rawValue).joined(separator: ","))) }
         if let status { items.append(URLQueryItem(name: "status", value: status.map(\.rawValue).joined(separator: ","))) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
@@ -30,9 +31,12 @@ enum ActivityClient {
     /// `status` (contract "활동 상태") groups and counts the programs by those activities' states (the non-recruiting ones within the last
     /// three years). `kind` (발견 `프로그램 | 이벤트`) limits the programs and their summary dates to that side.
     /// `logoUrl` is an API-origin path (`/v1/programs/{id}/logo?v=…`, contract "프로그램 로고"), resolved here against `api`.
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?, status: [ActivityStatus], kind: DiscoveryKind? = nil) async throws -> ProgramPage {
+    /// `categories` (contract "종류 필터" 2026-10-26) keeps the programs and their summaries to those 종류; empty sends none.
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, status: [ActivityStatus], kind: DiscoveryKind? = nil,
+                              categories: [ActivityCategory] = []) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
         if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
+        if !categories.isEmpty { items.append(URLQueryItem(name: "category", value: categories.map(\.rawValue).joined(separator: ","))) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         items.append(URLQueryItem(name: "status", value: status.map(\.rawValue).joined(separator: ",")))
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }

@@ -34,8 +34,9 @@ struct ActivityListPage: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
                 if state.phase != .loading, (state.query ?? "").isEmpty { queueEntry }
-                // Always on screen: a change reloads the list (`.loading`), and removing the row would close its menu mid-choice.
+                // Always on screen: a change reloads the list (`.loading`), and removing a row would close its menu mid-choice.
                 statusFilterRow
+                categoryFilterRow
                 switch state.phase {
                 case .loading:
                     programsSkeleton
@@ -47,6 +48,12 @@ struct ActivityListPage: View {
                 case .loaded where state.programs.isEmpty:
                     if let query = state.query, !query.isEmpty {
                         CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
+                            .frame(minHeight: viewport)
+                    } else if !state.categories.isEmpty {
+                        // 종류 필터 (contract "종류 필터" 2026-10-26): the way out is clearing the 종류.
+                        CenteredMessage(symbol: "calendar", title: "고른 종류의 \(state.kind == .event ? "이벤트가" : "프로그램이") 없어요",
+                                        message: "다른 종류를 고르거나 종류 필터를 지워 보세요.", embedded: true,
+                                        primary: MessageAction("종류 필터 지우기", identifier: "activity-clear-categories") { chooseCategories([]) })
                             .frame(minHeight: viewport)
                     } else if !state.statusGroups.contains(.past) {
                         CenteredMessage(symbol: "calendar", title: emptyTitle,
@@ -145,16 +152,29 @@ struct ActivityListPage: View {
     /// 활동 상태 (contract "활동 상태" 2026-10-26, replacing `마감 숨기기`) as the first list row: a system `Menu` with one checkmark `Toggle` per
     /// 묶음 that stays open while choosing, the chosen ones summarised beside the label. Unchecking the last one falls back to `지원 가능`.
     private var statusFilterRow: some View {
-        let summary = StatusGroup.summary(state.statusGroups)
-        return Menu {
+        filterRow("활동 상태", summary: StatusGroup.summary(state.statusGroups), identifier: "discovery-status-filter") {
             ForEach(StatusGroup.allCases, id: \.self) { group in
                 Toggle(group.title, isOn: Binding(get: { state.statusGroups.contains(group) }) { isOn in
                     choose(isOn ? state.statusGroups.union([group]) : state.statusGroups.subtracting([group]))
                 })
             }
-        } label: {
+        }
+    }
+    /// 종류 필터 (contract "종류 필터" 2026-10-26) under 활동 상태, the same menu row: this side's 종류 with their icons; none chosen is `전체`.
+    private var categoryFilterRow: some View {
+        filterRow("종류", summary: state.kind.summary(state.categories), identifier: "discovery-category-filter") {
+            ForEach(state.kind.categories, id: \.self) { category in
+                Toggle(isOn: Binding(get: { state.categories.contains(category) }) { isOn in
+                    chooseCategories(isOn ? state.categories.union([category]) : state.categories.subtracting([category]))
+                }) { Label(category.label, systemImage: category.systemImage) }
+            }
+        }
+    }
+    /// A filter as a list row: a system `Menu` of checkmark `Toggle`s that stays open while choosing, the choice summarised beside the label.
+    private func filterRow(_ title: String, summary: String, identifier: String, @ViewBuilder items: () -> some View) -> some View {
+        Menu(content: items) {
             HStack(spacing: 6) {
-                Text("활동 상태").font(.dearby(.body)).foregroundStyle(.primary)
+                Text(title).font(.dearby(.body)).foregroundStyle(.primary)
                 Spacer(minLength: 12)
                 Text(summary).font(.dearby(.body)).foregroundStyle(.secondary).lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.secondary)
@@ -164,7 +184,12 @@ struct ActivityListPage: View {
             .contentShape(Rectangle())
         }
         .menuActionDismissBehavior(.disabled)
-        .accessibilityLabel("활동 상태").accessibilityValue(summary).accessibilityIdentifier("discovery-status-filter")
+        .accessibilityLabel(title).accessibilityValue(summary).accessibilityIdentifier(identifier)
+    }
+    /// The user changed the 종류: applies it and reports the chosen codes (사용 통계 `discovery_category_filter`, empty for 전체).
+    private func chooseCategories(_ categories: Set<ActivityCategory>) {
+        guard state.setCategories(categories) else { return }
+        AppAnalytics.event("discovery_category_filter", ["categories": state.categoryList.map { $0.rawValue.lowercased() }.joined(separator: ",")])
     }
     /// The user changed the filter: applies it and reports the chosen groups (사용 통계 `discovery_status_filter`).
     private func choose(_ groups: Set<StatusGroup>) {
@@ -212,7 +237,9 @@ struct ActivityListPage: View {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) { state.toggle(program.id) }
             }
             if open {
-                VStack(alignment: .leading, spacing: 8) { ProgramActivityGroups(state: state, programID: program.id, path: $path, groups: state.statusGroups) }
+                VStack(alignment: .leading, spacing: 8) {
+                    ProgramActivityGroups(state: state, programID: program.id, path: $path, groups: state.statusGroups, categories: state.categories)
+                }
                     .padding(EdgeInsets(top: 0, leading: 10, bottom: 12, trailing: 10))
                     .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }
