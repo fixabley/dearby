@@ -21,6 +21,7 @@ import com.dearby.nativeapp.pages.activity.ActivityState
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
 import com.dearby.nativeapp.pages.activity.DiscoveryKind
+import com.dearby.nativeapp.pages.activity.StatusGroup
 import com.dearby.nativeapp.pages.activity.ProgramActivities
 import com.dearby.nativeapp.pages.activity.ProgramPhase
 import com.dearby.nativeapp.pages.activity.ProgramState
@@ -59,7 +60,8 @@ import kotlinx.coroutines.launch
 /**
  * Discovery (contract "발견 프로그램 묶음"): GET /v1/programs page by page, and GET /v1/activities?programId= when a
  * program is expanded; a failure is an error state, never example activities. [fetchPrograms] takes the search text
- * (null for all), the cursor and the open-only flag; [fetch] takes the search text, the cursor, the program id and the open flag.
+ * (null for all), the cursor, the `status=` value (contract "활동 상태") and the kind; [fetch] takes the search text, the cursor, the program id,
+ * the `status=` value and the kind.
  * Tags are a search condition only (contract "태그 칩 줄 제거", 2026-10-19 밤): no dictionary load, no tag filter.
  *
  * 내 활동 storage (contract "내 활동 서버 저장·일정 상태", 2026-10-22): signed out, the applied marks and stage statuses stay
@@ -69,14 +71,16 @@ import kotlinx.coroutines.launch
  * loaded (`GET /v1/activities/:id`, null when it is gone → "삭제된 활동"). Signing out drops the account's records from memory.
  */
 class ActivityViewModel(
-    private val fetchPrograms: suspend (String?, String?, Boolean, String) -> ProgramPage, // query, cursor, openOnly, kind
-    private val fetch: suspend (String?, String?, String?, Boolean, String?) -> ActivityPage, // query, cursor, programId, open, kind
+    private val fetchPrograms: suspend (String?, String?, String, String) -> ProgramPage, // query, cursor, status, kind
+    private val fetch: suspend (String?, String?, String?, String, String?) -> ActivityPage, // query, cursor, programId, status, kind
     private val fetchOne: suspend (String) -> ActivityModel? = { null },
     private val account: AccountViewModel? = null,
     /** 발견 `프로그램 | 이벤트` remembered on the device (2026-10-26): the starting choice and where a change is saved. */
     kind: DiscoveryKind = DiscoveryKind.PROGRAM, private val saveKind: (DiscoveryKind) -> Unit = {},
+    /** The 상태 dropdown remembered on the device (2026-10-26), like [kind]. */
+    statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, private val saveStatusGroups: (Set<StatusGroup>) -> Unit = {},
 ) : ViewModel() {
-    private val mutable = MutableStateFlow(ActivityListState(kind = kind))
+    private val mutable = MutableStateFlow(ActivityListState(kind = kind, statusGroups = statusGroups))
     val state = mutable.asStateFlow()
     private var models: Map<String, ActivityModel> = emptyMap()
     // The user's own stage statuses by activity id, then schedule id (contract "내 활동 서버 저장·일정 상태").
@@ -114,10 +118,16 @@ class ActivityViewModel(
         start(debounce = true)
     }
     fun reload() = start(debounce = false)
-    /** The `마감 숨기기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last three years and always shows their other activities when expanded. */
-    fun setOpenOnly(value: Boolean) {
-        if (value == state.value.openOnly) return
-        mutable.update { it.copy(openOnly = value) }
+    /**
+     * The 상태 dropdown (contract "활동 상태", 2026-10-26): the list and expanded programs are read again with those states. Unchecking the
+     * last group falls back to 지원 가능.
+     */
+    fun setStatusGroups(value: Set<StatusGroup>) {
+        val groups = value.ifEmpty { StatusGroup.DEFAULT }
+        if (groups == state.value.statusGroups) return
+        mutable.update { it.copy(statusGroups = groups) }
+        saveStatusGroups(groups)
+        Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(groups))
         start(debounce = false)
     }
     /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind. */
@@ -177,7 +187,7 @@ class ActivityViewModel(
         }
     }
     private suspend fun programPage(cursor: String?): ProgramPage? = try {
-        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly, state.value.kind.code)
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, StatusGroup.query(state.value.statusGroups), state.value.kind.code)
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
@@ -202,13 +212,14 @@ class ActivityViewModel(
         if (programJobs[programId]?.isActive == true) return
         mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities())) }
         val kind = state.value.kind.code
+        val status = StatusGroup.query(state.value.statusGroups)
         programJobs[programId] = viewModelScope.launch {
             val items = mutableListOf<ActivityModel>()
             var cursor: String? = null
             try {
-                // Every page of the program's open activities (contract "열린 활동 판정 일원화": the server decides openness).
+                // Every page of the program's activities in the chosen states (contract "활동 상태": the server decides each state).
                 for (attempt in 1..MAX_PROGRAM_PAGES) {
-                    val page = fetch(null, cursor, programId, true, kind)
+                    val page = fetch(null, cursor, programId, status, kind)
                     items += page.items
                     // `break`, not `return@repeat`: the latter only skips to the next pass, which fetched page 1 again (each activity shown 5 times).
                     cursor = page.nextCursor ?: break
@@ -218,22 +229,15 @@ class ActivityViewModel(
                 return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
             val now = Instant.now()
-            val open = items
-            // The program's other activities (contract "마감 숨기기", 2026-10-19 밤 정정) in two groups — 모집 예정 (recruitment or activity
-            // start still ahead, nearest first) is shown always; 지난 활동 (started within three years, most recent first) only while the
-            // switch is off. Activities already shown as open are excluded.
-            val others = try {
-                fetch(null, null, programId, false, kind).items
-            } catch (e: CancellationException) { throw e } catch (e: Exception) {
-                Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
-                emptyList()
-            }
-            val openIds = open.map { it.id }.toSet()
-            val upcoming = others.filter { it.id !in openIds && (it.upcomingKey ?: Instant.MIN) > now }.sortedBy { it.upcomingKey }
+            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행 중, and the rest as 지난 활동 within
+            // three years (an undated one stays), most recent start first.
+            val byStatus = items.groupBy { it.status }
+            val open = byStatus["RECRUITING"].orEmpty()
+            val upcoming = byStatus["RECRUITING_UPCOMING"].orEmpty().sortedWith(compareBy(nullsLast()) { it.upcomingKey })
+            val inProgress = byStatus["IN_PROGRESS"].orEmpty().sortedWith(compareByDescending(nullsFirst()) { it.activityStart })
             val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
-            val past = if (state.value.openOnly) emptyList()
-                else others.filter { it.id !in openIds && it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
-            val shown = open + upcoming + past
+            val past = items.filter { it.status in StatusGroup.PAST.statuses && it.activityStart?.let { start -> start >= since } != false }.sortedByDescending { it.activityStart }
+            val shown = open + upcoming + inProgress + past
             models = models + shown.associateBy { it.id }
             val today = today()
             mutable.update { state ->
@@ -241,7 +245,7 @@ class ActivityViewModel(
                     activity.id to activity.toState(now).let { known -> state.known[known.id]?.takeUnless { it.deleted }?.let { known.copy(applied = it.applied) } ?: known }
                 }
                 state.copy(known = state.known + loaded, progress = state.progress + shown.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
-                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, upcoming.map { it.id }, past.map { it.id })))
+                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, upcoming.map { it.id }, inProgress.map { it.id }, past.map { it.id })))
             }
         }
     }
@@ -434,7 +438,7 @@ private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
 /** One program card's state, for discovery and 즐겨찾기 alike. */
 internal fun ProgramSummary.toState() = ProgramState(id, name, organization, openActivityCount, instant(nearestRecruitmentEndAt), matchedActivityIds.size, instant(latestActivityAt),
     fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl,
-    deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable)
+    deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable, statusCounts = statusCounts)
 
 private fun ActivityModel.toState(now: Instant): ActivityState {
     val status = statusLabel(now)

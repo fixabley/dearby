@@ -21,6 +21,10 @@ class DevicePreferences(context: Context) {
     var discoveryKind: String
         get() = preferences.getString("discoveryKind", null) ?: "program"
         set(value) = preferences.edit { putString("discoveryKind", value) }
+    /** 발견 상태 dropdown (2026-10-26, contract "활동 상태"): the chosen groups' codes, comma-joined; `available` (지원 가능) until changed. */
+    var discoveryStatus: String
+        get() = preferences.getString("discoveryStatus", null) ?: "available"
+        set(value) = preferences.edit { putString("discoveryStatus", value) }
     var pushStarted: Boolean
         get() = preferences.getBoolean("pushStarted", false)
         set(value) = preferences.edit { putBoolean("pushStarted", value) }
