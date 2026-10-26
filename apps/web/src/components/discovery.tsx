@@ -36,6 +36,7 @@ import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Segmented } from "@/shared/ui/segmented";
 import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
+import { MineToggle } from "@/features/mine/ui/mine-toggle";
 import { DiscoveryFilterBar, type DiscoveryFilters } from "@/widgets/activity/discovery-filter";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { categoryLabels, groupByCategory } from "@/lib/category";
@@ -317,6 +318,8 @@ function cardProps(activity: Activity, now: number) {
     placeName: activity.place?.name ?? activity.location ?? null,
     fieldTag: fieldTagsOf(activity)[0],
     traitTags: traitTagsOf(activity),
+    // 내 활동 `+`/check (web 2단계 B) where the apps put the heart.
+    action: <MineToggle activity={activity} source="discovery" />,
   };
 }
 

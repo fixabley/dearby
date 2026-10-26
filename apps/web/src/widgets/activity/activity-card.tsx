@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -21,7 +22,8 @@ export const statusVariant = {
 /**
  * 펼친 프로그램 안의 활동 카드 한 장 (contract "발견 카드 리뉴얼 — 2026-10-19", iOS `ActivityCard`): grouped-background tile inside
  * the program card, 활동명 and the status capsule on top, the tag chip line (분야 1개 + 얻을 수 있는 것), then `모집`·`활동`·`장소` label/value rows. While recruitment is not past
- * (`recruitmentActive`) the `모집` value is teal semibold on a mint band. The whole card links to the detail.
+ * (`recruitmentActive`) the `모집` value is teal semibold on a mint band. The name link stretches over the whole card; `action` (the 내 활동
+ * `+`/check, later the heart) sits beside the capsules above it, so it stays a separate control.
  */
 export function ActivityCard({
   id,
@@ -35,6 +37,7 @@ export function ActivityCard({
   placeName,
   fieldTag,
   traitTags = [],
+  action,
 }: {
   id: number;
   name: string;
@@ -51,9 +54,11 @@ export function ActivityCard({
   activityLabel: string;
   /** 장소 이름; 없으면 줄을 생략한다. */
   placeName?: string | null;
-  /** Tag chip line under the name (contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음"): the first 분야, then 얻을 수 있는 것. */
+  /** Tag chip line under the name (contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음"): the first 분야, then 얻을 수 있는 것. None hides the line. */
   fieldTag?: Tag;
   traitTags?: Tag[];
+  /** A control at the top right (the 내 활동 toggle); none on the progress page's header card. */
+  action?: ReactNode;
 }) {
   const rows: [string, string, boolean, string?][] = [
     ["모집", recruitmentLabel || "모집 일정 미정", recruitmentActive, recruitmentDday],
@@ -61,12 +66,13 @@ export function ActivityCard({
   ];
   if (placeName) rows.push(["장소", placeName, false]);
   return (
-    <Link
-      href={`/activities/${id}`}
-      className="flex flex-col gap-2 rounded-[14px] bg-background px-3 pt-3 pb-2.5 transition-opacity active:opacity-70"
-    >
+    <div className="relative flex flex-col gap-2 rounded-[14px] bg-background px-3 pt-3 pb-2.5 transition-opacity has-[a[data-card-link]:active]:opacity-70">
       <span className="flex items-start gap-2.5">
-        <h3 className="flex-1 text-subheadline font-semibold break-keep">{name}</h3>
+        <h3 className="flex-1 text-subheadline font-semibold break-keep">
+          <Link href={`/activities/${id}`} data-card-link className="after:absolute after:inset-0 after:rounded-[14px] after:content-['']">
+            {name}
+          </Link>
+        </h3>
         {/* 시작 D-n left of the 모집 예정 capsule (contract "모집 예정 시작 D-day"; the detail puts it right of the status badge). */}
         {startDday && (
           <Badge variant="tinted" className="text-caption2 tabular-nums">
@@ -78,6 +84,7 @@ export function ActivityCard({
             {STATUS_BADGE[status]}
           </Badge>
         )}
+        {action && <span className="relative z-10 -my-1.5 -mr-1 flex">{action}</span>}
       </span>
       <TagChipRow field={fieldTag} traits={traitTags} />
       <dl className="flex flex-col gap-[3px] text-footnote">
@@ -98,7 +105,7 @@ export function ActivityCard({
           </div>
         ))}
       </dl>
-    </Link>
+    </div>
   );
 }
 
