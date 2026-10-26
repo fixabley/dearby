@@ -77,7 +77,7 @@ import SwiftUI
     }
     var body: some Scene {
         WindowGroup {
-            accountSync(Group {
+            sessionHooks(accountSync(Group {
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
@@ -105,18 +105,10 @@ import SwiftUI
                     .alert(favorites.notice ?? "", isPresented: Binding(get: { favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
                         Button("확인", role: .cancel) {}
                     }
-                    .background {
-                        // A separate host so it does not compete with the favorites alert above.
-                        Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { sessionFavorites.notice != nil },
-                                                                                               set: { if !$0 { sessionFavorites.notice = nil } })) {
-                            Button("확인", role: .cancel) {}
-                        }
-                    }
                 }
             }
             // Every heart reads the one favorites model, also inside sheets and the queue.
             .environment(favorites)
-            .environment(sessionFavorites)
             // Every tab's bell: the inbox signed in, sign-in otherwise (contract "알림 목록(발견 우상단 종)").
             .environment(\.inboxEntry, InboxEntry(signedIn: accountReady, unread: inbox.unread, signIn: needAccount))
             // Profile and card photos need the session (contract "프로필 사진"), so every `DearbyPhotoAvatar` reads through the account.
@@ -125,12 +117,6 @@ import SwiftUI
             .onChange(of: favorites.signInRequested) { _, requested in
                 guard requested else { return }
                 favorites.signInRequested = false
-                needAccount()
-            }
-            // A session heart, likewise (contract "트랙·세션 시간표": 비로그인 로그인 시트, 동의 전 동의 화면).
-            .onChange(of: sessionFavorites.signInRequested) { _, requested in
-                guard requested else { return }
-                sessionFavorites.signInRequested = false
                 needAccount()
             }
             .task {
@@ -167,7 +153,7 @@ import SwiftUI
             // `내 활동으로` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: activityModel.showInDiscovery) { _, id in if id != nil { tab = 0 } }
-            )
+            ))
             // The account's answers arrived after a sign-in from the queue row or 관심 분야·활동 종류 (the sheet may still be closing).
             .onChange(of: recommendations.ready) { _, _ in continueAfterSignIn() }
             // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the account's answers are read.
@@ -217,6 +203,24 @@ import SwiftUI
                     .presentationDetents([.medium])
             }
         }
+    }
+    /// 세션 찜 (contract "트랙·세션 시간표"), kept apart from `body` so the compiler can type-check it: every session heart reads the one model;
+    /// one pressed signed out or before the consent opens sign-in or the consent; a failed change says so.
+    private func sessionHooks(_ content: some View) -> some View {
+        content
+            .environment(sessionFavorites)
+            .onChange(of: sessionFavorites.signInRequested) { _, requested in
+                guard requested else { return }
+                sessionFavorites.signInRequested = false
+                needAccount()
+            }
+            .background {
+                // A separate host so it does not compete with the app's other alerts.
+                Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { sessionFavorites.notice != nil },
+                                                                                       set: { if !$0 { sessionFavorites.notice = nil } })) {
+                    Button("확인", role: .cancel) {}
+                }
+            }
     }
     /// Account sync and the consent prompts, kept apart from `body` so the compiler can type-check it.
     private func accountSync(_ content: some View) -> some View {
