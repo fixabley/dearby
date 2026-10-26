@@ -48,10 +48,8 @@ function failure(status: number, code: string) {
 function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
-// 활동 종류 codes (contract "활동 종류"), for the discovery 프로그램 | 이벤트 switch.
-const CATEGORY_LIST = /^(BOOTCAMP|CONFERENCE|WORKSHOP|STUDY|CLUB|LECTURE|HACKATHON|CONTEST|MEETUP|OTHER)(,(BOOTCAMP|CONFERENCE|WORKSHOP|STUDY|CLUB|LECTURE|HACKATHON|CONTEST|MEETUP|OTHER)){0,9}$/;
 /**
- * Only `q`, `cursor`, `size`, `category`, `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
+ * Only `q`, `cursor`, `size`, `kind` (프로그램·이벤트 전환), `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
  * to the searches, rebuilt from validated values. Tags are searched through `q` only; the web never sends `tagIds`
  * (contract "태그 칩 줄 제거", 2026-10-19 밤).
  */
@@ -62,8 +60,8 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   const size = url.searchParams.get("size");
   const programId = url.searchParams.get("programId");
   const participationType = url.searchParams.get("participationType");
-  const category = url.searchParams.get("category");
-  if (category !== null && !CATEGORY_LIST.test(category)) return;
+  const kind = url.searchParams.get("kind");
+  if (kind !== null && !["program", "event"].includes(kind)) return;
   // `open=true` asks the server for its open-activity rule (contract "열린 활동 판정 일원화"); no other value is accepted.
   const openOnly = url.searchParams.get("open");
   if (openOnly !== null && (programs || openOnly !== "true")) return;
@@ -84,7 +82,7 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   if (q) query.set("q", q);
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
-  if (category !== null) query.set("category", category);
+  if (kind !== null) query.set("kind", kind);
   if (programId !== null) query.set("programId", programId);
   if (openOnly !== null) query.set("open", openOnly);
   if (programsOpenOnly !== null) query.set("openOnly", programsOpenOnly);

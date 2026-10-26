@@ -34,14 +34,10 @@ import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { groupByCategory } from "@/lib/category";
 
 /**
- * 프로그램 | 이벤트: 이벤트 is the short-event 활동 종류 (컨퍼런스·워크샵·밋업·강연, the server's short-event set); 프로그램 is every other
- * 종류. The API filters by listed codes only, so 미분류 activities fall in neither.
+ * 프로그램 | 이벤트 (contract "프로그램·이벤트 전환"): the server's `kind` filter — 이벤트 is 컨퍼런스·워크샵·밋업·강연, 프로그램 every other
+ * 종류 and 미분류.
  */
-const KINDS = {
-  program: "BOOTCAMP,STUDY,CLUB,HACKATHON,CONTEST,OTHER",
-  event: "CONFERENCE,WORKSHOP,MEETUP,LECTURE",
-};
-export type Kind = keyof typeof KINDS;
+export type Kind = "program" | "event";
 const KIND_LABEL: Record<Kind, string> = { program: "프로그램", event: "이벤트" };
 /** `/` or `/?kind=event`, plus the search; the kind lives in the URL so a search or 전체 보기 keeps it. */
 function homePath(kind: Kind, q = "") {
@@ -54,7 +50,7 @@ function homePath(kind: Kind, q = "") {
 function programsPath(q: string, openOnly: boolean, kind: Kind, cursor?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
-  params.set("category", KINDS[kind]);
+  params.set("kind", kind);
   if (!openOnly) params.set("openOnly", "false");
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
@@ -181,7 +177,7 @@ export function Discovery({ q, kind }: { q: string; kind: Kind }) {
                 open={expanded.has(program.id)}
                 toggle={() => toggle(program.id)}
                 openOnly={openOnly}
-                category={KINDS[kind]}
+                kind={kind}
               />
             ))}
           </ul>
@@ -396,13 +392,13 @@ function ProgramRow({
   open,
   toggle,
   openOnly,
-  category,
+  kind,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
-  /** The 프로그램 | 이벤트 종류 codes, so an expanded program lists only that side's activities. */
-  category: string;
+  /** 프로그램 | 이벤트, so an expanded program lists only that side's activities. */
+  kind: Kind;
   /** 마감 숨기기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
   openOnly: boolean;
 }) {
@@ -417,15 +413,15 @@ function ProgramRow({
     const controller = new AbortController();
     const { signal } = controller;
     Promise.all([
-      request<ActivityPage>(`/activities?programId=${program.id}&category=${category}&open=true&size=100`, { signal }),
-      request<ActivityPage>(`/activities?programId=${program.id}&category=${category}&size=20`, { signal }),
+      request<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&open=true&size=100`, { signal }),
+      request<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&size=20`, { signal }),
     ])
       .then(([open, all]) => setActivities({ open, all }))
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [open, activities, program.id, category, attempt]);
+  }, [open, activities, program.id, kind, attempt]);
   useEffect(() => {
     if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
