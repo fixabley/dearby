@@ -205,4 +205,36 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
         mvc.put("/v1/guest/cards/$cardId") { guest(token); code(qrCode(owner, cardId)) }.andExpect { status { isConflict() }; jsonPath("$.code") { value("BLOCKED") } }
     }
+
+    // native-v1.md "명함 교환" → "교환 세션 맥락"(2026-10-26): 비로그인은 찜이 없어 진행 중 블록까지만 남긴다
+    @Test
+    fun `게스트 저장은 지금 진행 중인 일정 블록을 맥락으로 남기고 세션은 남기지 않는다`() {
+        val (owner, cardId) = ownerWithCard()
+        jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, created_at, updated_at)
+            select id, '게스트 맥락 컨퍼런스', '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'DRAFT', localtimestamp, localtimestamp from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
+            """
+        ).update()
+        val activity = jdbc.sql("select id from activities where name = '게스트 맥락 컨퍼런스'").query(Long::class.java).single()
+        fun block(title: String, slot: String?, from: String, to: String) = jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, ?, ?, 'EVENT', 'CONFIRMED', 'TIMED', now() + ?::interval, now() + ?::interval, 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).params(listOf<Any?>(activity, slot, title, from, to)).query(Long::class.java).single()
+        block("활동 기간", "ACTIVITY", "-3 hours", "+5 hours")
+        val afternoon = block("오후 세션", null, "-1 hours", "+2 hours")
+        val track = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 A', '201호', 0) returning id").param(afternoon).query(Long::class.java).single()
+        jdbc.sql("insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', '세션', now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb)").params(afternoon, track).update()
+
+        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId), activity) }.andExpect { status { isCreated() } })["guestToken"].asString()
+        val context = read(mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isOk() } })["items"][0]["context"]
+        assertEquals(listOf(activity, afternoon, "오후 세션"), listOf(context["activityId"].asLong(), context["scheduleId"].asLong(), context["scheduleTitle"].asString()))
+        assertTrue(context["sessionId"].isNull && context["sessionTitle"].isNull && context["trackName"].isNull && context["room"].isNull)
+        assertEquals(
+            listOf(afternoon, null),
+            jdbc.sql("select schedule_id, session_id from guest_cards where card_id = ?").param(UUID.fromString(cardId)).query { rs, _ -> listOf(rs.getLong(1), rs.getObject(2)) }.single(),
+        )
+    }
 }
