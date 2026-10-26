@@ -4,7 +4,7 @@ import { z } from "zod";
 import { accountProxy } from "./account-proxy";
 import { upstreamFetch } from "./guest-upstream";
 import { profileConsentSchema, type ProfileConsent } from "./models";
-import { callAsAccount, clearedSessionCookies, hasSession, logoutUpstream, sessionCookies, tokenPairSchema } from "./session";
+import { callAsAccount, clearedSessionCookies, logoutUpstream, readSession, refreshSession, sessionCookies, tokenPairSchema } from "./session";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
@@ -56,7 +56,7 @@ export async function authRoute(request: Request, segments: string[]): Promise<R
   // Adding a passkey to the signed-in account (contract "설정" › 패스키): the Bearer branch of the proxy.
   if (segments[0] === "passkeys" && segments[1] === "registration") return accountProxy(request, ["auth", ...segments]);
   if (method === "GET") return path === "session" ? session(request) : failure(404, "NOT_FOUND");
-  if (method !== "POST" || !(path === "logout" || path in starts || path in finishes)) return failure(404, "NOT_FOUND");
+  if (method !== "POST" || !(path === "logout" || path === "refresh" || path in starts || path in finishes)) return failure(404, "NOT_FOUND");
   if (
     request.headers.get("origin") !== new URL(request.url).origin ||
     request.headers.get("x-dearby-request") !== "1" ||
@@ -68,6 +68,7 @@ export async function authRoute(request: Request, segments: string[]): Promise<R
     return withCookies(new Response(null, { status: 204, headers }), clearedSessionCookies());
   }
   if (!process.env.DEARBY_API_ORIGIN) return failure(503, "SERVICE_UNAVAILABLE");
+  if (path === "refresh") return refresh(request);
   const start: Start | undefined = starts[path];
   const spec: Start | Finish = start ?? finishes[path];
   let body: unknown;
@@ -100,20 +101,37 @@ async function problem(response: Response) {
   return failure(status, code, typeof detail === "string" && status < 500 ? detail.slice(0, 200) : undefined);
 }
 
+/**
+ * `POST /api/auth/refresh` (contract "refresh 회전"): the one place the refresh token is used. The browser calls it once under a Web
+ * Lock after a 401 and retries; a still-valid access cookie means another tab already did, so nothing is rotated.
+ */
+async function refresh(request: Request) {
+  try {
+    const result = await refreshSession(request.headers.get("cookie"));
+    if (result.kind === "current") return Response.json({ refreshed: false }, { headers });
+    if (result.kind === "refreshed") return withCookies(Response.json({ refreshed: true }, { headers }), result.cookies);
+    return withCookies(failure(401, "SIGNED_OUT"), result.kind === "refused" ? result.cookies : []);
+  } catch {
+    return failure(502, "UPSTREAM_UNAVAILABLE");
+  }
+}
+
 export type Session = { signedIn: boolean; consent?: ProfileConsent | null };
 /**
  * `GET /api/auth/session`: whether the browser holds a session, and for a signed-in one the consent state from `GET /v1/profile`
- * (contract "개인정보 동의": asked at every start while required). `consent` is null when the API could not be reached, which the
- * shell treats as unknown — no gate, no account sync.
+ * (contract "개인정보 동의": asked at every start while required). An expired access token is 401 `SIGNED_OUT` like any account
+ * route, so the browser refreshes and asks again. `consent` is null when the API could not be reached, which the shell treats as
+ * unknown — no gate, no account sync.
  */
 async function session(request: Request) {
   const cookieHeader = request.headers.get("cookie");
-  if (!hasSession(cookieHeader) || !process.env.DEARBY_API_ORIGIN) return Response.json({ signedIn: false } satisfies Session, { headers });
+  const tokens = readSession(cookieHeader);
+  if ((!tokens.access && !tokens.refresh) || !process.env.DEARBY_API_ORIGIN) return Response.json({ signedIn: false } satisfies Session, { headers });
   try {
     const result = await callAsAccount(cookieHeader, { path: "profile" });
-    if (result.kind === "signedOut") return withCookies(Response.json({ signedIn: false } satisfies Session, { headers }), result.cookies);
+    if (result.kind === "signedOut" || result.response.status === 401) return failure(401, "SIGNED_OUT");
     const consent = result.response.ok ? profileConsentSchema.parse(await result.response.json()) : null;
-    return withCookies(Response.json({ signedIn: true, consent } satisfies Session, { headers }), result.cookies);
+    return Response.json({ signedIn: true, consent } satisfies Session, { headers });
   } catch {
     return Response.json({ signedIn: true, consent: null } satisfies Session, { headers });
   }

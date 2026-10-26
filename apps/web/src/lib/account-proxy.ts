@@ -1,15 +1,13 @@
 // Signed-in account routes of the `/api/*` proxy (contract native-v1.md "웹 로그인"): a fixed allowlist, the access token from the
 // session cookie as Bearer, one refresh on 401, and validated bodies both ways. Nothing here is reachable without the cookies.
 import { z } from "zod";
-import { TOKEN, guestCookie, readGuestCookie } from "./guest-upstream";
+import { TOKEN, readGuestCookie } from "./guest-upstream";
 import { callAsAccount, clearedSessionCookies } from "./session";
 import { profileConsentSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
-function failure(status: number, code: string, detail?: string, cookies: string[] = []) {
-  const response = Response.json({ error: { code, ...(detail && { detail }) } }, { status, headers });
-  for (const value of cookies) response.headers.append("Set-Cookie", value);
-  return response;
+function failure(status: number, code: string, detail?: string) {
+  return Response.json({ error: { code, ...(detail && { detail }) } }, { status, headers });
 }
 
 const challengeId = z.uuid();
@@ -41,7 +39,7 @@ const passkeyListSchema = z.object({ items: z.array(passkeySchema) });
 const optionsSchema = z.object({ challengeId, options: z.looseObject({}) });
 /** `POST /v1/wallet/import-guest` (server PR, contract "웹 로그인"): how many saved cards moved into the account. */
 const importSchema = z.object({ imported: z.number().int().nonnegative() });
-export const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED"];
+export const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED", "GUEST_SESSION_INVALID"];
 
 type Route = { body?: keyof typeof bodies; parse: (json: unknown) => unknown; noContent?: boolean };
 /** `METHOD path` → how the request and response are validated. `:id` is a passkey credential id, `:provider` apple|google. */
@@ -70,8 +68,9 @@ export function isAccountRoute(method: string, segments: string[]) {
 
 /**
  * Handles one allowlisted account route. Mutations need the same same-origin guard as guest mutations (exact Origin,
- * `X-Dearby-Request: 1`, JSON). Without a session cookie nothing goes upstream (401 `SIGNED_OUT`); a refused refresh clears the
- * cookies with the same code. Upstream ProblemDetail crosses only as a known `code` plus its user-facing `detail`.
+ * `X-Dearby-Request: 1`, JSON). Without an access cookie nothing goes upstream, and an upstream 401 passes through, both as 401
+ * `SIGNED_OUT`: the browser refreshes once through `POST /api/auth/refresh` and retries (contract "refresh 회전"). Upstream
+ * ProblemDetail crosses only as a known `code` plus its user-facing `detail`.
  */
 export async function accountProxy(request: Request, segments: string[]): Promise<Response> {
   const method = request.method;
@@ -97,7 +96,8 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     }
   } else if (mutation) body = {};
   const cookieHeader = request.headers.get("cookie");
-  // 비로그인 저장 합치기: the guest token comes from this server's cookie, never from the browser body.
+  // 비로그인 저장 → 계정 합치기: the guest token comes from this server's cookie, never from the browser body. The guest session stays
+  // (the API closes its saves); the browser clears it with the usual `DELETE /api/guest/session`.
   const importGuest = segments.join("/") === "wallet/import-guest";
   const guestToken = importGuest ? readGuestCookie(cookieHeader) : undefined;
   if (importGuest) {
@@ -107,31 +107,28 @@ export async function accountProxy(request: Request, segments: string[]): Promis
   const path = segments.join("/");
   try {
     const result = await callAsAccount(cookieHeader, { path, method, body: mutation ? body : undefined });
-    if (result.kind === "signedOut") return failure(401, "SIGNED_OUT", undefined, result.cookies);
-    const { response, cookies } = result;
+    if (result.kind === "signedOut") return failure(401, "SIGNED_OUT");
+    const { response } = result;
     // Account deletion ends the session here as well; the API has already dropped the refresh token.
-    if (path === "me" && method === "DELETE" && (response.ok || response.status === 401))
+    if (path === "me" && method === "DELETE" && response.ok)
       return withCookies(new Response(null, { status: 204, headers }), clearedSessionCookies());
+    if (response.status === 401) return failure(401, "SIGNED_OUT");
     if (!response.ok) {
       const status = [400, 403, 404, 409, 422, 429, 503].includes(response.status) ? response.status : 502;
       const problem: unknown = await response.json().catch(() => undefined);
       const code = (problem as { code?: unknown } | undefined)?.code;
       const detail = (problem as { detail?: unknown } | undefined)?.detail;
-      // The server PR adds import-guest; until it is deployed the saved cards simply stay in the browser.
-      if (importGuest && (status === 404 || status === 502)) return withCookies(Response.json({ imported: 0 }, { headers }), cookies);
+      // A guest session the API no longer knows (400 `GUEST_SESSION_INVALID`, contract "비로그인 저장 → 계정 합치기") has nothing to move.
+      if (importGuest && code === "GUEST_SESSION_INVALID") return Response.json({ imported: 0 }, { headers });
       return failure(
         status,
         typeof code === "string" && KNOWN_CODES.includes(code) ? code : "REQUEST_FAILED",
         typeof detail === "string" && status < 500 ? detail.slice(0, 200) : undefined,
-        cookies,
       );
     }
-    if (spec.noContent) return withCookies(new Response(null, { status: 204, headers }), cookies);
+    if (spec.noContent) return new Response(null, { status: 204, headers });
     const output = spec.parse(response.status === 204 ? undefined : await response.json());
-    const out = withCookies(Response.json(output ?? {}, { status: response.status === 201 ? 201 : 200, headers }), cookies);
-    // Moved cards no longer belong to the browser list; the guest session cookie goes with them.
-    if (importGuest) out.headers.append("Set-Cookie", guestCookie("", true));
-    return out;
+    return Response.json(output ?? {}, { status: response.status === 201 ? 201 : 200, headers });
   } catch {
     return failure(502, "UPSTREAM_UNAVAILABLE");
   }

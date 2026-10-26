@@ -1,5 +1,5 @@
-// Web sign-in session (contract native-v1.md "웹 로그인"): the API's TokenPair lives only in two HttpOnly cookies set by this
-// server. Browser JavaScript never sees a token; it asks `/api/*` and this layer adds `Authorization: Bearer`.
+// Web sign-in session (contract native-v1.md "웹 로그인" › 토큰 보관): the API's TokenPair lives only in two HttpOnly cookies set by
+// this server. Browser JavaScript never sees a token; it asks `/api/*` and this layer adds `Authorization: Bearer`.
 import { z } from "zod";
 import { upstreamFetch } from "./guest-upstream";
 
@@ -7,7 +7,7 @@ const production = () => process.env.NODE_ENV === "production";
 /** `__Host-` names need Secure, so development over plain HTTP uses separate names (same rule as the guest cookie). */
 const accessCookieName = () => (production() ? "__Host-dearby_access" : "dearby_access_dev");
 const refreshCookieName = () => (production() ? "__Host-dearby_refresh" : "dearby_refresh_dev");
-/** The API's access token lives 1 minute and the refresh token 90 days (`dearby.jwt.*-ttl`); an expired access cookie is refreshed on use. */
+/** The API's access token lives 1 minute and the refresh token 90 days (`dearby.jwt.*-ttl`). */
 const ACCESS_MAX_AGE = 60;
 const REFRESH_MAX_AGE = 90 * 86_400;
 
@@ -46,63 +46,68 @@ export type SessionTokens = { access?: string; refresh?: string };
 export function readSession(header: string | null): SessionTokens {
   return { access: readCookie(header, accessCookieName()), refresh: readCookie(header, refreshCookieName()) };
 }
-/** Whether the browser holds a session at all (either token cookie); no upstream call. */
-export function hasSession(header: string | null): boolean {
-  const tokens = readSession(header);
-  return tokens.access !== undefined || tokens.refresh !== undefined;
-}
-
-export type AccountCall = {
-  path: string;
-  method?: string;
-  body?: unknown;
-  query?: URLSearchParams;
-  acceptLanguage?: string;
-};
-export type AccountResult =
-  /** No usable session: the cookies are missing, or the refresh was refused (`cookies` then clears them). */
-  | { kind: "signedOut"; cookies: string[] }
-  /** The upstream response for the call; `cookies` carries the rotated pair when a refresh happened. */
-  | { kind: "response"; response: Response; cookies: string[] };
 
 /**
- * One API call as the signed-in account (contract "웹 로그인" › 세션): Bearer from the access cookie; on 401 the refresh token is
- * rotated once (`POST /v1/auth/refresh`) and the call retried; a refused refresh signs the browser out. Network and 5xx failures
- * on the refresh itself throw and keep the cookies (an unstable connection must not log the person out). Concurrent requests that
- * both hit 401 each refresh; the second one loses because the token rotates, which a reload recovers from.
+ * Seconds the access token has left by its `exp` claim, read without verifying (the API verifies; this only avoids a needless
+ * refresh). Unreadable → 0.
  */
-export async function callAsAccount(cookieHeader: string | null, call: AccountCall): Promise<AccountResult> {
-  const tokens = readSession(cookieHeader);
-  if (!tokens.access && !tokens.refresh) return { kind: "signedOut", cookies: [] };
-  if (tokens.access) {
-    const response = await send(call, tokens.access);
-    if (response.status !== 401) return { kind: "response", response, cookies: [] };
+export function accessSecondsLeft(access: string | undefined): number {
+  if (!access) return 0;
+  try {
+    const payload = access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { exp } = JSON.parse(Buffer.from(payload, "base64").toString()) as { exp?: number };
+    return typeof exp === "number" ? exp - Math.floor(Date.now() / 1000) : 0;
+  } catch {
+    return 0;
   }
-  if (!tokens.refresh) return { kind: "signedOut", cookies: clearedSessionCookies() };
-  const refreshed = await refresh(tokens.refresh);
-  if (!refreshed) return { kind: "signedOut", cookies: clearedSessionCookies() };
-  const response = await send(call, refreshed.accessToken);
-  const cookies = sessionCookies(refreshed);
-  if (response.status === 401) return { kind: "signedOut", cookies: clearedSessionCookies() };
-  return { kind: "response", response, cookies };
 }
 
-function send(call: AccountCall, bearer: string) {
-  return upstreamFetch(call.path, {
+export type AccountCall = { path: string; method?: string; body?: unknown; query?: URLSearchParams; acceptLanguage?: string };
+export type AccountResult =
+  /** No access token in the cookies: the browser refreshes (`POST /api/auth/refresh`) and retries, or is signed out. */
+  | { kind: "signedOut" }
+  /** The upstream response, including an upstream 401 for an expired token — the proxy never refreshes on its own. */
+  | { kind: "response"; response: Response };
+
+/**
+ * One API call as the signed-in account with the access cookie as Bearer. The proxy does not refresh (contract "refresh 회전":
+ * several Next instances racing on one rotating refresh token would sign the person out); a 401 goes back to the browser, which
+ * refreshes once through the dedicated route and retries.
+ */
+export async function callAsAccount(cookieHeader: string | null, call: AccountCall): Promise<AccountResult> {
+  const { access } = readSession(cookieHeader);
+  if (!access) return { kind: "signedOut" };
+  const response = await upstreamFetch(call.path, {
     method: call.method,
     body: call.body,
     query: call.query,
-    bearer,
+    bearer: access,
     acceptLanguage: call.acceptLanguage,
   });
+  return { kind: "response", response };
 }
 
-/** Rotates the refresh token; `undefined` when the API refuses it (expired, revoked, replaced). Other failures throw. */
-async function refresh(refreshToken: string): Promise<TokenPair | undefined> {
-  const response = await upstreamFetch("auth/refresh", { method: "POST", body: { refreshToken } });
-  if (response.status === 401 || response.status === 400) return;
+export type RefreshResult =
+  /** The access cookie is still good (another tab or request refreshed moments ago): nothing to do. */
+  | { kind: "current" }
+  | { kind: "refreshed"; cookies: string[] }
+  /** The API refused the refresh token (expired, revoked, already rotated): the browser is signed out. */
+  | { kind: "refused"; cookies: string[] }
+  | { kind: "none" };
+
+/**
+ * Rotates the refresh token (`POST /v1/auth/refresh`) and stores the new pair. Skipped when the access cookie still has time left,
+ * so concurrent tabs that all saw a 401 do not burn the rotated token one after another. Network and 5xx failures throw and keep the
+ * cookies (an unstable connection must not log the person out).
+ */
+export async function refreshSession(cookieHeader: string | null): Promise<RefreshResult> {
+  const { access, refresh } = readSession(cookieHeader);
+  if (accessSecondsLeft(access) > 10) return { kind: "current" };
+  if (!refresh) return { kind: "none" };
+  const response = await upstreamFetch("auth/refresh", { method: "POST", body: { refreshToken: refresh } });
+  if (response.status === 401 || response.status === 400) return { kind: "refused", cookies: clearedSessionCookies() };
   if (!response.ok) throw new Error("REFRESH_FAILED");
-  return tokenPairSchema.parse(await response.json());
+  return { kind: "refreshed", cookies: sessionCookies(tokenPairSchema.parse(await response.json())) };
 }
 
 /** `POST /v1/auth/logout` with the cookie's refresh token; a failure is ignored because the cookies are cleared either way. */
