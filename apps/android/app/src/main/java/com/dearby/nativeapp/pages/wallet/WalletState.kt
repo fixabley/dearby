@@ -7,13 +7,20 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
 
 enum class WalletPhase { SIGNED_OUT, LOADING, LOADED, FAILED }
 /**
- * One received card (contract "명함 교환"): the card face plus where it was exchanged ([program]·[activity]), the day it was
- * received, and its status: [reciprocal] (never recalled) or the recall [badge] (`N일 뒤 사라져요`). [id] is the receipt id.
+ * One received card (contract "명함 교환"): the card face plus where it was exchanged ([program]·[activity], and since 2026-10-26 the block
+ * [scheduleTitle], [trackName], [room] and [sessionTitle] the QR was shown in, each null when unknown), the day it was received, and its
+ * status: [reciprocal] (never recalled) or the recall [badge] (`N일 뒤 사라져요`). [id] is the receipt id.
  */
 data class ReceivedCard(val id: String, val card: CardState, val program: String?, val activity: String?, val receivedDate: String,
-                        val reciprocal: Boolean, val badge: String?) {
-    /** `<프로그램> <활동>에서 받음 · <받은 날>`, or only the day when the exchange had no activity. */
-    val origin: String get() = listOfNotNull(listOfNotNull(program, activity).joinToString(" ").ifBlank { null }?.let { "${it}에서 받음" }, receivedDate).joinToString(" · ")
+                        val reciprocal: Boolean, val badge: String?,
+                        val scheduleTitle: String? = null, val trackName: String? = null, val room: String? = null, val sessionTitle: String? = null) {
+    /** `<프로그램> <활동> · <블록> · <트랙> · <장소>에서 받음 · <받은 날>` with only the known parts, or only the day when the exchange had no activity. */
+    val origin: String get() {
+        val place = listOfNotNull(listOfNotNull(program, activity).joinToString(" ").ifBlank { null }, scheduleTitle, trackName, room).joinToString(" · ")
+        return listOfNotNull(place.ifBlank { null }?.let { "${it}에서 받음" }, receivedDate).joinToString(" · ")
+    }
+    /** The list row's second line: `<블록> · <트랙> · <장소> · <세션>`, null when the exchange carried no session context. */
+    val sessionContext: String? get() = listOfNotNull(scheduleTitle, trackName, room, sessionTitle).joinToString(" · ").ifBlank { null }
 }
 /**
  * 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): a card App Link not yet in the wallet. [card] is null while it
