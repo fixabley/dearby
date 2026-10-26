@@ -1332,7 +1332,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 선발 단계: `지원`(모집 슬롯), 세부 일정 중 `kind`가 `DEADLINE`(서류 등 마감)·`ANNOUNCEMENT`(결과 발표)·`INTERVIEW`(면접)인 것, 그리고 `EVENT`라도 **어드민이 그 일정의 상태를 직접 지정한 것**(`statuses`에 `id`가 있는 항목이 있음 — 서버가 채운 기본 세 개는 `id`가 없다). 활동 기간(`activitySchedule`) 단계는 늘 선발 단계가 아니다.
 - 이유·한계: 수집 규칙(`WORKFLOW.md`)이 코딩테스트·과제 같은 테스트를 행사·교육과 같은 `EVENT`로 넣어 `kind`만으로는 구분되지 않는다. 테스트 일정에 통과 표시가 필요하면 어드민이 그 일정에 상태(대기·통과·탈락)를 지정한다. 서버에 선발 여부 필드(예 `selection: boolean` 또는 `kind: TEST`)를 두면 이 추론을 대체할 수 있다(조율 세션 판단, 이번 변경은 앱만).
 - 판정: 선발 단계가 아닌 단계는 저장된 표시를 읽지 않는다(지우지도 않는다 — 기본 `대기`로 본다). 그래서 `통과`로 넘어가거나 `탈락`으로 끝나는 것은 선발 단계의 표시뿐이다. `참여 중`은 선발 단계가 모두 `통과`이고 그 뒤에 다른 단계(적어도 활동 기간)가 남았을 때다.
-- iOS 2026-10-26 구현(`ActivityStages.isSelection`). Android는 같은 규칙으로 따로 구현한다.
+- iOS 2026-10-26 구현(`ActivityStages.isSelection`; 같은 날 `phase`가 없을 때의 대체 판정으로만 남음). Android는 같은 규칙으로 따로 구현한다.
 
 ### 화면
 
@@ -1374,3 +1374,4 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 한쪽이 비면 그 섹션을 숨긴다(예: 선발이 없는 컨퍼런스는 `활동 일정`만).
 - 옛 서버(응답에 `phase` 없음): 앱은 위 "통과 여부는 선발 단계에만"의 판정(`kind`·상태 지정)으로 나눈다. 모집 슬롯은 선발, 활동 기간 슬롯은 활동.
 - 접근성: 섹션 머리글은 제목(heading)으로 읽힌다. "참여 중" 강조는 색만으로 나타내지 않고 배지 글자를 둔다.
+- iOS 2026-10-26 구현: `ActivityStageModel.phase`(없으면 nil) → `ActivityStages.isSelection`(phase 우선, 없으면 옛 판정), 섹션 소속 `ActivityStage.inActivitySection`(시간표 블록은 늘 활동 일정). 활동 상세 `ActivityInformationView`는 `행사 일정` 제목 대신 같은 모양의 `선발 과정`·`활동 일정` 제목 두 개(heading 특성), 진행 단계 `ActivityProgressPage`는 두 `Section`. 선발이 모두 통과면 `참여 중` 배지는 `활동 일정` 머리글에만 두고 첫 머리글 배지는 비운다(같은 글자가 두 번 보이지 않게). 내 활동 목록 행·배지·정렬은 그대로.
