@@ -49,8 +49,8 @@ data class ActivityState(
     val applied: Boolean = false,
     /** 대상 lines in Korean (contract "대상자 조건"); empty when the activity has no eligibility. */
     val eligibility: List<String> = emptyList(),
-    /** 활동 종류 label (부트캠프 …) in display order via [categoryOrder]; null = 미분류, grouped last. */
-    val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE,
+    /** 활동 종류 label (부트캠프 …) in display order via [categoryOrder], and its API code for the detail chip's icon; null = 미분류, grouped last. */
+    val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE, val categoryCode: String? = null,
     /** Discovery order inside a category group: recruitment deadline, else activity start; null last. */
     val sortKey: Instant? = null,
     /** 분야, at most 2 by relevance, and every 분야 for the detail (contract "분야·성격 태그와 아이콘"). */
@@ -104,6 +104,8 @@ data class ProgramState(
     val hasTimetable: Boolean = false,
     /** Activities in the asked states by server state (`statusCounts`); empty on an older API. */
     val statusCounts: Map<String, Int> = emptyMap(),
+    /** 종류 label (부트캠프 …) and its API code for the icon, shown above the title; null = 미분류, no label. */
+    val category: String? = null, val categoryCode: String? = null,
 )
 /**
  * An expanded program's activities in the chosen [StatusGroup]s, loaded on first expand and split by the server's state (contract "활동 상태");

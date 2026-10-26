@@ -204,6 +204,7 @@ private fun JSONObject.programSummary(api: String): ProgramSummary {
         tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
         hasTimetable = optBoolean("hasTimetable", false),
         statusCounts = optJSONObject("statusCounts")?.let { counts -> counts.keys().asSequence().associateWith { counts.optInt(it, 0) }.filterValues { it > 0 } }.orEmpty(),
+        category = ActivityCategory.fromCode(text("category")),
     )
 }
 

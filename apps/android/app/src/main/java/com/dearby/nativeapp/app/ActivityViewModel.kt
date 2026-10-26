@@ -438,7 +438,7 @@ private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
 /** One program card's state, for discovery and 즐겨찾기 alike. */
 internal fun ProgramSummary.toState() = ProgramState(id, name, organization, openActivityCount, instant(nearestRecruitmentEndAt), matchedActivityIds.size, instant(latestActivityAt),
     fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl,
-    deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable, statusCounts = statusCounts)
+    deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable, statusCounts = statusCounts, category = category?.label, categoryCode = category?.name)
 
 private fun ActivityModel.toState(now: Instant): ActivityState {
     val status = statusLabel(now)
@@ -452,7 +452,7 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
         stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
         safeHttpsUrl(officialUrl), applyUrl(now), range ?: period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
         eligibility = eligibility?.lines() ?: emptyList(),
-        category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
+        category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE, categoryCode = category?.name,
         sortKey = sortKey,
         fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
         place = place,
