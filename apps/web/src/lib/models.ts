@@ -29,15 +29,15 @@ const history = z.object({
   verification: z.enum(["unverified", "pending", "verified", "rejected"]),
 });
 export type History = z.infer<typeof history>;
-// Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introduction` is rendered markdown (the card body).
+// Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introLink` is the 소개 링크 next to the name
+// (contract "소개 링크·소개 글 폐지"); the old `introduction` body is no longer shown.
 export const cardSchema = z.object({
   id: uuid,
   name: text,
   description: text,
   profileName: text,
   job: text,
-  introduction: text,
-  // Optional web-width body (contract "웹 버전"); the API omits it when the card has none.
+  introLink: text.nullable().optional(),
   contacts: z.array(contact),
   histories: z.array(history),
   createdAt: text,
@@ -335,6 +335,25 @@ export function safeWebUrl(value: string | null): string | undefined {
     /* Untrusted or missing source URLs are displayed without a link. */
   }
 }
+/** GitHub·Instagram·Behance·카카오톡 take a username only (contract "연락처 아이콘·바로가기" 2026-10-26, same table as the apps and the API). */
+const USERNAME_RULES: Partial<Record<Card["contacts"][number]["kind"], { host?: string; max: number }>> = {
+  github: { host: "github.com", max: 39 },
+  instagram: { host: "instagram.com", max: 30 },
+  behance: { host: "behance.net", max: 64 },
+  kakao: { max: 20 },
+};
+
+/** The username in a contact value: a profile URL saved before 2026-10-26 gives its first path part, `@` and spaces are dropped. */
+export function contactUsername(contact: Card["contacts"][number]): string | undefined {
+  const rule = USERNAME_RULES[contact.kind];
+  if (!rule) return;
+  let text = contact.value.trim();
+  const prefix = rule.host && new RegExp(`^(https?://)?((www|m)\\.)?${rule.host.replace(".", "\\.")}/`, "i").exec(text);
+  if (prefix) text = text.slice(prefix[0].length).split(/[/?#]/)[0];
+  const id = text.replace(/[\s@]/g, "");
+  return id && id.length <= rule.max && /^[A-Za-z0-9._-]+$/.test(id) ? id : undefined;
+}
+
 export function contactHref(
   contact: Card["contacts"][number],
 ): string | undefined {
@@ -345,6 +364,11 @@ export function contactHref(
     return `mailto:${contact.value}`;
   if (contact.kind === "phone" && /^\+?[\d\s()-]+$/.test(contact.value))
     return `tel:${contact.value.replace(/[\s()-]/g, "")}`;
-  if (!["email", "phone"].includes(contact.kind))
-    return safeWebUrl(contact.value);
+  const host = USERNAME_RULES[contact.kind]?.host;
+  if (host) {
+    const id = contactUsername(contact);
+    return id && `https://${contact.kind === "behance" ? "www." : ""}${host}/${id}`;
+  }
+  // 카카오톡 ID has no public link; an open-chat URL saved before 2026-10-26 still opens.
+  if (contact.kind === "kakao") return safeWebUrl(contact.value);
 }

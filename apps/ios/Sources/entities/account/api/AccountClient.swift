@@ -396,7 +396,7 @@ struct AccountClient: Sendable {
     private struct StatusInput: Encodable { let statusId: Int64?; let kind: String? }
     private struct ItemsInput: Encodable { let items: [MyActivityImport] }
 
-    /// `POST /v1/cards`·`PUT /v1/cards/:id`: the server copies the profile introduction as the body (no `template` since 2026-10-26).
+    /// `POST /v1/cards`·`PUT /v1/cards/:id`: the server copies the chosen parts of the profile (no `template` or body since 2026-10-26).
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String
@@ -404,6 +404,8 @@ struct AccountClient: Sendable {
         let historyIds: [String]
         /// 사진 넣기 (contract "프로필 사진 — 명함에 싣기"); nil (left out, the server reads true) when the profile has no photo.
         let includePhoto: Bool?
+        /// 소개 링크 넣기 (contract "소개 링크·소개 글 폐지"); nil (left out, the server reads true) when the profile has no link.
+        let includeIntroLink: Bool?
     }
     enum ActivityInfoKind: String, Sendable { case organizations, programs, activities, roles, jobs }
     /// `{challengeId, options}` from an options call; the challenge is single use and lasts five minutes.

@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryRow
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
@@ -49,13 +50,13 @@ import java.time.format.DateTimeFormatter
             when {
                 detail != null -> {
                     Text(formatWhen(detail.createdAt), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    PersonHeader(detail.name.ifBlank { "이름 없음" }, detail.job, detail.introduction, filled = true)
+                    PersonHeader(detail.name.ifBlank { "이름 없음" }, detail.job, filled = true)
                     HorizontalDivider()
                     Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     detail.contacts.forEach { (label, value) -> InfoRow(label, value) }
                     HorizontalDivider()
                     Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    detail.histories.forEachIndexed { index, h -> TimelineEntry(h.detail, h.title, if (h.verified) "확인됨" else "미확인", index == detail.histories.lastIndex) }
+                    Column { detail.histories.forEach { CardHistoryRow(it) } }
                 }
                 state.detailError != null -> Text(state.detailError, color = MaterialTheme.colorScheme.error)
                 else -> DearbySkeleton(spacing = 12.dp) { SkeletonLine(.3f, 12.dp); SkeletonCardBody(); SkeletonRows(2) }

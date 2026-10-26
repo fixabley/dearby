@@ -11,4 +11,6 @@ data class CardPublishRequest(
     val historyIds: List<UUID> = emptyList(),
     // 사진 넣기(native-v1.md "프로필 사진"). 생략하면 넣는다. 프로필 사진이 없으면 사진 없는 명함
     val includePhoto: Boolean = true,
+    // 소개 링크 넣기(native-v1.md "소개 링크·소개 글 폐지"). 생략하면 넣는다. 프로필에 소개 링크가 없으면 없는 명함
+    val includeIntroLink: Boolean = true,
 )

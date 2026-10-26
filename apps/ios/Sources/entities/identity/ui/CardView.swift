@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// One published card as a single surface (contract "명함 표현", 2026-10-18): centered header, introduction,
-/// 연락처 rows that open the contact, and 활동 이력 rows. Action buttons belong to the screen, below the card.
-/// `faceOnly` keeps the face (photo, name, 직무, 연락처) for 내 프로필 (contract "프로필 보기 모드 = 명함 디자인" 2026-10-26), which shows 소개·이력 below it.
+/// One published card as a single surface (contract "명함 표현", 2026-10-18): centered header with the 소개 링크 beside the name
+/// (contract "소개 링크·소개 글 폐지" 2026-10-26), 연락처 rows that open the contact, and 활동 이력 rows. Action buttons belong to the screen,
+/// below the card. `faceOnly` keeps the face (photo, name, 직무, 연락처) for 내 프로필 (contract "프로필 보기 모드 = 명함 디자인"), which shows 이력 below it.
 struct CardView: View {
     let card: CardModel
     var faceOnly = false
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             header
-            if !faceOnly && !card.introduction.isEmpty { DearbyMarkdownText(source: card.introduction) }
             section("연락처") {
                 if card.contacts.isEmpty {
                     empty("공개된 연락처가 없어요")
@@ -25,10 +24,7 @@ struct CardView: View {
                     if card.histories.isEmpty {
                         empty("공개된 활동 이력이 없어요")
                     } else {
-                        ForEach(card.histories) { history in
-                            HistoryRow(history: history)
-                            if history.id != card.histories.last?.id { Divider() }
-                        }
+                        CardHistoryRows(histories: card.histories)
                     }
                 }
             }
@@ -39,7 +35,15 @@ struct CardView: View {
     private var header: some View {
         VStack(spacing: 10) {
             DearbyPhotoAvatar(photoUrl: card.photoUrl, name: card.profileName, size: 72)
-            Text(card.profileName).font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.center)
+            if let url = card.introURL {
+                // Beside the name, or under it when both do not fit on one line.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { name; IntroLinkButton(url: url) }
+                    VStack(spacing: 8) { name; IntroLinkButton(url: url) }
+                }
+            } else {
+                name
+            }
             if !card.jobs.isEmpty {
                 ChipFlow(spacing: 6, centered: true) {
                     ForEach(card.jobs, id: \.self) { job in
@@ -52,6 +56,9 @@ struct CardView: View {
                 Text(organization).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
             }
         }.frame(maxWidth: .infinity)
+    }
+    private var name: some View {
+        Text(card.profileName).font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.center)
     }
     private func section(_ title: String, @ViewBuilder rows: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -103,6 +110,40 @@ private struct ContactRow: View {
         Task {
             try? await Task.sleep(for: .seconds(2))
             withAnimation { copied = false }
+        }
+    }
+}
+
+/// 소개 링크 (contract "소개 링크·소개 글 폐지" 2026-10-26): a small teal capsule — the Notion mark for notion.so/notion.site pages, otherwise
+/// `link` — and "소개"; opens the page in the system browser or app.
+private struct IntroLinkButton: View {
+    let url: URL
+    @Environment(\.openURL) private var openURL
+    @ScaledMetric(relativeTo: .subheadline) private var markSide: CGFloat = 14
+    var body: some View {
+        Button { openURL(url) } label: {
+            Label {
+                Text("소개")
+            } icon: {
+                if let host = url.host?.lowercased(), ["notion.so", "notion.site"].contains(where: { host == $0 || host.hasSuffix("." + $0) }) {
+                    Image("IntroNotion").renderingMode(.template).resizable().scaledToFit().frame(width: markSide, height: markSide)
+                } else {
+                    Image(systemName: "link")
+                }
+            }.font(.dearby(.subheadline).weight(.semibold))
+        }
+        .buttonStyle(.bordered).controlSize(.small).tint(DearbyStyle.teal)
+        .accessibilityLabel("소개 링크 열기")
+    }
+}
+
+/// 활동 이력 rows as the card shows them, divided; 내 프로필's 보기 mode uses the same (contract "소개 링크·소개 글 폐지" 2026-10-26).
+struct CardHistoryRows: View {
+    let histories: [HistoryModel]
+    var body: some View {
+        ForEach(histories) { history in
+            HistoryRow(history: history)
+            if history.id != histories.last?.id { Divider() }
         }
     }
 }

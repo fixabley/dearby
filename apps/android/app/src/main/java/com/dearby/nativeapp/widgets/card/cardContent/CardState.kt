@@ -10,16 +10,25 @@ data class ContactState(val id: String, val kind: String, val label: String, val
     /** 행에 보이는 값: 사용자명 종류는 사용자명(2026-10-26 전에 저장된 프로필 URL도). */
     val shown: String get() = ContactRules.shown(kind, value)
 }
-/** [title] is 조직 · 프로그램 · 활동; [verified] picks the 확인됨/미확인 badge; [description] is the optional one-line note (contract "이력"). */
-data class CardHistoryState(val id: String, val title: String, val role: String, val date: String, val verified: Boolean = false, val description: String = "")
+/**
+ * [title] is 조직 · 프로그램 · 활동; [verified] picks the 확인됨/미확인 badge; [description] is the optional one-line note (contract "이력").
+ * [approval] is the 승인 대기·거절됨 tag the owner sees on their profile (cards hold approved histories only, so it stays null there).
+ */
+data class CardHistoryState(val id: String, val title: String, val role: String, val date: String, val verified: Boolean = false, val description: String = "", val approval: String? = null)
 data class CardState(
     /** [title]·[description] are the card's own name and note: the card face does not draw them (contract "명함 표현"), but the wallet search (`filterWallet`) matches on them. */
     val id: String, val person: String, val job: String, val title: String,
-    /** [introduction] is the card body (markdown): the profile introduction at publish. */
-    val description: String, val introduction: String,
+    /** [introLink] is the 소개 링크 next to the name (contract "소개 링크·소개 글 폐지", 2026-10-26), or null. */
+    val description: String, val introLink: String?,
     val contacts: List<ContactState>, val histories: List<CardHistoryState>,
     /** 명함 머리의 소속·받은 명함 목록 칩: 가장 최근 승인 이력의 조직 이름(없으면 null). */
     val organization: String? = null,
     /** 명함 사진(contract "프로필 사진"): API 경로, 없으면 null. 머리 아바타가 원형으로 그린다. */
     val photoUrl: String? = null,
-)
+) {
+    /** The 소개 링크 opened like a link contact (`openContact`), or null. */
+    val introLinkContact: ContactState? get() = introLink?.let { ContactState("introLink", "link", "소개", it) }
+    /** Notion pages (`notion.so`·`notion.site` and their subdomains) get the Notion mark on the button, others the link glyph. */
+    val introLinkIsNotion: Boolean get() = introLink?.let { runCatching { java.net.URI(it).host }.getOrNull() }?.lowercase()
+        ?.let { host -> listOf("notion.so", "notion.site").any { host == it || host.endsWith(".$it") } } == true
+}

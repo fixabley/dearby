@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 명함 제작 form: name the card and choose which contacts and histories it shows; the body is the profile's introduction
-/// (contract "템플릿" 폐지, 2026-10-26). Sign-in, publishing and errors are the page's job.
+/// 명함 제작 form: name the card and choose the photo, 소개 링크, contacts and histories it shows; there is no body
+/// (contract "소개 링크·소개 글 폐지" 2026-10-26). Sign-in, publishing and errors are the page's job.
 /// The name row stacks its label over a `.title3` input (`DearbyFormRow`); contact and history choices are checkbox rows (`DearbyCheckRow`)
 /// because their labels run to several lines (contract "토글 라벨은 바로 옆" 2026-10-20).
 struct CardComposer: View {
@@ -34,12 +34,21 @@ struct CardComposer: View {
             } header: {
                 Text("사진").font(.dearby(.subheadline))
             }
-            Section {
-                DearbyMarkdownText(source: draft.preview).padding(.vertical, 4)
-            } header: {
-                Text("미리보기").font(.dearby(.subheadline))
-            } footer: {
-                Text("프로필의 자기소개가 명함 본문이 돼요.").font(.dearby(.subheadline))
+            // 소개 링크 넣기 (contract "소개 링크·소개 글 폐지" 2026-10-26): the same checkbox row as 사진 넣기, only when the profile has a link.
+            if let link = draft.profile.introLink {
+                Section {
+                    DearbyCheckRow(isOn: $draft.includeIntroLink) {
+                        HStack(spacing: 12) {
+                            DearbyGlyphView(glyph: .system("link"))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("소개 링크 넣기")
+                                Text(link).font(.dearby(.footnote)).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                    }.accessibilityIdentifier("card-include-intro-link")
+                } header: {
+                    Text("소개 링크").font(.dearby(.subheadline))
+                }
             }
             Section {
                 if draft.profile.contacts.isEmpty { Text("프로필에 연락처가 없어요.").foregroundStyle(.secondary) }

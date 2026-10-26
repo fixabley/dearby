@@ -10,11 +10,12 @@ enum class ReportReason { SPAM, IMPERSONATION, INAPPROPRIATE, OTHER }
 
 enum class ReportStatus { OPEN, RESOLVED, DISMISSED }
 
-data class CardSnapshot(val name: String, val profileName: String, val job: String, val introduction: String, val contacts: List<SnapshotContact>) {
+// introduction은 2026-10-26 소개 글 폐지 전 신고의 근거로만 남는다(새 신고는 빈 문자열)
+data class CardSnapshot(val name: String, val profileName: String, val job: String, val introduction: String = "", val contacts: List<SnapshotContact>, val introLink: String? = null) {
     data class SnapshotContact(val kind: String, val label: String, val value: String)
 
     companion object {
-        fun of(card: BusinessCard) = CardSnapshot(card.name, card.profileName, card.job, card.introduction, card.contacts.map { SnapshotContact(it.kind.name, it.label, it.value) })
+        fun of(card: BusinessCard) = CardSnapshot(card.name, card.profileName, card.job, contacts = card.contacts.map { SnapshotContact(it.kind.name, it.label, it.value) }, introLink = card.introLink)
     }
 }
 

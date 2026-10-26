@@ -165,7 +165,7 @@ private fun WalletReceipt.toReceived(): ReceivedCard {
     return ReceivedCard(id, card.toState(), context.programName, context.activityName, received, reciprocal, badge)
 }
 
-fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introduction,
+fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introLink,
     contacts.map { ContactState(it.id, it.kind, it.label, it.value) },
     histories.map { CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, ContactRules.period(it.startDate, it.endDate), it.isVerified, it.description) },
     organization = histories.currentOrganization(), photoUrl = photoUrl)

@@ -1,7 +1,7 @@
 import PhotosUI
 import SwiftUI
 
-/// 내 프로필: data only (name, job, introduction, contacts, histories). A profile that was never saved (`version` 0)
+/// 내 프로필: data only (name, 소개 링크, job, contacts, histories). A profile that was never saved (`version` 0)
 /// starts with the step funnel (`ProfileFunnelPage`). Afterwards the tab is **read mode** (`ProfileReadView`, contract "프로필 읽기/수정 모드" 2026-10-20);
 /// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
 /// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
@@ -42,7 +42,7 @@ struct ProfilePage: View {
     @State private var photoBusy = false
     @State private var confirmingPhotoDelete = false
     @State private var photoError: String?
-    /// Editor rows (`name`·`introduction`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
+    /// Editor rows (`name`·`introLink`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
     @FocusState private var field: String?
     @FocusState private var jobSearch: Bool
     /// Never saved yet: the step funnel replaces the editor until the first save.
@@ -219,11 +219,15 @@ struct ProfilePage: View {
             photoSection(saved)
             Section {
                 DearbyFormRow(label: "이름", required: true, text: form.name, focus: $field, value: "name") { $0.textContentType(.name) }
+                // 소개 링크 (contract "소개 링크·소개 글 폐지" 2026-10-26): right after the name; the server checks it is an https page.
+                DearbyFormRow(label: "소개 링크", symbol: .system("link"), text: form.introLink, focus: $field, value: "introLink") {
+                    $0.keyboardType(.URL).textContentType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                }
             } header: {
                 Text("기본 정보").font(.dearby(.subheadline))
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("명함과 공개 프로필에 보여요.")
+                    Text("명함과 공개 프로필에 보여요. 소개 링크(노션·포트폴리오, 선택)는 이름 옆 버튼이 돼요.")
                     if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
                 }.font(.dearby(.subheadline))
             }
@@ -233,9 +237,6 @@ struct ProfilePage: View {
                 Text("직무").font(.dearby(.subheadline))
             } footer: {
                 if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.subheadline)) }
-            }
-            Section {
-                DearbyFormRow(label: "소개", text: form.introduction, multiline: true, focus: $field, value: "introduction")
             }
             ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras, focus: $field,
                                  phoneError: tried ? form.wrappedValue.phoneError : nil, emailError: tried ? form.wrappedValue.emailError : nil) { form.wrappedValue.addContact($0) }

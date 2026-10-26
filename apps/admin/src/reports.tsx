@@ -7,7 +7,7 @@ import { api, useSingleFlight } from "./api";
 type Status = "OPEN" | "RESOLVED" | "DISMISSED";
 type Reason = "SPAM" | "IMPERSONATION" | "INAPPROPRIATE" | "OTHER";
 type Contact = { kind?: string; label?: string | null; value?: string };
-type CardSnapshot = { name?: string; profileName?: string; job?: string | null; introduction?: string | null; contacts?: Contact[] };
+type CardSnapshot = { name?: string; profileName?: string; job?: string | null; introduction?: string | null; introLink?: string | null; contacts?: Contact[] };
 type Report = {
   id: string;
   cardId: string;
@@ -121,9 +121,13 @@ function ReportDrawer({ report, onClose }: { report: Report; onClose: () => void
         <Descriptions.Item label="이름">{snapshot?.profileName ?? ""}</Descriptions.Item>
         <Descriptions.Item label="명함 이름">{snapshot?.name ?? ""}</Descriptions.Item>
         <Descriptions.Item label="직무">{snapshot?.job ?? ""}</Descriptions.Item>
-        <Descriptions.Item label="소개">
-          <div style={{ whiteSpace: "pre-wrap" }}>{snapshot?.introduction ?? ""}</div>
-        </Descriptions.Item>
+        <Descriptions.Item label="소개 링크">{snapshot?.introLink ?? ""}</Descriptions.Item>
+        {/* 소개 글은 2026-10-26 폐지 전 신고에만 있다 */}
+        {snapshot?.introduction ? (
+          <Descriptions.Item label="소개 글(폐지 전)">
+            <div style={{ whiteSpace: "pre-wrap" }}>{snapshot.introduction}</div>
+          </Descriptions.Item>
+        ) : null}
         <Descriptions.Item label="연락처">
           {(snapshot?.contacts ?? []).map((contact, index) => (
             <div key={index}>

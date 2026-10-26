@@ -179,7 +179,8 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var name: String
     var job: String
     var jobs: [ProfileJob]
-    var introduction: String
+    /// 소개 링크 (contract "소개 링크·소개 글 폐지" 2026-10-26): one https page shown beside the name; nil when none. Replaces the introduction.
+    var introLink: String?
     var contacts: [AccountContact]
     var histories: [AccountHistory]
     var version = 0
@@ -189,16 +190,16 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var consentRequired = false
     /// `/v1/profile/photo?v=<ms>` or nil (contract "프로필 사진" 2026-10-26); read with the session, never sent back, absent from versions.
     var photoUrl: String? = nil
-    init(name: String, job: String = "", jobs: [ProfileJob] = [], introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
-        self.name = name; self.job = job; self.jobs = jobs; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
+    init(name: String, job: String = "", jobs: [ProfileJob] = [], introLink: String? = nil, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
+        self.name = name; self.job = job; self.jobs = jobs; self.introLink = introLink; self.contacts = contacts; self.histories = histories; self.version = version
     }
-    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version, consent, consentRequired, photoUrl }
+    private enum CodingKeys: String, CodingKey { case name, job, jobs, introLink, contacts, histories, version, consent, consentRequired, photoUrl }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         job = try c.decodeIfPresent(String.self, forKey: .job) ?? ""
         jobs = try c.decodeIfPresent([ProfileJob].self, forKey: .jobs) ?? []
-        introduction = try c.decodeIfPresent(String.self, forKey: .introduction) ?? ""
+        introLink = try c.decodeIfPresent(String.self, forKey: .introLink)
         contacts = try c.decodeIfPresent([AccountContact].self, forKey: .contacts) ?? []
         histories = try c.decodeIfPresent([AccountHistory].self, forKey: .histories) ?? []
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 0
@@ -210,7 +211,7 @@ struct AccountProfile: Codable, Equatable, Sendable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(name, forKey: .name)
         try c.encode(jobs, forKey: .jobs)
-        try c.encode(introduction, forKey: .introduction)
+        try c.encode(introLink, forKey: .introLink)
         try c.encode(contacts, forKey: .contacts)
         try c.encode(histories, forKey: .histories)
     }
@@ -268,14 +269,14 @@ struct ExchangeContext: Decodable, Equatable, Sendable {
     let activityName: String?
     let programName: String?
 }
-/// A published card snapshot from `POST /v1/cards`. `introduction` is the markdown body (the profile introduction at publish).
+/// A published card snapshot from `POST /v1/cards`. `introLink` is the profile's 소개 링크 copied at publish (nil when left out or none).
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String
     let profileName: String
     let job: String
-    var introduction: String? = nil
+    var introLink: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
@@ -305,7 +306,7 @@ enum CardReportReason: String, CaseIterable, Identifiable, Sendable {
 extension AccountProfile {
     /// Sample values for a loading profile (`dearbySkeleton`, contract "내용 로딩은 스켈레톤" 2026-10-22); never shown unredacted or sent.
     static let placeholder = AccountProfile(
-        name: "이름", job: "직무", introduction: "자기소개 한두 줄이 여기에 보여요.",
+        name: "이름", job: "직무",
         contacts: [AccountContact(id: "p", kind: "phone", label: "", value: "010-0000-0000"),
                    AccountContact(id: "e", kind: "email", label: "", value: "name@example.com")],
         histories: [AccountHistory(id: "h1", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2026-01-01"),

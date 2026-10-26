@@ -57,14 +57,12 @@
     "InboxPage"
   ],
   "entities/identity": [
+    "CardHistoryRows",
     "CardModel",
     "CardView",
     "ContactModel",
-    "ContactSymbol",
     "HistoryBadge",
-    "HistoryModel",
-    "HistoryTimeline",
-    "IdentityHeading"
+    "HistoryModel"
   ],
   "features/calendar": [
     "CalendarConflictView",
@@ -98,11 +96,9 @@
     "DearbyGoogleButton",
     "DearbyInfoRow",
     "DearbyBrand",
-    "DearbyMarkdownText",
     "DearbySearchField",
     "DearbySheetHeader",
     "DearbyStyle",
-    "MarkdownDocument",
     "NameIndex",
     "SearchQuery",
     "ConsentVersions",

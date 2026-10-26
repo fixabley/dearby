@@ -68,9 +68,11 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         mvc.get("/v1/profile").andExpect { status { isUnauthorized() } }
 
         val jobEntry = UUID.randomUUID()
-        val body = """{"name":" 조민준 ","jobs":[{"id":"$jobEntry","jobName":"개발자"}],"introduction":"안녕하세요\n반갑습니다","contacts":${contacts()},"histories":[]}"""
+        val body = """{"name":" 조민준 ","jobs":[{"id":"$jobEntry","jobName":"개발자"}],"introduction":"안녕하세요\n반갑습니다","introLink":" notion.so/me ","contacts":${contacts()},"histories":[]}"""
         val saved = read(put(user, body).andExpect { status { isOk() } })
         assertEquals(listOf(1, "조민준", user.toString()), listOf(saved["version"].asInt(), saved["name"].asString(), saved["id"].asString()))
+        // 옛 앱이 보내는 소개 글은 무시하고(2026-10-26 소개 글 폐지) 소개 링크는 스킴이 없으면 https://를 붙인다
+        assertEquals(listOf("", "https://notion.so/me"), listOf(saved["introduction"].asString(), saved["introLink"].asString()))
         assertEquals("phone", saved["contacts"][0]["kind"].asString())
         // 같은 내용이면 버전 그대로
         assertEquals(1, read(put(user, body).andExpect { status { isOk() } })["version"].asInt())
@@ -98,6 +100,10 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'KAKAO', '', 'https://open.kakao.com/o/abc', 2)").params(kakao, other).update()
         put(other, """{"name":"a","contacts":${extra("kakao", "https://open.kakao.com/o/abc", kakao)}}""").andExpect { status { isOk() } }
         put(user, """{"name":"","contacts":${contacts()}}""").andExpect { status { isBadRequest() } }
+        // 소개 링크는 https만
+        listOf("http://example.com", "javascript:alert(1)", "not a link").forEach {
+            put(user, """{"name":"a","introLink":"$it","contacts":${contacts()}}""").andExpect { status { isBadRequest() } }
+        }
 
         val versions = read(mvc.get("/v1/profile/versions") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf(2, 1), versions["items"].values().map { it["version"].asInt() })
