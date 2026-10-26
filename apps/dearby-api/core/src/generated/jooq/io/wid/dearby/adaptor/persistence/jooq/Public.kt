@@ -37,6 +37,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfilePhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
@@ -260,6 +261,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val PROFILE_JOBS: ProfileJobs get() = ProfileJobs.PROFILE_JOBS
 
     /**
+     * The table <code>public.profile_photos</code>.
+     */
+    val PROFILE_PHOTOS: ProfilePhotos get() = ProfilePhotos.PROFILE_PHOTOS
+
+    /**
      * The table <code>public.profile_versions</code>.
      */
     val PROFILE_VERSIONS: ProfileVersions get() = ProfileVersions.PROFILE_VERSIONS
@@ -470,6 +476,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProfileEligibility.PROFILE_ELIGIBILITY,
         ProfileHistories.PROFILE_HISTORIES,
         ProfileJobs.PROFILE_JOBS,
+        ProfilePhotos.PROFILE_PHOTOS,
         ProfileVersions.PROFILE_VERSIONS,
         Profiles.PROFILES,
         ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,

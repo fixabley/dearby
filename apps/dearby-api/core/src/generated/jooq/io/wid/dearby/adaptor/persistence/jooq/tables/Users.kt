@@ -11,6 +11,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.NOTIFICATION_SETTINGS__NOTIFI
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_PHOTOS__PROFILE_PHOTOS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DEVICES__PUSH_DEVICES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
@@ -32,6 +33,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility.ProfileEligibilityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfilePhotos.ProfilePhotosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices.PushDevicesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
@@ -251,6 +253,22 @@ open class Users(
 
     val profileJobs: ProfileJobsPath
         get(): ProfileJobsPath = profileJobs()
+
+    private lateinit var _profilePhotos: ProfilePhotosPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_photos</code> table
+     */
+    fun profilePhotos(): ProfilePhotosPath {
+        if (!this::_profilePhotos.isInitialized)
+            _profilePhotos = ProfilePhotosPath(this, null, PROFILE_PHOTOS__PROFILE_PHOTOS_USER_ID_FKEY.inverseKey)
+
+        return _profilePhotos;
+    }
+
+    val profilePhotos: ProfilePhotosPath
+        get(): ProfilePhotosPath = profilePhotos()
 
     private lateinit var _profileVersions: ProfileVersionsPath
 

@@ -10,7 +10,7 @@ spring:
       enabled: true
   servlet:
     multipart:
-      max-file-size: 5MB # 인증자료 파일(native-v1.md "인증자료")
+      max-file-size: 5MB # 인증자료 파일(native-v1.md "인증자료")·프로필 사진(native-v1.md "프로필 사진")
       max-request-size: 6MB
 
 dearby:

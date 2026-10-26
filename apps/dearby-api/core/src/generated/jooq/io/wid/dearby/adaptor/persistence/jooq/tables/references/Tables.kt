@@ -38,6 +38,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfilePhotos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
@@ -240,6 +241,11 @@ val PROFILE_HISTORIES: ProfileHistories = ProfileHistories.PROFILE_HISTORIES
  * The table <code>public.profile_jobs</code>.
  */
 val PROFILE_JOBS: ProfileJobs = ProfileJobs.PROFILE_JOBS
+
+/**
+ * The table <code>public.profile_photos</code>.
+ */
+val PROFILE_PHOTOS: ProfilePhotos = ProfilePhotos.PROFILE_PHOTOS
 
 /**
  * The table <code>public.profile_versions</code>.
