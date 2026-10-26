@@ -120,7 +120,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
-                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "상태에서 ‘진행 중’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
+                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "필터에서 ‘진행·예정’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
                     // A chosen 종류 offers `종류 필터 지우기` (back to 전체, contract "종류 필터" 빈 결과).
                     programs.isEmpty() -> DearbyEmptyState("고른 조건의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize(),
                         action = if (state.kind.categoryQuery(state.categories) != null) MessageAction("종류 필터 지우기", { setCategories(emptySet()) }) else null)
@@ -253,7 +253,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     }
 }
 
-/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/진행 중/지난 활동 groups). */
+/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/진행·예정/지난 활동 groups). */
 @Composable internal fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) {
     val loaded = state.programActivities[programId]
     when (loaded?.phase) {
@@ -271,8 +271,8 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
                 if (groups.size > 1) GroupHeading(category ?: "미분류")
                 unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title }).forEach { Card(it, open, hearts, plus) }
             }
-            // 모집 예정 · 진행 중 · 지난 활동, each only when its group is chosen: no category headings; an empty group is omitted.
-            listOf("모집 예정" to loaded.upcomingIds, "진행 중" to loaded.inProgressIds, "지난 활동" to loaded.pastIds).forEach { (heading, ids) ->
+            // 모집 예정 · 진행·예정 · 지난 활동, each only when its group is chosen: no category headings; an empty group is omitted.
+            listOf("모집 예정" to loaded.upcomingIds, StatusGroup.IN_PROGRESS.label to loaded.inProgressIds, StatusGroup.PAST.label to loaded.pastIds).forEach { (heading, ids) ->
                 val rows = ids.mapNotNull(state.known::get)
                 if (rows.isNotEmpty()) { GroupHeading(heading); rows.forEach { Card(it, open, hearts, plus) } }
             }

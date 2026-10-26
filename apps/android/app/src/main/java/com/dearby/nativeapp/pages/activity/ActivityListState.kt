@@ -26,13 +26,14 @@ enum class DiscoveryKind(val code: String, val label: String, val categories: Li
 }
 private fun options(vararg categories: ActivityCategory) = categories.map { CategoryOption(it.name, it.label) }
 /**
- * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the dropdown's three groups and the server states each sends as `status=`. [code] is what the
- * device keeps and what analytics `discovery_status_filter` reports.
+ * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the filter's three groups and the server states each sends as `status=`. [code] is what the
+ * device keeps and what analytics `discovery_status_filter` reports. Regrouped the same day (user decision): 진행·예정 is every activity that is
+ * neither open for applications nor over (`IN_PROGRESS`·`RECRUITMENT_CLOSED`·`NO_RECRUITMENT`), 지난 활동 only `ENDED`; the ids stay.
  */
 enum class StatusGroup(val code: String, val label: String, val statuses: List<String>) {
     AVAILABLE("available", "지원 가능", listOf("RECRUITING_UPCOMING", "RECRUITING")),
-    IN_PROGRESS("in_progress", "진행 중", listOf("IN_PROGRESS")),
-    PAST("past", "지난 활동", listOf("RECRUITMENT_CLOSED", "NO_RECRUITMENT", "ENDED"));
+    IN_PROGRESS("in_progress", "진행·예정", listOf("IN_PROGRESS", "RECRUITMENT_CLOSED", "NO_RECRUITMENT")),
+    PAST("past", "지난 활동", listOf("ENDED"));
     companion object {
         val DEFAULT = setOf(AVAILABLE)
         /** The kept codes (comma-joined); nothing readable is the default. */
@@ -120,8 +121,8 @@ data class ProgramState(
 )
 /**
  * An expanded program's activities in the chosen [StatusGroup]s, loaded on first expand and split by the server's state (contract "활동 상태");
- * all index into [ActivityListState.known]. [ids] are 모집 중, [upcomingIds] 모집 예정 (nearest first), [inProgressIds] 진행 중 and [pastIds]
- * 모집 마감·모집 일정 미정·종료 of the last three years (most recent start first).
+ * all index into [ActivityListState.known]. [ids] are 모집 중, [upcomingIds] 모집 예정 (nearest first), [inProgressIds] 진행·예정 (진행 중·모집 마감·
+ * 모집 일정 미정, earliest start first) and [pastIds] 종료 of the last three years (most recent start first).
  */
 data class ProgramActivities(
     val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(),

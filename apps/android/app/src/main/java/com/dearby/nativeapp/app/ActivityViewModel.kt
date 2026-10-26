@@ -241,12 +241,12 @@ class ActivityViewModel(
                 return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
             val now = Instant.now()
-            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행 중, and the rest as 지난 활동 within
-            // three years (an undated one stays), most recent start first.
+            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행·예정 (started ones first, then the
+            // ones still ahead; undated last), and 종료 as 지난 활동 within three years (an undated one stays), most recent start first.
             val byStatus = items.groupBy { it.status }
             val open = byStatus["RECRUITING"].orEmpty()
             val upcoming = byStatus["RECRUITING_UPCOMING"].orEmpty().sortedWith(compareBy(nullsLast()) { it.upcomingKey })
-            val inProgress = byStatus["IN_PROGRESS"].orEmpty().sortedWith(compareByDescending(nullsFirst()) { it.activityStart })
+            val inProgress = items.filter { it.status in StatusGroup.IN_PROGRESS.statuses }.sortedWith(compareBy(nullsLast()) { it.activityStart })
             val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
             val past = items.filter { it.status in StatusGroup.PAST.statuses && it.activityStart?.let { start -> start >= since } != false }.sortedByDescending { it.activityStart }
             val shown = open + upcoming + inProgress + past
