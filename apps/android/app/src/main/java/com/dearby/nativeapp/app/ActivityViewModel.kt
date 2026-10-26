@@ -122,24 +122,20 @@ class ActivityViewModel(
     }
     fun reload() = start(debounce = false)
     /**
-     * The 상태 dropdown (contract "활동 상태", 2026-10-26): the list and expanded programs are read again with those states. Unchecking the
-     * last group falls back to 지원 가능.
+     * The 필터 sheet's `적용` (2026-10-26 user decision; contract "활동 상태" · "종류 필터"): both sections at once, so the list and expanded programs
+     * are read again once. No group chosen falls back to 지원 가능; 종류 is ignored for 이벤트 (no section). Each analytics event goes only when its
+     * section actually changed (analytics-v1: 기억된 값 복원은 보내지 않음). Also the applied chips' × and the empty state's `종류 필터 지우기`.
      */
-    fun setStatusGroups(value: Set<StatusGroup>) {
-        val groups = value.ifEmpty { StatusGroup.DEFAULT }
-        if (groups == state.value.statusGroups) return
-        mutable.update { it.copy(statusGroups = groups) }
-        saveStatusGroups(groups)
-        Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(groups))
-        start(debounce = false)
-    }
-    /** The 종류 dropdown (2026-10-26 사용자 요청): the list and expanded programs are read again with `category=`; nothing chosen is 전체. */
-    fun setCategories(value: Set<String>) {
-        if (value == state.value.categories) return
-        val kind = state.value.kind
-        mutable.update { it.copy(categories = value) }
-        saveCategories(kind, value)
-        Analytics.event("discovery_category_filter", "categories" to kind.chosen(value).joinToString(",") { it.code.lowercase() })
+    fun applyFilters(groups: Set<StatusGroup>, categories: Set<String>) {
+        val current = state.value
+        val kind = current.kind
+        val newGroups = groups.ifEmpty { StatusGroup.DEFAULT }
+        val groupsChanged = newGroups != current.statusGroups
+        val categoriesChanged = kind.categories.isNotEmpty() && categories != current.categories
+        if (!groupsChanged && !categoriesChanged) return
+        mutable.update { it.copy(statusGroups = newGroups, categories = if (categoriesChanged) categories else it.categories) }
+        if (groupsChanged) { saveStatusGroups(newGroups); Analytics.event("discovery_status_filter", "groups" to StatusGroup.codes(newGroups)) }
+        if (categoriesChanged) { saveCategories(kind, categories); Analytics.event("discovery_category_filter", "categories" to kind.chosen(categories).joinToString(",") { it.code.lowercase() }) }
         start(debounce = false)
     }
     /** 발견 `프로그램 | 이벤트` (contract "프로그램·이벤트 전환"): the list and expanded programs are read again for that kind and its kept 종류. */
@@ -242,12 +238,12 @@ class ActivityViewModel(
                 return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
             val now = Instant.now()
-            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행 중, and the rest as 지난 활동 within
-            // three years (an undated one stays), most recent start first.
+            // Split by the server's state: 모집 중 (category groups on the page), 모집 예정 nearest first, 진행·예정 (started ones first, then the
+            // ones still ahead; undated last), and 종료 as 지난 활동 within three years (an undated one stays), most recent start first.
             val byStatus = items.groupBy { it.status }
             val open = byStatus["RECRUITING"].orEmpty()
             val upcoming = byStatus["RECRUITING_UPCOMING"].orEmpty().sortedWith(compareBy(nullsLast()) { it.upcomingKey })
-            val inProgress = byStatus["IN_PROGRESS"].orEmpty().sortedWith(compareByDescending(nullsFirst()) { it.activityStart })
+            val inProgress = items.filter { it.status in StatusGroup.IN_PROGRESS.statuses }.sortedWith(compareBy(nullsLast()) { it.activityStart })
             val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
             val past = items.filter { it.status in StatusGroup.PAST.statuses && it.activityStart?.let { start -> start >= since } != false }.sortedByDescending { it.activityStart }
             val shown = open + upcoming + inProgress + past
