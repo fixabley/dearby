@@ -40,7 +40,9 @@ import { Segmented } from "@/shared/ui/segmented";
 import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
 import { DiscoveryFilterBar, type DiscoveryFilters } from "@/widgets/activity/discovery-filter";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
+import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
 import { categoryLabels, groupByCategory } from "@/lib/category";
+import { Badge } from "@/shared/ui/badge";
 import { CategoryIcon } from "@/shared/ui/category-icon";
 
 /**
@@ -300,9 +302,10 @@ function SearchField({ q, kind, groups, categories }: { q: string; kind: Kind; g
 
 /**
  * Props the renewed activity card needs (contract "발견 카드 리뉴얼"·"활동 상태"): the capsule is the server's status; 모집 정보 없음 has
- * none and its `모집` row reads `모집 일정 미정`; the row stands out only while 모집 중·모집 예정 and a period exists.
+ * none and its `모집` row reads `모집 일정 미정`; the row stands out only while 모집 중·모집 예정 and a period exists. The heart
+ * (contract "즐겨찾기(하트)", web since "웹 화면 — 2단계 A") starts from the response's `favorited`.
  */
-function cardProps(activity: Activity, now: number) {
+export function cardProps(activity: Activity, now: number) {
   const status = activityStatus(activity, now);
   // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` + `D-3` while open; an end alone keeps `~ … 마감`.
   const { text, dday: recruitmentDday } = recruitmentDate(activity.application, now);
@@ -310,6 +313,7 @@ function cardProps(activity: Activity, now: number) {
   return {
     id: activity.id,
     name: activity.name,
+    favorite: <FavoriteHeart kind="activity" id={activity.id} favorited={activity.favorited ?? false} category={activity.category} size="sm" />,
     status,
     recruitmentLabel,
     recruitmentDday,
@@ -413,27 +417,31 @@ function StatusSection({ label, items, now }: { label: string; items: Activity[]
 /**
  * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · one line of tag chips
  * (분야 1개 + 성격, contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음") · `맞는 활동 n개` for an activity-name search hit, and on the right the
- * count badge (Σ`statusCounts`, older responses open + upcoming) that becomes an up-chevron `접기` button once expanded. The whole
- * header toggles. The body stays mounted so `grid-template-rows 0fr→1fr` can animate; its activities come from
- * `GET /activities?programId=&status=` (the server judges the state) on the first expansion.
+ * heart (contract "즐겨찾기(하트)"), the count badge (Σ`statusCounts`, older responses open + upcoming) that becomes an up-chevron `접기`
+ * button once expanded, and the meta line. The left header toggles. The body stays mounted so `grid-template-rows 0fr→1fr` can
+ * animate; its activities come from `GET /activities?programId=&status=` (the server judges the state) on the first expansion.
+ * `/favorites` reuses it without a `kind` (both sides) and with the `새 모집` badge.
  */
-function ProgramRow({
+export function ProgramRow({
   program,
   open,
   toggle,
   groups,
   kind,
   categories,
+  newRecruitment = false,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
-  /** 프로그램 | 이벤트, so an expanded program lists only that side's activities. */
-  kind: Kind;
+  /** 프로그램 | 이벤트, so an expanded program lists only that side's activities; none lists both. */
+  kind?: Kind;
   /** The chosen 활동 상태 묶음: the same `status` as the list. */
   groups: StatusGroup[];
   /** The chosen 종류 (none: every 종류): the same `category` as the list. */
   categories: string[];
+  /** 즐겨찾기한 뒤 새로 열린 모집이 있음 (contract "즐겨찾기(하트)" › 새 모집); the owner turns it off on open. */
+  newRecruitment?: boolean;
 }) {
   const [activities, setActivities] = useState<ActivityPage>();
   const [error, setError] = useState("");
@@ -445,7 +453,8 @@ function ProgramRow({
     const controller = new AbortController();
     const status = groupStatuses(groups).join(",");
     const category = categories.length ? `&category=${categories.join(",")}` : "";
-    publicRead<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&status=${status}${category}&size=100`, {
+    const side = kind ? `&kind=${kind}` : "";
+    publicRead<ActivityPage>(`/activities?programId=${program.id}${side}&status=${status}${category}&size=100`, {
       signal: controller.signal,
     })
       .then(setActivities)
@@ -544,7 +553,14 @@ function ProgramRow({
                   {categoryLabels[program.category]}
                 </span>
               )}
-              <span className="text-headline font-semibold break-keep">{program.name}</span>
+              <span className="text-headline font-semibold break-keep">
+                {program.name}
+                {newRecruitment && (
+                  <Badge variant="filled" className="ml-1.5 align-[2px] text-caption2">
+                    새 모집
+                  </Badge>
+                )}
+              </span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
               <TagChipRow field={fieldTagsOf(program)[0]} traits={traitTagsOf(program)} className="mt-1.5" />
               {program.matchedActivityIds.length > 0 && (
@@ -553,27 +569,30 @@ function ProgramRow({
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
-            {open ? (
-              <button
-                type="button"
-                aria-label="접기"
-                aria-controls={panelId}
-                onClick={toggle}
-                className="grid size-[34px] place-items-center rounded-full bg-mint text-teal"
-              >
-                <span className="flex rotate-180">
-                  <Icon name="chevron-down" size="inline" />
+            <span className="flex items-center gap-2.5">
+              <FavoriteHeart kind="program" id={program.id} favorited={program.favorited ?? false} category={program.category} size="sm" />
+              {open ? (
+                <button
+                  type="button"
+                  aria-label="접기"
+                  aria-controls={panelId}
+                  onClick={toggle}
+                  className="grid size-[34px] place-items-center rounded-full bg-mint text-teal"
+                >
+                  <span className="flex rotate-180">
+                    <Icon name="chevron-down" size="inline" />
+                  </span>
+                </button>
+              ) : count > 0 ? (
+                <span className="grid h-[34px] min-w-[34px] place-items-center rounded-full bg-teal-fill px-3 text-subheadline font-semibold text-on-teal tabular-nums">
+                  <span className="sr-only">활동 </span>
+                  {count}
+                  <span className="sr-only">개</span>
                 </span>
-              </button>
-            ) : count > 0 ? (
-              <span className="grid h-[34px] min-w-[34px] place-items-center rounded-full bg-teal-fill px-3 text-subheadline font-semibold text-on-teal tabular-nums">
-                <span className="sr-only">활동 </span>
-                {count}
-                <span className="sr-only">개</span>
-              </span>
-            ) : (
-              <span className="h-[34px]" />
-            )}
+              ) : (
+                <span className="h-[34px]" />
+              )}
+            </span>
             <span className="text-caption2 whitespace-nowrap text-secondary-label">{meta}</span>
           </div>
         </div>

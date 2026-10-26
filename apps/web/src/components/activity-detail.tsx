@@ -35,6 +35,7 @@ import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { TimetableSheet } from "@/widgets/activity/timetable";
 import { statusVariant } from "@/widgets/activity/activity-card";
+import { FavoriteHeart } from "@/features/favorites/ui/favorite-heart";
 
 /** One row of a schedule section: the block it stands for, its heading, the date text and an optional `D-n` badge (모집 기간 only). */
 type ScheduleRow = { schedule: Schedule; title: string; label: string; badge?: string };
@@ -179,6 +180,8 @@ export function ActivityDetail({ id }: { id: number }) {
                 {categoryLabel(activity.category)}
               </Badge>
             )}
+            {/* 활동 하트 (contract "즐겨찾기(하트)" › 활동 상세 머리; web since "웹 화면 — 2단계 A"). The `+` 내 활동 button is a later PR. */}
+            <FavoriteHeart kind="activity" id={activity.id} favorited={activity.favorited ?? false} category={activity.category} className="ml-auto" />
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>
           <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>
