@@ -34,7 +34,7 @@ object ProfileJson {
 
     fun mapper(): JsonMapper = json
 
-    // verified·verifiedAt은 2026-10-26(V63) 전 스냅샷·명함에 없어 기본값으로 읽는다
+    // verified·verifiedAt은 2026-10-26(V64) 전 스냅샷·명함에 없어 기본값으로 읽는다
     data class ContactJson(val id: UUID, val kind: String, val label: String, val value: String, val verified: Boolean = false, val verifiedAt: OffsetDateTime? = null)
 
     data class RefJson(val id: Long, val name: String)

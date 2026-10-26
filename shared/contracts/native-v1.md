@@ -829,7 +829,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 ### 데이터
 
-- `Contact.verified: Boolean`, `verifiedAt: String?`(ISO 8601, 인증 시각). 프로필·명함·받은 명함·웹 `/cards/:id`·버전 스냅샷·신고 스냅샷의 `contacts[]`에 모두 실린다(V63 전 스냅샷·명함은 `false`·`null`로 읽힌다). 저장: `contacts.verified`·`verified_at`(V63).
+- `Contact.verified: Boolean`, `verifiedAt: String?`(ISO 8601, 인증 시각). 프로필·명함·받은 명함·웹 `/cards/:id`·버전 스냅샷·신고 스냅샷의 `contacts[]`에 모두 실린다(V64 전 스냅샷·명함은 `false`·`null`로 읽힌다). 저장: `contacts.verified`·`verified_at`(V64).
 - **클라이언트는 `verified`를 보내지 못한다.** `PUT /v1/profile`의 연락처에 `verified`를 넣어도 무시된다. 서버는 같은 연락처 id의 종류·값이 그대로면(이메일은 대소문자 무시, 사용자명 종류는 정규화 뒤 비교) 인증 상태를 유지하고, 값을 고치면 `verified=false`·`verifiedAt=null`로 되돌린다. 라벨만 바꾸면 유지된다. 버전 되돌리기도 같은 규칙(그때 값이 지금 인증된 값과 같을 때만 유지).
 - 인증이 성공하면 서버가 그 연락처를 고쳐 **프로필 버전이 1 오른다**(`PUT /v1/profile`과 같은 저장·스냅샷). 응답은 새 Profile이다. 앱은 응답의 `contacts`·`version`으로 수정 중인 폼을 갱신해야 다음 `PUT`의 `If-Match`가 409가 되지 않는다. 바꾸는 항목: 같은 값의 그 종류 항목이 있으면 그것, 없으면 그 종류의 첫 항목 값을 인증된 값으로 덮어쓴다(수동 입력값 대체, id·라벨 유지), 그 종류가 없으면 끝에 `label=""`로 더한다. 이미 같은 값으로 인증돼 있으면 버전을 올리지 않는다.
 - 프로필이 아직 없으면(버전 0) 인증을 끝낼 수 없다: 400 `code: PROFILE_REQUIRED`("프로필을 먼저 저장해 주세요"). 동의 전(`consentRequired`)이면 403 `CONSENT_REQUIRED`(프로필 쓰기와 같다).
@@ -856,7 +856,7 @@ Spring Mail(SMTP)로 한글 평문 한 통을 보낸다. 제목 `[Dearby] 이메
 | POST /v1/me/contacts/email/challenges | Bearer | `{email}` | 200 `{challengeId, expiresAt}`. 6자리 숫자, 10분. 형식 오류 400, 프로필 없음 400 `PROFILE_REQUIRED`, 같은 이메일(대소문자 무시) 1분당 1회·하루 10회를 넘으면 429, 메일을 보내지 못하면 503(그 시도는 횟수에 세지 않는다) |
 | POST /v1/me/contacts/email/verify | Bearer | `{challengeId, code}` | 200 Profile(이메일 항목 `value=입력한 이메일`·`verified=true`). 틀리면 400 `code: CODE_MISMATCH`(detail에 남은 횟수), 5번 틀리면 폐기되어 400 `CHALLENGE_EXPIRED`; 없거나 만료·이미 사용·다른 사람 것도 400 `CHALLENGE_EXPIRED` |
 
-- 인증번호는 해시로만 저장하고(`email_contact_challenges`, V63), 발송 횟수를 세기 위해 하루 동안 남긴다. 성공한 challenge는 다시 쓸 수 없다.
+- 인증번호는 해시로만 저장하고(`email_contact_challenges`, V64), 발송 횟수를 세기 위해 하루 동안 남긴다. 성공한 challenge는 다시 쓸 수 없다.
 - 메일 발신: env `MAIL_HOST`·`MAIL_PORT`(기본 587 STARTTLS)·`MAIL_USERNAME`·`MAIL_PASSWORD`·`MAIL_FROM`(예 `Dearby <no-reply@wid.io.kr>`). 보내는 도메인에 SPF·DKIM(가능하면 DMARC)을 설정하지 않으면 받는 쪽이 스팸으로 분류한다. SMTP 공급자(Amazon SES·Resend·Mailgun·Postmark·Google Workspace 등)는 사용자가 고른다. 로컬은 mailpit(`docker run -p 1025:1025 -p 8025:8025 axllent/mailpit`, `MAIL_PORT=1025`·`MAIL_STARTTLS=false`).
 
 ### 화면 (iOS·Android·웹, 다음 단계)
