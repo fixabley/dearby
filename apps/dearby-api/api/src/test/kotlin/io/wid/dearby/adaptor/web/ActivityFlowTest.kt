@@ -19,6 +19,7 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
@@ -450,6 +451,39 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listed, item)
         mvc.get("/v1/activities/999999").andExpect { status { isNotFound() } }
         mvc.get("/v1/activities/abc").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `일정 phase는 늘 값이 있고, 저장값이 없으면 모집 선발·활동 기간 활동·kind·운영자 상태로 판정한다`() {
+        // V62 채우기: 시드(V5)의 슬롯 행은 채우고 EVENT 세부 일정은 null로 남긴다(상태를 지정하면 저절로 선발이 되게)
+        assertEquals(
+            listOf("ACTIVITY=ACTIVITY", "APPLICATION=SELECTION", "null=null"),
+            jdbc.sql("select coalesce(slot, 'null') || '=' || coalesce(phase, 'null') from schedules where activity_id = (select id from activities where name = ?)")
+                .param("Let'Swift 2026 · 개발 환경의 변화 워크숍").query(String::class.java).list().sortedBy { it.toString() },
+        )
+        val id = createActivity("선발 과정 분리 점검")
+        fun detail(title: String, kind: String, phase: String?, slot: String? = null) = jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, date_label, phase, sequence, created_at, updated_at)
+            values (?, nullif(?, ''), ?, ?, 'CONFIRMED', '미정', nullif(?, ''), 0, localtimestamp, localtimestamp) returning id
+            """
+        ).params(id, slot ?: "", title, kind, phase ?: "").query(Long::class.java).single()
+        detail("신청 기간", "DEADLINE", null, slot = "APPLICATION")
+        detail("서류 마감", "DEADLINE", null)
+        detail("오리엔테이션", "EVENT", null)
+        detail("면접 후 OT", "INTERVIEW", "ACTIVITY")
+        detail("코딩테스트", "EVENT", "SELECTION")
+        val graded = detail("과제 전형", "EVENT", null)
+        jdbc.sql("insert into schedule_statuses (schedule_id, name, kind, sort_order, created_at) values (?, '제출', 'WAITING', 0, now())").param(graded).update()
+
+        val item = json.readTree(mvc.get("/v1/activities/$id").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertEquals("SELECTION" to "ACTIVITY", item["application"]["phase"].asString() to item["activitySchedule"]["phase"].asString())
+        assertEquals(
+            mapOf("서류 마감" to "SELECTION", "오리엔테이션" to "ACTIVITY", "면접 후 OT" to "ACTIVITY", "코딩테스트" to "SELECTION", "과제 전형" to "SELECTION"),
+            item["schedules"].toList().associate { it["title"].asString() to it["phase"].asString() },
+        )
+        // 모집·활동 기간 슬롯은 저장값과 다르게 둘 수 없다(V62 제약)
+        assertFailsWith<org.springframework.dao.DataIntegrityViolationException> { jdbc.sql("update schedules set phase = 'SELECTION' where activity_id = ? and slot = 'ACTIVITY'").param(id).update() }
     }
 
     @Test

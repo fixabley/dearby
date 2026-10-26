@@ -9,6 +9,7 @@ import io.wid.dearby.domain.ScheduleTime
 import io.wid.dearby.domain.StoryTexts
 import io.wid.dearby.domain.collection.CollectedRecurrence
 import io.wid.dearby.domain.ScheduleKind
+import io.wid.dearby.domain.SchedulePhase
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.CollectedSchedule
 import io.wid.dearby.domain.collection.CollectedTimetable
@@ -77,7 +78,7 @@ object ActivityVerifier {
                         else -> null
                     }
                     val timetable = schedule.timetable?.let { timetable(it, time, rule != null, page) }
-                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd, rule, timetable)
+                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd, rule, timetable, phase(schedule.phase))
                 },
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
@@ -147,6 +148,9 @@ object ActivityVerifier {
 
     // 모델이 준 일정 종류. 모르거나 어긋나면 행사(EVENT)로 본다
     private fun kind(value: String?): ScheduleKind = ScheduleKind.entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) } ?: ScheduleKind.EVENT
+
+    // 모르는 값은 null(서버가 읽을 때 kind 규칙으로 판정한다, native-v1.md "선발 과정·활동 일정 분리")
+    private fun phase(value: String?): SchedulePhase? = SchedulePhase.entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) }
 
     // 공백·마크다운 기호 차이는 무시한다
     private fun normalize(text: String) = text.replace(Regex("[*_`#>]"), "").replace(Regex("\\s+"), " ").trim()

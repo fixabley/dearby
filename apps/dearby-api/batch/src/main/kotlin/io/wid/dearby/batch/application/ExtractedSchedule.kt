@@ -12,6 +12,7 @@ data class ExtractedSchedule(
     val endDate: String? = null,
     val recurrence: String? = null, // 반복 규칙(RRULE 본문). 시각 일정의 첫 회차(startAt)부터. 검증 단계에서 틀리면 버린다
     val timetable: ExtractedTimetable? = null, // 이 일정 블록의 하위 시간표(native-v1.md "트랙·세션 시간표"). 틀리면 시간표만 버린다
+    val phase: String? = null, // 선발 과정(SELECTION)·활동 일정(ACTIVITY). 모르면 null(서버 규칙으로 판정)
 )
 
 // 트랙이 없으면(단일 진행) tracks는 빈 배열이고 세션의 track은 null. track은 tracks의 name, null이면 전폭(키노트·쉬는시간·점심)

@@ -8,6 +8,7 @@ import tools.jackson.databind.JsonNode
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import io.wid.dearby.domain.ScheduleKind
+import io.wid.dearby.domain.SchedulePhase
 import io.wid.dearby.domain.ScheduleStatus
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -19,6 +20,7 @@ data class ScheduleItemRequest(
     val title: String? = null,
     val kind: String? = null,
     val status: String? = null,
+    val phase: String? = null, // SELECTION|ACTIVITY(native-v1.md "선발 과정·활동 일정 분리"). 생략은 유지(만들 때는 서버 규칙)
     val startAt: String? = null,
     val endAt: String? = null,
     val startDate: String? = null,
@@ -33,6 +35,7 @@ data class ScheduleItemRequest(
         title = title?.trim(),
         kind = kind?.let { value -> ScheduleKind.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) } ?: throw InvalidInputException("kind는 DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT 중 하나입니다") },
         status = status?.let { value -> ScheduleStatus.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) } ?: throw InvalidInputException("status는 TENTATIVE·CONFIRMED·CANCELLED 중 하나입니다") },
+        phase = phase?.let { value -> SchedulePhase.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) } ?: throw InvalidInputException("phase는 SELECTION·ACTIVITY 중 하나입니다") },
         hasTime = listOf(startAt, endAt, startDate, endDate).any { it != null },
         startAt = startAt?.trim()?.ifEmpty { null }?.let(::dateTime),
         endAt = endAt?.trim()?.ifEmpty { null }?.let(::dateTime),

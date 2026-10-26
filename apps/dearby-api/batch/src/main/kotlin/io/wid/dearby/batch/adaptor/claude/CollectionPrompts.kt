@@ -96,6 +96,7 @@ object CollectionPrompts {
                     mapOf(
                         "title" to string(),
                         "kind" to mapOf("type" to listOf("string", "null"), "enum" to listOf("DEADLINE", "ANNOUNCEMENT", "INTERVIEW", "EVENT", null)),
+                        "phase" to mapOf("type" to listOf("string", "null"), "enum" to listOf("SELECTION", "ACTIVITY", null)),
                         "startAt" to nullableString(),
                         "endAt" to nullableString(),
                         "startDate" to nullableString(),
