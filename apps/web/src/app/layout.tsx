@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/widgets/shell/shell";
+import { AuthProvider } from "@/features/auth/model/auth-context";
 import { GoogleAnalytics } from "@/shared/ui/google-analytics";
 import { VercelAnalytics } from "@/shared/ui/vercel-analytics";
 import { siteOpenGraph, WEB_ORIGIN } from "@/lib/preview";
@@ -34,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <Shell>{children}</Shell>
+        <AuthProvider>
+          <Shell>{children}</Shell>
+        </AuthProvider>
         {gaId && <GoogleAnalytics id={gaId} />}
         {production && <VercelAnalytics />}
       </body>
