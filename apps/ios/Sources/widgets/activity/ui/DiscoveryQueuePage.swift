@@ -204,9 +204,11 @@ struct DiscoveryQueuePage: View {
 }
 
 /// Presents `DiscoveryQueuePage` from the top of the 발견 tab; `설정` reopens the 추천 funnel. Signed out (contract "비로그인에서 만들기·추천을
-/// 막음" 2026-10-25) the row says signing in comes first and has no `설정`; the app opens the sign-in sheet.
+/// 막음" 2026-10-25) the row says signing in comes first and has no `설정`; the app opens the sign-in sheet. Signed in without the consent
+/// ([needsConsent], contract "개인정보 동의") it says the consent comes first; the app opens the consent sheet.
 struct DiscoveryQueueEntry: View {
     let signedIn: Bool
+    var needsConsent = false
     let action: () -> Void
     let settings: () -> Void
     var body: some View {
@@ -216,7 +218,7 @@ struct DiscoveryQueueEntry: View {
                     Image(systemName: "rectangle.stack.fill").font(.dearby(.body)).foregroundStyle(DearbyStyle.teal)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("오늘의 맞춤 대기열").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
-                        if !signedIn { Text("로그인하면 나에게 맞는 활동을 골라 드려요").font(.dearby(.footnote)).foregroundStyle(.secondary) }
+                        if !signedIn { Text(needsConsent ? "동의하면 나에게 맞는 활동을 골라 드려요" : "로그인하면 나에게 맞는 활동을 골라 드려요").font(.dearby(.footnote)).foregroundStyle(.secondary) }
                     }
                     Spacer(minLength: 12)
                     Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)

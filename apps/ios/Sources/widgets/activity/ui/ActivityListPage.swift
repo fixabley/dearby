@@ -10,6 +10,8 @@ struct ActivityListPage: View {
     /// searching (the queue screen shows its own empty and retry states); the app opens the queue (the funnel first when it was never
     /// finished). Its `설정` reopens the funnel. Signed out the row stays and the app opens sign-in instead (contract "비로그인에서 만들기·추천을 막음").
     let queueSignedIn: Bool
+    /// Signed in but the consent is missing: the row asks for the consent instead of sign-in.
+    var queueNeedsConsent = false
     let openQueue: () -> Void
     let editRecommendations: () -> Void
     @Binding var path: NavigationPath
@@ -128,7 +130,7 @@ struct ActivityListPage: View {
         .toolbar { TabRootToolbar() }
     }
     private var queueEntry: some View {
-        DiscoveryQueueEntry(signedIn: queueSignedIn, action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
+        DiscoveryQueueEntry(signedIn: queueSignedIn, needsConsent: queueNeedsConsent, action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
     }
     /// `마감 숨기기` as the first list row: the whole row toggles (one control; the switch is the row's indicator), label beside the switch.
