@@ -53,8 +53,13 @@ class DearbyFlowTestCase: XCTestCase {
     func openSettings() {
         let settings = app.buttons["page-settings"].firstMatch
         XCTAssertTrue(settings.waitForExistence(timeout: 10), "설정 버튼이 없어요")
-        settings.tap()
-        XCTAssertTrue(app.navigationBars["설정"].waitForExistence(timeout: 10), "설정 화면이 열리지 않았어요")
+        // Right after launch the first tap on the bar button can be swallowed while the tab loads, so tap again.
+        let title = app.navigationBars["설정"]
+        for _ in 0..<3 where !title.exists {
+            settings.tap()
+            _ = title.waitForExistence(timeout: 5)
+        }
+        XCTAssertTrue(title.exists, "설정 화면이 열리지 않았어요")
     }
 
     /// Signed in when 설정 shows 로그아웃; leaves 설정 again.

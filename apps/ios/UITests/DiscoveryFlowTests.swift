@@ -58,7 +58,7 @@ final class DiscoveryFlowTests: DearbyFlowTestCase {
         launch()
         openTab("발견")
         let check = app.buttons["check-calendar"]
-        let activities = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'activity-' AND NOT identifier IN %@",
+        let activities = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'activity-' AND NOT identifier IN %@",
                                                           ["activity-open-only", "activity-refresh-failed", "activity-more-retry", "activity-scroll-top"]))
         let programs = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'program-toggle-'"))
         XCTAssertTrue(programs.firstMatch.waitForExistence(timeout: 20), "발견에 프로그램이 없어요")
@@ -69,7 +69,10 @@ final class DiscoveryFlowTests: DearbyFlowTestCase {
             if !program.isHittable { _ = scroll(to: program, limit: 3) }
             program.tap()
             let activity = activities.firstMatch
-            guard activity.waitForExistence(timeout: 5) else { continue }
+            guard activity.waitForExistence(timeout: 5) else {
+                snapshot("펼친 프로그램 \(index + 1)에 활동 없음")
+                continue
+            }
             if !activity.isHittable { _ = scroll(to: activity, limit: 3) }
             activity.tap()
             found = scroll(to: check)
@@ -80,6 +83,10 @@ final class DiscoveryFlowTests: DearbyFlowTestCase {
             }
         }
         guard found else { throw XCTSkip("앞의 프로그램 4개에 시간이 정해진 일정이 있는 활동이 없어요") }
+        // The detail's bottom bar (`공식 사이트에서 신청` and its variants) covers the button while XCUITest still calls it hittable:
+        // scroll it clear of the bar.
+        let bar = app.descendants(matching: .any)["open-application"].firstMatch
+        for _ in 0..<4 where bar.exists && check.frame.maxY > bar.frame.minY - 8 { app.swipeUp() }
         check.tap()
         let read = app.buttons["캘린더 읽기 허용하고 확인"]
         XCTAssertTrue(read.waitForExistence(timeout: 10), "겹치는 시간 확인하기 안내가 열리지 않았어요")
