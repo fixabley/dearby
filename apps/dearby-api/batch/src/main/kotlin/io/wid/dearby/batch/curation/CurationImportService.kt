@@ -10,6 +10,13 @@ import io.wid.dearby.application.program.ProgramCoverRepository
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
+import io.wid.dearby.application.timetable.TimetableService
+import io.wid.dearby.domain.timetable.SessionInput
+import io.wid.dearby.domain.timetable.SessionKind
+import io.wid.dearby.domain.timetable.Speaker
+import io.wid.dearby.domain.timetable.TimetableInput
+import io.wid.dearby.domain.timetable.TimetableRules
+import io.wid.dearby.domain.timetable.TrackInput
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
@@ -48,6 +55,7 @@ class CurationImportService(
     private val programCovers: ProgramCoverRepository,
     private val transactions: TransactionTemplate,
     private val catalog: CatalogWrites,
+    private val timetables: TimetableService,
     private val json: JsonMapper,
 ) {
 
@@ -123,6 +131,9 @@ class CurationImportService(
             }
         }
 
+        // 하위 시간표(native-v1.md "트랙·세션 시간표"): 어드민 PUT timetable과 같은 검증. 이미 세션이 있으면 overwrite일 때만 바꾼다
+        item.path("timetables").forEach { node -> lines += timetable(id, node, apply) }
+
         // 게시는 필드를 채운 뒤(어드민 게시와 같다: 상태만 바꾼다)
         if (item.path("publish").asBoolean(false)) {
             lines += if (published) {
@@ -132,6 +143,41 @@ class CurationImportService(
             }
         }
         return lines
+    }
+
+    // {scheduleId, overwrite?, tracks: [{name, room?}], sessions: [{track?(순번), kind, title, startAt, endAt, speakers?: [{name, affiliation?}], tagNames?, description?}]}.
+    // 세션 태그는 사전 이름(띄어쓰기·대소문자 무시)으로 찾고 모르는 이름은 버린다. 운영자 지정과 같이 저장되어 그 블록은 curated가 된다
+    private fun timetable(activityId: Id, node: JsonNode, apply: Boolean): Line {
+        val scheduleId = node.path("scheduleId").asLong()
+        val target = "activity $activityId schedule $scheduleId"
+        val existing = timetables.adminTimetable(activityId, scheduleId)
+        if (existing.sessions.isNotEmpty() && !node.path("overwrite").asBoolean(false)) return Line(target, TIMETABLE, SKIP, "이미 있음: 세션 ${existing.sessions.size}개")
+        val text = { n: JsonNode, field: String -> n.path(field).asString("").trim().ifEmpty { null } }
+        val input = TimetableInput(
+            tracks = buildList { node.path("tracks").forEach { add(TrackInput(null, it.path("name").asString(""), text(it, "room"))) } },
+            sessions = buildList {
+                node.path("sessions").forEach { s ->
+                    val names = buildList { s.path("tagNames").forEach { add(it.asString("")) } }
+                    add(
+                        SessionInput(
+                            id = null,
+                            track = s.get("track")?.takeIf { it.isNumber }?.asInt(),
+                            kind = SessionKind.valueOf(s.path("kind").asString("TALK")),
+                            title = s.path("title").asString(""),
+                            description = text(s, "description"),
+                            startAt = OffsetDateTime.parse(s.path("startAt").asString()),
+                            endAt = OffsetDateTime.parse(s.path("endAt").asString()),
+                            speakers = buildList { s.path("speakers").forEach { add(Speaker(it.path("name").asString(""), text(it, "affiliation"))) } },
+                            tagIds = if (names.isEmpty()) emptyList() else tags.findByNames(names).map { it.id }.take(TimetableRules.MAX_TAGS),
+                        )
+                    )
+                }
+            },
+        )
+        // dry run도 같은 검증을 거친다(쓰지 않음). 기존 트랙·세션은 새로 만든 것으로 바뀐다(id가 바뀌어 그 블록의 세션 찜은 지워진다)
+        if (apply) timetables.replace(activityId, scheduleId, input)
+        else TimetableRules.validate(input, TimetableRules.window(curations.findSchedule(activityId, scheduleId)!!.schedule))
+        return Line(target, TIMETABLE, SET, "트랙 ${input.tracks.size}개, 세션 ${input.sessions.size}개")
     }
 
     // 같은 상위 조직 아래 같은 이름(띄어쓰기·대소문자 무시)이 있으면 그 조직을 쓴다. 없으면 어드민 만들기와 같은 검증으로 만든다
@@ -311,6 +357,7 @@ class CurationImportService(
         const val ELIGIBILITY = "eligibility"
         const val TAGS = "tags"
         const val PLACE = "place"
+        const val TIMETABLE = "timetable"
         const val LOGO = "logo"
         const val COVER = "cover"
         const val PUBLISH = "publish"

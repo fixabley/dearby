@@ -981,4 +981,78 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
             jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
         }
     }
+
+    @Test
+    fun `일정 블록에 트랙·세션 시간표를 통째로 붙이고 id로 고치며, 블록 밖·겹침·날짜 미정은 막는다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"시간표 편집 활동","description":"시간표 테스트","officialUrl":"https://example.org/timetable","activitySchedule":{"startDate":"2026-11-20","endDate":"2026-11-20"}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        val activity = created["id"].asLong()
+        val slotSchedule = created["activitySchedule"]["id"].asLong()
+        // 수집한(운영자 지정 아닌) 큰 블록: 오전 세션 10:50~12:30
+        val block = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, '오전 세션', 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-20T10:50:00+09:00', '2026-11-20T12:30:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activity).query(Long::class.java).single()
+        val tagId = jdbc.sql("select id from tags order by id limit 1").query(Long::class.java).single()
+        val path = "/v1/admin/activities/$activity/schedules/$block/timetable"
+        fun put(target: String, value: String) = mvc.put(target) { asAdmin(); body(value) }
+        fun session(track: String, title: String, start: String, end: String, kind: String = "TALK", id: Long? = null) =
+            """{${id?.let { "\"id\":$it," } ?: ""}"track":$track,"kind":"$kind","title":"$title","startAt":"2026-11-20T$start:00+09:00","endAt":"2026-11-20T$end:00+09:00","speakers":[{"name":"김연사","affiliation":"우아한형제들"}],"tagIds":[$tagId]}"""
+
+        assertEquals("""{"scheduleId":$block,"tracks":[],"sessions":[]}""", read(mvc.get(path) { asAdmin() }.andExpect { status { isOk() } }).toString())
+        val first = read(
+            put(path, """{"tracks":[{"name":"Track 1","room":"A홀"},{"name":"Track 2"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE")},${session("0", "트랙1 세션", "11:40", "12:20")},${session("1", "트랙2 세션", "11:40", "12:20")}]}""")
+                .andExpect { status { isOk() } }
+        )
+        assertEquals(listOf("Track 1" to 0, "Track 2" to 1), first["tracks"].toList().map { it["name"].asString() to it["position"].asInt() })
+        assertEquals(listOf(null, 0, 1), first["sessions"].toList().map { it["track"].takeUnless { n -> n.isNull }?.asInt() })
+        assertEquals("김연사", first["sessions"][1]["speakers"][0]["name"].asString())
+        assertEquals(tagId, first["sessions"][1]["tags"][0]["id"].asLong())
+        // 시간표가 붙은 수집 블록은 운영자 지정으로 올라가(재수집이 지우지 않게) 응답에 hasTimetable
+        assertEquals(true, jdbc.sql("select curated from schedules where id = ?").param(block).query(Boolean::class.java).single())
+        val listed = read(mvc.get("/v1/admin/activities?q=시간표 편집 활동") { asAdmin() })["items"].toList().single { it["id"].asLong() == activity }["schedules"].toList().single()
+        assertEquals(true, listed["hasTimetable"].asBoolean())
+        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity/schedules/$block") { asAdmin(); body("""{"title":"오전 세션"}""") }.andExpect { status { isOk() } })["hasTimetable"].asBoolean())
+
+        // id로 고치면 세션 찜이 남고, 빠진 세션·트랙은 지운다(그 세션 찜도). 트랙 순서를 바꿀 수 있다
+        val (trackA, trackB) = first["tracks"].toList().map { it["id"].asLong() }
+        val (keynote, talkA, talkB) = first["sessions"].toList().map { it["id"].asLong() }
+        val user = java.util.UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        listOf(talkA, talkB).forEach { jdbc.sql("insert into user_session_favorites (user_id, session_id, created_at) values (?, ?, now())").params(user, it).update() }
+        val second = read(
+            put(path, """{"tracks":[{"id":$trackB,"name":"Track 2"},{"id":$trackA,"name":"Track 1 (본관)","room":"A홀"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE", keynote)},${session("1", "트랙1 세션(제목 수정)", "11:40", "12:20", id = talkA)}]}""")
+                .andExpect { status { isOk() } }
+        )
+        assertEquals(listOf(trackB, trackA), second["tracks"].toList().map { it["id"].asLong() })
+        assertEquals(listOf(keynote, talkA), second["sessions"].toList().map { it["id"].asLong() })
+        assertEquals(trackA, second["sessions"][1]["trackId"].asLong())
+        assertEquals(listOf(talkA), jdbc.sql("select session_id from user_session_favorites where user_id = ?").param(user).query(Long::class.java).list())
+
+        // 막는 것: 블록 밖, 같은 트랙 겹침, 전폭과 겹침, 순번 밖 track, 없는 태그, 다른 블록의 id, 날짜 미정 블록, 없는 블록
+        put(path, """{"tracks":[],"sessions":[${session("null", "늦은 세션", "12:20", "12:40")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[{"name":"T"}],"sessions":[${session("0", "가", "11:00", "11:30")},${session("0", "나", "11:20", "11:50")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[{"name":"T"}],"sessions":[${session("null", "가", "11:00", "11:30", "BREAK")},${session("0", "나", "11:20", "11:50")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[],"sessions":[${session("3", "가", "11:00", "11:30")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[],"sessions":[${session("null", "가", "11:00", "11:30").replace("[$tagId]", "[999999]")}]}""").andExpect { status { isBadRequest() } }
+        put(path, """{"tracks":[],"sessions":[${session("null", "가", "11:00", "11:30", id = 999999)}]}""").andExpect { status { isBadRequest() } }
+        val undated = jdbc.sql("insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at) values (?, '오후 세션', 'EVENT', 'CONFIRMED', '오후', 0, localtimestamp, localtimestamp) returning id")
+            .param(activity).query(Long::class.java).single()
+        put("/v1/admin/activities/$activity/schedules/$undated/timetable", """{"tracks":[],"sessions":[${session("null", "가", "11:00", "11:30")}]}""").andExpect { status { isBadRequest() } }
+        put("/v1/admin/activities/$activity/schedules/999999/timetable", """{"tracks":[],"sessions":[]}""").andExpect { status { isNotFound() } }
+
+        // 트랙이 없는 시간표(단일 진행)는 활동 기간(종일) 블록에도 붙는다. 빈 목록 둘이면 지운다
+        val single = read(put("/v1/admin/activities/$activity/schedules/$slotSchedule/timetable", """{"tracks":[],"sessions":[${session("null", "단일 세션", "09:00", "10:00")}]}""").andExpect { status { isOk() } })
+        assertEquals(0, single["tracks"].size())
+        assertEquals(1, single["sessions"].size())
+        assertEquals("""{"scheduleId":$block,"tracks":[],"sessions":[]}""", read(put(path, """{"tracks":[],"sessions":[]}""").andExpect { status { isOk() } }).toString())
+        assertEquals(0, jdbc.sql("select count(*) from user_session_favorites where user_id = ?").param(user).query(Int::class.java).single())
+        jdbc.sql("delete from users where id = ?").param(user).update()
+    }
 }

@@ -989,4 +989,90 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         }
     }
 
+
+    @Test
+    fun `일정 블록의 트랙·세션 시간표를 로그인 없이 보고 세션 찜은 로그인만 하며 내 시간표로 모은다`() {
+        val activity = createActivity("시간표 확인 컨퍼런스")
+        val block = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, '오전 세션', 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-20T10:50:00+09:00', '2026-11-20T12:30:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activity).query(Long::class.java).single()
+        val plain = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, '쉬는시간', 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-20T12:30:00+09:00', '2026-11-20T13:50:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activity).query(Long::class.java).single()
+        fun track(name: String, position: Int) = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, ?, ?, ?) returning id")
+            .params(block, name, "$name 홀", position).query(Long::class.java).single()
+        val trackA = track("Track 1", 0)
+        val trackB = track("Track 2", 1)
+        fun session(trackId: Long?, kind: String, title: String, start: String, end: String) = jdbc.sql(
+            """insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, ?, ?, ?::timestamptz, ?::timestamptz, ?::jsonb) returning id"""
+        ).params(listOf<Any?>(block, trackId, kind, title, start, end, """[{"name":"김연사","affiliation":"우아한형제들"}]""")).query(Long::class.java).single()
+        val keynote = session(null, "KEYNOTE", "키노트", "2026-11-20T10:50:00+09:00", "2026-11-20T11:30:00+09:00")
+        val talkA = session(trackA, "TALK", "트랙1 세션", "2026-11-20T11:40:00+09:00", "2026-11-20T12:20:00+09:00")
+        val talkB = session(trackB, "TALK", "트랙2 세션", "2026-11-20T11:40:00+09:00", "2026-11-20T12:20:00+09:00")
+        jdbc.sql("insert into schedule_session_tags (session_id, tag_id, position) select ?, id, 0 from tags order by id limit 1").param(talkA).update()
+        val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+        fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+        fun favorites(): JsonNode = body(mvc.get("/v1/me/session-favorites") { asUser() }.andExpect { status { isOk() } })
+        try {
+            // 활동 응답의 일정에 hasTimetable만 싣는다
+            val detail = body(mvc.get("/v1/activities/$activity").andExpect { status { isOk() } })
+            assertEquals(mapOf(block to true, plain to false), detail["schedules"].toList().associate { it["id"].asLong() to it["hasTimetable"].asBoolean() })
+            assertEquals(false, detail["activitySchedule"]["hasTimetable"].asBoolean())
+
+            // 공개 시간표: 트랙은 position 순, 세션은 시작 순, 전폭 세션은 trackId null, 시각은 블록 시간대
+            val path = "/v1/activities/$activity/schedules/$block/timetable"
+            val table = body(mvc.get(path).andExpect { status { isOk() } })
+            assertEquals(listOf("Track 1", "Track 2"), table["tracks"].toList().map { it["name"].asString() })
+            assertEquals("Track 1 홀", table["tracks"][0]["room"].asString())
+            assertEquals(listOf(keynote, talkA, talkB), table["sessions"].toList().map { it["id"].asLong() })
+            assertTrue(table["sessions"][0]["trackId"].isNull)
+            assertEquals("2026-11-20T10:50:00+09:00", table["sessions"][0]["startAt"].asString())
+            assertEquals("김연사", table["sessions"][1]["speakers"][0]["name"].asString())
+            assertEquals(1, table["sessions"][1]["tags"].size())
+            assertEquals("오전 세션", table["schedule"]["title"].asString())
+            assertTrue(table["sessions"].toList().none { it["favorited"].asBoolean() })
+            // 세션이 없는 블록·남의 블록은 404
+            mvc.get("/v1/activities/$activity/schedules/$plain/timetable").andExpect { status { isNotFound() } }
+            mvc.get("/v1/activities/-1/schedules/$block/timetable").andExpect { status { isNotFound() } }
+
+            // 세션 찜: 로그인만, 멱등, 없는 세션 404. 활동 즐겨찾기는 켜지지 않는다
+            mvc.put("/v1/me/session-favorites/$talkA").andExpect { status { isUnauthorized() } }
+            mvc.put("/v1/me/session-favorites/$talkA") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.put("/v1/me/session-favorites/$talkA") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.put("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.put("/v1/me/session-favorites/-1") { asUser() }.andExpect { status { isNotFound() } }
+            assertEquals(0, jdbc.sql("select count(*) from user_favorites where user_id = ?").param(user).query(Int::class.java).single())
+            val signedIn = mvc.get(path) { asUser() }.andExpect { status { isOk() } }.andReturn().response
+            assertTrue(signedIn.getHeaders("Vary").joinToString().contains("Authorization"))
+            assertEquals(listOf(false, true, true), json.readTree(signedIn.contentAsString)["sessions"].toList().map { it["favorited"].asBoolean() })
+
+            // 내 시간표: 시작 순, 블록·활동 이름과 함께. 같은 시간 겹침은 앱이 계산한다
+            val mine = favorites()["items"].toList()
+            assertEquals(listOf(talkA, talkB), mine.map { it["session"]["id"].asLong() })
+            assertEquals(listOf("시간표 확인 컨퍼런스", "오전 세션"), listOf(mine[0]["activityName"].asString(), mine[0]["scheduleTitle"].asString()))
+            mvc.delete("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.delete("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(1, favorites()["items"].size())
+
+            // 게시를 내리면 시간표는 404, 찜은 목록에서 빠지고(행은 남음) 새로 찜할 수 없다
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
+            mvc.get(path).andExpect { status { isNotFound() } }
+            assertEquals(0, favorites()["items"].size())
+            mvc.put("/v1/me/session-favorites/$talkB") { asUser() }.andExpect { status { isNotFound() } }
+
+            // 계정 삭제(users cascade)와 함께 세션 찜도 지워진다
+            jdbc.sql("delete from users where id = ?").param(user).update()
+            assertEquals(0, jdbc.sql("select count(*) from user_session_favorites where user_id = ?").param(user).query(Int::class.java).single())
+        } finally {
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
+            jdbc.sql("delete from users where id = ?").param(user).update()
+        }
+    }
 }

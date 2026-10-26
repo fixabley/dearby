@@ -8,7 +8,7 @@ import java.time.ZoneId
 
 // schedules 행 → 도메인 Schedule. 활동 조회와 세부 일정 편집기가 같은 변환을 쓴다
 // statuses: 그 일정의 어드민 상태(sort_order 순). 비면 기본 세 개
-internal fun SchedulesRecord.toSchedule(statuses: List<ProgressStatus> = emptyList()) = Schedule(
+internal fun SchedulesRecord.toSchedule(statuses: List<ProgressStatus> = emptyList(), hasTimetable: Boolean = false) = Schedule(
     id = id!!,
     title = title!!,
     kind = ScheduleKind.valueOf(kind!!),
@@ -31,6 +31,7 @@ internal fun SchedulesRecord.toSchedule(statuses: List<ProgressStatus> = emptyLi
     overlapCheck = overlapStartTime?.let { OverlapCheck(it, overlapEndTime!!) },
     statuses = statuses.ifEmpty { ProgressStatus.DEFAULTS },
     recurrence = recurrence?.let(::Recurrence),
+    hasTimetable = hasTimetable,
 )
 
 // 일정들의 어드민 상태를 한 번에 읽는다(일정 id → sort_order 순 목록)

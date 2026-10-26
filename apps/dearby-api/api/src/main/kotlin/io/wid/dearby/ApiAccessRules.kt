@@ -12,6 +12,7 @@ class ApiAccessRules : AccessRules {
     override fun apply(rules: AuthorizeHttpRequestsDsl) = with(rules) {
         authorize(HttpMethod.GET, "/v1/activities", permitAll)
         authorize(HttpMethod.GET, "/v1/activities/*", permitAll)
+        authorize(HttpMethod.GET, "/v1/activities/*/schedules/*/timetable", permitAll) // 트랙·세션 시간표(native-v1.md)
         // 발견 프로그램 묶음(native-v1.md "발견 프로그램 묶음")
         authorize(HttpMethod.GET, "/v1/discovery/programs", permitAll)
         // 프로그램 로고 이미지(native-v1.md "프로그램 로고")

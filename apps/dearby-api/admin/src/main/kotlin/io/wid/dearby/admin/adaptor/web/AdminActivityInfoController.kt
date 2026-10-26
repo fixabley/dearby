@@ -11,6 +11,7 @@ import io.wid.dearby.admin.application.TimingChange
 import io.wid.dearby.admin.application.ScheduleChange
 import io.wid.dearby.domain.Address
 import io.wid.dearby.application.activity.ScheduleEdit
+import io.wid.dearby.application.timetable.TimetableService
 import tools.jackson.databind.JsonNode
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.*
 // shared/contracts/admin-v1.md. 모든 경로는 ADMIN 역할만(AdminAccessRules)
 @RestController
 @RequestMapping("/v1/admin")
-class AdminActivityInfoController(private val activityInfo: AdminActivityInfoService) {
+class AdminActivityInfoController(private val activityInfo: AdminActivityInfoService, private val timetables: TimetableService) {
 
     @GetMapping("/organizations")
     fun organizations(
@@ -148,6 +149,14 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
         ScheduleStatusesResponse(
             activityInfo.replaceScheduleStatuses(id, scheduleId, request.items.map { it.toStatus() }).map { ProgressStatusResponse(it.id, it.name, it.kind) }
         )
+
+    // 트랙·세션 시간표(admin-v1.md "트랙·세션 시간표"): 모집 기간을 뺀 일정 블록(활동 기간·세부 일정)에 붙는 하위 시간표. PUT은 통째로 바꾼다
+    @GetMapping("/activities/{id}/schedules/{scheduleId}/timetable")
+    fun timetable(@PathVariable id: Long, @PathVariable scheduleId: Long) = AdminTimetableResponse.from(timetables.adminTimetable(id, scheduleId))
+
+    @PutMapping("/activities/{id}/schedules/{scheduleId}/timetable")
+    fun replaceTimetable(@PathVariable id: Long, @PathVariable scheduleId: Long, @RequestBody request: TimetableRequest) =
+        AdminTimetableResponse.from(timetables.replace(id, scheduleId, request.toInput()))
 
     @DeleteMapping("/activities/{id}/schedules/{scheduleId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

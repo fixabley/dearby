@@ -169,7 +169,10 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isTrue.or(SCHEDULES.CURATED_DELETED.isTrue))
             .fetch { scheduleKey(it.value1()!!, it.value2(), it.value3()) }.toSet()
         activity.schedules.filter { scheduleKey(it.title, it.startAt, it.startDate) !in kept }.forEach {
-            writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now, it.recurrence)
+            val scheduleId = writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now, it.recurrence)
+            // 하위 시간표(native-v1.md "트랙·세션 시간표"): 붙이면 그 블록이 운영자 지정(curated)으로 올라가 다음 재수집이 지우거나 다시 쓰지 않는다(세션·찜 유지).
+            // 그래서 시간표는 블록이 처음 수집될 때만 붙고, 그 뒤 고치기는 어드민이 한다. 세션 태그는 사전 이름으로 찾고 모르는 이름은 버린다
+            it.timetable?.let { timetable -> TimetableRows.replace(dsl, scheduleId, timetable.withTagIds(::tagIdsByName)) }
         }
         EligibilityRows.writeTerms(dsl, activityId, eligibility)
         // 태그(native-v1.md "태그"): 운영자가 정한 연결은 두고, 아니면 모델이 사전에서 고른 이름(모르는 이름은 버림), 비면 프로그램 태그(연관도 없음).
@@ -242,6 +245,16 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         Triple(title.replace(Regex("\\s"), "").lowercase(), startAt?.toInstant(), startDate)
 
     // 슬롯 일정은 있으면 그 행을 고치고(id 유지), 없거나 세부 일정이면 새로 넣는다
+    private fun tagIdsByName(names: List<String>): List<Id> {
+        fun key(name: String) = name.replace(Regex("\\s"), "").lowercase()
+        val wanted = names.map(::key).filter { it.isNotEmpty() }
+        if (wanted.isEmpty()) return emptyList()
+        val byKey = dsl.select(TAGS.ID, TAGS.NAME, TAGS.NAME_EN).from(TAGS)
+            .where(DSL.lower(withoutSpaces(TAGS.NAME)).`in`(wanted).or(DSL.lower(withoutSpaces(TAGS.NAME_EN)).`in`(wanted)))
+            .fetch().flatMap { row -> listOfNotNull(row[TAGS.NAME], row[TAGS.NAME_EN]).map { key(it) to row[TAGS.ID]!! } }.toMap()
+        return wanted.mapNotNull(byKey::get).distinct()
+    }
+
     private fun writeSchedule(
         activityId: Id,
         slot: String?,
@@ -254,7 +267,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         dateLabel: String,
         now: LocalDateTime,
         recurrence: Recurrence? = null, // 세부 일정만. 슬롯 행의 반복은 운영자 값이 남게 따로 채운다
-    ) {
+    ): Id {
         val timed = startAt != null || endAt != null
         val allDay = !timed && (startDate != null || endDate != null)
         val start = startDate ?: endDate
@@ -277,16 +290,17 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         )
         if (existing != null) {
             dsl.update(SCHEDULES).set(values).set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1)).where(SCHEDULES.ID.eq(existing)).execute()
-            return
+            return existing
         }
-        dsl.insertInto(SCHEDULES)
+        return dsl.insertInto(SCHEDULES)
             .set(values)
             .set(SCHEDULES.RECURRENCE, recurrence?.rule)
             .set(SCHEDULES.ACTIVITY_ID, activityId)
             .set(SCHEDULES.SLOT, slot)
             .set(SCHEDULES.SEQUENCE, 0)
             .set(SCHEDULES.CREATED_AT, now)
-            .execute()
+            .returning(SCHEDULES.ID)
+            .fetchOne()!!.id!!
     }
 
     private companion object {
