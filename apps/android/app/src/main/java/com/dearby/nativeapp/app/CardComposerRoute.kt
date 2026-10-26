@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
 
-/** Makes a real card from the saved profile: choose what to show, publish (the body is the built-in template) — or, opened from `이 명함 고치기`, saves onto that same card (contract "명함 고치기는 같은 명함을 수정"). Signed out it is not opened (the shell asks for sign-in first); a session that lapses here asks for sign-in again. */
+/** Makes a real card from the saved profile: choose what to show, publish (the body is the profile introduction) — or, opened from `이 명함 고치기`, saves onto that same card (contract "명함 고치기는 같은 명함을 수정"). Signed out it is not opened (the shell asks for sign-in first); a session that lapses here asks for sign-in again. */
 @Composable fun CardComposerRoute(model: CardPublishViewModel, account: AccountViewModel, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
@@ -30,7 +30,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 primary = MessageAction("확인", close))
             auth.phase != AccountPhase.SIGNED_IN -> CenteredMessage(Icons.Rounded.Badge, "로그인이 필요해요", "로그인하면 프로필 데이터로 명함을 만들 수 있어요.", Modifier.fillMaxSize(),
                 primary = MessageAction("로그인", { model.load() }))
-            // Signed in from here without ever saving a profile: nothing to fill the template with yet.
+            // Signed in from here without ever saving a profile: nothing to make the card from yet.
             draft != null && draft.profile.version == 0 -> CenteredMessage(Icons.Rounded.AccountCircle, "먼저 프로필을 적어 주세요", "내 프로필에서 이름과 연락처를 적으면 명함을 만들 수 있어요.", Modifier.fillMaxSize(),
                 primary = MessageAction("닫기", close))
             draft != null -> CardComposer(draft.cardTitle, { model.edit(draft.copy(cardTitle = it)) }, draft.preview, draft.contacts,

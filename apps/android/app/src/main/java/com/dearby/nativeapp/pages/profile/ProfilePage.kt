@@ -127,7 +127,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(form.name.ifBlank { "이름 없음" }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             if (form.jobs.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { form.jobs.forEach { ExampleBadge(it.title) } }
-            // The introduction is typed text, not a filled template: plain text, no markdown.
+            // The introduction as typed: plain text here, no markdown (the card body renders it as markdown).
             if (form.introduction.isNotBlank()) Text(form.introduction, style = MaterialTheme.typography.bodyLarge)
         }
         Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
