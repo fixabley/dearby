@@ -243,11 +243,9 @@ private const val OPEN = "모집 중"
 private const val UPCOMING = "모집 예정"
 private const val CLOSED = "모집 마감"
 private const val UNKNOWN = "모집 여부 확인 필요"
-/** No badge for it: the card and detail show it where the recruitment dates go (contract "활동 상태": `NO_RECRUITMENT`). */
-const val NO_RECRUITMENT_LABEL = "모집 일정 미정"
-/** Contract "활동 상태" labels; `NO_RECRUITMENT` reads as [NO_RECRUITMENT_LABEL]. */
+/** Contract "활동 상태" labels; `NO_RECRUITMENT` has no badge, so it reads as the text shown where the recruitment dates go. */
 private val STATUS_LABELS = mapOf("RECRUITING_UPCOMING" to UPCOMING, "RECRUITING" to OPEN, "RECRUITMENT_CLOSED" to CLOSED,
-    "NO_RECRUITMENT" to NO_RECRUITMENT_LABEL, "IN_PROGRESS" to "진행 중", "ENDED" to "종료")
+    "NO_RECRUITMENT" to "모집 일정 미정", "IN_PROGRESS" to "진행 중", "ENDED" to "종료")
 
 fun instant(raw: String?): Instant? = raw?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 

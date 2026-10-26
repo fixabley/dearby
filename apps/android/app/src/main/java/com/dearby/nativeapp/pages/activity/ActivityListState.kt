@@ -73,6 +73,8 @@ data class ActivityState(
      * `캘린더에 추가` (its own `모집 마감` row leaves 행사 일정, as the range already says it).
      */
     val periodDetail: String? = null, val deadlineCount: String? = null, val deadlineDraft: CalendarDraft? = null,
+    /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no badge; [status] stands where the recruitment dates go. */
+    val noRecruitment: Boolean = false,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"

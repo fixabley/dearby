@@ -461,6 +461,7 @@ private fun ActivityModel.toState(now: Instant): ActivityState {
         hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
         periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
         deadlineDraft = deadline?.let { draft(it) },
+        noRecruitment = this.status == "NO_RECRUITMENT",
     )
 }
 /**
