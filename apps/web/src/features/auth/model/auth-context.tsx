@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ProfileConsent } from "@/lib/models";
-import { setSignedIn } from "@/shared/lib/analytics";
+import { clearExchangeMemory, setSignedIn } from "@/shared/lib/analytics";
 import { Dialog, DialogActions, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/shared/ui/dialog";
 import { Toast, type Notice } from "@/shared/ui/toast";
 import { clearGuestSession, guestSavedCount, importGuest, logout, session, type Session } from "../api/auth-client";
@@ -118,6 +118,8 @@ export function AuthProvider({ children, signInFooter }: { children: React.React
   }, [load, ready]);
   const signedOutLocally = useCallback((message?: string) => {
     pending.current = null;
+    // 명함 교환 지표의 기기 기록은 로그아웃 때 지운다 (analytics-v1.md "비공개 테스트 성공 지표").
+    clearExchangeMemory();
     setSheet("none");
     setMoveOffer(0);
     if (status.current === "signedIn") setEpoch((value) => value + 1);

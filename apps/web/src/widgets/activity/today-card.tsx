@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useMine, activityParams } from "@/features/mine/model/mine-context";
@@ -13,7 +14,8 @@ import { TimetableSheet, type TimetableTarget } from "./timetable";
  * 오늘 내 행사 (contract "오늘 내 행사 카드" 2026-10-26) at the top of 발견: the one applied activity whose 활동 일정 block is today or within 7
  * days, from what the account already holds (no extra request). `오늘`/`D-n` badge, the activity name, `외 n개`, and the next favorited
  * session or block. Today with a timetable opens the block's 시간표 modal (the web has no 찜한 세션 tab, so the whole table); otherwise
- * the progress page. The web has no 명함 QR yet. Nothing renders signed out, while loading, or without a qualifying activity.
+ * the progress page. Today also offers `명함 QR` → `/cards/mine?qr=<activityId>` (the QR screen with this activity preselected,
+ * contract "웹 화면 — 2단계 C"). Nothing renders signed out, while loading, or without a qualifying activity.
  */
 export function TodayCard({ className }: { className?: string }) {
   const mine = useMine();
@@ -64,6 +66,16 @@ export function TodayCard({ className }: { className?: string }) {
           <Icon name="chevron-right" size="inline" tone="secondary" />
         </span>
       </button>
+      {today && (
+        <Link
+          href={`/cards/mine?qr=${event.activity.id}`}
+          onClick={() => track("today_card_tap", { ...activityParams(event.activity), target: "qr" })}
+          className="flex min-h-11 items-center justify-center gap-1.5 border-t border-separator text-subheadline font-semibold text-teal active:opacity-70"
+        >
+          <Icon name="qr" size="inline" />
+          명함 QR
+        </Link>
+      )}
       {timetable && (
         <TimetableSheet
           activityId={event.activity.id}

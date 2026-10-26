@@ -111,9 +111,9 @@ const MAX_PHOTO_BYTES = 1024 * 1024;
  * 명함 사진 as a data URI, asked with the card view's own right (QR code or guest token). The photo is decoration:
  * any failure leaves the initial avatar.
  */
-async function cardPhoto(id: string, query: URLSearchParams | undefined, token: string | undefined) {
+async function cardPhoto(id: string, query: URLSearchParams | undefined, token: string | undefined, bearer: string | undefined) {
   try {
-    const result = await upstreamFetch(`cards/${id}/photo`, { guest: token !== undefined, token, query, accept: "image/jpeg" });
+    const result = await upstreamFetch(`cards/${id}/photo`, { guest: token !== undefined, token, query, accept: "image/jpeg", bearer });
     if (!result.ok || result.headers.get("content-type") !== "image/jpeg") return;
     const bytes = await result.arrayBuffer();
     if (bytes.byteLength > MAX_PHOTO_BYTES) return;
@@ -231,8 +231,9 @@ export async function proxy(
   // API fills `favorited` (it varies on Authorization; this response is already `no-store` and varies on Cookie). The token is sent
   // only while its `exp` is ahead — the API rejects an expired Bearer even on a public path — and a session whose access token has
   // lapsed (refresh cookie alone) gets 401 `SIGNED_OUT` like an account route, so the browser refreshes once and retries rather than
-  // seeing every heart unfilled. No session at all reads anonymously.
-  const session = search || activityRoute || timetableRoute ? readSession(request.headers.get("cookie")) : {};
+  // seeing every heart unfilled. No session at all reads anonymously. A card view and a report (contract "웹 화면 — 2단계 C") carry
+  // it too, so a card in the wallet (or my own) opens without a code and a report from the wallet detail is allowed.
+  const session = search || activityRoute || timetableRoute || cardRoute || reportRoute ? readSession(request.headers.get("cookie")) : {};
   const bearer = accessSecondsLeft(session.access) > 0 ? session.access : undefined;
   if (!bearer && session.refresh) return failure(401, "SIGNED_OUT");
   try {
@@ -268,7 +269,7 @@ export async function proxy(
       // Never forward arbitrary error bodies, tokens, or upstream headers.
       return failure(
         status,
-        status === 401 ? "GUEST_SESSION_INVALID" : "REQUEST_FAILED",
+        status === 401 ? (bearer ? "SIGNED_OUT" : "GUEST_SESSION_INVALID") : "REQUEST_FAILED",
       );
     }
     if (logoRoute) {
@@ -319,7 +320,7 @@ export async function proxy(
           ? guestListSchema.parse(json)
           : cardSchema.parse(json);
     if (cardRoute && typeof (json as { photoUrl?: unknown }).photoUrl === "string") {
-      const photo = await cardPhoto(id, query, cardAsGuest ? token : undefined);
+      const photo = await cardPhoto(id, query, cardAsGuest ? token : undefined, bearer);
       return Response.json({ ...output, ...(photo && { photo }) }, { headers: outputHeaders });
     }
     return Response.json(output, { headers: outputHeaders });

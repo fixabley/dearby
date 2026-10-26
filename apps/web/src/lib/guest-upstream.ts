@@ -70,6 +70,7 @@ export function upstreamFetch(
     acceptLanguage,
     ifMatch,
     revalidate,
+    formData,
   }: {
     method?: string;
     guest?: boolean;
@@ -86,6 +87,8 @@ export function upstreamFetch(
     ifMatch?: string;
     /** Seconds to keep the response in the data cache (public, cookie-free reads such as Open Graph); otherwise never cached. */
     revalidate?: number;
+    /** Multipart upload (photo, 인증자료): sent as is so the runtime sets the boundary; `body` is ignored then. */
+    formData?: FormData;
   },
 ) {
   const origin = apiOrigin();
@@ -95,7 +98,7 @@ export function upstreamFetch(
   if (guest) headers["X-Guest-Proxy-Key"] = key!;
   if (guest && token) headers["X-Guest-Token"] = token;
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !formData) headers["Content-Type"] = "application/json";
   if (acceptLanguage) headers["Accept-Language"] = acceptLanguage;
   if (ifMatch) headers["If-Match"] = ifMatch;
   const url = new URL(`/v1/${path}`, origin);
@@ -103,7 +106,7 @@ export function upstreamFetch(
   return fetch(url, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
     ...(revalidate === undefined ? { cache: "no-store" as const } : { next: { revalidate } }),
     redirect: "error",
     signal: AbortSignal.timeout(10_000),

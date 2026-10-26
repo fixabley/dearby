@@ -3,7 +3,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { type Activity, type Card, type GuestItem, sessionContextLines } from "@/lib/models";
+import type { Receipt } from "@/lib/account-models";
 import {
+  account,
   errorMessage,
   mutateGuest,
   request,
@@ -11,6 +13,8 @@ import {
   saveFailure,
 } from "@/lib/client";
 import { track } from "@/shared/lib/analytics";
+import { useAuth } from "@/features/auth/model/auth-context";
+import { saveToWallet } from "@/features/wallet/api/wallet-client";
 import { Failure } from "@/shared/ui/states";
 import { SkeletonGroup } from "@/shared/ui/skeleton";
 import { Icon } from "@/shared/ui/icon";
@@ -24,6 +28,8 @@ import { BlockCard, ReportCard } from "@/widgets/card/report-dialog";
 /**
  * `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card.
  * `code`: the QR code (contract "명함 QR 코드"); kept in memory only and sent with the view and both saves.
+ * Signed in (contract "웹 화면 — 2단계 C"), the bottom bar offers `내 지갑에 저장` (account wallet) instead of the app link and the
+ * browser save; signed out it is unchanged.
  */
 export function PublicCard({ id, activity, code }: { id: string; activity?: number; code?: string }) {
   const [card, setCard] = useState<Card>();
@@ -39,6 +45,9 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
   const [saveError, setSaveError] = useState("");
   // Saved in this browser already (opened from /saved, or just saved): 삭제하고 차단하기 is offered then.
   const [stored, setStored] = useState(false);
+  // 로그인 상태 (contract "웹 화면 — 2단계 C"): `내 지갑에 저장` replaces the app link; the Receipt the API answered.
+  const auth = useAuth();
+  const [receipt, setReceipt] = useState<Receipt>();
   const router = useRouter();
   // Drop `code` from the address so a copied or shared link does not carry it.
   useEffect(() => {
@@ -49,8 +58,9 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    // The code goes to the proxy as a header, not a query, so it stays out of request logs here.
-    request<Card>(`/cards/${id}`, {
+    // The code goes to the proxy as a header, not a query, so it stays out of request logs here. Signed in, the proxy adds the
+    // account's Bearer (a card in the wallet opens without a code), so an expired token is refreshed once and retried.
+    account<Card>(`/cards/${id}`, {
       signal: controller.signal,
       headers: code ? { "X-Card-Code": code } : undefined,
     })
@@ -114,6 +124,31 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
       setBusy(false);
     }
   }
+  /** 내 지갑에 저장 (contract "명함 교환" › 받는 사람, "웹 화면 — 2단계 C"): `PUT /v1/wallet/cards/:id {activityId, code}`; 201 = newly received. */
+  async function saveToAccount() {
+    setBusy(true);
+    setSaveError("");
+    try {
+      const { status, data } = await saveToWallet(id, { ...(activity !== undefined && { activityId: activity }), ...(code && { code }) });
+      setReceipt(data);
+      if (status === 201) track("card_received", { reciprocal: data.reciprocal ? "yes" : "no", ...(activity !== undefined && { activity_id: activity }) });
+    } catch (error) {
+      if (error instanceof RequestError && error.status === 401) auth.signedOutLocally("로그인이 만료됐어요. 다시 로그인해 주세요.");
+      else if (error instanceof RequestError && error.status === 403) {
+        setCodeRequired(true);
+        setCard(undefined);
+      } else if (error instanceof RequestError && error.status === 404) {
+        setMissing(true);
+        setCard(undefined);
+      } else if (error instanceof RequestError && error.code === "OWN_CARD") setSaveError("내 명함이에요.");
+      else if (error instanceof RequestError && error.code === "BLOCKED") setSaveError("차단한 사람의 명함이에요.");
+      else if (error instanceof RequestError && error.code === "CONSENT_REQUIRED") auth.openConsent();
+      else setSaveError(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const signedIn = auth.status === "signedIn";
   if (missing) return <MissingCard />;
   if (codeRequired) return <CardCodeRequired />;
   if (error)
@@ -143,10 +178,12 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
           {stored && <BlockCard id={id} name={card.name} blocked={() => router.push("/saved")} />}
         </div>
         {saved && <InstallOffer place="card" />}
-        <p className="mt-3 px-4 text-footnote text-secondary-label">
-          이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은 30일 뒤 사라져요. 쿠키를 삭제하거나 다른 브라우저를
-          사용하면 기존 목록에 접근할 수 없어요.
-        </p>
+        {!signedIn && (
+          <p className="mt-3 px-4 text-footnote text-secondary-label">
+            이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은 30일 뒤 사라져요. 쿠키를 삭제하거나 다른 브라우저를
+            사용하면 기존 목록에 접근할 수 없어요.
+          </p>
+        )}
       </article>
       {/* 저장 CTA는 하단 고정 (contract "웹 리디자인" › 공개 명함). */}
       <BottomBar>
@@ -158,13 +195,37 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
             </Link>
           </p>
         )}
-        <Button asChild size="lg">
-          <a href={appLink} onClick={() => track("card_open_app")}>
-            <Icon name="card" size="inline" />
-            Dearby 앱에 저장
-          </a>
-        </Button>
-        {saved ? (
+        {signedIn ? (
+          receipt ? (
+            <>
+              <p role="status" className="flex flex-col items-center text-footnote">
+                <span className="flex items-center gap-1 font-semibold text-teal">
+                  <Icon name="check-circle" size="inline" />
+                  {receipt.reciprocal ? "맞교환했어요." : "명함을 받았어요."}
+                </span>
+                {sessionContextLines(receipt.context).length > 0 && (
+                  <span className="text-center break-keep text-secondary-label">{sessionContextLines(receipt.context).join(" · ")}</span>
+                )}
+              </p>
+              <Button asChild size="lg">
+                <Link href={`/wallet/${receipt.id}`}>받은 명함 보기</Link>
+              </Button>
+            </>
+          ) : (
+            <Button size="lg" disabled={busy} onClick={() => auth.requireAccount(saveToAccount)}>
+              <Icon name="inbox" size="inline" />
+              {busy ? "저장 중…" : "내 지갑에 저장"}
+            </Button>
+          )
+        ) : (
+          <Button asChild size="lg">
+            <a href={appLink} onClick={() => track("card_open_app")}>
+              <Icon name="card" size="inline" />
+              Dearby 앱에 저장
+            </a>
+          </Button>
+        )}
+        {signedIn ? null : saved ? (
           <>
             <p role="status" className="flex flex-col items-center text-footnote">
               <span className="flex items-center gap-1 font-semibold text-teal">

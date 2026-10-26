@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/widgets/shell/shell";
 import { AuthProvider } from "@/features/auth/model/auth-context";
+import { UnreadProvider } from "@/features/notifications/model/unread";
 import { MineProvider } from "@/features/mine/model/mine-context";
 import { TesterInvite } from "@/features/tester-invite/ui/tester-invite";
 import { GoogleAnalytics } from "@/shared/ui/google-analytics";
@@ -39,9 +40,11 @@ export default function RootLayout({
       <body>
         {/* The sign-in sheet's last line: 비공개 테스트 invite (contract "명함 교환" › 받는 사람(웹)), composed here so auth stays independent. */}
         <AuthProvider signInFooter={<TesterInvite variant="line" />}>
-          <MineProvider>
-            <Shell>{children}</Shell>
-          </MineProvider>
+          <UnreadProvider>
+            <MineProvider>
+              <Shell>{children}</Shell>
+            </MineProvider>
+          </UnreadProvider>
         </AuthProvider>
         {gaId && <GoogleAnalytics id={gaId} />}
         {production && <VercelAnalytics />}
