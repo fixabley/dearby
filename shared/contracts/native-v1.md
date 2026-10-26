@@ -1357,8 +1357,8 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
   - `SELECTION`(선발 과정): 붙기 전의 단계 — 서류 접수·마감, 코딩테스트·과제, 면접, 결과·합격자 발표 등 합격자 OT 전까지.
   - `ACTIVITY`(활동 일정): 붙은 뒤의 활동 — OT·오리엔테이션, 세션·교육·과정 단계, 행사 본 일정, 수료·데모데이. 선발이 없는 컨퍼런스·행사의 일정도 활동이다.
 - 고정: `application`(모집 슬롯)은 늘 `SELECTION`, `activitySchedule`(활동 기간 슬롯)은 늘 `ACTIVITY`. DB 제약(V62 `schedules_slot_phase_check`)이 슬롯 행에 다른 값을 막는다.
-- 저장: `schedules.phase varchar(20) null`(check `SELECTION`·`ACTIVITY`, V62). 기존 행은 V62가 한 번 채웠다. 값이 없는 행(수집기가 모른 새 일정)은 서버가 읽을 때 옛 판정으로 채운다: `kind`가 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`이거나 운영자가 상태를 지정한(`schedule_statuses` 행이 있는) 일정은 `SELECTION`, 그 밖은 `ACTIVITY`. 서버 구현 `SchedulePhase.resolve`.
-- 채운 뒤의 차이: V62로 이미 `ACTIVITY`가 저장된 `EVENT` 일정은, 나중에 운영자가 상태를 지정해도 저절로 `SELECTION`이 되지 않는다. 선발로 바꾸려면 어드민이 `phase`를 정한다(admin-v1.md "세부 일정 편집기").
+- 저장: `schedules.phase varchar(20) null`(check `SELECTION`·`ACTIVITY`, V62). 값이 없는 행은 서버가 읽을 때 옛 판정으로 채운다: `kind`가 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`이거나 운영자가 상태를 지정한(`schedule_statuses` 행이 있는) 일정은 `SELECTION`, 그 밖은 `ACTIVITY`. 서버 구현 `SchedulePhase.resolve`.
+- V62 채우기(조율 세션 결정 2026-10-26): 슬롯 행과 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW` 세부 일정만 채우고, 그 밖의 세부 일정(`EVENT` 등)은 null로 남긴다. 그래서 `EVENT` 일정은 운영자가 상태를 지정하면 예전 앱 판정처럼 저절로 `SELECTION`이 된다. 운영자가 어드민에서 `phase`를 직접 정한 행만 저장값이 우선이고(상태 지정보다 앞선다), 수집기가 `phase`를 준 행도 저장값으로 남는다.
 - 어드민·수집: 세부 일정 POST·PATCH가 `phase?`를 받는다(고치면 기존 규칙대로 `curated`라 재수집이 덮어쓰지 않는다). 수집기 제출 `schedules[].phase`(모르면 null), 큐레이션 가져오기 `schedules[]` 항목도 `phase?`. 모집·활동 기간 행의 `phase`는 고칠 수 없다(400).
 
 ### 화면(iOS·Android·웹)

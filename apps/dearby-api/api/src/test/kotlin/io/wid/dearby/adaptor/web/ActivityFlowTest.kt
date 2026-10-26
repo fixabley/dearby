@@ -455,6 +455,12 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
 
     @Test
     fun `일정 phase는 늘 값이 있고, 저장값이 없으면 모집 선발·활동 기간 활동·kind·운영자 상태로 판정한다`() {
+        // V62 채우기: 시드(V5)의 슬롯 행은 채우고 EVENT 세부 일정은 null로 남긴다(상태를 지정하면 저절로 선발이 되게)
+        assertEquals(
+            listOf("ACTIVITY=ACTIVITY", "APPLICATION=SELECTION", "null=null"),
+            jdbc.sql("select coalesce(slot, 'null') || '=' || coalesce(phase, 'null') from schedules where activity_id = (select id from activities where name = ?)")
+                .param("Let'Swift 2026 · 개발 환경의 변화 워크숍").query(String::class.java).list().sortedBy { it.toString() },
+        )
         val id = createActivity("선발 과정 분리 점검")
         fun detail(title: String, kind: String, phase: String?, slot: String? = null) = jdbc.sql(
             """

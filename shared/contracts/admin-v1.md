@@ -165,7 +165,7 @@ native-v1.md "선발 과정·활동 일정 분리"의 어드민 쪽.
 
 - 응답 Schedule(어드민·공개 공통)에 `phase: SELECTION|ACTIVITY`. 늘 값이 있다: 모집 기간(`application`)은 `SELECTION`, 활동 기간(`activitySchedule`)은 `ACTIVITY`로 고정이고, 세부 일정은 저장값(`schedules.phase`, V62) 또는 저장값이 없을 때 서버 판정(`kind`가 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`이거나 일정 상태를 지정했으면 `SELECTION`, 아니면 `ACTIVITY`).
 - 입력: ScheduleItemInput에 `phase?: SELECTION|ACTIVITY`(대소문자 무시, 모르는 값 400). POST에서 생략하면 저장하지 않고 위 판정을 쓴다. PATCH에서 생략하면 저장값을 유지한다(지우기는 없다). 고치면 기존 규칙대로 `curated`라 재수집이 덮어쓰지 않는다. 모집·활동 기간 행에 `phase`를 보내면 400(겹침 확인 시간·반복 규칙만 보내는 요청이 아니므로 기존 슬롯 규칙).
-- 기존 행: V62가 위 판정으로 한 번 채웠다. 그래서 이미 `ACTIVITY`로 채워진 `EVENT` 일정은 나중에 상태를 지정해도 저절로 `SELECTION`이 되지 않는다. 코딩테스트·과제처럼 선발인 `EVENT`는 `phase`를 `SELECTION`으로 바꾼다.
+- 기존 행: V62는 슬롯 행과 `DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW` 세부 일정만 채우고 `EVENT` 등은 null로 남긴다. null인 `EVENT` 일정은 상태를 지정하면 저절로 `SELECTION`이 된다(위 판정). 운영자가 `phase`를 직접 정한 행은 그 값이 상태 지정보다 우선이다. 코딩테스트·과제처럼 선발인 `EVENT`는 상태를 지정하거나 `phase`를 `SELECTION`으로 둔다.
 - 수집: 수집기 제출 `schedules[].phase`(모르면 null → 저장하지 않고 판정). 재수집은 `curated` 세부 일정을 덮어쓰지 않으므로 운영자가 정한 값이 남는다. 큐레이션 가져오기(`--import-curation`)의 `schedules[]` 항목도 `phase?`를 받는다.
 - **어드민 화면**(어드민 웹 담당): 세부 일정 폼에 `선발 과정 / 활동 일정` 선택(기본은 응답 값), 목록 보기에 `구분` 열. 모집·활동 기간 블록에는 두지 않는다.
 

@@ -850,9 +850,10 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         // phase를 보내지 않으면 저장하지 않고(null) 읽을 때 판정한다: 마감·발표·면접은 선발, EVENT는 활동
         assertEquals(listOf("SELECTION", "ACTIVITY", "ACTIVITY"), listOf(deadline, test, ot).map { it["phase"].asString() })
         assertEquals(null, stored(test["id"].asLong()))
-        // EVENT라도 운영자가 상태를 지정하면 선발(옛 앱 판정과 같다)
+        // 저장값이 없는 EVENT는 운영자가 상태를 지정하면 저절로 선발(옛 앱 판정과 같다). 운영자가 phase를 직접 정하면 그 값이 상태 지정보다 앞선다
         mvc.put("/v1/admin/activities/$activity/schedules/${test["id"].asLong()}/statuses") { asAdmin(); body("""{"items":[{"name":"응시","kind":"WAITING"},{"name":"합격","kind":"PASSED"}]}""") }.andExpect { status { isOk() } }
         assertEquals("SELECTION", read(patch(test["id"].asLong(), "{}"))["phase"].asString())
+        assertEquals("ACTIVITY", read(patch(test["id"].asLong(), """{"phase":"ACTIVITY"}""").andExpect { status { isOk() } })["phase"].asString())
         // 운영자가 정하면 저장되고 다른 필드를 고쳐도 남는다
         assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"phase":"selection"}""").andExpect { status { isOk() } })["phase"].asString())
         assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"title":"합격자 OT 전 사전과제"}""").andExpect { status { isOk() } })["phase"].asString())
