@@ -57,7 +57,7 @@ struct ProfileContactFields: View {
                     EmailVerifyRow(email: form.email, canSend: form.emailError == nil, note: note(verified: form.emailVerifiedValue, still: false, value: "email"), state: state,
                                    focus: focus) { form.absorbVerification($0, kind: "email") }
                 } else if let note = note(verified: form.emailVerifiedValue, still: true, value: "email") {
-                    Text(note).font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    Text(note).font(.dearby(.footnote)).foregroundStyle(.secondary).padding(.leading, 36)
                 }
             }
             ForEach($form.extras) { $item in
@@ -72,7 +72,7 @@ struct ProfileContactFields: View {
                     if item.kind == "github", !item.verified {
                         GitHubLinkRow(note: note(verified: item.verifiedValue, still: false, value: item.id), state: state) { form.absorbVerification($0, kind: "github") }
                     } else if let note = note(verified: item.verifiedValue, still: item.verified, value: item.id) {
-                        Text(note).font(.dearby(.footnote)).foregroundStyle(.secondary)
+                        Text(note).font(.dearby(.footnote)).foregroundStyle(.secondary).padding(.leading, 36)
                     }
                 }
                 .swipeActions {
@@ -161,6 +161,8 @@ private struct EmailVerifyRow: View {
             }
             if let message { DearbyFieldError(text: message) }
         }
+        // Under the email box, past the 24 glyph + 12 gap of the row above.
+        .padding(.leading, 36)
         // The code was for the address as typed then; a new address starts over.
         .onChange(of: email) { _, _ in if challenge != nil { challenge = nil; code = ""; message = nil } }
     }
@@ -226,7 +228,7 @@ private struct GitHubLinkRow: View {
                 }
             }
             if let message { DearbyFieldError(text: message) }
-        }
+        }.padding(.leading, 36)
     }
     private func link() async {
         busy = true
