@@ -830,6 +830,43 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
     }
 
     @Test
+    fun `일정 phase는 모집 SELECTION·활동 기간 ACTIVITY로 고정이고, 세부 일정은 저장값이 없으면 kind·상태 지정으로 판정하며 운영자가 정할 수 있다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"선발 과정 활동","description":"phase 테스트","officialUrl":"https://example.org/phase","activitySchedule":{"startDate":"2026-12-01","endDate":"2026-12-03"},"application":{"startDate":"2026-11-01","endDate":"2026-11-10"}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        val activity = created["id"].asLong()
+        // 모집·활동 기간 슬롯(native-v1.md "선발 과정·활동 일정 분리")
+        assertEquals("SELECTION" to "ACTIVITY", created["application"]["phase"].asString() to created["activitySchedule"]["phase"].asString())
+        fun create(value: String) = read(mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body(value) }.andExpect { status { isCreated() } })
+        fun patch(target: Long, value: String) = mvc.patch("/v1/admin/activities/$activity/schedules/$target") { asAdmin(); patchBody(value) }
+        fun stored(target: Long) = jdbc.sql("select phase from schedules where id = ?").param(target).query(String::class.java).list().single()
+        val deadline = create("""{"title":"서류 마감","kind":"DEADLINE","dateLabel":"11월 10일"}""")
+        val test = create("""{"title":"코딩테스트","kind":"EVENT","dateLabel":"11월 12일"}""")
+        val ot = create("""{"title":"OT","kind":"EVENT","dateLabel":"12월 1일"}""")
+        // phase를 보내지 않으면 저장하지 않고(null) 읽을 때 판정한다: 마감·발표·면접은 선발, EVENT는 활동
+        assertEquals(listOf("SELECTION", "ACTIVITY", "ACTIVITY"), listOf(deadline, test, ot).map { it["phase"].asString() })
+        assertEquals(null, stored(test["id"].asLong()))
+        // EVENT라도 운영자가 상태를 지정하면 선발(옛 앱 판정과 같다)
+        mvc.put("/v1/admin/activities/$activity/schedules/${test["id"].asLong()}/statuses") { asAdmin(); body("""{"items":[{"name":"응시","kind":"WAITING"},{"name":"합격","kind":"PASSED"}]}""") }.andExpect { status { isOk() } }
+        assertEquals("SELECTION", read(patch(test["id"].asLong(), "{}"))["phase"].asString())
+        // 운영자가 정하면 저장되고 다른 필드를 고쳐도 남는다
+        assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"phase":"selection"}""").andExpect { status { isOk() } })["phase"].asString())
+        assertEquals("SELECTION", read(patch(ot["id"].asLong(), """{"title":"합격자 OT 전 사전과제"}""").andExpect { status { isOk() } })["phase"].asString())
+        assertEquals("SELECTION", stored(ot["id"].asLong()))
+        assertEquals("ACTIVITY", create("""{"title":"수료식","kind":"ANNOUNCEMENT","dateLabel":"12월 3일","phase":"ACTIVITY"}""")["phase"].asString())
+        // 모르는 값은 400, 모집·활동 기간 행의 phase는 고칠 수 없다(400)
+        patch(deadline["id"].asLong(), """{"phase":"TEST"}""").andExpect { status { isBadRequest() } }
+        patch(created["application"]["id"].asLong(), """{"phase":"ACTIVITY"}""").andExpect { status { isBadRequest() } }
+        // 목록 응답의 세부 일정에도 늘 값이 있다
+        val listed = read(mvc.get("/v1/admin/activities?publicationStatus=DRAFT&programId=$programId&q=선발 과정 활동") { asAdmin() })["items"].toList().single { it["id"].asLong() == activity }
+        assertEquals(true, listed["schedules"].toList().all { it["phase"].isString })
+    }
+
+    @Test
     fun `초안도 검색되고, 게시하면 상태가 바뀐다`() {
         jdbc.sql("update activities set publication_status = 'DRAFT', official_source = false where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
 
