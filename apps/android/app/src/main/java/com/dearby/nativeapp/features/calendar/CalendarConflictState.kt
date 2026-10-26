@@ -15,6 +15,26 @@ data class CalendarOverlapState(val activity: CalendarWindowState, val busy: Bus
     val start get() = maxOf(activity.start, busy.start)
     val end get() = minOf(activity.end, busy.end)
 }
+/**
+ * The overlap timeline's visible window and axis (contract "반복 일정과 겹침 결과 묶음"): up to an hour of the activity before the overlap
+ * and 30 minutes after it, snapped in the activity's zone to 30 minutes. Blocks are clamped to the window, so an event that began the day
+ * before still shows.
+ */
+data class TimelineAxisState(val start: Long, val end: Long, val step: Long) {
+    val ticks get() = (start..end step step).toList()
+}
+private val TimelineSteps = listOf(30 * 60_000L)
+fun timelineAxis(overlap: CalendarOverlapState): TimelineAxisState {
+    val from = maxOf(overlap.activity.start, overlap.start - 3_600_000L)
+    val to = overlap.end + 1_800_000L
+    val zone = ZoneId.of(overlap.activity.zone)
+    val midnight = Instant.ofEpochMilli(from).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+    val axes = TimelineSteps.map { step ->
+        val start = midnight + Math.floorDiv(from - midnight, step) * step
+        TimelineAxisState(start, start - Math.floorDiv(start - to, step) * step, step)
+    }
+    return axes.first()
+}
 /** Where the comparison stands: asking for the permission, refused, or compared against the device calendar. */
 sealed interface CalendarAccessState {
     data object Asking : CalendarAccessState
