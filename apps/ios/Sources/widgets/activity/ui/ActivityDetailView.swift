@@ -57,14 +57,8 @@ struct ActivityDetailView: View {
             if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
-        // 모달 시트 (contract "트랙·세션 시간표" 2026-10-26): the block's timetable over the detail, so the table's sideways scrolling does not
-        // compete with the detail's vertical scrolling.
-        .sheet(item: $timetable) { route in
-            NavigationStack { TimetablePage(state: state, route: route) }
-                // Sign-in and consent from a heart open over the sheet, which stays.
-                .promptLayer()
-                .presentationDetents([.large]).presentationDragIndicator(.visible)
-        }
+        // 모달 시트: the table's sideways scrolling does not compete with the detail's vertical scrolling.
+        .timetableSheet($timetable, state: state)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
     }
     private func parameters(_ extra: [String: Any]) -> [String: Any] {

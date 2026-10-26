@@ -25,7 +25,9 @@ struct MyActivitiesPage: View {
         .navigationDestination(for: String.self) { id in
             ActivityDetailView(state: state, activityID: id, source: segment == .favorites ? "favorites" : "my_activity")
         }
-        .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
+        .navigationDestination(for: ActivityProgressRoute.self) { route in
+            ActivityProgressPage(state: state, activityID: route.activityID) { path.append(route.activityID) }
+        }
         .navigationDestination(for: ProgramRoute.self) { route in ProgramDetailPage(state: state, program: route.program, path: $path) }
         .navigationDestination(for: MySessionsRoute.self) { _ in MySessionsPage() }
         // `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): open that activity here — its track when it has stages, else the plain detail.

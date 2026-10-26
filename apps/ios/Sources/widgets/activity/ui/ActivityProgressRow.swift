@@ -12,7 +12,11 @@ struct ActivityProgressRow: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(activity.title).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink).lineLimit(2)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(activity.title).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink).lineLimit(2)
+                            // A block has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 내 활동, 2026-10-26).
+                            if activity.hasTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
+                        }
                         Text([activity.program, activity.organization].compactMap { $0 }.joined(separator: " · "))
                             .font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).lineLimit(1)
                     }.frame(maxWidth: .infinity, alignment: .leading)
