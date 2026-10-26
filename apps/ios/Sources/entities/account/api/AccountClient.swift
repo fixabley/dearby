@@ -12,7 +12,11 @@ enum AccountError: Error, Equatable {
     /// `blocked`: 409 `BLOCKED` — the card's owner is someone I blocked (contract "명함 신고·차단"); other 409s stay `conflict`.
     /// `lastSignInMethod`: 409 `LAST_SIGN_IN_METHOD` — the passkey or linked account is the only way left to sign in, so it
     /// cannot be removed (contract "설정"); other 409s stay `conflict`.
-    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired, cardCodeRequired, blocked, lastSignInMethod
+    /// `rateLimited`: 429 with the server's `detail` when it sent one (이메일 인증번호 1분당 1회·하루 10회, contract "연락처 인증").
+    /// `challengeExpired`: 400 `CHALLENGE_EXPIRED` — the 이메일 인증번호 is gone (expired, used, discarded after 5 wrong codes), so the
+    /// row goes back to 인증번호 받기; a wrong code (`CODE_MISMATCH`) stays `rejected` with the remaining count in `detail`.
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited(String?), disabled, unavailable, consentRequired, cardCodeRequired, blocked,
+         lastSignInMethod, challengeExpired(String)
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -162,6 +166,31 @@ struct AccountClient: Sendable {
     }
     /// A `photoUrl` from a Profile or Card (`/v1/profile/photo?v=…`, `/v1/cards/:id/photo?v=…[&code=…]`): the bytes, read with the session
     /// when there is one because the system image loaders cannot send it.
+    /// 연락처 인증 (contract "연락처 인증" 2026-10-26) — GitHub 연결: the authorize page to open in `ASWebAuthenticationSession`; it comes back
+    /// as `dearby://contacts/github?code=…` (or `?error=cancelled|failed`). 503 (`disabled`) when the server has no GitHub OAuth app.
+    func startGitHubLink(_ session: TokenPair) async throws -> URL {
+        let answer = try await send("me/contacts/github/start", method: "POST", body: PlatformInput(), session: session, as: GitHubStart.self)
+        guard let url = URL(string: answer.authorizeUrl) else { throw AccountError.unavailable }
+        return url
+    }
+    /// The one-time `code` from the callback → the profile with the GitHub contact `verified` (and a new `version`). 400 `GITHUB_LINK_EXPIRED` is `rejected`.
+    func completeGitHubLink(code: String, _ session: TokenPair) async throws -> AccountProfile {
+        try await send("me/contacts/github/complete", method: "POST", body: CodeInput(code: code), session: session, as: AccountProfile.self)
+    }
+    /// 이메일 인증번호: mails a 6-digit code (10 minutes). 429 once a minute / 10 a day per address, 503 (`disabled`) without a mail server.
+    func requestEmailCode(email: String, _ session: TokenPair) async throws -> EmailChallenge {
+        try await send("me/contacts/email/challenges", method: "POST", body: EmailInput(email: email), session: session, as: EmailChallenge.self)
+    }
+    /// The typed code → the profile with the email contact `verified`. Wrong: `rejected` (remaining tries in the text); gone: `challengeExpired`.
+    func verifyEmailCode(challengeId: String, code: String, _ session: TokenPair) async throws -> AccountProfile {
+        try await send("me/contacts/email/verify", method: "POST", body: EmailVerifyInput(challengeId: challengeId, code: code), session: session, as: AccountProfile.self)
+    }
+    struct EmailChallenge: Decodable, Equatable, Sendable { let challengeId: String; let expiresAt: String }
+    private struct PlatformInput: Encodable { let platform = "ios" }
+    private struct GitHubStart: Decodable { let authorizeUrl: String }
+    private struct CodeInput: Encodable { let code: String }
+    private struct EmailInput: Encodable { let email: String }
+    private struct EmailVerifyInput: Encodable { let challengeId: String; let code: String }
     func photo(_ photoUrl: String, _ session: TokenPair?) async throws -> Data {
         let path = photoUrl.hasPrefix("/v1/") ? String(photoUrl.dropFirst(4)) : photoUrl
         return try await request(path, method: "GET", session: session, headers: ["Accept": "image/jpeg, image/png"]).0
@@ -464,8 +493,9 @@ struct AccountClient: Sendable {
         switch response.statusCode {
         case 200..<300: return (data, response.statusCode)
         case 400:
-            if let detail = (try? JSONDecoder().decode(ProblemBody.self, from: data))?.detail, !detail.isEmpty { throw AccountError.rejected(detail) }
-            throw AccountError.invalidInput
+            let problem = try? JSONDecoder().decode(ProblemBody.self, from: data)
+            guard let detail = problem?.detail, !detail.isEmpty else { throw AccountError.invalidInput }
+            throw problem?.code == "CHALLENGE_EXPIRED" ? AccountError.challengeExpired(detail) : AccountError.rejected(detail)
         case 401: throw AccountError.unauthorized
         case 403:
             let problem = try? JSONDecoder().decode(ProblemBody.self, from: data)
@@ -479,7 +509,7 @@ struct AccountClient: Sendable {
             case "BLOCKED": throw AccountError.blocked
             default: throw AccountError.conflict
             }
-        case 429: throw AccountError.rateLimited
+        case 429: throw AccountError.rateLimited((try? JSONDecoder().decode(ProblemBody.self, from: data))?.detail)
         case 503: throw AccountError.disabled
         default: throw AccountError.unavailable
         }

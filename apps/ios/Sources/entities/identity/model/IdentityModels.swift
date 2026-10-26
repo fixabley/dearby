@@ -5,6 +5,8 @@ struct ContactModel: Identifiable, Equatable {
     let kind: String
     var displayLabel: String
     var value: String
+    /// The owner proved the contact is theirs (contract "연락처 인증" 2026-10-26): rows end with `checkmark.seal.fill` and read `인증됨`.
+    var verified = false
     enum Action: Equatable { case open(URL), copy(String) }
     /// 바로가기 (contract "연락처 아이콘·바로가기" 2026-10-26): phone `tel:`, email `mailto:`, a GitHub·Instagram·Behance username as its profile
     /// page (the system opens the app when installed). A KakaoTalk ID has no public link, so it is copied; an open-chat URL saved before

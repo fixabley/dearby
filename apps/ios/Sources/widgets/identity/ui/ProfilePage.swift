@@ -42,7 +42,7 @@ struct ProfilePage: View {
     @State private var photoBusy = false
     @State private var confirmingPhotoDelete = false
     @State private var photoError: String?
-    /// Editor rows (`name`·`introLink`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
+    /// Editor rows (`name`·`introLink`·`phone`·`email`·추가 연락처 id·`emailCode`) and the 직무 search; the keyboard 완료 clears both.
     @FocusState private var field: String?
     @FocusState private var jobSearch: Bool
     /// Never saved yet: the step funnel replaces the editor until the first save.
@@ -238,8 +238,7 @@ struct ProfilePage: View {
             } footer: {
                 if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.subheadline)) }
             }
-            ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras, focus: $field,
-                                 phoneError: tried ? form.wrappedValue.phoneError : nil, emailError: tried ? form.wrappedValue.emailError : nil) { form.wrappedValue.addContact($0) }
+            ProfileContactFields(form: form, state: state, focus: $field, tried: tried)
             Section {
                 if form.wrappedValue.histories.isEmpty { Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.").foregroundStyle(.secondary) }
                 ForEach(form.wrappedValue.histories) { history in
