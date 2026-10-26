@@ -36,6 +36,7 @@ import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Segmented } from "@/shared/ui/segmented";
 import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
+import { TodayCard } from "@/widgets/activity/today-card";
 import { MineToggle } from "@/features/mine/ui/mine-toggle";
 import { DiscoveryFilterBar, type DiscoveryFilters } from "@/widgets/activity/discovery-filter";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
@@ -145,6 +146,8 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
   return (
     <>
       <LargeTitle>활동 둘러보기</LargeTitle>
+      {/* 오늘 내 행사 (contract "오늘 내 행사 카드"): signed in, not while searching. */}
+      {!q && <TodayCard className="mt-1 mb-3" />}
       <SearchField q={q} kind={kind} groups={groups} categories={categories} />
       <Segmented
         label="활동 묶음"
