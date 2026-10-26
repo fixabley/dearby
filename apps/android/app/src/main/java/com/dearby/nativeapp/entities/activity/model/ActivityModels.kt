@@ -109,6 +109,8 @@ data class ActivityModel(
     val hook: String? = null,
     /** 핵심 세 줄 (`highlights`); empty when the API sent none. */
     val highlights: List<Highlight> = emptyList(),
+    /** The server's state (contract "활동 상태", 2026-10-26: `RECRUITING` …); null from an older API, then [statusLabel] judges by dates. */
+    val status: String? = null,
 ) {
     /** The venue name to show: the curated place, else the collected phrase, else the schedule address. */
     val venue: String? get() = place?.name ?: location ?: address
@@ -122,15 +124,17 @@ data class ActivityModel(
      * window compares instants, an all-day window compares Seoul dates (`startDate ≤ today < endDateExclusive`); a missing
      * bound is open on that side. No application or one without any date is 모집 마감 (user 2026-10-26: an activity without a recruitment
      * schedule counts as closed whatever its kind, as the server does); only a value that cannot be read is unknown.
+     * The server's [status] (contract "활동 상태") comes first; the dates are read only when an older API sent none.
      */
     fun statusLabel(now: Instant): String {
+        STATUS_LABELS[status]?.let { return it }
         val window = application ?: return CLOSED
         if (window.startAt != null || window.endAt != null) {
             val start = window.startAt?.let { instant(it) ?: return UNKNOWN }
             val end = window.endAt?.let { instant(it) ?: return UNKNOWN }
             return when {
-                start != null && now < start -> "모집 예정"
-                end != null && now >= end -> "모집 마감"
+                start != null && now < start -> UPCOMING
+                end != null && now >= end -> CLOSED
                 else -> OPEN
             }
         }
@@ -139,8 +143,8 @@ data class ActivityModel(
         val start = window.startDate?.let { date(it) ?: return UNKNOWN }
         val endExclusive = window.endDateExclusive?.let { date(it) ?: return UNKNOWN }
         return when {
-            start != null && today < start -> "모집 예정"
-            endExclusive != null && today >= endExclusive -> "모집 마감"
+            start != null && today < start -> UPCOMING
+            endExclusive != null && today >= endExclusive -> CLOSED
             else -> OPEN
         }
     }
@@ -149,9 +153,9 @@ data class ActivityModel(
      * judge by, the activity itself ended (its end, else its start, is behind [now]). Open, upcoming and unknown-but-not-ended still ask.
      */
     fun isClosed(now: Instant) = when (statusLabel(now)) {
-        CLOSED -> true
+        OPEN, UPCOMING -> false
         UNKNOWN -> (activityEnd ?: activityStart)?.let { it < now } == true
-        else -> false
+        else -> true
     }
     /** The application link for the detail CTA — [applicationUrl], else the official page — unless recruitment is closed. */
     fun applyUrl(now: Instant) = if (isClosed(now)) null else safeHttpsUrl(applicationUrl) ?: safeHttpsUrl(officialUrl)
@@ -208,6 +212,8 @@ data class ProgramSummary(
     val coverUrl: String? = null,
     /** A 모집 중·모집 예정 activity of this kind has a 트랙·세션 시간표 (contract "트랙·세션 시간표", 2026-10-26); false on an older API. */
     val hasTimetable: Boolean = false,
+    /** Activities in the asked range by server state (contract "활동 상태": `statusCounts`, zeros left out); empty on an older API. */
+    val statusCounts: Map<String, Int> = emptyMap(),
 )
 
 /** One icon-and-text line: an activity's 핵심 세 줄 (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`) or an ELIGIBILITY scene item. */
@@ -234,8 +240,12 @@ sealed interface QueueScene {
 data class ProgramPage(val items: List<ProgramSummary>, val nextCursor: String?)
 
 private const val OPEN = "모집 중"
+private const val UPCOMING = "모집 예정"
 private const val CLOSED = "모집 마감"
 private const val UNKNOWN = "모집 여부 확인 필요"
+/** Contract "활동 상태" labels; `NO_RECRUITMENT` has no badge, so it reads as the text shown where the recruitment dates go. */
+private val STATUS_LABELS = mapOf("RECRUITING_UPCOMING" to UPCOMING, "RECRUITING" to OPEN, "RECRUITMENT_CLOSED" to CLOSED,
+    "NO_RECRUITMENT" to "모집 일정 미정", "IN_PROGRESS" to "진행 중", "ENDED" to "종료")
 
 fun instant(raw: String?): Instant? = raw?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 

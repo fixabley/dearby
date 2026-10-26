@@ -43,7 +43,9 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
         // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
+                // 모집 일정 미정 has no badge (contract "활동 상태"); it is the 모집 기간 value below.
+                val undated = activity.noRecruitment
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { if (!undated) ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
                 Row(verticalAlignment = Alignment.Top) {
                     Text(activity.title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
                     FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { if (activity.applied) viewInMine() else addToMine() }
@@ -53,10 +55,10 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                     Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 }
                 HorizontalDivider()
-                InfoRow("모집 상태", activity.status, Icons.Rounded.Event)
+                if (!undated) InfoRow("모집 상태", activity.status, Icons.Rounded.Event)
                 // 모집 날짜 표기 (user 2026-10-26): a full window is a range with the deadline time and a D-day badge, and carries the deadline's
                 // `캘린더에 추가` since its own `모집 마감` row is gone from 행사 일정; a deadline alone keeps `~ 10월 20일 (화) 마감`.
-                (activity.periodDetail ?: activity.period)?.let { period ->
+                (activity.periodDetail ?: activity.period ?: activity.status.takeIf { undated })?.let { period ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f)) { InfoRow("모집 기간", period, Icons.Rounded.Event) }
                         activity.deadlineCount?.let { ExampleBadge(it, accent = true) }

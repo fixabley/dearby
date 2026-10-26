@@ -15,6 +15,23 @@ enum class ActivityListPhase { LOADING, FAILED, LOADED }
 enum class DiscoveryKind(val code: String, val label: String) { PROGRAM("program", "프로그램"), EVENT("event", "이벤트");
     companion object { fun of(code: String?) = entries.firstOrNull { it.code == code } ?: PROGRAM }
 }
+/**
+ * 발견 상태 필터 (2026-10-26, contract "활동 상태"): the dropdown's three groups and the server states each sends as `status=`. [code] is what the
+ * device keeps and what analytics `discovery_status_filter` reports.
+ */
+enum class StatusGroup(val code: String, val label: String, val statuses: List<String>) {
+    AVAILABLE("available", "지원 가능", listOf("RECRUITING_UPCOMING", "RECRUITING")),
+    IN_PROGRESS("in_progress", "진행 중", listOf("IN_PROGRESS")),
+    PAST("past", "지난 활동", listOf("RECRUITMENT_CLOSED", "NO_RECRUITMENT", "ENDED"));
+    companion object {
+        val DEFAULT = setOf(AVAILABLE)
+        /** The kept codes (comma-joined); nothing readable is the default. */
+        fun of(codes: String?): Set<StatusGroup> = entries.filter { it.code in codes.orEmpty().split(',') }.toSet().ifEmpty { DEFAULT }
+        fun codes(groups: Set<StatusGroup>) = entries.filter { it in groups }.joinToString(",") { it.code }
+        /** The `status=` value: every state of [groups], in enum order. */
+        fun query(groups: Set<StatusGroup>) = entries.filter { it in groups }.flatMap { it.statuses }.joinToString(",")
+    }
+}
 enum class ProgramPhase { LOADING, FAILED, LOADED }
 
 /**
@@ -56,6 +73,8 @@ data class ActivityState(
      * `캘린더에 추가` (its own `모집 마감` row leaves 행사 일정, as the range already says it).
      */
     val periodDetail: String? = null, val deadlineCount: String? = null, val deadlineDraft: CalendarDraft? = null,
+    /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no badge; [status] stands where the recruitment dates go. */
+    val noRecruitment: Boolean = false,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"
@@ -83,15 +102,17 @@ data class ProgramState(
     val logoUrl: String? = null,
     /** A 모집 중·모집 예정 activity has a 트랙·세션 시간표: the collapsed card shows `시간표`. */
     val hasTimetable: Boolean = false,
+    /** Activities in the asked states by server state (`statusCounts`); empty on an older API. */
+    val statusCounts: Map<String, Int> = emptyMap(),
 )
 /**
- * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
- * open, [upcomingIds] are the program's activities whose recruitment (or activity) start is still ahead, nearest first, and
- * [pastIds] those of the last three years, most recent start first (contract "마감 숨기기"). 모집 예정 appears always, 지난 활동 only while
- * 마감 숨기기 is off, and only when nothing is open while it is on.
+ * An expanded program's activities in the chosen [StatusGroup]s, loaded on first expand and split by the server's state (contract "활동 상태");
+ * all index into [ActivityListState.known]. [ids] are 모집 중, [upcomingIds] 모집 예정 (nearest first), [inProgressIds] 진행 중 and [pastIds]
+ * 모집 마감·모집 일정 미정·종료 of the last three years (most recent start first).
  */
 data class ProgramActivities(
-    val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(), val pastIds: List<String> = emptyList(),
+    val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(),
+    val inProgressIds: List<String> = emptyList(), val pastIds: List<String> = emptyList(),
 )
 /**
  * Discovery results for [query]: [programs] in server order, which are [expanded] (memory only), and their loaded
@@ -99,7 +120,7 @@ data class ProgramActivities(
  * [nextCursor] is null on the last program page; a failed next page sets [moreFailed] only.
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
- * [openOnly] is the `마감 숨기기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
+ * [statusGroups] is the 상태 dropdown (contract "활동 상태"; default 지원 가능, kept on the device), never empty.
  * [refreshing] while a pull to refresh re-reads the first program page (contract "발견 탭 스크롤 동작"); the list stays on screen meanwhile,
  * and when that read fails with a list showing, [refreshFailed] keeps the list and the page shows a passing notice (iOS parity).
  * [mineNotice] is a failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), shown once; [consentNeeded] when the
@@ -109,7 +130,7 @@ data class ProgramActivities(
  * sign-in is under way, so 내 활동 shows its skeleton rather than "신청한 활동이 없어요" (contract "내용 로딩은 스켈레톤"); later re-reads keep the list.
  */
 data class ActivityListState(
-    val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
+    val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val statusGroups: Set<StatusGroup> = StatusGroup.DEFAULT, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,

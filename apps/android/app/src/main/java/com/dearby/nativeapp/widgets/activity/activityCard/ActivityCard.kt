@@ -18,7 +18,8 @@ import com.dearby.nativeapp.shared.ui.*
 
 /**
  * 펼친 프로그램 카드 안의 활동 카드(contract "발견 카드 리뉴얼", Material 3 `Card`): 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 `SuggestionChip`, 그 아래 분야 [fieldTag] 1개와 성격 [traitTags]의 아이콘+글자 칩 한 줄(넘치면 `+n`, 없으면 생략), `모집`·`활동`·`장소` 세 줄.
- * [status]는 `application` 판정(`모집 중`·`모집 예정`·`모집 마감`·`모집 여부 확인 필요`)이며 칩은 청록 채움(`TealFill`·흰 글자) / 민트 / 회색 `마감`(판정 불가는 회색 `확인 필요`)이다.
+ * [status]는 서버 상태 라벨(contract "활동 상태": `모집 예정`·`모집 중`·`모집 마감`·`진행 중`·`종료`, 옛 API면 날짜 판정)이며 칩은 민트 / 청록 채움(`TealFill`·흰 글자) / 회색 / 보조색 / 회색(판정 불가는 회색 `확인 필요`)이다.
+ * `모집 일정 미정`([undated])은 칩 없이 `모집` 줄 값으로 보인다.
  * [recruitment]은 시작·끝이 다 있으면 `10.1 – 10.20`(모집 중이면 옆에 [deadlineCount] 배지), 마감만 있으면 `~ 10월 20일 (화) 마감`이고 null이면 `미정`, [place]가 null이면 `장소` 줄을 생략한다. 모집이 지나지 않았으면([recruiting]) `모집` 값은 청록 굵은 글씨에 민트 바탕이다.
  * 카드(또는 상태 칩)를 누르면 [open](상세 이동). 접근성에서는 카드 하나로 읽히고 상태가 상태 설명으로 붙는다.
  */
@@ -31,26 +32,29 @@ import com.dearby.nativeapp.shared.ui.*
     timetable: Boolean = false,
     /** `D-3`/`D-DAY` beside a `10.1 – 10.20` [recruitment] range while 모집 중 (모집 날짜 표기, user 2026-10-26); null for none. */
     deadlineCount: String? = null,
+    /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no chip, and [status] is the `모집` value. */
+    undated: Boolean = false,
 ) {
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, TealFill, Color.White)
         "모집 예정" -> Triple(status, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-        "모집 마감" -> Triple("마감", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
-        else -> Triple("확인 필요", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
+        "진행 중" -> Triple(status, MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+        "모집 마감", "종료" -> Triple(status, MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> Triple(if (undated) status else "확인 필요", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Card(open, modifier.fillMaxWidth().semantics { stateDescription = label }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Text(title, Modifier.weight(1f).padding(top = 4.dp), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 // The chip's semantics fold into the card (state description above); tapping it opens the detail like the card.
-                SuggestionChip(open, { Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium) }, Modifier.height(28.dp).clearAndSetSemantics {},
+                if (!undated) SuggestionChip(open, { Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium) }, Modifier.height(28.dp).clearAndSetSemantics {},
                     colors = SuggestionChipDefaults.suggestionChipColors(containerColor = container, labelColor = content), border = null)
             }
             // 분야 1개 + 성격, the same chip line as the program card's (contract "태그 아이콘+라벨·분야 1개").
             if (actions == null) TagChipRow(fieldTag, traitTags)
             else Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { TagChipRow(fieldTag, traitTags) }; actions() }
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                ValueRow("모집", recruitment ?: "미정", emphasised = recruiting, count = deadlineCount)
+                ValueRow("모집", recruitment ?: if (undated) status else "미정", emphasised = recruiting, count = deadlineCount)
                 ValueRow("활동", period.ifBlank { "미정" })
                 if (place != null) ValueRow("장소", place)
             }

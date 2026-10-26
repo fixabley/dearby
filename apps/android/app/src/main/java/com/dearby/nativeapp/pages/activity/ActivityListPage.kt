@@ -10,7 +10,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -40,7 +39,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
@@ -66,7 +68,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityListPage(
     state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, refresh: () -> Unit, loadMore: () -> Unit,
-    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
+    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setStatusGroups: (Set<StatusGroup>) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
     /** The 추천 묶음 above the programs (contract "발견 탭 노출"), or null when there is none; hidden while searching. */
     header: (@Composable () -> Unit)? = null,
     /** Hearts on program cards and activity rows; [plus] is an activity row's `+` (add to 내 활동, or open it there once added). */
@@ -94,7 +96,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     Box(Modifier.fillMaxSize().imePadding().nestedScroll(topBar.nestedScrollConnection).pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
             DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
-            // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
+            // Search field and 상태 dropdown: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
                 // 프로그램 | 이벤트 (2026-10-26 사용자 결정): Material 3 segmented buttons at the top; the choice is remembered on the device.
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 8.dp)) {
@@ -104,12 +106,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                 }
                 DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
                     Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
-                // 마감 숨기기 (contract "모집 중인 프로그램만 보기"·"토글 라벨은 바로 옆"): label + switch as one left-aligned toggleable unit; off also lists programs active in the last two years.
-                Row(Modifier.padding(start = 12.dp, end = 20.dp, bottom = 4.dp).heightIn(min = 48.dp).toggleable(state.openOnly, role = Role.Switch, onValueChange = setOpenOnly).padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("마감 숨기기", style = MaterialTheme.typography.bodyLarge)
-                    Switch(state.openOnly, null)
-                }
+                StatusFilter(state.statusGroups, setStatusGroups, Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
             PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
@@ -119,13 +116,13 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
-                    programs.isEmpty() && state.openOnly -> DearbyEmptyState("지금 모집 중인 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "‘마감 숨기기’를 끄면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
-                    programs.isEmpty() -> DearbyEmptyState("최근 3년 안의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
+                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "상태에서 ‘진행 중’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
+                    programs.isEmpty() -> DearbyEmptyState("고른 상태의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
                     else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
                             ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent, timetable = program.hasTimetable, eventDates = state.kind == DiscoveryKind.EVENT,
+                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount, deadlineIsEvent = program.deadlineIsEvent, timetable = program.hasTimetable, eventDates = state.kind == DiscoveryKind.EVENT, statusCounts = program.statusCounts,
                                 actions = { FavoriteActions(hearts, true, program.id, program.title) }) { ProgramBody(program.id, state, open, retryProgram, hearts, plus) }
                         }
                         if (state.nextCursor != null) item(key = "more") {
@@ -199,7 +196,27 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     layout(placeable.width, shown) { placeable.place(0, shown - placeable.height) }
 }.graphicsLayer { alpha = if (state.height == 0) 1f else 1f + state.offset / state.height }
 
-/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/지난 활동 groups). */
+/**
+ * 상태 필터 (2026-10-26, contract "활동 상태"; replaces 마감 숨기기): a Material 3 `FilterChip` whose label sums up the chosen groups, opening a
+ * `DropdownMenu` of checkbox items. Each tap applies at once and the menu stays open for more; unchecking the last group falls back to 지원 가능.
+ */
+@Composable private fun StatusFilter(groups: Set<StatusGroup>, change: (Set<StatusGroup>) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        FilterChip(true, { open = true }, { Text("상태: " + StatusGroup.entries.filter { it in groups }.joinToString("·") { it.label }) },
+            Modifier.heightIn(min = 48.dp), trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, null) })
+        DropdownMenu(open, { open = false }) {
+            StatusGroup.entries.forEach { group ->
+                val checked = group in groups
+                DropdownMenuItem({ Text(group.label) }, { change(if (checked) groups - group else groups + group) },
+                    Modifier.semantics { role = Role.Checkbox; toggleableState = ToggleableState(checked) },
+                    leadingIcon = { Checkbox(checked, null) })
+            }
+        }
+    }
+}
+
+/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/진행 중/지난 활동 groups). */
 @Composable internal fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) {
     val loaded = state.programActivities[programId]
     when (loaded?.phase) {
@@ -208,8 +225,8 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
         ProgramPhase.FAILED -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TextButton({ retryProgram(programId) }, Modifier.heightIn(min = 48.dp)) { Text("활동을 불러오지 못했어요 · 다시 시도") } }
         ProgramPhase.LOADED -> {
             val activities = loaded.ids.mapNotNull(state.known::get)
-            // "지금 모집 중인 활동이 없어요" only when every shown group is empty (contract "마감 숨기기", 2026-10-19 밤 정정).
-            if (activities.isEmpty() && loaded.upcomingIds.none(state.known::containsKey) && loaded.pastIds.none(state.known::containsKey)) Text("지금 모집 중인 활동이 없어요", Modifier.padding(horizontal = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            // Only when every group is empty.
+            if (activities.isEmpty() && (loaded.upcomingIds + loaded.inProgressIds + loaded.pastIds).none(state.known::containsKey)) Text("고른 상태의 활동이 없어요", Modifier.padding(horizontal = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             // 활동 종류별 묶음 (contract "활동 종류"): contract order, 미분류 last; no heading when only one kind.
             // Within a group: recruitment deadline ascending, no deadline last, ties by name (2026-10-19 "정렬은 모집일 순서로").
             val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
@@ -217,8 +234,8 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
                 if (groups.size > 1) GroupHeading(category ?: "미분류")
                 unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title }).forEach { Card(it, open, hearts, plus) }
             }
-            // 모집 예정 (always) · 지난 활동 (switch off only): no category headings; an empty group is omitted.
-            listOf("모집 예정" to loaded.upcomingIds, "지난 활동" to loaded.pastIds).forEach { (heading, ids) ->
+            // 모집 예정 · 진행 중 · 지난 활동, each only when its group is chosen: no category headings; an empty group is omitted.
+            listOf("모집 예정" to loaded.upcomingIds, "진행 중" to loaded.inProgressIds, "지난 활동" to loaded.pastIds).forEach { (heading, ids) ->
                 val rows = ids.mapNotNull(state.known::get)
                 if (rows.isNotEmpty()) { GroupHeading(heading); rows.forEach { Card(it, open, hearts, plus) } }
             }
@@ -246,7 +263,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
 @Composable private fun Card(activity: ActivityState, open: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable, deadlineCount = activity.deadlineCount,
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable, deadlineCount = activity.deadlineCount, undated = activity.noRecruitment,
         actions = { FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { plus(activity.id) } })
 
 /** Activity row used by My Activities. */
