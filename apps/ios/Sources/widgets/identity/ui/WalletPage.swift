@@ -107,7 +107,7 @@ struct WalletPage: View {
                 Section {
                     ForEach(section.entries) { entry in
                         ReceivedCardRow(name: entry.card.profileName, job: entry.card.job, organization: entry.organization,
-                                        program: entry.program, badge: entry.badge) { state.opened = entry }
+                                        program: entry.program, context: entry.sessionContext, badge: entry.badge) { state.opened = entry }
                         if entry.id != section.entries.last?.id { Divider().padding(.horizontal, 12) }
                     }
                 } header: {
@@ -124,7 +124,15 @@ struct WalletPage: View {
     private func detail(_ entry: WalletModel.Entry) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text(entry.receivedLine).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                // 교환 세션 맥락 (contract "오늘 내 행사 카드" 받은 명함): where in the event the card was exchanged, the session under it, then the day.
+                VStack(alignment: .leading, spacing: 2) {
+                    if let context = entry.sessionContext {
+                        Text(context).font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.ink)
+                        if let session = entry.sessionTitle { Text(session).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet) }
+                    }
+                    Text(entry.receivedLine).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                }
+                .accessibilityElement(children: .combine)
                 CardView(card: entry.card)
                 if entry.receipt.reciprocal {
                     DearbyBadge(title: "맞교환했어요")

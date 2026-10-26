@@ -268,6 +268,12 @@ struct ExchangeContext: Decodable, Equatable, Sendable {
     let activityId: Int64?
     let activityName: String?
     let programName: String?
+    /// 교환 세션 맥락 (contract "오늘 내 행사 카드" 2026-10-26 받은 명함): the schedule block, session, track and room the QR was shown
+    /// at; each nil when the server did not record it or on older responses. Decoded by name; the server PR carries the contract text.
+    var scheduleTitle: String?
+    var sessionTitle: String?
+    var trackName: String?
+    var room: String?
 }
 /// A published card snapshot from `POST /v1/cards`. `introLink` is the profile's 소개 링크 copied at publish (nil when left out or none).
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
