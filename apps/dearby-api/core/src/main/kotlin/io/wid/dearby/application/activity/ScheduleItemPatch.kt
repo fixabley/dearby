@@ -1,7 +1,5 @@
-package io.wid.dearby.admin.application
+package io.wid.dearby.application.activity
 
-import io.wid.dearby.application.activity.ScheduleEdit
-import io.wid.dearby.application.activity.ScheduleItem
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.Recurrence

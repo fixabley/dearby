@@ -853,6 +853,84 @@ class CollectionJobTest(
     }
 
     @Test
+    fun `운영 데이터 가져오기는 세부 일정을 지우고 고치고 큰 블록을 만들어 시간표를 붙이며, dry run은 아무것도 쓰지 않고 일회성 실행은 스케줄을 끈다`() {
+        val activityId = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+        fun insert(title: String) = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, ?, 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-29T10:00:00+09:00', '2026-11-29T10:40:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).param(activityId).param(title).query(Long::class.java).single()
+        val before = jdbc.sql("select id from schedules where activity_id = ?").param(activityId).query(Long::class.java).list()
+        val stale = insert("키노트 (수집 조각)")
+        val broken = insert("Keynote ??�")
+        val slot = jdbc.sql("select id from schedules where activity_id = ? and slot = 'ACTIVITY'").param(activityId).query(Long::class.java).single()
+        val file = Files.createTempDirectory("curation-schedules").resolve("curation.json")
+        fun write(blockEnd: String) = Files.writeString(file, json.writeValueAsString(mapOf("activities" to listOf(mapOf(
+            "id" to activityId,
+            "schedules" to listOf(
+                mapOf("ref" to "morning", "title" to "오전 세션", "startAt" to "2026-11-29T10:00:00+09:00", "endAt" to blockEnd),
+                mapOf("id" to stale, "delete" to true),
+                mapOf("id" to broken, "title" to "키노트"),
+                mapOf("id" to slot, "delete" to true),
+            ),
+            "timetables" to listOf(mapOf(
+                "scheduleRef" to "morning",
+                "tracks" to listOf(mapOf("name" to "Track 1")),
+                "sessions" to listOf(
+                    mapOf("kind" to "KEYNOTE", "title" to "키노트", "startAt" to "2026-11-29T10:00:00+09:00", "endAt" to "2026-11-29T10:40:00+09:00"),
+                    mapOf("track" to 0, "kind" to "TALK", "title" to "첫 세션", "startAt" to "2026-11-29T11:00:00+09:00", "endAt" to "2026-11-29T11:40:00+09:00"),
+                ),
+            )),
+        )))))
+        fun state() = jdbc.sql("select id || '|' || title || '|' || curated || '|' || curated_deleted || '|' || sequence from schedules where activity_id = ? order by id").param(activityId).query(String::class.java).list() +
+            jdbc.sql("select count(*) from schedule_sessions s join schedules b on b.id = s.schedule_id where b.activity_id = ?").param(activityId).query(String::class.java).single()
+        fun summary(lines: List<CurationImportService.Line>) = lines.map { "${it.target.substringAfter("activity $activityId")} ${it.field} ${it.action} ${it.detail}".trim() }
+        try {
+            val untouched = state()
+            // 검증 오류(끝이 시작보다 앞선 블록)는 그 활동 항목 전체를 건너뛰고 이유를 남긴다
+            write("2026-11-29T09:00:00+09:00")
+            assertEquals(listOf("- SKIP schedule morning: 끝 시각이 시작 시각보다 앞섭니다"), summary(curationImport.import(file, apply = false)))
+            assertEquals(listOf("- SKIP schedule morning: 끝 시각이 시작 시각보다 앞섭니다"), summary(curationImport.import(file, apply = true)))
+            assertEquals(untouched, state())
+
+            // dry run: 계획만 나오고(새 블록의 시간표도 블록 시각으로 검증) DB는 그대로다
+            write("2026-11-29T12:00:00+09:00")
+            val plan = listOf(
+                "schedule $slot schedule-delete SKIP 모집·활동 기간 행은 바꾸지 않습니다",
+                "schedule $stale schedule-delete SET 키노트 (수집 조각)",
+                "schedule $broken schedule-edit SET Keynote ??� → 키노트",
+                "schedule morning schedule-create SET 오전 세션 | 2026-11-29T10:00+09:00~2026-11-29T12:00+09:00",
+                "schedule morning timetable SET 트랙 1개, 세션 2개",
+            )
+            assertEquals(plan, summary(curationImport.import(file, apply = false)).sortedBy { if ("morning" in it) "z$it" else it })
+            assertEquals(untouched, state())
+
+            // apply: 지운 일정은 curated_deleted(재수집이 되살리지 않음), 고친 일정·새 블록은 curated, 새 블록에 세션이 붙는다
+            curationImport.import(file, apply = true)
+            assertEquals(listOf("오전 세션", "키노트"), detailTitles(activityId).filter { it == "오전 세션" || it == "키노트" })
+            assertEquals(true, jdbc.sql("select curated_deleted from schedules where id = ?").param(stale).query(Boolean::class.java).single())
+            assertEquals("키노트|true", jdbc.sql("select title || '|' || curated from schedules where id = ?").param(broken).query(String::class.java).single())
+            val block = jdbc.sql("select id from schedules where activity_id = ? and title = '오전 세션' and curated and not curated_deleted").param(activityId).query(Long::class.java).single()
+            assertEquals(listOf("키노트", "첫 세션"), jdbc.sql("select title from schedule_sessions where schedule_id = ? order by start_at").param(block).query(String::class.java).list())
+
+            // 다시 실행해도 같은 블록을 또 만들지 않고 아무것도 바꾸지 않는다
+            val applied = state()
+            assertEquals(emptyList(), curationImport.import(file, apply = true).filter { it.action == "SET" })
+            assertEquals(applied, state())
+        } finally {
+            jdbc.sql("delete from schedules where activity_id = ? and not (id = any(?))").param(activityId).param(before.toTypedArray()).update()
+        }
+
+        // 일회성 실행 옵션이 있으면 @Scheduled 작업을 등록하지 않는다(상시 컨테이너는 옵션 없이 떠서 스케줄이 켜진다)
+        assertTrue(oneOffRun(arrayOf("--import-curation=/data/curation.json")))
+        assertTrue(oneOffRun(arrayOf("--recall-now")))
+        assertTrue(oneOffRun(arrayOf("--spring.profiles.active=prod", "--collect-now=12,15")))
+        assertFalse(oneOffRun(emptyArray()))
+        assertFalse(oneOffRun(arrayOf("--spring.profiles.active=prod")))
+    }
+
+    @Test
     fun `운영 데이터 가져오기는 dry run에서 쓰지 않고 apply에서 빈 조건·태그·장소·로고만 채운다`() {
         val source = "'01b773dc-5e13-4d14-a182-9642b47d596e'"
         val activityId = jdbc.sql("select id from activities where source_id = $source").query(Long::class.java).single()

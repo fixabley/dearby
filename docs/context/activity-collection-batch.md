@@ -66,7 +66,7 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collec
 
 같은 프로그램·같은 한국 날짜는 한 번만 수집한다(`collection_runs` 유일 제약). 그날 다시 돌리려면 그날의 `collection_runs` 행을 지운다.
 
-`run --rm batch --collect-now`·`--recall-now`로 띄운 일회성 컨테이너는 수동 작업을 마치면 프로세스를 끝낸다(2026-10-19 사용자 결정, `CollectionLauncher`·`RecallLauncher`가 `SpringApplication.exit`). 그 전에는 스케줄러와 함께 살아 있어 정기 수집과 겹칠 수 있었다(2026-10-19 확인: 7시간 남은 수집 컨테이너). 정기 실행 컨테이너(`up -d batch`)는 그대로 계속 돈다.
+`run --rm batch --collect-now`·`--recall-now`로 띄운 일회성 컨테이너는 수동 작업을 마치면 프로세스를 끝낸다(2026-10-19 사용자 결정, `CollectionLauncher`·`RecallLauncher`가 `SpringApplication.exit`). 그 전에는 스케줄러와 함께 살아 있어 정기 수집과 겹칠 수 있었다(2026-10-19 확인: 7시간 남은 수집 컨테이너). 정기 실행 컨테이너(`up -d batch`)는 그대로 계속 돈다. 2026-10-26부터 일회성 옵션(`--collect-now`·`--build-queues-now`·`--send-push-now`·`--backfill-hooks-now`·`--recall-now`·`--import-curation`)으로 띄우면 `@Scheduled` 작업 자체를 등록하지 않는다(`DearbyBatchApplication`이 `dearby.scheduling.enabled=false`를 기본값으로 넣고 `SchedulingConfig`가 꺼짐). 그래서 끝나기 전에 자정 수집·매시 알림·04:00 회수가 겹쳐 돌지 않으며, 기존 실행 명령은 그대로 쓴다. 상시 컨테이너는 옵션 없이 떠서 스케줄이 켜진다.
 
 ## 명함 회수 — 2026-10-19 사용자 결정
 
