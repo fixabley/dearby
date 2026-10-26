@@ -5,10 +5,9 @@ import SwiftUI
 /// 쓴다(버전에는 사진이 없어 머리글자).
 struct ProfileReadView: View {
     let profile: AccountProfile
-    @Environment(\.openURL) private var openURL
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            CardView(card: profile.cardModel, faceOnly: true) { if let url = $0.actionURL { openURL(url) } }
+            CardView(card: profile.cardModel, faceOnly: true)
             if !profile.introduction.isEmpty {
                 Text("소개").font(.dearby(.headline)).accessibilityAddTraits(.isHeader).padding(.top, 8)
                 DearbyMarkdownText(source: profile.introduction)

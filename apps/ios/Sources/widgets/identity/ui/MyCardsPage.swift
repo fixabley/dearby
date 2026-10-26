@@ -15,7 +15,6 @@ struct MyCardsPage: View {
     @State private var deleteFailed = false
     /// QR 보이기 for the selected card (contract "명함 교환").
     @State private var showingQR: PublishedCard?
-    @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
         Group {
@@ -77,7 +76,7 @@ struct MyCardsPage: View {
             }
         }
         if let card = state.card {
-            CardView(card: card.cardModel) { if let url = $0.actionURL { openURL(url) } }
+            CardView(card: card.cardModel)
             Button { showingQR = card } label: {
                 Label("QR 보이기", systemImage: "qrcode").frame(maxWidth: .infinity)
             }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
@@ -110,7 +109,7 @@ struct MyCardsPage: View {
                         }
                     }
                 }
-                CardView(card: .placeholder) { _ in }
+                CardView(card: .placeholder)
             }.padding(.horizontal, 20).padding(.top, 12).dearbySkeleton()
         }.scrollDisabled(true)
     }

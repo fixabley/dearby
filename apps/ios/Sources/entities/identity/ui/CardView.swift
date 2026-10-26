@@ -6,7 +6,6 @@ import SwiftUI
 struct CardView: View {
     let card: CardModel
     var faceOnly = false
-    let onContact: (ContactModel) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             header
@@ -16,7 +15,7 @@ struct CardView: View {
                     empty("공개된 연락처가 없어요")
                 } else {
                     ForEach(card.contacts) { contact in
-                        ContactRow(contact: contact, open: onContact)
+                        ContactRow(contact: contact)
                         if contact.id != card.contacts.last?.id { Divider() }
                     }
                 }
@@ -65,27 +64,46 @@ struct CardView: View {
     }
 }
 
-/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20): kind glyph on the left, the value, and an external-link mark when the row
-/// can open something. The kind (or the owner's label) is VoiceOver-only.
+/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20, "연락처 아이콘·바로가기" 2026-10-26): kind glyph on the left, the value, and
+/// a mark for what a tap does — open (`arrow.up.right`) or copy a KakaoTalk ID (`doc.on.doc`, then "ID를 복사했어요" for a moment).
+/// The kind (or the owner's label) is VoiceOver-only.
 private struct ContactRow: View {
     let contact: ContactModel
-    let open: (ContactModel) -> Void
+    @Environment(\.openURL) private var openURL
+    @State private var copied = false
     var body: some View {
-        if let url = contact.actionURL {
-            Button { open(contact) } label: { content(openable: true) }.buttonStyle(.plain)
+        switch contact.action {
+        case .open(let url):
+            Button { openURL(url) } label: { content(mark: "arrow.up.right") }.buttonStyle(.plain)
                 .accessibilityLabel(contact.rowLabel + ": " + contact.value)
-                .accessibilityHint(url.scheme == "https" ? "링크를 열어요" : contact.kind == "phone" ? "전화를 걸어요" : "메일을 보내요")
-        } else {
-            content(openable: false).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.value)
+                .accessibilityHint(contact.kind == "phone" ? "전화를 걸어요" : contact.kind == "email" ? "메일을 보내요" : "링크를 열어요")
+        case .copy(let id):
+            Button { copy(id) } label: { content(mark: "doc.on.doc") }.buttonStyle(.plain)
+                .accessibilityLabel(contact.rowLabel + ": " + contact.value).accessibilityHint("ID를 복사해요")
+        case nil:
+            content(mark: nil).accessibilityElement(children: .ignore).accessibilityLabel(contact.rowLabel + ": " + contact.value)
         }
     }
-    private func content(openable: Bool) -> some View {
+    private func content(mark: String?) -> some View {
         HStack(spacing: 12) {
             ContactSymbol(kind: contact.kind)
             Text(contact.value).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
             Spacer(minLength: 0)
-            if openable { Image(systemName: "arrow.up.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet) }
+            if copied {
+                Text("ID를 복사했어요").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+            } else if let mark {
+                Image(systemName: mark).font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+            }
         }.padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())
+    }
+    private func copy(_ id: String) {
+        UIPasteboard.general.string = id
+        AccessibilityNotification.Announcement("ID를 복사했어요").post()
+        withAnimation { copied = true }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation { copied = false }
+        }
     }
 }
 

@@ -20,7 +20,6 @@ struct WalletPage: View {
     @State private var reporting: CardModel?
     @State private var blocking: WalletModel.Entry?
     @State private var detailNotice: String?
-    @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The rail stays hidden for short lists.
     private static let railThreshold = 6
@@ -126,7 +125,7 @@ struct WalletPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text(entry.receivedLine).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
-                CardView(card: entry.card) { if let url = $0.actionURL { openURL(url) } }
+                CardView(card: entry.card)
                 if entry.receipt.reciprocal {
                     DearbyBadge(title: "맞교환했어요")
                 } else {
@@ -183,7 +182,7 @@ struct WalletPage: View {
         Group {
             switch shared.phase {
             case .loading:
-                ScrollView { CardView(card: .placeholder) { _ in }.dearbySkeleton().padding(20) }.scrollDisabled(true)
+                ScrollView { CardView(card: .placeholder).dearbySkeleton().padding(20) }.scrollDisabled(true)
             case .failed(let outcome):
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true,
                                 title: outcome == .codeExpired ? Self.title(outcome) : "명함을 불러오지 못했어요", message: Self.message(outcome))
@@ -191,7 +190,7 @@ struct WalletPage: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         if let line = shared.receivedLine { Text(line).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet) }
-                        CardView(card: card) { if let url = $0.actionURL { openURL(url) } }
+                        CardView(card: card)
                         if case .ownCard = shared.phase {
                             Label(Self.message(.ownCard), systemImage: "info.circle").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
                         }
