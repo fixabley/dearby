@@ -2,15 +2,22 @@ import { z } from "zod";
 
 export const uuid = z.uuid();
 const text = z.string();
-const contact = z.object({
+export const CONTACT_KINDS = ["phone", "email", "kakao", "instagram", "github", "behance"] as const;
+export type ContactKind = (typeof CONTACT_KINDS)[number];
+// 연락처 인증(contract "연락처 인증" 2026-10-26): `verified` is set by the server alone; older responses omit both fields.
+export const contactSchema = z.object({
   id: uuid,
-  kind: z.enum(["phone", "email", "kakao", "instagram", "github", "behance"]),
+  kind: z.enum(CONTACT_KINDS),
   label: text,
   value: text,
+  verified: z.boolean().optional().catch(false),
+  verifiedAt: text.nullable().optional().catch(null),
 });
+export type Contact = z.infer<typeof contactSchema>;
+const contact = contactSchema;
 // 카탈로그 참조(id는 숫자) 또는 직접 입력한 이름. 명함에는 승인된 이력만 실리고 evidence는 없다.
 const activityInfoRef = z.object({ id: z.number().int(), name: text }).nullable();
-const history = z.object({
+export const historySchema = z.object({
   id: uuid,
   kind: z.enum(["organization", "activity"]),
   organization: activityInfoRef,
@@ -28,7 +35,8 @@ const history = z.object({
   approvalReason: text.nullable(),
   verification: z.enum(["unverified", "pending", "verified", "rejected"]),
 });
-export type History = z.infer<typeof history>;
+const history = historySchema;
+export type History = z.infer<typeof historySchema>;
 // Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introLink` is the 소개 링크 next to the name
 // (contract "소개 링크·소개 글 폐지"); the old `introduction` body is no longer shown.
 export const cardSchema = z.object({
@@ -41,14 +49,17 @@ export const cardSchema = z.object({
   contacts: z.array(contact),
   histories: z.array(history),
   createdAt: text,
-  // 명함 사진(contract "프로필 사진"): the proxy fetches `photoUrl` with the same view right and inlines it, because the page drops `code` from its address.
-  photo: z.string().startsWith("data:image/jpeg;base64,").optional(),
+  // "/v1/cards/:id/photo?v=<ms>" or null (contract "프로필 사진"); signed-in lists load it through `/api/cards/:id/photo` (`cardPhotoSrc`).
+  photoUrl: text.nullable().optional().catch(null),
+  // 명함 사진 on the public page: the proxy fetches `photoUrl` with the same view right and inlines it, because the page drops `code` from its address.
+  // Signed-in screens put the same-origin proxy URL here instead.
+  photo: z.string().optional(),
 });
 export type Card = z.infer<typeof cardSchema>;
 // 명함 교환(contract "명함 교환 — 2026-10-19"): where a saved card was exchanged and when the server recalls it.
 // 교환 세션 맥락(contract "교환 세션 맥락", 2026-10-26): optional until the server sends them; absent on older receipts.
 const sessionField = text.nullable().optional().catch(undefined);
-const exchangeContext = z.object({
+export const exchangeContextSchema = z.object({
   activityId: z.number().int().nullable(),
   activityName: text.nullable(),
   programName: text.nullable(),
@@ -57,7 +68,8 @@ const exchangeContext = z.object({
   trackName: sessionField,
   room: sessionField,
 });
-export type ExchangeContext = z.infer<typeof exchangeContext>;
+const exchangeContext = exchangeContextSchema;
+export type ExchangeContext = z.infer<typeof exchangeContextSchema>;
 export const guestItemSchema = z.object({
   card: cardSchema,
   context: exchangeContext,
@@ -492,6 +504,14 @@ const USERNAME_RULES: Partial<Record<Card["contacts"][number]["kind"], { host?: 
   kakao: { max: 20 },
 };
 
+/**
+ * Same-origin `<img src>` for a card photo a signed-in person may see (own card, received card): the API's
+ * `/v1/cards/:id/photo?v=…` becomes `/api/cards/:id/photo?v=…` (Bearer added by the proxy); anything else → undefined → initial avatar.
+ */
+export function cardPhotoSrc(photoUrl: string | null | undefined): string | undefined {
+  const match = photoUrl?.match(/^\/v1\/(cards\/[0-9a-f-]{36}\/photo\?v=\d{1,18})$/i);
+  return match ? `/api/${match[1]}` : undefined;
+}
 /** The username in a contact value: a profile URL saved before 2026-10-26 gives its first path part, `@` and spaces are dropped. */
 export function contactUsername(contact: Card["contacts"][number]): string | undefined {
   const rule = USERNAME_RULES[contact.kind];

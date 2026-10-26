@@ -11,7 +11,8 @@ export class RequestError extends Error {
     super("Request failed");
   }
 }
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** One same-origin `/api/*` call; the status is kept for callers that tell 201 (created) from 200 (already there). */
+export async function requestWithStatus<T>(path: string, init?: RequestInit): Promise<{ status: number; data: T }> {
   const response = await fetch(`/api${path}`, {
     ...init,
     credentials: "same-origin",
@@ -26,7 +27,52 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       typeof error?.detail === "string" ? error.detail : undefined,
     );
   }
-  return response.status === 204 ? (undefined as T) : response.json();
+  return { status: response.status, data: response.status === 204 ? (undefined as T) : await response.json() };
+}
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await requestWithStatus<T>(path, init)).data;
+}
+/** Headers every same-origin mutation needs (contract "웹 로그인" › CSRF): the proxy refuses anything else. */
+export const JSON_HEADERS = { "Content-Type": "application/json", "X-Dearby-Request": "1" };
+
+/**
+ * Refreshes the session once (contract "refresh 회전"): `POST /api/auth/refresh` under a Web Lock so tabs take turns, and the route
+ * itself skips the rotation when another caller just did it. `false` means the refresh token was refused — signed out.
+ */
+export async function refreshOnce(): Promise<boolean> {
+  const work = async () => {
+    try {
+      await request<unknown>("/auth/refresh", { method: "POST", headers: JSON_HEADERS, body: "{}" });
+      return true;
+    } catch (error) {
+      if (error instanceof RequestError && error.status === 401) return false;
+      throw error;
+    }
+  };
+  return navigator.locks ? navigator.locks.request("dearby-auth-refresh", work) : work();
+}
+/** An account request: on 401 (expired access token) refresh once and retry; a second 401 means the session is over. */
+export async function accountWithStatus<T>(path: string, init?: RequestInit): Promise<{ status: number; data: T }> {
+  try {
+    return await requestWithStatus<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof RequestError && error.status === 401)) throw error;
+    if (!(await refreshOnce())) throw error;
+    return requestWithStatus<T>(path, init);
+  }
+}
+export async function account<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await accountWithStatus<T>(path, init)).data;
+}
+/** JSON mutation as the signed-in account; `extra` adds headers such as `If-Match`. */
+export function accountSend<T>(path: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body: unknown = {}, extra?: Record<string, string>) {
+  return account<T>(path, { method, headers: { ...JSON_HEADERS, ...extra }, body: JSON.stringify(body) });
+}
+/** Multipart upload (photo, 인증자료) as the signed-in account; the browser sets the multipart Content-Type itself. */
+export function accountUpload<T>(path: string, method: "POST" | "PUT", file: File) {
+  const form = new FormData();
+  form.append("file", file, file.name || "file");
+  return account<T>(path, { method, headers: { "X-Dearby-Request": "1" }, body: form });
 }
 export function errorMessage(error: unknown): string {
   if (error instanceof RequestError && error.status === 429)

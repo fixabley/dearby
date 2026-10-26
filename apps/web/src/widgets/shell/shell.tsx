@@ -6,14 +6,16 @@ import { cn } from "@/shared/lib/utils";
 import { BrandSymbol } from "@/shared/ui/brand-symbol";
 import { Icon } from "@/shared/ui/icon";
 import { NavTitleProvider, useNavTitle } from "@/shared/ui/nav-title";
+import { DropdownMenu, type MenuItem } from "@/shared/ui/dropdown-menu";
 import { useAuth } from "@/features/auth/model/auth-context";
+import { useUnread } from "@/features/notifications/model/unread";
 
 /**
  * App shell (contract "웹 리디자인 — iOS 앱과 같은 표현" › 셸): an iOS navigation bar — sticky, translucent with a background blur,
  * a hairline once the page scrolls — whose centre shows the page's large title after it scrolls under the bar. Home-level pages
- * carry the brand on the left; the activity detail and a public card get a back link instead. On the right: 저장한 명함 and the
- * sign-in state (contract "웹 로그인": `로그인` opens the sheet; signed in, the account glyph leads to `/settings`). Content is 720px
- * max, 16px gutters.
+ * carry the brand on the left; the activity detail and a public card get a back link instead. On the right, signed out: 저장한 명함
+ * and `로그인` (contract "웹 로그인"); signed in (contract "웹 화면 — 2단계 C"): the 알림 bell with its unread badge and the 메뉴 button
+ * whose dropdown lists 내 활동 · 즐겨찾기 · 명함 · 받은 명함 · 프로필 · 알림 · 설정 with icons. Content is 720px max, 16px gutters.
  */
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -46,11 +48,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Where the bar's back link goes on a detail page; home-level pages show the brand. */
-function backFor(path: string): { href: string; label: string } | undefined {
+/** Where the bar's back link goes on a detail page; home-level pages show the brand. A public card leads back to the wallet when signed in. */
+function backFor(path: string, signedIn: boolean): { href: string; label: string } | undefined {
   if (path.startsWith("/activities/")) return { href: "/", label: "둘러보기" };
-  if (path.startsWith("/cards/")) return { href: "/saved", label: "저장한 명함" };
+  if (path.startsWith("/cards/") && path !== "/cards/mine") return signedIn ? { href: "/wallet", label: "받은 명함" } : { href: "/saved", label: "저장한 명함" };
+  if (path.startsWith("/wallet/")) return { href: "/wallet", label: "받은 명함" };
 }
+/** The signed-in menu (contract "웹 화면 — 2단계 C" › 상단 바): 내 활동·즐겨찾기 come from the sibling PRs' routes. */
+const MENU: MenuItem[] = [
+  { href: "/my-activities", label: "내 활동", icon: "calendar" },
+  { href: "/favorites", label: "즐겨찾기", icon: "heart" },
+  { href: "/cards/mine", label: "명함", icon: "card" },
+  { href: "/wallet", label: "받은 명함", icon: "inbox" },
+  { href: "/profile", label: "프로필", icon: "person" },
+  { href: "/notifications", label: "알림", icon: "bell" },
+  { href: "/settings", label: "설정", icon: "gear" },
+];
 
 function NavBar() {
   const path = usePathname();
@@ -64,9 +77,10 @@ function NavBar() {
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const back = backFor(path);
-  const savedHere = path === "/saved";
   const auth = useAuth();
+  const back = backFor(path, auth.signedIn);
+  const savedHere = path === "/saved";
+  const unread = useUnread().count;
   return (
     <>
       <div ref={sentinel} aria-hidden="true" className="absolute top-0 h-px w-px" />
@@ -100,7 +114,7 @@ function NavBar() {
             {title}
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1">
-            {!back?.href.startsWith("/saved") && (
+            {!auth.signedIn && !back?.href.startsWith("/saved") && (
               <Link
                 href="/saved"
                 aria-current={savedHere ? "page" : undefined}
@@ -111,14 +125,22 @@ function NavBar() {
               </Link>
             )}
             {auth.signedIn ? (
-              <Link
-                href="/settings"
-                aria-label="설정"
-                aria-current={path === "/settings" ? "page" : undefined}
-                className="-mr-2 inline-flex size-11 items-center justify-center text-teal aria-[current=page]:font-semibold"
-              >
-                <Icon name="person" />
-              </Link>
+              <>
+                <Link
+                  href="/notifications"
+                  aria-label={unread ? `알림, 읽지 않은 알림 ${unread}개` : "알림"}
+                  aria-current={path === "/notifications" ? "page" : undefined}
+                  className="relative inline-flex size-11 items-center justify-center text-teal"
+                >
+                  <Icon name="bell" />
+                  {unread > 0 && (
+                    <span aria-hidden="true" className="absolute top-1 right-0.5 min-w-4 rounded-full bg-teal-fill px-1 text-center text-caption2 font-bold leading-4 text-on-teal">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </Link>
+                <DropdownMenu label="메뉴" icon="menu" items={MENU} current={path} className="-mr-2" />
+              </>
             ) : (
               <button
                 type="button"

@@ -62,7 +62,16 @@ export function accessSecondsLeft(access: string | undefined): number {
   }
 }
 
-export type AccountCall = { path: string; method?: string; body?: unknown };
+export type AccountCall = {
+  path: string;
+  method?: string;
+  body?: unknown;
+  query?: URLSearchParams;
+  ifMatch?: string;
+  formData?: FormData;
+  acceptLanguage?: string;
+  accept?: string;
+};
 export type AccountResult =
   /** No access token in the cookies: the browser refreshes (`POST /api/auth/refresh`) and retries, or is signed out. */
   | { kind: "signedOut" }
@@ -77,7 +86,16 @@ export type AccountResult =
 export async function callAsAccount(cookieHeader: string | null, call: AccountCall): Promise<AccountResult> {
   const { access } = readSession(cookieHeader);
   if (!access) return { kind: "signedOut" };
-  const response = await upstreamFetch(call.path, { method: call.method, body: call.body, bearer: access });
+  const response = await upstreamFetch(call.path, {
+    method: call.method,
+    body: call.body,
+    query: call.query,
+    ifMatch: call.ifMatch,
+    formData: call.formData,
+    acceptLanguage: call.acceptLanguage,
+    accept: call.accept,
+    bearer: access,
+  });
   return { kind: "response", response };
 }
 

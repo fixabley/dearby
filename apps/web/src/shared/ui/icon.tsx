@@ -211,6 +211,34 @@ const paths = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  // 알림(bell), 메뉴(line.3.horizontal), 인증됨(checkmark.seal.fill → filled seal), 수정(pencil), 지우기(trash), 복사(doc.on.doc), 새로고침(arrow.clockwise)
+  // for the signed-in web screens (contract "프로필 읽기/수정 모드·상단 바 메뉴", "연락처 인증", "명함 QR 코드").
+  bell: (
+    <>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z" />
+      <path d="M10 20a2 2 0 0 0 4 0" />
+    </>
+  ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  "seal-check": (
+    <>
+      <path
+        fill="currentColor"
+        stroke="none"
+        d="M12 2.5l2.2 1.6 2.7-.3 1 2.5 2.4 1.3-.5 2.7 1.6 2.2-1.6 2.2.5 2.7-2.4 1.3-1 2.5-2.7-.3L12 21.5l-2.2-1.6-2.7.3-1-2.5-2.4-1.3.5-2.7L2.6 12l1.6-2.2-.5-2.7 2.4-1.3 1-2.5 2.7.3Z"
+      />
+      <path stroke="var(--card)" strokeWidth="2" d="m8.5 12 2.5 2.5 4.5-5" />
+    </>
+  ),
+  pencil: <path d="m4 20 4-1L19 8l-3-3L5 16l-1 4Zm10-13 3 3" />,
+  trash: <path d="M5 7h14M9 7V4h6v3m-7 0 .7 13h6.6L16 7" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
+    </>
+  ),
+  refresh: <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" />,
   book: <path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5Zm0 0v13" />,
   // 휴대폰과 창(웹·앱).
   devices: (

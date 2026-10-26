@@ -30,7 +30,7 @@ export function PublicCardBody({ card }: { card: Card }) {
     <Surface className="flex flex-col gap-6 p-5">
       <header className="flex flex-col items-center gap-2.5 text-center">
         {card.photo ? (
-          // A data URI from the proxy (contract "프로필 사진"); next/image has nothing to optimise here.
+          // A data URI from the proxy or a same-origin `/api/...photo` URL (contract "프로필 사진"); next/image has nothing to optimise here.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={card.photo} alt="" className="size-14 rounded-full object-cover" />
         ) : (
@@ -68,7 +68,16 @@ export function PublicCardBody({ card }: { card: Card }) {
                 <>
                   <Icon name={contact.kind === "email" ? "mail" : contact.kind} tone="teal" />
                   <span className="sr-only">{contact.label || CONTACT_KIND_NAME[contact.kind]}: </span>
-                  <span className="flex-1 text-subheadline break-all">{contactUsername(contact) ?? contact.value}</span>
+                  <span className="flex-1 text-subheadline break-all">
+                    {contactUsername(contact) ?? contact.value}
+                    {/* 인증됨 (contract "연락처 인증"): a small teal seal after the value; unverified rows carry nothing. */}
+                    {contact.verified && (
+                      <span className="ml-1 inline-flex align-text-bottom text-teal">
+                        <Icon name="seal-check" size="inline" />
+                        <span className="sr-only">인증됨</span>
+                      </span>
+                    )}
+                  </span>
                   {href && <Icon name="external-link" size="inline" tone="secondary" />}
                 </>
               );
