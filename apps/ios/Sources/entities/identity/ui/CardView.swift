@@ -2,13 +2,15 @@ import SwiftUI
 
 /// One published card as a single surface (contract "명함 표현", 2026-10-18): centered header, introduction,
 /// 연락처 rows that open the contact, and 활동 이력 rows. Action buttons belong to the screen, below the card.
+/// `faceOnly` keeps the face (photo, name, 직무, 연락처) for 내 프로필 (contract "프로필 보기 모드 = 명함 디자인" 2026-10-26), which shows 소개·이력 below it.
 struct CardView: View {
     let card: CardModel
+    var faceOnly = false
     let onContact: (ContactModel) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             header
-            if !card.introduction.isEmpty { DearbyMarkdownText(source: card.introduction) }
+            if !faceOnly && !card.introduction.isEmpty { DearbyMarkdownText(source: card.introduction) }
             section("연락처") {
                 if card.contacts.isEmpty {
                     empty("공개된 연락처가 없어요")
@@ -19,13 +21,15 @@ struct CardView: View {
                     }
                 }
             }
-            section("활동 이력") {
-                if card.histories.isEmpty {
-                    empty("공개된 활동 이력이 없어요")
-                } else {
-                    ForEach(card.histories) { history in
-                        HistoryRow(history: history)
-                        if history.id != card.histories.last?.id { Divider() }
+            if !faceOnly {
+                section("활동 이력") {
+                    if card.histories.isEmpty {
+                        empty("공개된 활동 이력이 없어요")
+                    } else {
+                        ForEach(card.histories) { history in
+                            HistoryRow(history: history)
+                            if history.id != card.histories.last?.id { Divider() }
+                        }
                     }
                 }
             }

@@ -117,6 +117,14 @@ struct ProfilePage: View {
             Button("확인", role: .cancel) {}
         }
     }
+    /// Under the card face (contract "프로필 보기 모드 = 명함 디자인" 2026-10-26): the same 수정 as the toolbar, and a new card from this profile.
+    private var readActions: some View {
+        VStack(spacing: 10) {
+            Button { composing = true } label: { Text("이 내용으로 명함 만들기").frame(maxWidth: .infinity) }
+                .buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("profile-make-card")
+            Button { done() } label: { Text("수정").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+        }.controlSize(.large).font(.dearby(.body).weight(.semibold))
+    }
     /// `추천` 묶음; `지원 자격 정보` is hidden on servers without its API.
     private var recommendationGroup: some View {
         let showsEligibility = eligibility.phase != .unavailable
@@ -192,6 +200,7 @@ struct ProfilePage: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             ProfileReadView(profile: profile).padding(20)
+                            readActions.padding(.horizontal, 20).padding(.bottom, 24)
                             recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
                         }
                     }

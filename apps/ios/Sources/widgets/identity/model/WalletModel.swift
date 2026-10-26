@@ -226,9 +226,12 @@ extension PublishedCard {
                   contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
                   histories: histories.map(\.historyModel), organization: latestOrganization, photoUrl: photoUrl)
     }
+    var latestOrganization: String? { histories.latestOrganization }
+}
+extension [AccountHistory] {
     /// Organization name of the most recent approved history (start date descending), nil when none names one.
     var latestOrganization: String? {
-        histories.filter { $0.approval == "approved" }.sorted { $0.startDate > $1.startDate }
+        filter { $0.approval == "approved" }.sorted { $0.startDate > $1.startDate }
             .lazy.compactMap { $0.organization?.name ?? $0.organizationName }.first { !$0.isEmpty }
     }
 }
