@@ -1238,7 +1238,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 ## 명함 교환 — 2026-10-19 사용자 결정
 
-2026-10-18 지운 공유 기능을 대신하는 새 설계. 사용자 결정(2026-10-19): 배부(배포) 단위 관리는 두지 않는다. 받은 명함에는 **어느 프로그램(활동)에서 교환했는지만** 표시한다. **단방향**으로 받은 명함은 받은 날부터 30일 뒤 회수한다. 옛 흐름(제작 → 발행 → 공유 화면)이 부자연스러웠다는 이유로 주인 쪽은 "명함 고르기 → QR 보이기" 한 번으로 끝나야 한다. 발행 스냅샷·`/cards/:id` 공개 조회·비로그인 저장 계약은 그대로다.
+2026-10-18 지운 공유 기능을 대신하는 새 설계. 사용자 결정(2026-10-19): 배부(배포) 단위 관리는 두지 않는다. 받은 명함에는 **어느 프로그램(활동)에서 교환했는지만** 표시한다(2026-10-26부터 그 활동 안의 **일정 블록·세션**까지 서버가 저장 시각으로 자동 판정해 남긴다 — 아래 "교환 세션 맥락"). **단방향**으로 받은 명함은 받은 날부터 30일 뒤 회수한다. 옛 흐름(제작 → 발행 → 공유 화면)이 부자연스러웠다는 이유로 주인 쪽은 "명함 고르기 → QR 보이기" 한 번으로 끝나야 한다. 발행 스냅샷·`/cards/:id` 공개 조회·비로그인 저장 계약은 그대로다.
 
 ### 흐름
 
@@ -1252,18 +1252,33 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 | 경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
-| PUT /v1/wallet/cards/:cardId | Bearer | `{activityId?: number}` | 첫 저장 201 Receipt, 이미 있으면 200 Receipt(받은 날은 유지, 활동이 비어 있었고 새로 왔으면 채운다). 없는/철회된 명함 404, 자기 명함 409 `OWN_CARD` |
-| POST /v1/wallet/cards/:cardId/reciprocate | Bearer | `{myCardId}` | 201 `{reciprocal: true}`. 호출자가 `cardId`를 회수되지 않은 상태로 갖고 있어야 하고(아니면 403), `myCardId`는 호출자의 미철회 명함(아니면 404). 주인의 지갑에 호출자 명함의 Receipt를 같은 활동으로 만든다(이미 있으면 그대로 201) |
+| PUT /v1/wallet/cards/:cardId | Bearer | `{activityId?: number}` | 첫 저장 201 Receipt, 이미 있으면 200 Receipt(받은 날은 유지, 활동이 비어 있었고 새로 왔으면 그때 맥락을 판정해 채운다). `activityId`가 오면 서버가 지금 시각으로 블록·세션까지 판정한다(아래 "교환 세션 맥락"). 없는/철회된 명함 404, 자기 명함 409 `OWN_CARD` |
+| POST /v1/wallet/cards/:cardId/reciprocate | Bearer | `{myCardId}` | 201 `{reciprocal: true}`. 호출자가 `cardId`를 회수되지 않은 상태로 갖고 있어야 하고(아니면 403), `myCardId`는 호출자의 미철회 명함(아니면 404). 주인의 지갑에 호출자 명함의 Receipt를 같은 맥락(활동·블록·세션을 원 Receipt에서 복사, 다시 판정하지 않음)으로 만든다(이미 있으면 그대로 201) |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. 회수된 것·철회된 명함 제외, `seq` 순 |
 | GET /v1/guest/cards | 게스트 토큰 | — | 200 `{items: GuestItem[]}`(2026-10-19부터 `Card[]`가 아니다) |
-| PUT /v1/guest/cards/:id | 게스트 토큰 선택 | `{activityId?: number}` | 기존 응답 그대로(201/200). 활동은 처음 저장할 때만 기록 |
-| POST /v1/wallet/import-guest | Bearer | `{guestToken}` | 200 `{imported: n}`. 웹 게스트 저장을 계정 지갑으로 옮긴다(2026-10-26 "웹 로그인") |
+| PUT /v1/guest/cards/:id | 게스트 토큰 선택 | `{activityId?: number}` | 기존 응답 그대로(201/200). 맥락은 처음 저장할 때만 기록하며 활동이 오면 진행 중 블록까지 판정한다(비로그인은 찜이 없어 세션은 늘 null) |
+| POST /v1/wallet/import-guest | Bearer | `{guestToken}` | 200 `{imported: n}`. 웹 게스트 저장을 계정 지갑으로 옮긴다(2026-10-26 "웹 로그인"). 맥락(활동·블록)은 게스트 저장 때 것을 그대로 옮기고 다시 판정하지 않는다 |
 
-- Receipt: `{id, card, context: {activityId: number|null, activityName: string|null, programName: string|null}, receivedAt, reciprocal: boolean, expiresAt: string|null}`. `expiresAt`은 서버가 계산한 회수 예정 시각(`receivedAt` + 30일), 맞교환이면 `null`. 클라이언트는 다시 계산하지 않는다. 활동 id가 있지만 활동이 지워졋으면 이름은 `null`.
-- GuestItem: `{card, context: {activityId, activityName, programName}, savedAt, expiresAt}`(`expiresAt`은 항상 `savedAt` + 30일).
+- Receipt: `{id, card, context: ExchangeContext, receivedAt, reciprocal: boolean, expiresAt: string|null}`. `expiresAt`은 서버가 계산한 회수 예정 시각(`receivedAt` + 30일), 맞교환이면 `null`. 클라이언트는 다시 계산하지 않는다.
+- GuestItem: `{card, context: ExchangeContext, savedAt, expiresAt}`(`expiresAt`은 항상 `savedAt` + 30일).
+- ExchangeContext(2026-10-26 확장): `{activityId: number|null, activityName: string|null, programName: string|null, scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null}`. id가 있지만 활동·블록·세션이 지워졌으면 그 이름만 `null`(id는 남는다). 전폭 세션(트랙 없음)은 `trackName`·`room`이 `null`. 2026-10-26 전에는 앞의 셋만 있었다.
 - 회수 작업: batch 모듈이 매일 04:00(Asia/Seoul)에 돌린다. 조건은 "회수되지 않았고 받은 날 + 30일 < 지금 이고 맞교환이 아님"(`receipts`), "회수되지 않았고 저장일 + 30일 < 지금"(`guest_cards`). `--recall-now` 플래그로 즉시 실행할 수 있다(`--collect-now`와 같은 방식). 결과는 로그에 건수로 남긴다.
 - 저장: V29. `receipts.recalled_at timestamptz null`, `receipts.context`는 기존 jsonb에 `{"activityId": <number>}`만 쓴다(`label`은 쓰지 않는다). `guest_cards`에 `activity_id bigint null`, `saved_at timestamptz not null default now()`, `recalled_at timestamptz null`. 기존 행의 `saved_at`은 마이그레이션 시각이 되어 30일 뒤 회수된다.
 - `activityId`는 활동의 숫자 id다(`GET /v1/activities/:id`). 모르는 id는 400이 아니라 무시하고 `null`로 저장한다(QR을 만든 뒤 활동이 지워진 경우).
+
+### 교환 세션 맥락 — 2026-10-26
+
+사용자 결정(2026-10-26, 우아콘 10/28 전 반영): 받은 명함에 "어느 프로그램·활동"뿐 아니라 **어느 일정 블록·세션(트랙·방)에서 받았는지**를 서버가 **저장 시각**으로 자동 판정해 남긴다. 사용자는 아무것도 고르지 않는다. 예: `우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B · "비 오는 날…"`.
+
+- **판정 규칙**: `PUT /v1/wallet/cards/:cardId {activityId}`·`PUT /v1/guest/cards/:id {activityId}`에 활동이 오면 서버가 **지금 시각**(`now`)으로 그 활동 안에서 순서대로 고른다.
+  1. 받는 사람(로그인)이 **찜한 세션**(위 "트랙·세션 시간표") 중 `startAt <= now < endAt`인 것 → `sessionId`와 그 세션의 블록 `scheduleId`. 같은 시간에 찜이 여럿이면(다른 트랙) 시작이 빠른 것, 같으면 id가 작은 것 하나. 비로그인(게스트)은 찜이 없어 이 단계가 없다.
+  2. 없으면 **진행 중인 시각 일정 블록** 하나 → `scheduleId`. 후보는 `activitySchedule`·`schedules[]` 중 시작·끝 시각이 있는 시각 일정(`startAt <= now < endAt`)이고 종일 일정·반복 일정·날짜 미정·모집 기간·지운 블록은 뺀다(여러 달짜리 종일 활동 기간이 모든 명함에 붙지 않게). 활동 기간이 세부 블록을 품어 둘 다 맞으면 **창이 짧은 것**(세부 블록), 같으면 id가 작은 것.
+  3. 없으면 활동만(`scheduleId`·`sessionId` null). 모르는 활동 id는 기존처럼 셋 모두 null.
+- 시각 비교는 절대 시각(instant)으로 하므로 블록의 `timeZone`은 판정에 쓰지 않는다(표시는 앱이 블록·세션의 시간대로 한다).
+- **한 번만 판정**: 이미 저장된 Receipt·GuestItem은 다시 저장해도 바꾸지 않는다. 활동이 비어 있다가 나중에 `activityId`가 오면 **그때** 판정한다(그 시각 기준). `reciprocate`는 원 Receipt의 `activityId`·`scheduleId`·`sessionId`를 그대로 복사하고 다시 판정하지 않는다.
+- **저장**: `receipts.context` jsonb에 `{"activityId", "scheduleId", "sessionId"}`(마이그레이션 없음, 옛 행은 둘이 없어 null). `guest_cards`에 `schedule_id bigint null`·`session_id bigint null`(V63, 논리키).
+- **응답**: `Receipt.context`·`GuestItem.context`에 `scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null`을 더한다(위 ExchangeContext). 블록·세션이 지워졌으면 id는 남고 이름만 null(활동과 같은 규칙). 운영자가 블록을 지운(`curated_deleted`) 경우도 지운 것으로 본다. `scheduleId`·`sessionId`는 결정문에는 없고 서버가 더한 것이며 **클라이언트는 지금 읽지 않는다**(뒤에 받은 명함 상세에서 그 블록의 시간표 `GET /v1/activities/:id/schedules/:scheduleId/timetable`를 바로 열 때 쓸 수 있게 둔다).
+- **화면(조율 세션 결정 2026-10-26, iOS #434 구현 기준)**: 받은 명함 **목록 행**은 프로그램 이름 칩을 그대로 두고 그 아래 캡션 한 줄 `프로그램 · 블록(scheduleTitle) · 트랙(trackName) · 방(room)`을 있는 값만 ` · `로 이어 더한다(모두 없으면 캡션 생략). **상세**는 같은 첫 줄에 둘째 줄로 세션 제목(`sessionTitle`, 없으면 생략). 활동 이름은 기존처럼 상세의 `<프로그램> <활동>에서 받음 · <받은 날>` 줄에 있다.
 
 ### 화면
 

@@ -109,6 +109,16 @@ open class GuestCards(
      */
     val RECALLED_AT: TableField<GuestCardsRecord, OffsetDateTime?> = createField(DSL.name("recalled_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
 
+    /**
+     * The column <code>public.guest_cards.schedule_id</code>.
+     */
+    val SCHEDULE_ID: TableField<GuestCardsRecord, Long?> = createField(DSL.name("schedule_id"), SQLDataType.BIGINT, this, "")
+
+    /**
+     * The column <code>public.guest_cards.session_id</code>.
+     */
+    val SESSION_ID: TableField<GuestCardsRecord, Long?> = createField(DSL.name("session_id"), SQLDataType.BIGINT, this, "")
+
     private constructor(alias: Name, aliased: Table<GuestCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<GuestCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<GuestCardsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

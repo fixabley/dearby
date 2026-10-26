@@ -1,7 +1,7 @@
 package io.wid.dearby.application.card
 
-import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.UserId
+import io.wid.dearby.domain.card.ExchangeRef
 import io.wid.dearby.domain.card.Receipt
 import java.time.OffsetDateTime
 import java.util.*
@@ -13,12 +13,10 @@ interface WalletRepository {
 
     fun findReceipt(recipientId: UserId, cardId: UUID): Receipt?
 
-    // 회수됐던 같은 사용자+명함 행이 있으면 되살린다(받은 날·활동을 새로 적는다)
-    fun createReceipt(id: UUID, recipientId: UserId, cardId: UUID, activityId: Id?, receivedAt: OffsetDateTime)
+    // 회수됐던 같은 사용자+명함 행이 있으면 되살린다(받은 날·맥락을 새로 적는다)
+    fun createReceipt(id: UUID, recipientId: UserId, cardId: UUID, context: ExchangeRef, receivedAt: OffsetDateTime)
 
-    fun setActivity(receiptId: UUID, activityId: Id)
-
-    fun activityExists(activityId: Id): Boolean
+    fun setContext(receiptId: UUID, context: ExchangeRef)
 
     // 차단(native-v1.md "명함 신고·차단"): 내 지갑에서 그 주인의 명함을 모두 회수한다(행은 남긴다)
     fun recallFromOwner(recipientId: UserId, ownerId: UserId, now: OffsetDateTime)
