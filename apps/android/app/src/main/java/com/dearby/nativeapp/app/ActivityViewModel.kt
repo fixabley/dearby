@@ -293,23 +293,23 @@ class ActivityViewModel(
     /**
      * 지난 선발 단계 자동 통과 제안 (user 2026-10-26): someone adding an activity whose 선발 is over is almost always through it, yet those stages
      * stay 대기 and the track never says 참여 중. Right after any add, once per activity on this device and never for an ENDED activity, the
-     * unmarked 선발 단계 whose end has passed (the start without one; a date-only day ends at the next Seoul midnight), together with the
-     * undated 선발 단계 after them, are offered as [ActivityListState.autopass]. Nothing is offered when no dated stage has passed.
+     * 선발 단계 before the first one still ahead (end, or start without one, not yet passed; a date-only day ends at the next Seoul midnight) —
+     * the passed ones and the undated ones between them — that have no mark yet are offered as [ActivityListState.autopass]. Undated stages after
+     * a stage still ahead stay out (coordinator 2026-10-26). Nothing is offered when no dated stage has passed.
      */
     private fun offerAutopass(id: String) {
         val model = models[id]?.takeIf { it.status != "ENDED" } ?: return
         if (autopassAsked(id)) return
         val now = Instant.now()
         val own = marks[id].orEmpty()
-        var past = false
-        val stages = model.stages().withIndex().filter { (_, stage) ->
-            if (!stage.selection || stage.scheduleId == null || stage.scheduleId in own || stage.statuses.none { it.kind == ScheduleStatus.PASSED }) return@filter false
-            val end = stage.eventEnd ?: stage.eventStart
-            if (end == null) past else (end < now).also { if (it) past = true }
-        }
-        if (!past) return
+        val selection = model.stages().withIndex().filter { it.value.selection }
+        val ahead = selection.indexOfFirst { (_, stage) -> stage.end()?.let { it >= now } == true }
+        val offered = (if (ahead < 0) selection else selection.take(ahead))
+            .filter { (_, stage) -> stage.scheduleId != null && stage.scheduleId !in own && stage.statuses.any { it.kind == ScheduleStatus.PASSED } }
+        if (offered.none { it.value.end() != null }) return
         rememberAutopassAsked(id)
-        mutable.update { it.copy(autopass = AutopassPrompt(id, stages.map { it.index }, stages.map { it.value.name })) }
+        val remaining = if (ahead < 0) emptyList() else selection.drop(ahead).map { it.value.name }
+        mutable.update { it.copy(autopass = AutopassPrompt(id, offered.map { it.index }, offered.map { it.value.name }, remaining)) }
     }
     /** `통과로 표시` ([confirm]) marks each offered stage PASSED as the progress page would; `그대로 두기` leaves them. A failed write undoes only its stage. */
     fun autopass(confirm: Boolean) {
@@ -478,6 +478,8 @@ private const val MAX_PROGRAM_PAGES = 5
 /** 지난 활동 window: the last three years (2026-10-19 저녁, 2년 → 3년). */
 private const val PAST_DAYS = 1095L
 private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
+/** When a stage is over for the 자동 통과 제안: its end, else its start (date-only steps end at the next Seoul midnight); null when undated. */
+private fun Stage.end(): Instant? = eventEnd ?: eventStart
 /** The system "add event" prefill for one stage (contract "내 캘린더에 추가"): "활동명 · 일정 제목"; null for an undated stage. */
 private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
     val start = stage.eventStart ?: return null

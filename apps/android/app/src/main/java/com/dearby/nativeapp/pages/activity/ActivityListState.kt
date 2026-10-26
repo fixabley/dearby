@@ -164,7 +164,8 @@ data class ActivityListState(
 }
 
 /**
- * 지난 선발 단계 자동 통과 제안 (user 2026-10-26): the activity [id] just added to 내 활동 has unmarked 선발 단계 at track indices [stages] whose end
- * (start without one, Seoul midnight after a date-only day) has passed — plus the undated ones after them — named [names] in track order.
+ * 지난 선발 단계 자동 통과 제안 (user 2026-10-26): the activity [id] just added to 내 활동 has unmarked 선발 단계 at track indices [stages] — the ones whose
+ * end (start without one, Seoul midnight after a date-only day) has passed and the undated ones between them, before the first 선발 단계 still ahead —
+ * named [names] in track order. [remaining] names that stage and every 선발 단계 after it; empty when the offer covers them all (then the track turns 참여 중).
  */
-data class AutopassPrompt(val id: String, val stages: List<Int>, val names: List<String>)
+data class AutopassPrompt(val id: String, val stages: List<Int>, val names: List<String>, val remaining: List<String> = emptyList())
