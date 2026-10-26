@@ -9,9 +9,13 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_ACTIVITY_ID_SLOT_KE
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_STATUSES__SCHEDULE_STATUSES_SCHEDULE_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses.ScheduleStatusesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks.ScheduleTracksPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.SchedulesRecord
 
 import java.time.LocalDate
@@ -268,6 +272,22 @@ open class Schedules(
     fun activities(): ActivitiesPath = activities
     val activities: ActivitiesPath by lazy { ActivitiesPath(this, SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY, null) }
 
+    private lateinit var _scheduleSessions: ScheduleSessionsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_sessions</code> table
+     */
+    fun scheduleSessions(): ScheduleSessionsPath {
+        if (!this::_scheduleSessions.isInitialized)
+            _scheduleSessions = ScheduleSessionsPath(this, null, SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY.inverseKey)
+
+        return _scheduleSessions;
+    }
+
+    val scheduleSessions: ScheduleSessionsPath
+        get(): ScheduleSessionsPath = scheduleSessions()
+
     private lateinit var _scheduleStatuses: ScheduleStatusesPath
 
     /**
@@ -283,6 +303,22 @@ open class Schedules(
 
     val scheduleStatuses: ScheduleStatusesPath
         get(): ScheduleStatusesPath = scheduleStatuses()
+
+    private lateinit var _scheduleTracks: ScheduleTracksPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_tracks</code> table
+     */
+    fun scheduleTracks(): ScheduleTracksPath {
+        if (!this::_scheduleTracks.isInitialized)
+            _scheduleTracks = ScheduleTracksPath(this, null, SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY.inverseKey)
+
+        return _scheduleTracks;
+    }
+
+    val scheduleTracks: ScheduleTracksPath
+        get(): ScheduleTracksPath = scheduleTracks()
     override fun getChecks(): List<Check<SchedulesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("schedules_check"), "((((time_type IS NULL) AND (start_at IS NULL) AND (end_at IS NULL) AND (time_zone IS NULL) AND (start_date IS NULL) AND (end_date_exclusive IS NULL)) OR (((time_type)::text = 'TIMED'::text) AND ((start_at IS NOT NULL) OR (end_at IS NOT NULL)) AND (time_zone IS NOT NULL) AND ((start_at IS NULL) OR (end_at IS NULL) OR (end_at >= start_at)) AND (start_date IS NULL) AND (end_date_exclusive IS NULL)) OR (((time_type)::text = 'ALL_DAY'::text) AND (start_date IS NOT NULL) AND (end_date_exclusive > start_date) AND (start_at IS NULL) AND (end_at IS NULL) AND (time_zone IS NULL))))", true),
         Internal.createCheck(this, DSL.name("schedules_check2"), "((((lat IS NULL) AND (lng IS NULL) AND (address_line1 IS NULL) AND (address_line2 IS NULL)) OR ((lat IS NOT NULL) AND (lng IS NOT NULL) AND (address_line1 IS NOT NULL) AND (address_line2 IS NOT NULL))))", true),

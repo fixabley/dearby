@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
     scanBasePackages = [
         "io.wid.dearby.batch", "io.wid.dearby.adaptor.persistence", "io.wid.dearby.application.catalog", "io.wid.dearby.application.activity",
         "io.wid.dearby.application.program", "io.wid.dearby.application.recommendation", "io.wid.dearby.application.discovery",
+        "io.wid.dearby.application.timetable", // 운영 데이터 가져오기의 시간표(admin-v1.md "트랙·세션 시간표")
     ]
 )
 @ConfigurationPropertiesScan

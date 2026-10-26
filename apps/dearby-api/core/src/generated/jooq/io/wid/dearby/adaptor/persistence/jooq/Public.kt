@@ -57,7 +57,10 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
@@ -72,6 +75,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserSessionFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
@@ -363,9 +367,24 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val ROLES: Roles get() = Roles.ROLES
 
     /**
+     * The table <code>public.schedule_session_tags</code>.
+     */
+    val SCHEDULE_SESSION_TAGS: ScheduleSessionTags get() = ScheduleSessionTags.SCHEDULE_SESSION_TAGS
+
+    /**
+     * The table <code>public.schedule_sessions</code>.
+     */
+    val SCHEDULE_SESSIONS: ScheduleSessions get() = ScheduleSessions.SCHEDULE_SESSIONS
+
+    /**
      * The table <code>public.schedule_statuses</code>.
      */
     val SCHEDULE_STATUSES: ScheduleStatuses get() = ScheduleStatuses.SCHEDULE_STATUSES
+
+    /**
+     * The table <code>public.schedule_tracks</code>.
+     */
+    val SCHEDULE_TRACKS: ScheduleTracks get() = ScheduleTracks.SCHEDULE_TRACKS
 
     /**
      * The table <code>public.schedules</code>.
@@ -438,6 +457,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USER_ROLES: UserRoles get() = UserRoles.USER_ROLES
 
     /**
+     * The table <code>public.user_session_favorites</code>.
+     */
+    val USER_SESSION_FAVORITES: UserSessionFavorites get() = UserSessionFavorites.USER_SESSION_FAVORITES
+
+    /**
      * The table <code>public.user_taste</code>.
      */
     val USER_TASTE: UserTaste get() = UserTaste.USER_TASTE
@@ -508,7 +532,10 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         RecommendationSignals.RECOMMENDATION_SIGNALS,
         RefreshTokens.REFRESH_TOKENS,
         Roles.ROLES,
+        ScheduleSessionTags.SCHEDULE_SESSION_TAGS,
+        ScheduleSessions.SCHEDULE_SESSIONS,
         ScheduleStatuses.SCHEDULE_STATUSES,
+        ScheduleTracks.SCHEDULE_TRACKS,
         Schedules.SCHEDULES,
         TagEmbeddings.TAG_EMBEDDINGS,
         Tags.TAGS,
@@ -523,6 +550,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         UserNotifications.USER_NOTIFICATIONS,
         UserOrgAffinity.USER_ORG_AFFINITY,
         UserRoles.USER_ROLES,
+        UserSessionFavorites.USER_SESSION_FAVORITES,
         UserTaste.USER_TASTE,
         Users.USERS,
         WebauthnChallenges.WEBAUTHN_CHALLENGES

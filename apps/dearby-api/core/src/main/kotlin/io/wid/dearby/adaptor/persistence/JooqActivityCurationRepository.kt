@@ -280,7 +280,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     override fun findSchedule(activityId: Id, scheduleId: Id): StoredSchedule? =
         dsl.selectFrom(SCHEDULES)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse)
-            .fetchOne()?.let { StoredSchedule(it.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty()), it.slot) }
+            .fetchOne()?.let { StoredSchedule(it.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty(), TimetableRows.scheduleIdsWithSessions(dsl, listOf(scheduleId)).isNotEmpty()), it.slot) }
 
     @Transactional
     override fun updateDetailSchedule(activityId: Id, scheduleId: Id, item: ScheduleItem): Schedule? {
@@ -354,7 +354,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
 
     private fun fetchSchedule(activityId: Id, scheduleId: Id): Schedule? =
         dsl.selectFrom(SCHEDULES).where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId)).fetchOne()
-            ?.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty())
+            ?.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty(), TimetableRows.scheduleIdsWithSessions(dsl, listOf(scheduleId)).isNotEmpty())
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)
