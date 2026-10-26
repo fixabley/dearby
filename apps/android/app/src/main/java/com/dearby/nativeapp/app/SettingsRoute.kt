@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
     var systemOn by remember { mutableStateOf(true) }
     LifecycleResumeEffect(Unit) { systemOn = Push.enabled(context); onPauseOrDispose {} }
     LaunchedEffect(signedIn, auth.linked) { if (signedIn) signingIn = false; model.load() }
-    SettingsPage(state.copy(busy = state.busy || auth.linking || deletion.deleting), back = close, signIn = { signingIn = true }, signOut = model::signOut, deleteAccount = profile::deleteAccount, retry = model::load,
+    SettingsPage(state.copy(busy = state.busy || auth.linking || deletion.deleting), back = close, signIn = { signingIn = true }, signOut = model::signOut, deleteAccount = { profile.deleteAccount(state.passkeys.isNotEmpty()) }, retry = model::load,
         link = { key ->
             scope.launch {
                 when (AuthProvider.entries.first { it.path == key }) {

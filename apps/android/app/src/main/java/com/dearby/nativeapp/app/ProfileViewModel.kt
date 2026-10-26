@@ -245,14 +245,14 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         } catch (e: AccountException) { versionsState.update { it.copy(restoring = false, error = message(e, "되돌리지 못했어요. 잠시 후 다시 시도해 주세요.")) } }
     }
 
-    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. */
-    fun deleteAccount() {
+    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. The passkey cleanup hint only when the account [hadPasskeys]. */
+    fun deleteAccount(hadPasskeys: Boolean) {
         if (deletionState.value.deleting) return
         deletionState.value = DeletionState(deleting = true)
         viewModelScope.launch {
             val notice = try {
                 account.deleteAccount()
-                "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요."
+                if (hadPasskeys) "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요." else "계정을 삭제했어요."
             } catch (e: AccountException) {
                 if (e.error == AccountError.UNAUTHORIZED) "로그인이 만료됐어요. 다시 로그인해 주세요." else "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
             }
