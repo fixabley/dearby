@@ -486,7 +486,8 @@ private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDat
             index in passed || stage.finished(today) || index <= (failedAt ?: (current ?: 0) - 1) -> ProgressStatus.PAST
             else -> ProgressStatus.UPCOMING
         }
-        ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage))
+        ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage),
+            stage.scheduleId?.takeIf { stage.hasTimetable })
     }
     // 참여 중 (2026-10-22, 참여 확정 replaced): every 선발 단계 (one with status choices) before the activity period is marked PASSED.
     val selection = (if (activitySchedule != null) stages.indices.toList().dropLast(1) else stages.indices.toList()).filter { options[it].isNotEmpty() }.map { picks[it] }

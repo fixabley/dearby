@@ -30,10 +30,10 @@ data class CalendarDraft(val title: String, val begin: Long, val end: Long, val 
 /**
  * One step as shown. [kind] picks the icon (APPLICATION, DEADLINE, ANNOUNCEMENT, INTERVIEW, EVENT); [options] are its statuses and
  * [selected] the user's choice (the first waiting status until one is chosen); [hasWindow] when the calendar comparison can open on it;
- * [draft] for `캘린더에 추가`, null for an undated step.
+ * [draft] for `캘린더에 추가`, null for an undated step. [timetableId] is the schedule id of a step with a 트랙·세션 시간표 (`hasTimetable`), else null.
  */
 data class ProgressStage(val name: String, val kind: String, val dateText: String, val status: ProgressStatus, val options: List<StatusOption>, val selected: StatusOption?, val hasWindow: Boolean,
-    val draft: CalendarDraft? = null)
+    val draft: CalendarDraft? = null, val timetableId: String? = null)
 
 /**
  * The progress track of one applied activity (contract "내 활동 진행 트랙"). [stages] is empty for an activity without

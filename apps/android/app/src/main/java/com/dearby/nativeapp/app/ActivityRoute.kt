@@ -112,11 +112,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
-    // The timetable sheet opened from this detail's block row (the view model is shared by both tabs, so it shows only over its own activity).
-    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == selected }
-    // The sheet belongs to this detail: leaving it (back, another activity, the consent screen or a tab switch disposing this route) closes
-    // it, so it does not come back on its own the next time the activity is opened.
-    DisposableEffect(selected) { onDispose { sessions?.show(null, null) } }
+    // The timetable sheet opened from this detail's block row, or from the 진행 단계 page's stage row (the view model is shared by both tabs,
+    // so it shows only over its own activity).
+    val sheetActivity = activity ?: progressActivity
+    val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == (selected ?: progressId) }
+    // The sheet belongs to this detail or 진행 단계 page: leaving it (back, another activity, the consent screen or a tab switch disposing this
+    // route) closes it, so it does not come back on its own the next time the activity is opened.
+    DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null) } }
     val sheetNotices = remember { SnackbarHostState() }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
     val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
@@ -128,8 +130,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
             addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
             openTimetable = { sessions?.show(activity.id, it) })
         mySessions && mine -> MySessionsPage(sessionEntries, sessionIds, sessionHeart, { show(it, "favorites") }) { mySessions = false }
-        progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { show(progress.id, "my_activity") },
-            { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
+        progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { show(progress.id, "my_activity") },
+            { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) },
+            openTimetable = { sessions?.show(progress.id, it) })
         mine -> MineTab(segment, selectSegment, settings, notify, unread) {
             val openDetail: (String) -> Unit = { show(it, listSource) }
             if (segment == MineSegment.MINE || favorites == null) MyActivitiesPage(state, openDetail, { progressId = it }, explore) { model.apply(it, false) }
@@ -150,9 +153,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         // 찜 실패 알림 while the sheet is up: shown in the sheet (DearbyApp leaves it to us while a timetable is open).
         val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
         LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
-        val block = activity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
+        val block = sheetActivity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
         val blockTitle = openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: block?.name ?: "세션"
-        TimetableSheet(listOfNotNull(activity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
+        TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
             sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry, sheetNotices)
     }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
