@@ -20,6 +20,7 @@ export function ActivityCard({
   name,
   statusTone,
   recruitmentLabel,
+  recruitmentDday,
   recruitmentActive,
   activityLabel,
   placeName,
@@ -31,6 +32,8 @@ export function ActivityCard({
   statusTone: StatusTone;
   /** 모집 기간 문구; 없으면 `미정`. */
   recruitmentLabel: string;
+  /** `D-3`·`D-DAY` beside the period while 모집 중 (contract "모집 날짜 표기 — 2026-10-26"). */
+  recruitmentDday?: string;
   /** 모집 중·모집 예정이고 기간이 있을 때 참 → 강조. */
   recruitmentActive: boolean;
   /** 활동 기간 문구. */
@@ -41,8 +44,8 @@ export function ActivityCard({
   fieldTag?: Tag;
   traitTags?: Tag[];
 }) {
-  const rows: [string, string, boolean][] = [
-    ["모집", recruitmentLabel || "미정", recruitmentActive],
+  const rows: [string, string, boolean, string?][] = [
+    ["모집", recruitmentLabel || "미정", recruitmentActive, recruitmentDday],
     ["활동", activityLabel || "일정 미확인", false],
   ];
   if (placeName) rows.push(["장소", placeName, false]);
@@ -59,13 +62,20 @@ export function ActivityCard({
       </span>
       <TagChipRow field={fieldTag} traits={traitTags} />
       <dl className="flex flex-col gap-[3px] text-footnote">
-        {rows.map(([label, value, emphasized]) => (
+        {rows.map(([label, value, emphasized, badge]) => (
           <div
             key={label}
             className={cn("flex items-baseline gap-2", emphasized && "-mx-1.5 rounded-lg bg-mint px-1.5 py-[3px]")}
           >
             <dt className="w-9 shrink-0 text-secondary-label">{label}</dt>
-            <dd className={cn("flex-1 break-keep", emphasized && "font-semibold text-teal")}>{value}</dd>
+            <dd className={cn("flex-1 break-keep", emphasized && "font-semibold text-teal")}>
+              {value}
+              {badge && (
+                <Badge variant="filled" className="ml-1.5 align-[1px] text-caption2 tabular-nums">
+                  {badge}
+                </Badge>
+              )}
+            </dd>
           </div>
         ))}
       </dl>

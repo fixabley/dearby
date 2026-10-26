@@ -285,7 +285,7 @@ export function recruitmentPhrase(application: Schedule | null, now = Date.now()
 }
 /** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
 function seoulDay(now: number): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
+  return calendarDay(now, "Asia/Seoul");
 }
 /** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
 function koreanParts(time: number, timeZone: string, withTime: boolean) {
@@ -333,6 +333,38 @@ export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now
   if (!to || end === start) return text(from);
   if (timed && from.year === to.year && from.day === to.day) return `${text(from)} ~ ${to.time}`;
   return `${text(from)} ~ ${text(to)}`;
+}
+/**
+ * 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): with both bounds of the recruitment window, the period as `M.d – M.d` (no
+ * times; one day alone when both fall on it; a bound outside the current Seoul year as `yyyy.M.d`) and, while 모집 중, a `D-n`/`D-DAY`
+ * badge counted in Seoul days to the last day (a date-only end is exclusive). Otherwise the `scheduleLabel` text without a badge
+ * (an end alone stays `~ M월 d일 (요일) 마감`).
+ */
+export function recruitmentDate(application: Schedule | null, now = Date.now()): { text: string; dday?: string } {
+  if (!application) return { text: "" };
+  const startAt = parseTime(application.startAt);
+  const endAt = parseTime(application.endAt);
+  const timed = startAt !== undefined || endAt !== undefined;
+  const endDateExclusive = parseTime(application.endDateExclusive);
+  const [start, last] = timed
+    ? [startAt, endAt]
+    : [parseTime(application.startDate), endDateExclusive === undefined ? undefined : endDateExclusive - DAY];
+  if (start === undefined || last === undefined || last < start)
+    return { text: scheduleLabel(application, "recruitment", now) };
+  const timeZone = timed ? (application.timeZone ?? "Asia/Seoul") : "UTC";
+  const thisYear = seoulDay(now).slice(0, 4);
+  const short = (time: number) => {
+    const [year, month, day] = calendarDay(time, timeZone).split("-");
+    return `${year === thisYear ? "" : `${year}.`}${Number(month)}.${Number(day)}`;
+  };
+  const text = short(start) === short(last) ? short(start) : `${short(start)} – ${short(last)}`;
+  if (!recruitment(application, now).open) return { text };
+  const days = Math.round((Date.parse(calendarDay(last, timeZone)) - Date.parse(seoulDay(now))) / DAY);
+  return { text, dday: days <= 0 ? "D-DAY" : `D-${days}` };
+}
+/** `yyyy-MM-dd` of an instant in a zone. */
+function calendarDay(time: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(time));
 }
 function parseTime(value: string | null): number | undefined {
   const time = value ? Date.parse(value) : NaN;

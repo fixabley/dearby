@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// `행사 일정`: one row per schedule of the track (모집 마감, `schedules[]`, the activity period) with its date text and, for a dated
+/// `행사 일정`: one row per schedule of the track (모집 or 모집 마감, `schedules[]`, the activity period) with its date text and, for a dated
 /// one, `캘린더에 추가` (contract "내 캘린더에 추가" 2026-10-22), then the overlap check. Input and callbacks only (pure-ui.json).
 struct ActivityInformationView: View {
     struct Row: Identifiable {
@@ -11,6 +11,8 @@ struct ActivityInformationView: View {
         let draft: CalendarEventDraft?
         /// The block has a 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): `{제목} 시간표` under the date.
         var hasTimetable = false
+        /// `D-3`/`D-DAY` beside the date (the recruitment row while recruiting, contract "모집 날짜 표기 — 2026-10-26").
+        var badge: String?
     }
     let rows: [Row]
     /// At least one schedule can be compared with the device calendar (timed, or date-only with an admin time window).
@@ -34,7 +36,10 @@ struct ActivityInformationView: View {
                         }.padding(.top, 6)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.title).font(.dearby(.subheadline).weight(.semibold))
-                            Text(row.date).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(row.date).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                                if let badge = row.badge { DearbyMiniBadge(title: badge, filled: true) }
+                            }
                             if row.hasTimetable {
                                 Button("\(row.title) 시간표", systemImage: "tablecells") { openTimetable(row) }
                                     .buttonStyle(.bordered).controlSize(.small).font(.dearby(.footnote).weight(.semibold)).padding(.top, 6)

@@ -86,6 +86,16 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     func scheduleText(at now: Date) -> String? { activityStage?.text(now: now) }
     /// The recruitment window as text by the same rule (`~ … 마감` when only the deadline is known); nil without a window or any text for it.
     func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now, recruitment: true) }
+    /// 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): with both bounds, the period `M.d – M.d` (`ActivityStageModel.periodText`)
+    /// and, while 모집 중, `D-n`/`D-DAY` in Seoul days to the last day; otherwise `recruitmentText` (an end alone `~ … 마감`) and no badge.
+    func recruitmentDate(at now: Date) -> (text: String?, dday: String?) {
+        guard let stage = applicationStage, let period = stage.periodText(now: now) else { return (recruitmentText(at: now), nil) }
+        guard recruitment(at: now) == .open, let last = stage.lastDay else { return (period, nil) }
+        var seoul = Calendar(identifier: .gregorian)
+        seoul.timeZone = ActivityText.seoul
+        let days = seoul.dateComponents([.day], from: seoul.startOfDay(for: now), to: seoul.startOfDay(for: last)).day ?? 0
+        return (period, days <= 0 ? "D-DAY" : "D-\(days)")
+    }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         raw.flatMap(seoulDayFormatter.date(from:))
@@ -196,6 +206,21 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     var hasTimetable = false
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
+    /// The last moment within the stage: a timed end, or Seoul midnight of an all-day stage's last day (the exclusive end minus a day).
+    var lastDay: Date? { allDay ? end.flatMap { Self.seoul.date(byAdding: .day, value: -1, to: $0) } : end }
+    /// `M.d – M.d` when both bounds are known (contract "모집 날짜 표기 — 2026-10-26"): no times, the stage's zone (Seoul when all-day),
+    /// a bound outside `now`'s Seoul year as `yyyy.M.d`, one day alone when both fall on it. nil with a missing bound.
+    func periodText(now: Date) -> String? {
+        guard let start, let last = lastDay, last >= start else { return nil }
+        let zone = allDay ? ActivityText.seoul : TimeZone(identifier: timeZone) ?? ActivityText.seoul
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let thisYear = Self.seoul.component(.year, from: now)
+        func day(_ date: Date) -> String {
+            ActivityText.format(date, calendar.component(.year, from: date) == thisYear ? "M.d" : "yyyy.M.d", zone: zone)
+        }
+        return calendar.isDate(start, inSameDayAs: last) ? day(start) : day(start) + " – " + day(last)
+    }
     /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간", "반복 일정" 2026-10-22). With a repeat rule,
     /// one window per occurrence (at most 400): a timed stage's own interval moved by whole Seoul days, a date-only stage's
     /// `overlapCheck` window on each occurrence day from `startDate`. Without one: a timed stage's own non-empty interval; a date-only

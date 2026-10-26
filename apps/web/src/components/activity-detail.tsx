@@ -8,6 +8,7 @@ import {
   httpsUrl,
   traitTagsOf,
   recruitment,
+  recruitmentDate,
   scheduleLabel,
 } from "@/lib/models";
 import { eligibilityLines } from "@/lib/eligibility";
@@ -114,10 +115,12 @@ export function ActivityDetail({ id }: { id: number }) {
         </span>
       </button>
     );
-  const facts = [
+  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` with `D-3` while open; an end alone keeps `~ … 마감`.
+  const recruitmentDay = recruitmentDate(activity.application, now);
+  const facts: [string, string, string?][] = [
     ["주최", activity.organization.name],
     ["프로그램", activity.program.name],
-    ["모집 기간", scheduleLabel(activity.application, "recruitment")],
+    ["모집 기간", recruitmentDay.text, recruitmentDay.dday],
     ["활동 기간", scheduleLabel(activity.activitySchedule, "activity")],
   ];
   return (
@@ -138,10 +141,17 @@ export function ActivityDetail({ id }: { id: number }) {
           )}
         </div>
         <InsetGroup title="활동 안내">
-          {facts.map(([label, value]) => (
+          {facts.map(([label, value, badge]) => (
             <li key={label} className="flex items-baseline gap-4 px-4 py-3">
               <span className="w-20 shrink-0 text-subheadline text-secondary-label">{label}</span>
-              <span className="flex-1 text-subheadline break-keep">{value || "미확인"}</span>
+              <span className="flex-1 text-subheadline break-keep">
+                {value || "미확인"}
+                {badge && (
+                  <Badge variant="filled" className="ml-1.5 align-[1px] text-caption2 tabular-nums">
+                    {badge}
+                  </Badge>
+                )}
+              </span>
             </li>
           ))}
         </InsetGroup>

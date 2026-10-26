@@ -147,13 +147,18 @@ struct ActivityDetailView: View {
         .controlSize(.large).font(.dearby(.body).weight(.semibold)).tint(DearbyStyle.teal)
         .padding(.horizontal, 20).padding(.bottom, 12).background(Color(.systemBackground))
     }
-    /// The `행사 일정` rows in track order: the recruitment deadline (`모집 마감`), `schedules[]`, the activity period; each dated one can
-    /// be added to the calendar.
+    /// The `행사 일정` rows in track order: the recruitment (`모집` with the period and a D-day while recruiting when both bounds are known,
+    /// else `모집 마감` with the deadline — contract "모집 날짜 표기 — 2026-10-26"), `schedules[]`, the activity period; each dated one
+    /// can be added to the calendar (the recruitment row as its deadline).
     private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
-        (ActivityStages.build(activity, marks: [:], now: state.loadedAt)?.stages ?? []).map { stage in
-            ActivityInformationView.Row(id: stage.id, title: stage.id == ActivityStages.applicationStageID ? "모집 마감" : stage.name,
-                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)),
-                                        hasTimetable: stage.id != ActivityStages.applicationStageID && stage.source.hasTimetable)
+        let now = state.loadedAt
+        let period = activity.applicationStage?.periodText(now: now) == nil ? nil : activity.recruitmentDate(at: now)
+        return (ActivityStages.build(activity, marks: [:], now: now)?.stages ?? []).map { stage in
+            let application = stage.id == ActivityStages.applicationStageID
+            return ActivityInformationView.Row(id: stage.id, title: application ? (period == nil ? "모집 마감" : "모집") : stage.name,
+                                               date: application ? period?.text ?? stage.dateText(now: now) : stage.dateText(now: now),
+                                               draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)),
+                                               hasTimetable: !application && stage.source.hasTimetable, badge: application ? period?.dday : nil)
         }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.

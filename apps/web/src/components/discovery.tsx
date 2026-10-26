@@ -14,6 +14,7 @@ import {
   programLogoSrc,
   startLabel,
   recruitment,
+  recruitmentDate,
   scheduleLabel,
 } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
@@ -262,12 +263,14 @@ function SearchField({ q, kind }: { q: string; kind: Kind }) {
  * only while recruitment is not past and a period exists.
  */
 function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
-  const recruitmentLabel = scheduleLabel(activity.application, "recruitment", now);
+  // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` + `D-3` while open; an end alone keeps `~ … 마감`.
+  const { text: recruitmentLabel, dday: recruitmentDday } = recruitmentDate(activity.application, now);
   return {
     id: activity.id,
     name: activity.name,
     statusTone,
     recruitmentLabel,
+    recruitmentDday,
     recruitmentActive: statusTone !== "closed" && recruitmentLabel !== "",
     activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
