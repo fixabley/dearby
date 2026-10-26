@@ -84,12 +84,13 @@ struct ActivityProgressPage: View {
             if let badge { DearbyBadge(title: badge, danger: danger).textCase(nil) }
         }
     }
-    /// The discovery card as it looks there, without the `+` (the activity is already here).
+    /// The discovery card as it looks there, without the `+` (the activity is already here) and without the tag chip line (user
+    /// 2026-10-26, contract "진행 단계 화면 정리"): no tags are passed, so the card leaves the line out; discovery and 즐겨찾기 keep theirs.
     private func card(_ activity: ActivityModel) -> some View {
         let recruitmentDate = activity.recruitmentDate(at: state.loadedAt)
         return ActivityCard(activityID: activity.id, title: activity.title, status: activity.status(at: state.loadedAt),
                             recruitmentText: recruitmentDate.text, recruitmentDDay: recruitmentDate.dday, scheduleText: activity.scheduleText(at: state.loadedAt),
-                            place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
+                            place: activity.place?.name ?? activity.location,
                             surface: Color(.secondarySystemGroupedBackground), hasTimetable: activity.hasTimetable) {
             FavoriteControls(target: .activity(activity.id))
         } open: {
