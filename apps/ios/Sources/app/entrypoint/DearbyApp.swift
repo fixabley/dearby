@@ -6,6 +6,8 @@ import SwiftUI
     @State private var activityModel: ActivityViewModel
     @State private var favorites = FavoritesModel()
     @State private var sessionFavorites = SessionFavoritesModel()
+    /// 찜한 세션 이동 알림 (contract "찜한 세션 이동 알림" 2026-10-26): local, rebuilt from the favorites on the device.
+    @State private var sessionReminders = SessionReminderModel()
     @State private var inbox = InboxModel()
     @State private var notifications: NotificationModel
     /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
@@ -92,7 +94,7 @@ import SwiftUI
                                                                                          leaveSetup: { tab = 0 },
                                              consentNeeded: consentNeeded, askConsent: { showsConsent = true }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil,
-                                                 adConsent: accountReady ? adConsent : nil) },
+                                                 sessionReminders: accountReady ? sessionReminders : nil, adConsent: accountReady ? adConsent : nil) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel, adConsent: adConsent)
@@ -190,6 +192,8 @@ import SwiftUI
                         Task { await notifications.refresh() }
                         Task { await inbox.refreshCount() }
                     }
+                    // Past sessions drop out and a permission given in Settings takes effect; signed out this clears what is left.
+                    sessionReminders.refresh()
                 }
             }
             .sheet(item: Binding(get: { activityModel.asking }, set: { if $0 == nil { activityModel.answer(.notYet) } })) { activity in
@@ -208,6 +212,18 @@ import SwiftUI
                 guard requested else { return }
                 sessionFavorites.signInRequested = false
                 needAccount()
+            }
+            // 세션 이동 알림 follow the favorites: a heart, the list read after sign-in, sign-out (`[]` removes them all) and the switch.
+            .onChange(of: sessionFavorites.items) { _, items in sessionReminders.reschedule(items) }
+            .onChange(of: sessionReminders.enabled) { _, _ in sessionReminders.refresh() }
+            .task {
+                // The first session heart asks for the notification permission (as the first program heart); granted, the reminders are set.
+                sessionFavorites.sessionFavorited = { [notifications, sessionReminders] in
+                    Task {
+                        await notifications.requestPermissionIfNeeded()
+                        sessionReminders.refresh()
+                    }
+                }
             }
     }
     /// The prompts every `promptLayer` carries, shown only on the top one (contract "트랙·세션 시간표" 2026-10-26 모달 시트): signed in from a

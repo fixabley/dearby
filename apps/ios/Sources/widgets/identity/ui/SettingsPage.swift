@@ -12,6 +12,8 @@ struct SettingsPage: View {
     let webOrigin: URL
     /// 새 모집 알림; nil signed out or before consent (contract "설정" 2026-10-25).
     let notifications: NotificationModel?
+    /// 세션 이동 알림 (contract "찜한 세션 이동 알림" 2026-10-26); nil signed out or before consent, as the section it sits in.
+    let sessionReminders: SessionReminderModel?
     /// 광고 목적 정보 제공; nil signed out or before consent (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25).
     let adConsent: AdConsentModel?
     @Environment(\.authorizationController) private var authorizationController
@@ -26,10 +28,12 @@ struct SettingsPage: View {
     @State private var renaming: PasskeySummary?
     @State private var newLabel = ""
     @State private var opening: URL?
-    init(account: AccountViewModel, webOrigin: URL, notifications: NotificationModel? = nil, adConsent: AdConsentModel? = nil) {
+    init(account: AccountViewModel, webOrigin: URL, notifications: NotificationModel? = nil, sessionReminders: SessionReminderModel? = nil,
+         adConsent: AdConsentModel? = nil) {
         _model = State(initialValue: SettingsModel(account: account))
         self.webOrigin = webOrigin
         self.notifications = notifications
+        self.sessionReminders = sessionReminders
         self.adConsent = QueueAdLoader.enabled ? adConsent : nil
     }
     private var account: AccountViewModel { model.account }
@@ -194,6 +198,19 @@ struct SettingsPage: View {
                     Text("즐겨찾기한 프로그램·활동의 새 모집과 일정").font(.dearby(.footnote)).foregroundStyle(.secondary)
                 }
             }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-new-recruitment")
+            if let sessionReminders {
+                // Local (contract "찜한 세션 이동 알림"): off removes every pending reminder at once (`DearbyApp` reschedules on the change); on
+                // also asks for the permission while it was never answered, as 새 모집 알림 does.
+                Toggle(isOn: Binding(get: { sessionReminders.enabled }, set: { on in
+                    sessionReminders.enabled = on
+                    if on { Task { await notifications.requestPermissionIfNeeded(); sessionReminders.refresh() } }
+                })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("세션 이동 알림")
+                        Text("찜한 세션 10분 전에 이 기기에서 알려요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    }
+                }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-session-reminders")
+            }
             if notifications.denied {
                 Button {
                     AppAnalytics.event("menu_open", ["menu": "notifications"])
