@@ -158,10 +158,10 @@ import SwiftUI
     }
     enum DeletionResult: Equatable {
         case deleted, signedOut, failed
-        /// What the screens tell the person afterwards (프로필·설정 share it).
-        var notice: String {
+        /// What the screens tell the person afterwards; the passkey cleanup hint only when the account had passkeys.
+        func notice(hadPasskeys: Bool) -> String {
             switch self {
-            case .deleted: "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."
+            case .deleted: hadPasskeys ? "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요." : "계정을 삭제했어요."
             case .signedOut: "로그인이 만료됐어요. 다시 로그인해 주세요."
             case .failed: "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
             }
