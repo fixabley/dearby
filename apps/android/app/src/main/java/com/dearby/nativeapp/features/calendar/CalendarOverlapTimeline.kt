@@ -43,9 +43,15 @@ private val ContinuingBlock = GenericShape { size, _ ->
     val clock = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.of(overlap.activity.zone))
     fun time(value: Long) = clock.format(Instant.ofEpochMilli(value))
     val axis = timelineAxis(overlap)
-    val perMinute = 1.6.dp
-    val gridHeight = perMinute * ((axis.end - axis.start) / 60_000f)
-    fun y(value: Long) = perMinute * ((value.coerceIn(axis.start, axis.end) - axis.start) / 60_000f)
+    // One scale for ticks and blocks: about 0.8dp a minute, the whole chart kept between 192 and 288dp.
+    val minutes = (axis.end - axis.start) / 60_000f
+    val gridHeight = (0.8.dp * minutes).coerceIn(192.dp, 288.dp)
+    fun y(value: Long) = gridHeight * ((value.coerceIn(axis.start, axis.end) - axis.start) / 60_000f / minutes)
+    // A very short stretch still gets room for its label: grown downward, pushed up only at the chart's bottom.
+    fun span(start: Long, end: Long, least: Dp): Pair<Dp, Dp> {
+        val height = maxOf(y(end) - y(start), least).coerceAtMost(gridHeight)
+        return minOf(y(start), gridHeight - height) to height
+    }
     val busyTitle = overlap.busy.title ?: "제목 없는 일정"
     Column(Modifier.clearAndSetSemantics {
         contentDescription = "이 활동 ${time(overlap.activity.start)}부터 ${time(overlap.activity.end)}까지. 기기 일정 $busyTitle ${time(overlap.busy.start)}부터 ${time(overlap.busy.end)}까지. 겹치는 구간 ${time(overlap.start)}부터 ${time(overlap.end)}까지."
@@ -68,10 +74,9 @@ private val ContinuingBlock = GenericShape { size, _ ->
                     }
                     listOf(8.dp, column).forEach { x -> drawLine(gridLine, Offset(x.toPx(), 0f), Offset(x.toPx(), size.height), 1.dp.toPx()) }
                 }
-                TimelineBlock(overlap.activity.title, overlap.activity.start, overlap.activity.end, axis, ::y, ::time,
+                TimelineBlock(overlap.activity.title, overlap.activity.start, overlap.activity.end, axis, ::span, ::time,
                     MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, Modifier.offset(x = 10.dp).width(column - 20.dp))
-                val bandTop = y(overlap.start)
-                val bandHeight = y(overlap.end) - bandTop
+                val (bandTop, bandHeight) = span(overlap.start, overlap.end, 18.dp)
                 Box(Modifier.offset(y = bandTop).fillMaxWidth().height(bandHeight).background(Color(0xFFFFA726).copy(alpha = .18f)))
                 Canvas(Modifier.fillMaxSize()) {
                     val effect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))
@@ -82,7 +87,7 @@ private val ContinuingBlock = GenericShape { size, _ ->
                 Box(Modifier.offset(y = bandTop).width(column).height(bandHeight), contentAlignment = Alignment.CenterEnd) {
                     Text("겹치는 구간", Modifier.padding(end = 12.dp), color = Color(0xFF9D5109), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
-                TimelineBlock(busyTitle, overlap.busy.start, overlap.busy.end, axis, ::y, ::time,
+                TimelineBlock(busyTitle, overlap.busy.start, overlap.busy.end, axis, ::span, ::time,
                     MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, Modifier.offset(x = column + 6.dp).width(column - 14.dp))
             }
         }
@@ -91,10 +96,11 @@ private val ContinuingBlock = GenericShape { size, _ ->
 
 /** A block from [start] to [end] clamped to [axis]: "이전부터 계속" when it began above the chart, a wave and "이후에도 계속" when it goes on below. */
 @Composable private fun TimelineBlock(
-    title: String, start: Long, end: Long, axis: TimelineAxisState, y: (Long) -> Dp, time: (Long) -> String, fill: Color, text: Color, modifier: Modifier,
+    title: String, start: Long, end: Long, axis: TimelineAxisState, span: (Long, Long, Dp) -> Pair<Dp, Dp>, time: (Long) -> String, fill: Color, text: Color, modifier: Modifier,
 ) {
     val continues = end > axis.end
-    Column(modifier.offset(y = y(start)).height(y(end) - y(start)).clip(if (continues) ContinuingBlock else RoundedCornerShape(7.dp)).background(fill).padding(9.dp)) {
+    val (top, height) = span(start, end, 44.dp)
+    Column(modifier.offset(y = top).height(height).clip(if (continues) ContinuingBlock else RoundedCornerShape(7.dp)).background(fill).padding(9.dp)) {
         if (start < axis.start) Text("이전부터 계속", color = text, fontSize = 9.sp)
         Text(title, color = text, fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text("${time(start)} – ${time(end)}", color = text, fontSize = 10.sp)
