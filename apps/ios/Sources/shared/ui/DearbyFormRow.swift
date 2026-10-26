@@ -4,6 +4,7 @@ import SwiftUI
 /// 포커스·값에 따라 모양이 바뀌지 않는다. 라벨 하나가 비어 있고 포커스 없을 때는 칸 안 placeholder 자리(`.body` 보조색)에, 포커스가 가거나 값이 있으면 칸 **위 왼쪽**(바깥)으로
 /// `scaleEffect`+`offset`(`.snappy(0.2)`)으로 작아져 올라간다(`.subheadline` 크기, 보조색·포커스 시 청록). 라벨 줄 20 + 간격 4는 처음부터 확보해 레이아웃이 튀지 않는다.
 /// `required`면 라벨 끝에 빨간 `*`, 접근성 라벨은 "<라벨>, 필수". `symbol`은 연락처 행의 왼쪽 24 보조색 글리프(라벨은 그대로 플로팅). 행 어디를 눌러도 `focus`가 `value`가 된다.
+/// `verified`면 값 끝(칸 안 오른쪽)에 `DearbyVerifiedMark`를 두고 접근성 라벨에 `인증됨`을 더한다(계약 "연락처 인증" 2026-10-26).
 /// `TextField`는 행이 만들고(`text`, `multiline`), 키보드·자동 완성·제출 같은 수식어는 `configure`로 받는다.
 struct DearbyFormRow<Value: Hashable, Field: View>: View {
     let label: String
@@ -15,9 +16,10 @@ struct DearbyFormRow<Value: Hashable, Field: View>: View {
     var multiline = false
     var focus: FocusState<Value?>.Binding
     let value: Value
+    var verified = false
     let configure: (TextField<Text>) -> Field
     init(label: String, symbol: DearbyGlyph? = nil, prefix: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
-         focus: FocusState<Value?>.Binding, value: Value, configure: @escaping (TextField<Text>) -> Field) {
+         focus: FocusState<Value?>.Binding, value: Value, verified: Bool = false, configure: @escaping (TextField<Text>) -> Field) {
         self.label = label
         self.symbol = symbol
         self.prefix = prefix
@@ -26,6 +28,7 @@ struct DearbyFormRow<Value: Hashable, Field: View>: View {
         self.multiline = multiline
         self.focus = focus
         self.value = value
+        self.verified = verified
         self.configure = configure
     }
     private var focused: Bool { focus.wrappedValue == value }
@@ -52,7 +55,8 @@ struct DearbyFormRow<Value: Hashable, Field: View>: View {
                 .lineLimit(multiline ? 3 : 1, reservesSpace: multiline)
                 .font(.dearby(.body)).foregroundStyle(.primary)
                 .focused(focus, equals: value)
-                .accessibilityLabel(required ? "\(label), 필수" : label)
+                .accessibilityLabel((required ? "\(label), 필수" : label) + (verified ? ", 인증됨" : ""))
+            if verified { DearbyVerifiedMark().accessibilityHidden(true).padding(.leading, 8) }
         }
             .padding(.horizontal, 12).padding(.vertical, 11).frame(minHeight: 44)
             .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -87,8 +91,8 @@ struct DearbyGlyphView: View {
 
 extension DearbyFormRow where Field == TextField<Text> {
     init(label: String, symbol: DearbyGlyph? = nil, prefix: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
-         focus: FocusState<Value?>.Binding, value: Value) {
-        self.init(label: label, symbol: symbol, prefix: prefix, required: required, text: text, multiline: multiline, focus: focus, value: value) { $0 }
+         focus: FocusState<Value?>.Binding, value: Value, verified: Bool = false) {
+        self.init(label: label, symbol: symbol, prefix: prefix, required: required, text: text, multiline: multiline, focus: focus, value: value, verified: verified) { $0 }
     }
 }
 
