@@ -25,6 +25,12 @@ enum DearbyStyle {
     static let muted = Color(.tertiarySystemFill)
     /// 본문 글자 → `.primary`.
     static let ink = Color.primary
+    /// 순서로 고르는 구분 색(시간표 트랙, contract "트랙·세션 시간표" 2026-10-26: 서버는 순서만 준다). 시스템 색이라 다크에서 따라오고, 글자는
+    /// 이 색 위에 두지 않는다(배지는 18% 바탕 + 기본 글자색으로 대비를 지킨다). 노랑은 옅은 바탕에서 구분이 약해 뺐다.
+    static func palette(_ index: Int) -> Color {
+        let colors: [Color] = [.blue, .orange, .purple, .green, .pink, .indigo, .brown, .cyan, .red, .mint]
+        return colors[((index % colors.count) + colors.count) % colors.count]
+    }
     /// 오류 글자·테두리: 라이트는 웹 `--danger`와 같은 #A12A2A, 다크는 검은 바탕에서 읽히는 밝은 빨강(#F0625C).
     static let danger = Color(uiColor: UIColor { trait in
         trait.userInterfaceStyle == .dark

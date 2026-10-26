@@ -5,6 +5,7 @@ import SwiftUI
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var activityModel: ActivityViewModel
     @State private var favorites = FavoritesModel()
+    @State private var sessionFavorites = SessionFavoritesModel()
     @State private var inbox = InboxModel()
     @State private var notifications: NotificationModel
     /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
@@ -44,7 +45,8 @@ import SwiftUI
         AppAnalytics.start()
         let links = ConnectionProvider()
         self.links = links
-        let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities, activity: links.activity(id:),
+        let activityModel = ActivityViewModel(programs: links.programs(query:cursor:openOnly:kind:), activities: links.programActivities(programID:open:kind:), activity: links.activity(id:),
+                                              timetable: links.timetable(activityID:scheduleID:),
                                               webOrigin: links.origins.web)
         _activityModel = State(initialValue: activityModel)
         let account = links.account()
@@ -75,7 +77,7 @@ import SwiftUI
     }
     var body: some Scene {
         WindowGroup {
-            accountSync(Group {
+            sessionHooks(accountSync(Group {
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
@@ -151,7 +153,7 @@ import SwiftUI
             // `내 활동으로` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: activityModel.showInDiscovery) { _, id in if id != nil { tab = 0 } }
-            )
+            ))
             // The account's answers arrived after a sign-in from the queue row or 관심 분야·활동 종류 (the sheet may still be closing).
             .onChange(of: recommendations.ready) { _, _ in continueAfterSignIn() }
             // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the account's answers are read.
@@ -202,6 +204,24 @@ import SwiftUI
             }
         }
     }
+    /// 세션 찜 (contract "트랙·세션 시간표"), kept apart from `body` so the compiler can type-check it: every session heart reads the one model;
+    /// one pressed signed out or before the consent opens sign-in or the consent; a failed change says so.
+    private func sessionHooks(_ content: some View) -> some View {
+        content
+            .environment(sessionFavorites)
+            .onChange(of: sessionFavorites.signInRequested) { _, requested in
+                guard requested else { return }
+                sessionFavorites.signInRequested = false
+                needAccount()
+            }
+            .background {
+                // A separate host so it does not compete with the app's other alerts.
+                Color.clear.alert(sessionFavorites.notice ?? "", isPresented: Binding(get: { sessionFavorites.notice != nil },
+                                                                                       set: { if !$0 { sessionFavorites.notice = nil } })) {
+                    Button("확인", role: .cancel) {}
+                }
+            }
+    }
     /// Account sync and the consent prompts, kept apart from `body` so the compiler can type-check it.
     private func accountSync(_ content: some View) -> some View {
         content
@@ -217,6 +237,7 @@ import SwiftUI
                 queue.signedOut()
                 adConsent.signedOut()
                 favorites.signedOut()
+                sessionFavorites.signedOut()
                 inbox.signedOut()
                 // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
                 if !signingIn { afterSignIn = nil }
@@ -233,6 +254,7 @@ import SwiftUI
             Task { await eligibility.load() }
             Task { await activityModel.signedIn(links.mineServer(account)) }
             Task { await favorites.signedIn(links.favoritesServer(account)) }
+            Task { await sessionFavorites.signedIn(links.sessionFavoritesServer(account)) }
             Task { await inbox.signedIn(links.inboxServer(account)) }
             Task { await notifications.refresh() }
             Task { await recommendations.signedIn(links.recommendationServer(account)) }

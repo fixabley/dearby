@@ -41,3 +41,10 @@ enum ActivityCategory: String, CaseIterable, Sendable {
         }
     }
 }
+
+/// 발견 `프로그램 | 이벤트` (user 2026-10-26): `GET /v1/discovery/programs?kind=`. 이벤트 is 컨퍼런스·밋업·강연·워크샵; 프로그램 is every other
+/// 종류 and 미분류 (해커톤 included). The server judges it; a server without `kind` ignores it and lists everything.
+enum DiscoveryKind: String, CaseIterable, Sendable {
+    case program, event
+    var title: String { self == .program ? "프로그램" : "이벤트" }
+}

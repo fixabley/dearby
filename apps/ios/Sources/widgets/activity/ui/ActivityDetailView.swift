@@ -9,6 +9,7 @@ struct ActivityDetailView: View {
     @State private var openedFrom: String?
     @State private var showCalendar = false
     @State private var calendarDraft: CalendarEventDraft?
+    @State private var timetable: TimetableRoute?
     private var activity: ActivityModel? { state.activity(activityID) }
     private var applied: Bool { state.appliedIDs.contains(activityID) }
     var body: some View {
@@ -21,7 +22,8 @@ struct ActivityDetailView: View {
                             identity(activity)
                             if let eligibility = activity.eligibility { audience(eligibility) }
                             ActivityInformationView(rows: scheduleRows(activity), canCheckCalendar: !activity.overlapSchedules.isEmpty,
-                                                    checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 })
+                                                    checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 },
+                                                    openTimetable: { timetable = TimetableRoute(activityID: activity.id, scheduleID: $0.id, title: "\($0.title) 시간표") })
                             place(activity)
                             source(activity)
                         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
@@ -54,6 +56,8 @@ struct ActivityDetailView: View {
             if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
+        // Pushed from here only, so every stack that shows a detail (발견, 내 활동, 알림) gets it without registering the route.
+        .navigationDestination(item: $timetable) { TimetablePage(state: state, route: $0) }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
     }
     private func parameters(_ extra: [String: Any]) -> [String: Any] {
@@ -148,7 +152,8 @@ struct ActivityDetailView: View {
     private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
         (ActivityStages.build(activity, marks: [:], now: state.loadedAt)?.stages ?? []).map { stage in
             ActivityInformationView.Row(id: stage.id, title: stage.id == ActivityStages.applicationStageID ? "모집 마감" : stage.name,
-                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)))
+                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)),
+                                        hasTimetable: stage.id != ActivityStages.applicationStageID && stage.source.hasTimetable)
         }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.

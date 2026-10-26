@@ -7,8 +7,11 @@ enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
     /// `open` asks the server for currently open activities only (contract "열린 활동 판정 일원화"): the client never re-judges them.
     /// Tags are a search condition only: `q` matching a tag name is the server's rule, and `tagIds` is never sent (2026-10-19 밤).
-    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false) async throws -> ActivityPage {
+    /// `kind` (발견 `프로그램 | 이벤트`) keeps an expanded program to that side's activities.
+    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false,
+                      kind: DiscoveryKind? = nil) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
+        if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
         if open { items.append(URLQueryItem(name: "open", value: "true")) }
@@ -25,9 +28,11 @@ enum ActivityClient {
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
     /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
+    /// `kind` (발견 `프로그램 | 이벤트`) limits the programs and their summary dates to that side.
     /// `logoUrl` is an API-origin path (`/v1/programs/{id}/logo?v=…`, contract "프로그램 로고"), resolved here against `api`.
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true) async throws -> ProgramPage {
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true, kind: DiscoveryKind? = nil) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
+        if let kind { items.append(URLQueryItem(name: "kind", value: kind.rawValue)) }
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
@@ -96,6 +101,57 @@ enum ActivityClient {
     static func markNotificationsRead(api: URL, id: Int64?, bearer: String) async throws {
         let path = id.map { "v1/me/notifications/\($0)/read" } ?? "v1/me/notifications/read-all"
         _ = try await send(api, path: path, [], method: "POST", body: Data("{}".utf8), bearer: bearer)
+    }
+    /// 트랙·세션 시간표 (contract "트랙·세션 시간표" 2026-10-26): `GET /v1/activities/:id/schedules/:scheduleId/timetable`, read without a
+    /// token like discovery (the hearts read `SessionFavoritesModel`). Nil on 404 (unpublished, deleted, or no sessions). A malformed session
+    /// or track is dropped.
+    static func fetchTimetable(api: URL, activityID: String, scheduleID: String) async throws -> Timetable? {
+        let data: Data
+        do { data = try await send(api, path: "v1/activities/\(activityID)/schedules/\(scheduleID)/timetable", []) } catch ActivityFetchError.notFound { return nil }
+        let payload = try JSONDecoder().decode(TimetablePayload.self, from: data)
+        let zone = payload.schedule.timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul"
+        return Timetable(activityID: activityID, scheduleID: scheduleID, scheduleTitle: payload.schedule.title, zone: zone,
+                         tracks: payload.tracks.compactMap(\.value).map { TimetableTrack(id: $0.id, name: $0.name, room: $0.room, position: $0.position) }
+                            .sorted { $0.position < $1.position },
+                         sessions: payload.sessions.compactMap { $0.value?.session }.sorted { $0.start < $1.start })
+    }
+    /// 내 시간표 (`GET /v1/me/session-favorites`), session start order. Nil on 404 (a server without session favorites).
+    static func fetchSessionFavorites(api: URL, bearer: String) async throws -> [FavoriteSession]? {
+        let data: Data
+        do { data = try await send(api, path: "v1/me/session-favorites", [], bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        return try JSONDecoder().decode(SessionFavoritesPayload.self, from: data).items.compactMap(\.value).compactMap { item in
+            item.session.session.map {
+                FavoriteSession(activityID: String(item.activityId), activityName: item.activityName, scheduleID: String(item.scheduleId),
+                                scheduleTitle: item.scheduleTitle, session: $0)
+            }
+        }
+    }
+    /// `PUT` (on) or `DELETE` (off) `/v1/me/session-favorites/:sessionId`, 204 either way.
+    static func setSessionFavorite(api: URL, sessionID: Int64, on: Bool, bearer: String) async throws {
+        _ = try await send(api, path: "v1/me/session-favorites/\(sessionID)", [], method: on ? "PUT" : "DELETE", bearer: bearer)
+    }
+    private struct TimetablePayload: Decodable {
+        struct Track: Decodable { let id: Int64; let name: String; let room: String?; let position: Int }
+        let schedule: Schedule
+        let tracks: [Lenient<Track>]
+        let sessions: [Lenient<SessionDTO>]
+    }
+    private struct SessionDTO: Decodable {
+        struct Speaker: Decodable { let name: String; let affiliation: String? }
+        let id: Int64; let trackId: Int64?; let kind: String; let title: String; let description: String?
+        let startAt: String; let endAt: String; let speakers: [Speaker]?; let tags: [TagDTO]?
+        /// Nil when a time is unreadable.
+        var session: TimetableSession? {
+            guard let start = ActivityModel.instant(startAt), let end = ActivityModel.instant(endAt) else { return nil }
+            return TimetableSession(id: id, trackID: trackId, kind: TimetableSession.Kind(rawValue: kind) ?? .other, title: title,
+                                    description: description.flatMap { $0.isEmpty ? nil : $0 }, start: start, end: end,
+                                    speakers: (speakers ?? []).map { .init(name: $0.name, affiliation: $0.affiliation.flatMap { $0.isEmpty ? nil : $0 }) },
+                                    tags: (tags ?? []).map(\.tag))
+        }
+    }
+    private struct SessionFavoritesPayload: Decodable {
+        struct Item: Decodable { let activityId: Int64; let activityName: String; let scheduleId: Int64; let scheduleTitle: String; let session: SessionDTO }
+        let items: [Lenient<Item>]
     }
     private struct InboxPayload: Decodable {
         struct Group: Decodable { let program: Program; let unread: Int?; let items: [Lenient<Item>]? }
@@ -263,13 +319,13 @@ enum ActivityClient {
         if startAt != nil || endAt != nil {
             return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt, end: endAt,
                                       allDay: false, dateLabel: schedule.dateLabel, timeZone: zone, statuses: statuses(schedule),
-                                      recurrence: ScheduleRecurrence(schedule.recurrence?.value))
+                                      recurrence: ScheduleRecurrence(schedule.recurrence?.value), hasTimetable: schedule.hasTimetable ?? false)
         }
         let startDate = ActivityModel.seoulDay(schedule.startDate), endDate = ActivityModel.seoulDay(schedule.endDateExclusive)
         return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate,
                                   allDay: startDate != nil || endDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul",
                                   statuses: statuses(schedule), overlapCheck: overlapCheck(schedule),
-                                  recurrence: ScheduleRecurrence(schedule.recurrence?.value))
+                                  recurrence: ScheduleRecurrence(schedule.recurrence?.value), hasTimetable: schedule.hasTimetable ?? false)
     }
     /// The schedule's statuses (contract "일정 상태" 2026-10-22); an unknown kind reads as OTHER, and none (older responses) the default three.
     private static func statuses(_ schedule: Schedule) -> [ScheduleStatus] {
@@ -313,6 +369,8 @@ enum ActivityClient {
         let overlapCheck: Lenient<OverlapDTO>?
         /// RRULE body (contract "반복 일정" 2026-10-22); absent on older responses.
         let recurrence: Lenient<String>?
+        /// 트랙·세션 시간표 (2026-10-26); absent on older responses.
+        let hasTimetable: Bool?
     }
     private struct StatusDTO: Decodable { let id: Int64?; let name: String; let kind: String }
     private struct OverlapDTO: Decodable { let startTime: String; let endTime: String }

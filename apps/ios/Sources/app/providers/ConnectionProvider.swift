@@ -43,8 +43,8 @@ struct ConnectionProvider: Sendable {
         return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled, googleSignInEnabled: googleSignInEnabled)
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"); `openOnly` false also lists recently active ones.
-    func programs(query: String, cursor: Int64?, openOnly: Bool) async throws -> ProgramPage {
-        do { return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor, openOnly: openOnly) } catch {
+    func programs(query: String, cursor: Int64?, openOnly: Bool, kind: DiscoveryKind) async throws -> ProgramPage {
+        do { return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor, openOnly: openOnly, kind: kind) } catch {
             // Only the origin and the failure kind; the search text is not logged.
             log.warning("Program load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
@@ -56,6 +56,20 @@ struct ConnectionProvider: Sendable {
             log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }
+    }
+    /// One block's 트랙·세션 시간표; nil on 404.
+    func timetable(activityID: String, scheduleID: String) async throws -> Timetable? {
+        do { return try await ActivityClient.fetchTimetable(api: origins.api, activityID: activityID, scheduleID: scheduleID) } catch {
+            log.warning("Timetable load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
+    }
+    /// 세션 찜 for the signed-in `account` (contract "트랙·세션 시간표"); each call refreshes the tokens once on a 401.
+    @MainActor func sessionFavoritesServer(_ account: AccountViewModel) -> SessionFavoritesServer {
+        let api = origins.api
+        return SessionFavoritesServer(
+            load: { try await Self.bearer(account) { try await ActivityClient.fetchSessionFavorites(api: api, bearer: $0) } },
+            set: { id, on in try await Self.bearer(account) { try await ActivityClient.setSessionFavorite(api: api, sessionID: id, on: on, bearer: $0) } })
     }
     /// 내 활동 on the server for the signed-in `account` (contract "내 활동 서버 저장"); each call refreshes the tokens once on a 401.
     @MainActor func mineServer(_ account: AccountViewModel) -> MineServer {
@@ -127,8 +141,10 @@ struct ConnectionProvider: Sendable {
             })
     }
     /// One program's activities: the open ones (server-judged, up to 100) or, for the past list, the first 20 of every activity.
-    func programActivities(programID: Int64, open: Bool) async throws -> ActivityPage {
-        do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open) } catch {
+    func programActivities(programID: Int64, open: Bool, kind: DiscoveryKind) async throws -> ActivityPage {
+        do {
+            return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open, kind: kind)
+        } catch {
             log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }
