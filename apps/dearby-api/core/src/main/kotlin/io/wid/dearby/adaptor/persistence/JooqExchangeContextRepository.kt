@@ -7,13 +7,10 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_SESSION_FAV
 import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.application.card.ExchangeContextRepository
 import io.wid.dearby.domain.Id
-import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.card.ExchangeRef
-import io.wid.dearby.domain.timetable.TimetableRules
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
-import java.time.Duration
 import java.time.OffsetDateTime
 
 // 저장 시각 기준 한 번만 판정한다. 게시 여부는 보지 않는다(활동 id만 있으면 되는 기존 규칙과 같다)
@@ -38,15 +35,14 @@ class JooqExchangeContextRepository(private val dsl: DSLContext) : ExchangeConte
             .orderBy(SCHEDULE_SESSIONS.START_AT, SCHEDULE_SESSIONS.ID).limit(1)
             .fetchOne { ExchangeRef(activityId, it.value1(), it.value2()) }
 
-    // 지금 진행 중인 블록: 시간표를 붙일 수 있는 블록(시작·끝이 있는 시각 일정 또는 종일 일정, TimetableRules.window)의 창 안에 now가 있는 것.
-    // 활동 기간이 세부 일정을 품어 둘 다 맞으면 짧은 것(세부 일정) 하나
+    // 지금 진행 중인 시각 블록(startAt <= now < endAt). 종일·반복·날짜 미정 블록과 모집 기간·지운 블록은 뺀다(결정문: "시각 일정 블록").
+    // 활동 기간이 세부 일정을 품어 둘 다 맞으면 창이 짧은 것(세부 일정), 같으면 id가 작은 것 하나
     private fun currentBlock(activityId: Id, now: OffsetDateTime): Id? =
-        dsl.selectFrom(SCHEDULES)
-            .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse, SCHEDULES.SLOT.isDistinctFrom(ScheduleSlot.APPLICATION.name))
-            .fetch { it.toSchedule() }
-            .mapNotNull { schedule ->
-                val (from, to) = try { TimetableRules.window(schedule) } catch (_: InvalidInputException) { return@mapNotNull null }
-                if (!from.isAfter(now) && to.isAfter(now)) schedule.id to Duration.between(from, to) else null
-            }
-            .minWithOrNull(compareBy({ it.second }, { it.first }))?.first
+        dsl.select(SCHEDULES.ID, SCHEDULES.START_AT, SCHEDULES.END_AT).from(SCHEDULES)
+            .where(
+                SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse, SCHEDULES.SLOT.isDistinctFrom(ScheduleSlot.APPLICATION.name),
+                SCHEDULES.RECURRENCE.isNull, SCHEDULES.START_AT.le(now), SCHEDULES.END_AT.gt(now),
+            )
+            .orderBy(SCHEDULES.END_AT.minus(SCHEDULES.START_AT), SCHEDULES.ID).limit(1)
+            .fetchOne(SCHEDULES.ID)
 }

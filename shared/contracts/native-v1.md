@@ -1195,9 +1195,9 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 - **판정 규칙**: `PUT /v1/wallet/cards/:cardId {activityId}`·`PUT /v1/guest/cards/:id {activityId}`에 활동이 오면 서버가 **지금 시각**(`now`)으로 그 활동 안에서 순서대로 고른다.
   1. 받는 사람(로그인)이 **찜한 세션**(위 "트랙·세션 시간표") 중 `startAt <= now < endAt`인 것 → `sessionId`와 그 세션의 블록 `scheduleId`. 같은 시간에 찜이 여럿이면(다른 트랙) 시작이 빠른 것, 같으면 id가 작은 것 하나. 비로그인(게스트)은 찜이 없어 이 단계가 없다.
-  2. 없으면 **진행 중인 일정 블록** 하나 → `scheduleId`. 후보는 `activitySchedule`·`schedules[]` 중 시간표를 붙일 수 있는 블록(시작·끝이 있는 시각 일정, 또는 종일 일정 — 종일은 `Asia/Seoul` 자정~끝 날 자정)이고 모집 기간·지운 블록·반복 일정·날짜 미정은 뺀다. 활동 기간이 세부 블록을 품어 둘 다 맞으면 **창이 짧은 것**(세부 블록), 같으면 id가 작은 것.
+  2. 없으면 **진행 중인 시각 일정 블록** 하나 → `scheduleId`. 후보는 `activitySchedule`·`schedules[]` 중 시작·끝 시각이 있는 시각 일정(`startAt <= now < endAt`)이고 종일 일정·반복 일정·날짜 미정·모집 기간·지운 블록은 뺀다(여러 달짜리 종일 활동 기간이 모든 명함에 붙지 않게). 활동 기간이 세부 블록을 품어 둘 다 맞으면 **창이 짧은 것**(세부 블록), 같으면 id가 작은 것.
   3. 없으면 활동만(`scheduleId`·`sessionId` null). 모르는 활동 id는 기존처럼 셋 모두 null.
-- 시각 비교는 절대 시각(instant)으로 한다. 블록의 `timeZone`은 종일 블록의 자정을 정할 때만 쓴다(종일 블록은 시간대가 없어 `Asia/Seoul`).
+- 시각 비교는 절대 시각(instant)으로 하므로 블록의 `timeZone`은 판정에 쓰지 않는다(표시는 앱이 블록·세션의 시간대로 한다).
 - **한 번만 판정**: 이미 저장된 Receipt·GuestItem은 다시 저장해도 바꾸지 않는다. 활동이 비어 있다가 나중에 `activityId`가 오면 **그때** 판정한다(그 시각 기준). `reciprocate`는 원 Receipt의 `activityId`·`scheduleId`·`sessionId`를 그대로 복사하고 다시 판정하지 않는다.
 - **저장**: `receipts.context` jsonb에 `{"activityId", "scheduleId", "sessionId"}`(마이그레이션 없음, 옛 행은 둘이 없어 null). `guest_cards`에 `schedule_id bigint null`·`session_id bigint null`(V63, 논리키).
 - **응답**: `Receipt.context`·`GuestItem.context`에 `scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null`을 더한다(위 ExchangeContext). 블록·세션이 지워졌으면 id는 남고 이름만 null(활동과 같은 규칙). 운영자가 블록을 지운(`curated_deleted`) 경우도 지운 것으로 본다. `scheduleId`·`sessionId`는 결정문에는 없고 서버 구현에서 더한 것이다: 앱이 받은 명함 상세에서 그 블록의 시간표(`GET /v1/activities/:id/schedules/:scheduleId/timetable`)를 바로 열 수 있게 한다.
