@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
                     DiscoveryKind.of(device.discoveryKind), { device.discoveryKind = it.code },
                     StatusGroup.of(device.discoveryStatus), { device.discoveryStatus = StatusGroup.codes(it) },
                     { device.discoveryCategories(it.code) }, { kind, codes -> device.setDiscoveryCategories(kind.code, codes) },
+                    device::autopassAsked, device::rememberAutopassAsked,
                 )
             }
         }

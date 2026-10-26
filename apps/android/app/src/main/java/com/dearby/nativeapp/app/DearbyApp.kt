@@ -305,6 +305,14 @@ private sealed interface Route {
                 onNotYet = { activityModel.answer(ActivityViewModel.ApplyAnswer.NOT_YET) }, onNeverAsk = { activityModel.answer(ActivityViewModel.ApplyAnswer.NEVER_ASK) })
         }
     }
+    // 지난 선발 단계 자동 통과 제안 (user 2026-10-26), right after any add to 내 활동 (`+`, 내 활동에 추가, 신청했어요), over whichever screen made it.
+    activityListState.autopass?.let { prompt ->
+        AlertDialog(onDismissRequest = { activityModel.autopass(false) }, title = { Text("지난 선발 단계를 통과로 표시할까요?") },
+            text = { Text("${prompt.stages.size}개 단계(${prompt.names.joinToString(", ")})가 이미 지났어요. " +
+                if (prompt.remaining.isEmpty()) "통과로 표시하면 바로 참여 중으로 보여요." else "통과로 표시해요. 남은 단계(${prompt.remaining.joinToString(", ")})는 그대로 둬요.") },
+            confirmButton = { TextButton({ activityModel.autopass(true) }) { Text("통과로 표시") } },
+            dismissButton = { TextButton({ activityModel.autopass(false) }) { Text("그대로 두기") } })
+    }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
     reco.notice?.let { value -> AlertDialog(onDismissRequest = recommendation::dismissNotice, title = { Text("추천") }, text = { Text(value) }, confirmButton = { TextButton(recommendation::dismissNotice) { Text("확인") } }) }
     walletState.notice?.let { value -> AlertDialog(onDismissRequest = wallet::dismissNotice, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton(wallet::dismissNotice) { Text("확인") } }) }
