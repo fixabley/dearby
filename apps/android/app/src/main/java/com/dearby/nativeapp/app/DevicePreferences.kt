@@ -2,12 +2,13 @@ package com.dearby.nativeapp.app
 
 import android.content.Context
 import androidx.core.content.edit
+import com.dearby.nativeapp.features.live.LivePlan
 import com.dearby.nativeapp.features.reminder.Reminder
 
 /**
  * What this device remembers for 즐겨찾기 and push (contract "즐겨찾기(하트)·새 모집 푸시 알림"), in a new preferences file of its own: the
  * `사용 통계 보내기` switch and whether push started (the first program heart: the notification permission is asked then, once, and FCM may make a token).
- * Since 2026-10-26 also the 세션 이동 알림 switch and the reminders set as alarms.
+ * Since 2026-10-26 also the 세션 이동 알림 switch and the reminders set as alarms, and the 행사 진행 중 표시 switch with its day plan.
  */
 class DevicePreferences(context: Context) {
     private val preferences = context.getSharedPreferences("dearby.favorites", Context.MODE_PRIVATE)
@@ -48,4 +49,16 @@ class DevicePreferences(context: Context) {
     var sessionReminders: List<Reminder>
         get() = preferences.getStringSet("sessionReminders", emptySet()).orEmpty().mapNotNull(Reminder::parse).sortedBy { it.at }
         set(value) = preferences.edit { putStringSet("sessionReminders", value.map { it.toJson() }.toSet()) }
+    /** 설정 › 알림 `행사 진행 중 표시` (2026-10-26 "행사 당일 진행 중 알림"), on until turned off; off removes the notification. */
+    var liveSessionEnabled: Boolean
+        get() = preferences.getBoolean("liveSessionEnabled", true)
+        set(value) = preferences.edit { putBoolean("liveSessionEnabled", value) }
+    /** The day plan the 행사 진행 중 notification is drawn from (features/live), so a reboot ([SessionReminderBootReceiver]) can arm it again; null without one. */
+    var liveSession: LivePlan?
+        get() = preferences.getString("liveSession", null)?.let(LivePlan::parse)
+        set(value) = preferences.edit { if (value == null) remove("liveSession") else putString("liveSession", value.toJson()) }
+    /** The Seoul day analytics-v1 `live_session_shown` was last sent (once a day). */
+    var liveSessionShownDay: String?
+        get() = preferences.getString("liveSessionShownDay", null)
+        set(value) = preferences.edit { putString("liveSessionShownDay", value) }
 }

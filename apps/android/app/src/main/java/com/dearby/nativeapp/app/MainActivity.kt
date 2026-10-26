@@ -33,6 +33,8 @@ import com.dearby.nativeapp.shared.config.cardLink
 import com.dearby.nativeapp.shared.config.githubLinkRedirect
 import com.dearby.nativeapp.shared.config.isFavoritesLink
 import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.features.live.LivePlan
+import com.dearby.nativeapp.features.live.LiveSessions
 import com.dearby.nativeapp.features.reminder.SessionReminders
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -40,6 +42,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import com.dearby.nativeapp.features.ads.QueueAd
@@ -123,6 +129,38 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    // 행사 당일 진행 중 알림 (2026-10-26, device-local): 설정 `행사 진행 중 표시`; off removes it.
+    private val liveSessionOn by lazy { MutableStateFlow(device.liveSessionEnabled) }
+    /** The live plan decided from the current state; null when the app cannot say yet. [plan] null removes the notification. */
+    private class LiveDecision(val plan: LivePlan?)
+    /**
+     * 행사 당일 진행 중 알림 (features/live, 2026-10-26 user decision "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시"): while the app is in front, whenever 내 활동,
+     * 내 시간표, the account or the switch changes and each time it comes back, the day plan is decided again — the today activity of 오늘 내 행사
+     * ([ActivityViewModel.todayEvent], the same judgment as the 발견 card) and its 찜 sessions of today; a day without either removes the notification.
+     * Signed out or off: removed. Not ready (consent unknown), 내 활동 still loading or 내 시간표 not read yet (offline start): left as it is, so the
+     * alarm-driven notification survives. The plan is kept for the reboot restore ([SessionReminderBootReceiver]); analytics-v1 `live_session_shown` once a day.
+     */
+    private fun planLiveSession() = lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val signedOut = account.state.map { it.phase == AccountPhase.SIGNED_OUT }.distinctUntilChanged()
+            combine(activityModel.state, sessions.items, signedOut, account.ready, liveSessionOn) { list, items, out, ready, on ->
+                when {
+                    out || !on -> LiveDecision(null)
+                    !ready || items == null || list.mineLoading -> null
+                    else -> {
+                        val now = Instant.now()
+                        val today = activityModel.todayEvent(list, items, now)?.takeIf { it.today }
+                        LiveDecision(today?.let { LiveSessions.plan(it.activityId, it.name, items, now.atZone(seoul).toLocalDate()) })
+                    }
+                }
+            }.filterNotNull().distinctUntilChanged { a, b -> a.plan == b.plan }.collect { decision ->
+                device.liveSession = decision.plan
+                if (!LiveSessions.apply(applicationContext, decision.plan)) return@collect
+                val day = LocalDate.now(seoul).toString()
+                if (device.liveSessionShownDay != day) { device.liveSessionShownDay = day; Analytics.event("live_session_shown") }
+            }
+        }
+    }
     // The server sends at 8 in the morning in the device's time zone, so a change is sent again while the app runs (and at every start).
     private val timeZoneChanged = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) = notifications.register() }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
@@ -152,6 +190,8 @@ class MainActivity : ComponentActivity() {
         Push.createChannel(this)
         SessionReminders.createChannel(this)
         planSessionReminders()
+        LiveSessions.createChannel(this)
+        planLiveSession()
         Analytics.start(applicationContext, device.analyticsEnabled)
         account.beforeSignOut = notifications::unregister
         ContextCompat.registerReceiver(this, timeZoneChanged, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -160,7 +200,8 @@ class MainActivity : ComponentActivity() {
             DearbyTheme { CompositionLocalProvider(LocalPhotoLoader provides account.photos::load) {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
-                    sessions, favoritesLink, { favoritesLink = false }, sessionRemindersOn.collectAsStateWithLifecycle().value, { device.sessionRemindersEnabled = it; sessionRemindersOn.value = it }, screenshot)
+                    sessions, favoritesLink, { favoritesLink = false }, sessionRemindersOn.collectAsStateWithLifecycle().value, { device.sessionRemindersEnabled = it; sessionRemindersOn.value = it },
+                    liveSessionOn.collectAsStateWithLifecycle().value, { device.liveSessionEnabled = it; liveSessionOn.value = it }, screenshot)
                 PendingAccountRoute(account)
             } }
         }
@@ -184,8 +225,8 @@ class MainActivity : ComponentActivity() {
         // A push tapped while the app was in the background starts it with the message's `data` as extras (`url`, contract "즐겨찾기(하트)·새 모집 푸시 알림").
         intent ?: return
         if (recreated) return
-        // A 세션 이동 알림 tap (features/reminder, payload `kind=session_reminder`): the activity opens on 발견 and, once its detail is up, the block's
-        // timetable on 내 시간표. Before the push path below, which also carries `activityId`.
+        // A 세션 이동 알림 tap (features/reminder, payload `kind=session_reminder`) or a 행사 진행 중 알림 tap (features/live, the same payload): the activity
+        // opens on 발견 and, once its detail is up, the block's timetable on 내 시간표. Before the push path below, which also carries `activityId`.
         if (intent.getStringExtra(SessionReminders.KIND) == SessionReminders.SESSION_REMINDER) {
             val id = intent.getStringExtra(SessionReminders.ACTIVITY) ?: return
             intent.getStringExtra(SessionReminders.SCHEDULE)?.let { sessions.remind(id, it) }
@@ -207,3 +248,5 @@ class MainActivity : ComponentActivity() {
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let { activityModel.openLinked(it, if (fromPush) "push" else "link") }
     }
 }
+
+private val seoul: ZoneId = ZoneId.of("Asia/Seoul")

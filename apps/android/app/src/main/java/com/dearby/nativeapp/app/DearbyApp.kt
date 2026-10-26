@@ -54,7 +54,9 @@ private sealed interface Route {
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
     favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, sessions: SessionFavoritesViewModel, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {},
     /** 설정 `세션 이동 알림` (device-local, 2026-10-26); MainActivity plans the alarms from it. */
-    sessionReminders: Boolean = true, setSessionReminders: (Boolean) -> Unit = {}, screenshot: String? = null) {
+    sessionReminders: Boolean = true, setSessionReminders: (Boolean) -> Unit = {},
+    /** 설정 `행사 진행 중 표시` (device-local, 2026-10-26); MainActivity draws the notification from it. */
+    liveSession: Boolean = true, setLiveSession: (Boolean) -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -248,9 +250,10 @@ private sealed interface Route {
                         (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
                         route = null
                     }
-                    // Turning 세션 이동 알림 on asks the notification permission once too (contract "찜한 세션 이동 알림").
+                    // Turning 세션 이동 알림 or 행사 진행 중 표시 on asks the notification permission once too (contract "찜한 세션 이동 알림").
                     Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) },
-                        sessionReminders, { on -> if (on) askNotificationsOnce(); setSessionReminders(on) }) { route = null }
+                        sessionReminders, { on -> if (on) askNotificationsOnce(); setSessionReminders(on) },
+                        liveSession, { on -> if (on) askNotificationsOnce(); setLiveSession(on) }) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }
                         ConsentPage(profileState.consenting, profileState.consentError,
