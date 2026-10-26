@@ -193,7 +193,7 @@ import Observation
     private func entries(query: String) -> [Entry] {
         wallet.items.compactMap { receipt in
             let card = receipt.card.cardModel
-            guard SearchQuery.matches(query, fields: [card.profileName, card.job, card.name, card.introduction, card.description] + card.histories.map(\.title)) else { return nil }
+            guard SearchQuery.matches(query, fields: [card.profileName, card.job, card.name, card.description] + card.histories.map(\.title)) else { return nil }
             return entry(receipt)
         }
     }
@@ -222,7 +222,7 @@ import Observation
 extension PublishedCard {
     /// The saved or own card shown with the identity components.
     var cardModel: CardModel {
-        CardModel(id: id, name: name, profileName: profileName, job: job, introduction: introduction ?? "", description: description,
+        CardModel(id: id, name: name, profileName: profileName, job: job, introLink: introLink, description: description,
                   contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
                   histories: histories.map(\.historyModel), organization: latestOrganization, photoUrl: photoUrl)
     }

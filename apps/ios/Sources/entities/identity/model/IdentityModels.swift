@@ -101,8 +101,8 @@ struct CardModel: Identifiable, Equatable {
     var name: String
     var profileName: String
     var job: String
-    /// Markdown body (the profile introduction at publish).
-    var introduction: String
+    /// 소개 링크 copied at publish (contract "소개 링크·소개 글 폐지" 2026-10-26), shown beside the name.
+    var introLink: String?
     var description: String
     var contacts: [ContactModel]
     var histories: [HistoryModel]
@@ -110,13 +110,18 @@ struct CardModel: Identifiable, Equatable {
     var organization: String?
     /// The photo copied at publish (`PublishedCard.photoUrl`); nil shows the initial.
     var photoUrl: String? = nil
+    /// The 소개 링크 when it is an https address (the server only stores those).
+    var introURL: URL? {
+        guard let url = introLink.flatMap(URL.init(string:)), url.scheme?.lowercased() == "https", url.host?.isEmpty == false else { return nil }
+        return url
+    }
     /// `job` split on ` · ` for the header chips.
     var jobs: [String] { job.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
 }
 extension CardModel {
     /// Sample values for a loading card (`dearbySkeleton`, contract "내용 로딩은 스켈레톤" 2026-10-22); never shown unredacted.
     static let placeholder = CardModel(
-        id: "", name: "내 명함", profileName: "이름", job: "직무 · 직무", introduction: "자기소개 한두 줄이 여기에 보여요.\n\n연락처와 이력이 이어서 보여요.",
+        id: "", name: "내 명함", profileName: "이름", job: "직무 · 직무", introLink: nil,
         description: "", contacts: [ContactModel(id: "p", kind: "email", displayLabel: "", value: "name@example.com")],
         histories: [HistoryModel(id: "h", title: "조직 · 프로그램 · 활동", role: "역할", startDate: "2026.01", endDate: "진행 중")],
         organization: "조직 이름")
