@@ -1252,8 +1252,8 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - 시각 비교는 절대 시각(instant)으로 하므로 블록의 `timeZone`은 판정에 쓰지 않는다(표시는 앱이 블록·세션의 시간대로 한다).
 - **한 번만 판정**: 이미 저장된 Receipt·GuestItem은 다시 저장해도 바꾸지 않는다. 활동이 비어 있다가 나중에 `activityId`가 오면 **그때** 판정한다(그 시각 기준). `reciprocate`는 원 Receipt의 `activityId`·`scheduleId`·`sessionId`를 그대로 복사하고 다시 판정하지 않는다.
 - **저장**: `receipts.context` jsonb에 `{"activityId", "scheduleId", "sessionId"}`(마이그레이션 없음, 옛 행은 둘이 없어 null). `guest_cards`에 `schedule_id bigint null`·`session_id bigint null`(V63, 논리키).
-- **응답**: `Receipt.context`·`GuestItem.context`에 `scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null`을 더한다(위 ExchangeContext). 블록·세션이 지워졌으면 id는 남고 이름만 null(활동과 같은 규칙). 운영자가 블록을 지운(`curated_deleted`) 경우도 지운 것으로 본다. `scheduleId`·`sessionId`는 결정문에는 없고 서버 구현에서 더한 것이다: 앱이 받은 명함 상세에서 그 블록의 시간표(`GET /v1/activities/:id/schedules/:scheduleId/timetable`)를 바로 열 수 있게 한다.
-- **화면(앱·웹 담당)**: 받은 명함 상세의 받은 맥락 줄을 `<프로그램> <활동> · <scheduleTitle> · <trackName> · <room> · "<sessionTitle>"`처럼 있는 것만 ` · `로 이어 붙인다(모두 null이면 지금처럼 활동만, 활동도 없으면 줄 생략). 목록 행의 칩은 그대로 프로그램 이름 하나다.
+- **응답**: `Receipt.context`·`GuestItem.context`에 `scheduleId: number|null, scheduleTitle: string|null, sessionId: number|null, sessionTitle: string|null, trackName: string|null, room: string|null`을 더한다(위 ExchangeContext). 블록·세션이 지워졌으면 id는 남고 이름만 null(활동과 같은 규칙). 운영자가 블록을 지운(`curated_deleted`) 경우도 지운 것으로 본다. `scheduleId`·`sessionId`는 결정문에는 없고 서버가 더한 것이며 **클라이언트는 지금 읽지 않는다**(뒤에 받은 명함 상세에서 그 블록의 시간표 `GET /v1/activities/:id/schedules/:scheduleId/timetable`를 바로 열 때 쓸 수 있게 둔다).
+- **화면(조율 세션 결정 2026-10-26, iOS #434 구현 기준)**: 받은 명함 **목록 행**은 프로그램 이름 칩을 그대로 두고 그 아래 캡션 한 줄 `프로그램 · 블록(scheduleTitle) · 트랙(trackName) · 방(room)`을 있는 값만 ` · `로 이어 더한다(모두 없으면 캡션 생략). **상세**는 같은 첫 줄에 둘째 줄로 세션 제목(`sessionTitle`, 없으면 생략). 활동 이름은 기존처럼 상세의 `<프로그램> <활동>에서 받음 · <받은 날>` 줄에 있다.
 
 ### 화면
 
