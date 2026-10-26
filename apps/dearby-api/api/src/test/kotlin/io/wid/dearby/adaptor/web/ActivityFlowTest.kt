@@ -318,6 +318,10 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(true, upcomingSummary["nearestRecruitmentEndAt"].isNull)
         assertTrue(java.time.OffsetDateTime.parse(upcomingSummary["nearestRecruitmentStartAt"].asString()).isAfter(java.time.OffsetDateTime.now()))
         assertEquals(0, openOnlyItems[0]["upcomingActivityCount"].asInt())
+        // 활동 상태: 모집 시작 전은 RECRUITING_UPCOMING, 활동 기간 없이 모집이 끝나면 ENDED. status=모집 예정·모집 중은 openOnly=true와 같은 묶음
+        assertEquals(mapOf("RECRUITING_UPCOMING" to 1), upcomingSummary["statusCounts"].properties().associate { it.key to it.value.asInt() })
+        assertTrue("어제 마감 프로그램" in programs("status=ENDED")["items"].toList().map { it["name"].asString() })
+        assertEquals(openOnlyNames, programs("status=RECRUITING_UPCOMING,RECRUITING")["items"].toList().map { it["name"].asString() })
         // 검색어가 모집 예정 활동 이름에 맞아도 프로그램이 나오고 그 활동 id가 함께 온다
         assertEquals(1, programs("q=모집 예정 프로그램 활동")["items"].single()["matchedActivityIds"].size())
         assertTrue("어제 마감 프로그램" in (programs("openOnly=false")["items"].let { all2 -> (0 until all2.size()).map { all2[it]["name"].asString() } }))

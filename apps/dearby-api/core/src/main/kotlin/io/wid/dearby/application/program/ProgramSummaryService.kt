@@ -72,6 +72,8 @@ class ProgramSummaryService(
             val organization = organizationById[program.organizationId] ?: return@mapNotNull null
             val matchedIds = if (q == null) emptyList() else activities.filter { matches(it.name, it.nameEn) }.map { it.id }.sorted()
             if (q != null && matchedIds.isEmpty() && !matches(program.name, program.nameEn, organization.name, organization.nameEn)) return@mapNotNull null
+            val recruiting = activities.filter { it.status == ActivityStatus.RECRUITING }
+            val upcoming = activities.filter { it.status == ActivityStatus.RECRUITING_UPCOMING }
             ProgramSummary(
                 id = program.id,
                 name = program.name,
@@ -79,10 +81,10 @@ class ProgramSummaryService(
                 organizationId = organization.id,
                 organizationName = organization.name,
                 organizationNameEn = organization.nameEn,
-                openActivityCount = activities.count { it.status == ActivityStatus.RECRUITING },
-                nearestRecruitmentEndAt = activities.filter { it.status == ActivityStatus.RECRUITING }.mapNotNull { it.recruitmentEndAt }.minOrNull(),
-                upcomingActivityCount = activities.count { it.status == ActivityStatus.RECRUITING_UPCOMING },
-                nearestRecruitmentStartAt = activities.filter { it.status == ActivityStatus.RECRUITING_UPCOMING }.mapNotNull { it.recruitmentStartAt }.minOrNull(),
+                openActivityCount = recruiting.size,
+                nearestRecruitmentEndAt = recruiting.mapNotNull { it.recruitmentEndAt }.minOrNull(),
+                upcomingActivityCount = upcoming.size,
+                nearestRecruitmentStartAt = upcoming.mapNotNull { it.recruitmentStartAt }.minOrNull(),
                 statusCounts = activities.groupingBy { it.status }.eachCount(),
                 matchedActivityIds = matchedIds,
                 category = program.category,
