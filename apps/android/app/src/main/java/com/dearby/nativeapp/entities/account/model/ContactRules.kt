@@ -55,7 +55,25 @@ object ContactRules {
         return profilePath(text, rule.host).filter(::isUsernameChar).take(rule.max)
     }
     /** The value as rows show it: the username for username kinds (also for a profile URL saved before 2026-10-26), otherwise as saved. */
-    fun shown(kind: String, value: String) = username(kind, value) ?: value
+    fun shown(kind: String, value: String) = if (kind == "phone") phone(value) else username(kind, value) ?: value
+    /**
+     * A Korean number with hyphens for display (`01012345678` → `010-1234-5678`, `0212345678` → `02-1234-5678`, `15881234` → `1588-1234`);
+     * the saved value is unchanged. Anything else (`+82…`, other lengths, letters) shows as saved.
+     */
+    fun phone(value: String): String {
+        val text = value.trim()
+        if (text.any { it !in '0'..'9' && it !in "- " }) return text
+        val d = text.filter { it in '0'..'9' }
+        fun split(vararg sizes: Int) = sizes.runningFold(0) { at, n -> at + n }.zipWithNext { a, b -> d.substring(a, b) }.joinToString("-")
+        return when {
+            d.startsWith("02") && d.length == 9 -> split(2, 3, 4)
+            d.startsWith("02") && d.length == 10 -> split(2, 4, 4)
+            d.startsWith("0") && d.length == 10 -> split(3, 3, 4)
+            d.startsWith("0") && d.length == 11 -> split(3, 4, 4)
+            d.length == 8 && d[0] == '1' -> split(4, 4)
+            else -> text
+        }
+    }
     private fun isUsernameChar(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "._-"
     /** `[https://][www.|m.]host/name[/…]` → `name`; anything else as it is. */
     private fun profilePath(text: String, host: String?): String {

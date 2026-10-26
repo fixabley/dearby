@@ -4,7 +4,7 @@ import java.net.URI
 import java.util.UUID
 
 /** A sign-in provider (contract "애플 로그인", "구글 로그인"). [path] is the API segment; only Apple's web flow uses it as a redirect path (Google is native). */
-enum class AuthProvider(val path: String, val label: String) { APPLE("apple", "애플"), GOOGLE("google", "Google") }
+enum class AuthProvider(val path: String, val label: String) { APPLE("apple", "Apple"), GOOGLE("google", "Google") }
 
 /** Where a provider's web flow returns: `dearby://auth/apple?code=<UUID>` or `?error=cancelled|failed` (Google has no redirect since 2026-10-19). */
 sealed interface AuthRedirect {
