@@ -7,7 +7,9 @@ struct CardComposerPage: View {
     @State private var model: CardPublishModel
     @State private var signingIn = false
     @Environment(\.dismiss) private var dismiss
-    init(account: AccountViewModel, prefill: PublishedCard? = nil) { _model = State(initialValue: CardPublishModel(account: account, prefill: prefill)) }
+    init(account: AccountViewModel, prefill: PublishedCard? = nil, taken: Set<String> = []) {
+        _model = State(initialValue: CardPublishModel(account: account, prefill: prefill, taken: taken))
+    }
     private var failure: String? { if case .failed(let text) = model.phase { text } else { nil } }
     var body: some View {
         Group {

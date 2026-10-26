@@ -10,9 +10,12 @@ import Observation
     private(set) var phase = Phase.loading
     let account: AccountViewModel
     let prefill: PublishedCard?
-    init(account: AccountViewModel, prefill: PublishedCard? = nil) {
+    /// The account's card names when a new card is made, so an unnamed one gets its own default name.
+    let taken: Set<String>
+    init(account: AccountViewModel, prefill: PublishedCard? = nil, taken: Set<String> = []) {
         self.account = account
         self.prefill = prefill
+        self.taken = taken
     }
     /// Signed in: start from the saved profile. Signed out: nothing to edit until sign-in.
     func load() async {
@@ -33,8 +36,8 @@ import Observation
         if let problem = draft.problem { phase = .failed(problem); return }
         phase = .publishing
         do {
-            let published = try await account.authorized { [client = account.client, editingID = prefill?.id] in
-                if let editingID { try await client.updateCard(editingID, draft.card, $0) } else { try await client.publish(draft.card, $0) }
+            let published = try await account.authorized { [client = account.client, editingID = prefill?.id, taken] in
+                if let editingID { try await client.updateCard(editingID, draft.card(), $0) } else { try await client.publish(draft.card(taken: taken), $0) }
             }
             phase = .published(published)
         } catch AccountError.unauthorized {

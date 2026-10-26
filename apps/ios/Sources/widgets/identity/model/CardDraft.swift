@@ -34,9 +34,11 @@ struct CardDraft: Equatable {
         cardTitle = initial.cardTitle; publicContactIDs = initial.contacts; publicHistoryIDs = initial.histories; includePhoto = initial.includePhoto
         includeIntroLink = initial.includeIntroLink
     }
-    var card: AccountClient.CardInput {
+    /// An unnamed card is "내 명함", or "내 명함 2"·"내 명함 3"… when [taken] (the account's other card names, for a new card) already has it.
+    func card(taken: Set<String> = []) -> AccountClient.CardInput {
         let title = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return AccountClient.CardInput(name: title.isEmpty ? "내 명함" : title, description: "",
+        let name = title.isEmpty ? (1...).lazy.map { $0 == 1 ? "내 명함" : "내 명함 \($0)" }.first { !taken.contains($0) } ?? "내 명함" : title
+        return AccountClient.CardInput(name: name, description: "",
                                        contactIds: profile.contacts.map(\.id).filter(publicContactIDs.contains),
                                        historyIds: profile.histories.map(\.id).filter(publicHistoryIDs.contains),
                                        includePhoto: profile.photoUrl == nil ? nil : includePhoto,

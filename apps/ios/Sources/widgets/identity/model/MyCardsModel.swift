@@ -27,6 +27,7 @@ import Observation
             return
         }
         if cards.isEmpty { phase = .loading }
+        let known = Set(cards.map(\.id))
         do {
             cards = try await account.authorized { [client = account.client] in try await client.cards($0) }
         } catch AccountError.unauthorized {
@@ -35,6 +36,8 @@ import Observation
             phase = .failed; return
         }
         guard let newest = cards.last else { phase = .noCard; return }
+        // A card that appeared since the last load (just published, from here or 내 프로필) is selected; otherwise the selection stays.
+        if !known.isEmpty, let added = cards.last(where: { !known.contains($0.id) }) { selectedCardID = added.id }
         if card == nil { selectedCardID = newest.id }
         phase = .loaded
     }
