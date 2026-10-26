@@ -1,14 +1,19 @@
 import SwiftUI
 
-/// The block whose timetable to open, pushed from the activity detail's `{블록 제목} 시간표`.
-struct TimetableRoute: Hashable {
+/// The block whose timetable the activity detail opens in a sheet when its schedule row is pressed.
+struct TimetableRoute: Identifiable {
     let activityID: String
+    let activityTitle: String
     let scheduleID: String
-    let title: String
+    let scheduleTitle: String
+    /// The block's date and time, as on the schedule row.
+    let date: String
+    var id: String { activityID + "/" + scheduleID }
 }
 
-/// 시간표 (contract "트랙·세션 시간표" 2026-10-26): `전체 | 찜한 세션` at the top. 전체 is the table (`TimetableTable`); 찜한 세션 is 나만의 시간표
-/// (`MyTimetableList`). A session opens its sheet. Read without a token; the hearts follow `SessionFavoritesModel`.
+/// 시간표 (contract "트랙·세션 시간표" 2026-10-26 모달 시트): the sheet's content, titled `{활동 이름} · {블록 제목}` over the block's time, with
+/// `닫기` and `전체 | 찜한 세션` at the top. 전체 is the table (`TimetableTable`); 찜한 세션 is 나만의 시간표 (`MyTimetableList`). Loads when the
+/// sheet opens; a session opens its own sheet. Read without a token; the hearts follow `SessionFavoritesModel`.
 struct TimetablePage: View {
     let state: ActivityViewModel
     let route: TimetableRoute
@@ -17,6 +22,7 @@ struct TimetablePage: View {
     @State private var phase = Phase.loading
     @State private var opened: TimetableSession?
     @Environment(SessionFavoritesModel.self) private var favorites
+    @Environment(\.dismiss) private var dismiss
     private enum Phase { case loading, missing, failed, loaded(Timetable) }
     var body: some View {
         content
@@ -29,7 +35,17 @@ struct TimetablePage: View {
                 .accessibilityIdentifier("timetable-mode")
             }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle(route.title).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(route.activityTitle + " · " + route.scheduleTitle).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text(route.activityTitle + " · " + route.scheduleTitle).font(.dearby(.headline)).lineLimit(1)
+                        Text(route.date).font(.dearby(.caption)).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    .accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
+                }
+                ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
+            }
             .analyticsScreen("timetable")
             .task { if case .loading = phase { await load() } }
             .sheet(item: $opened) { session in

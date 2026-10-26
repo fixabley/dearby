@@ -23,7 +23,8 @@ struct ActivityDetailView: View {
                             if let eligibility = activity.eligibility { audience(eligibility) }
                             ActivityInformationView(rows: scheduleRows(activity), canCheckCalendar: !activity.overlapSchedules.isEmpty,
                                                     checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 },
-                                                    openTimetable: { timetable = TimetableRoute(activityID: activity.id, scheduleID: $0.id, title: "\($0.title) 시간표") })
+                                                    openTimetable: { timetable = TimetableRoute(activityID: activity.id, activityTitle: activity.title, scheduleID: $0.id,
+                                                                                                   scheduleTitle: $0.title, date: $0.date) })
                             place(activity)
                             source(activity)
                         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
@@ -56,8 +57,12 @@ struct ActivityDetailView: View {
             if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
-        // Pushed from here only, so every stack that shows a detail (발견, 내 활동, 알림) gets it without registering the route.
-        .navigationDestination(item: $timetable) { TimetablePage(state: state, route: $0) }
+        // 모달 시트 (contract "트랙·세션 시간표" 2026-10-26): the block's timetable over the detail, so the table's sideways scrolling does not
+        // compete with the detail's vertical scrolling.
+        .sheet(item: $timetable) { route in
+            NavigationStack { TimetablePage(state: state, route: route) }
+                .presentationDetents([.large]).presentationDragIndicator(.visible)
+        }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
     }
     private func parameters(_ extra: [String: Any]) -> [String: Any] {
