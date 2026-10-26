@@ -1570,7 +1570,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 ## 행사 당일 진행 중 표시 — 2026-10-26 사용자 결정
 
-사용자: "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시". iOS **라이브 액티비티**(잠금 화면·Dynamic Island)로 만든다. 1단계는 **기기 안에서만 갱신**한다 — 서버 변경 없음, 푸시 토큰 없음(`pushType` 없음), 개인정보처리방침 변경 없음. 이 절은 iOS 구현(feat/ios-live-activity)이 쓰고, Android(진행 중 알림 등)는 따로 정한다. 2단계(서버 푸시 갱신)는 별도 결정.
+사용자: "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시". iOS **라이브 액티비티**(잠금 화면·Dynamic Island)로 만든다. 1단계는 **기기 안에서만 갱신**한다 — 서버 변경 없음, 푸시 토큰 없음(`pushType` 없음), 개인정보처리방침 변경 없음. iOS는 라이브 액티비티(feat/ios-live-activity), Android는 **ongoing 알림·라이브 업데이트**(PR #452, 아래 "Android")로 같은 조건·내용을 보인다. 2단계(서버 푸시 갱신)는 별도 결정.
 
 ### 표시 조건과 기간
 
@@ -1592,10 +1592,20 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 ### 사용 통계·개인정보
 
-- `live_session_shown` — 라이브 액티비티를 **시작**할 때 서울 날짜당 1회(활동 매개변수 `activity_id`·`field`·`category`). 갱신·탭은 보내지 않는다(탭은 상세의 `activity_view`). [analytics-v1.md](analytics-v1.md).
+- `live_session_shown` — 표시를 **시작**할 때 서울 날짜당 1회. iOS는 활동 매개변수 `activity_id`·`field`·`category`를 붙이고 백그라운드 깨어남으로 시작해도 보낸다; Android는 매개변수 없이 앱이 띄울 때만 보낸다(알람 수신기는 Analytics가 초기화돼 있지 않아 보내지 않음 — 한계). 갱신·탭은 보내지 않는다(탭은 상세의 `activity_view`). [analytics-v1.md](analytics-v1.md).
 - 세션 찜·내 활동은 이미 계정 기록이고 표시는 기기 안에서만 만들어지므로 처리방침 변경은 없다. 라이브 액티비티는 푸시 토큰을 만들지 않는다.
 
 ### 프로젝트·서명 (apps/ios)
 
 - `generate_project.rb`가 위젯 확장 타깃 `DearbyWidgets`(번들 `io.wid.dearby.widgets`, 코드 `apps/ios/Widgets/`, `ActivityAttributes`는 `Sources/features/liveSession/model/LiveSessionAttributes.swift` 하나를 두 타깃에 넣음)을 만든다. 앱 Info.plist(두 파일 같음) `NSSupportsLiveActivities` YES. App Group `group.io.wid.dearby`는 **확장 entitlements에만** 둔다 — 1단계 라이브 액티비티는 공유 저장소가 필요 없어 앱 entitlements와 앱의 App Store 프로파일은 그대로다(2단계에서 앱↔확장 공유 저장이 필요해지면 앱 entitlements·프로파일에 함께 넣는다).
 - Release 수동 서명: 확장용 App Store 프로파일 이름 `DEARBY_RELEASE_PROFILE_WIDGETS`(CI 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`)가 비어 있으면 **확장 타깃을 프로젝트에서 빼고** 앱만 만든다 — **확장 프로파일을 등록하기 전까지 TestFlight 빌드에는 라이브 액티비티가 없다**(설정 스위치는 보이되 아무것도 띄우지 않는다). Debug 자동 서명과 CI 시뮬레이터 빌드(native.yml)는 확장을 포함한다. 사용자가 만들 것: App ID `io.wid.dearby.widgets`(App Groups 기능 + `group.io.wid.dearby`), 그 App ID의 App Store 프로파일(Apple Distribution 인증서는 앱과 같은 것), 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`.
+
+### Android — 진행 중 알림·라이브 업데이트 (PR #452, 2026-10-26)
+
+- 조건·창은 iOS와 같다: 로그인+동의 뒤, `ActivityViewModel.todayEvent`가 고른 **오늘** 활동(발견 오늘 카드와 같은 판정, 여럿이면 카드가 고른 하나) + 그 활동의 찜 세션 중 서울 날짜가 오늘인 것 1개 이상. 첫 찜 세션 30분 전 → 마지막 찜 세션 끝, 끝나면 알림·알람 제거. 서버 변경 없음.
+- 알림: 채널 `행사 진행 중`(IMPORTANCE_DEFAULT, 소리·진동 없음)의 ongoing 알림. 제목 `{활동 이름}`, 본문 `지금 · 트랙 B · 그랜드볼룸 B · 세션 제목`(진행 중) / `다음 14:50 · 트랙 C · 방 · 제목 · 20분 뒤`(60분 이상이면 `1시간 20분 뒤`). 트랙·방은 있을 때만. 진행 중 세션의 진행률은 끝 시각 기준 0–100.
+- 플랫폼: SDK 36(BAKLAVA)+ → `NotificationCompat.ProgressStyle`(한 구간 100) + `setRequestPromotedOngoing(true)`(상태 표시줄 칩·One UI 8 Now Bar), 칩 텍스트 `setShortCriticalText`(진행 중 `~15:30`, 대기 중 다음 시작 `14:50`); 그 아래 → `setProgress(100, p, false)` + BigText. androidx.core 1.17.0 compat, 매니페스트 `POST_PROMOTED_NOTIFICATIONS`.
+- 갱신: `AlarmManager` 알람 **하나**(요청 코드 고정, 플랜 JSON을 extras로 싣고 수신기가 다음 알람을 스스로 건다). 다음 갱신 시각 = 창 시작, 각 세션 시작·끝, 시작 10분 전, 그 사이 최대 5분 간격 중 가장 가까운 것. 정확 알람은 세션 이동 알림과 같이 `알람 및 리마인더` 허용 시에만(없으면 inexact, Doze에서 몇 분 늦을 수 있음). 앱 포그라운드·내 활동/내 시간표 변경·스위치 변경 때 다시 계산(플랜이 같으면 다시 그리지 않음). 재부팅은 `SessionReminderBootReceiver`가 저장된 플랜으로 복원. 로그아웃·스위치 끔은 제거; 동의 미확인·내 활동 로딩 중·내 시간표 미읽음(오프라인 시작)은 그대로 둔다.
+- 탭·액션 `내 시간표 보기`: 세션 이동 알림과 같은 payload(`kind=session_reminder`, `activityId`, `scheduleId`, `sessionId`)로 그 활동 상세 → 블록 시간표를 내 시간표 보기로 연다(라우팅 추가 없음).
+- 설정 › 알림 `행사 진행 중 표시` 스위치(기본 켬, `DevicePreferences.liveSessionEnabled`); 켜면 알림 권한을 한 번 묻는 기존 규칙.
+- 사용 통계 `live_session_shown`(하루 1회, 매개변수 없음): 위 "사용 통계·개인정보".
