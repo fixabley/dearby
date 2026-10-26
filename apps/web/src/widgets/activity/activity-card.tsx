@@ -67,14 +67,15 @@ export function ActivityCard({
     >
       <span className="flex items-start gap-2.5">
         <h3 className="flex-1 text-subheadline font-semibold break-keep">{name}</h3>
-        {STATUS_BADGE[status] && (
-          <Badge variant={statusVariant[status]} className="text-caption2">
-            {STATUS_BADGE[status]}
-          </Badge>
-        )}
+        {/* 시작 D-n left of the 모집 예정 capsule (contract "모집 예정 시작 D-day"; the detail puts it right of the status badge). */}
         {startDday && (
           <Badge variant="tinted" className="text-caption2 tabular-nums">
             {startDday}
+          </Badge>
+        )}
+        {STATUS_BADGE[status] && (
+          <Badge variant={statusVariant[status]} className="text-caption2">
+            {STATUS_BADGE[status]}
           </Badge>
         )}
       </span>

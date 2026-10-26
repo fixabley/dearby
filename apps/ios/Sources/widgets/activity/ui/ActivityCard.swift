@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 펼친 프로그램 안의 활동 카드(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구). 로고 없이 왼쪽 위 활동명, 오른쪽 위 활동 상태 칩
 /// (contract "활동 상태" 2026-10-26: `모집 중` 청록 채움 캡슐 / `모집 예정` 청록 틴트 캡슐 / `진행 중` 시스템 파랑 틴트 / `모집 마감`·`종료` 시스템 fill 캡슐;
-/// `모집 정보 없음`은 칩 없이 `모집` 줄이 `모집 일정 미정`; 모집 예정에 모집 시작이 있으면 칩 옆에 `시작 D-n` 민트 미니 배지), 아래 `LabeledContent` 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만).
+/// `모집 정보 없음`은 칩 없이 `모집` 줄이 `모집 일정 미정`; 모집 예정에 모집 시작이 있으면 칩 왼쪽에 `시작 D-n` 민트 미니 배지), 아래 `LabeledContent` 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만).
 /// 모집 중·모집 예정이면 `모집` 줄의 값이 청록 굵은 글씨에 옅은 민트 바탕으로 강조된다. 카드를 누르면 `open`(상세 이동). 접근성에서는 상태와 세 줄을 한 라벨로 읽는다.
 struct ActivityCard<Accessory: View>: View {
     let activityID: String
@@ -40,8 +40,9 @@ struct ActivityCard<Accessory: View>: View {
                     Text(title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary)
                         .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
                     if hasTimetable { DearbyMiniBadge(title: "시간표", systemImage: "tablecells") }
-                    if let badge = status?.badge { statusChip(badge) }
+                    // 시작 D-n left of the 모집 예정 chip (contract "모집 예정 시작 D-day"; the detail puts it right of the status badge).
                     if let startDDay { DearbyMiniBadge(title: startDDay) }
+                    if let badge = status?.badge { statusChip(badge) }
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     LabeledContent("모집") {
