@@ -98,7 +98,14 @@ export default function PrivacyPage() {
           <tr>
             <td>앱 사용 통계(iOS·Android 앱, 끌 수 있음)</td>
             <td>Firebase Analytics 앱 인스턴스 ID와 Firebase 설치 ID, 본 화면과 누른 기능(예: 활동 상세 열기, 하트, 대기열 카드 보기, 탭·메뉴 이동)과 그 활동 id·분야·종류, 사용자 속성(추천 설정의 관심 분야·활동 종류, 지원 자격 정보 입력 여부, 로그인 여부), 앱·기기 정보와 세션, IP 주소로 추정한 대략적 위치(국가·도시 수준)</td>
-            <td>어느 기능이 쓰이고 어디서 그만두는지(유입·이탈·도달률) 보고 서비스를 고치기 위해. 사용 통계에는 광고 식별자(IDFA·광고 ID)·iOS 기기 식별자(IDFV)·Android SSAID와 서비스의 사용자 ID를 보내지 않고, 지원 자격 값·이름·연락처·명함 내용은 넣지 않으며, 광고에 쓰지 않습니다. 앱의 설정 &gt; 개인정보에서 &ldquo;사용 통계 보내기&rdquo;를 끄면 그 기기에서 사용 통계 수집을 멈춥니다(기본은 켬). 이 설정은 아래 &ldquo;광고&rdquo;에는 적용되지 않습니다. 웹사이트에는 넣지 않습니다.</td>
+            <td>어느 기능이 쓰이고 어디서 그만두는지(유입·이탈·도달률) 보고 서비스를 고치기 위해. 사용 통계에는 광고 식별자(IDFA·광고 ID)·iOS 기기 식별자(IDFV)·Android SSAID와 서비스의 사용자 ID를 보내지 않고, 지원 자격 값·이름·연락처·명함 내용은 넣지 않으며, 광고에 쓰지 않습니다. 앱의 설정 &gt; 개인정보에서 &ldquo;사용 통계 보내기&rdquo;를 끄면 그 기기에서 사용 통계 수집을 멈춥니다(기본은 켬). 이 설정은 아래 &ldquo;광고&rdquo;에는 적용되지 않습니다. 웹사이트의 통계는 아래 &ldquo;웹 사용 통계&rdquo;입니다.</td>
+          </tr>
+          <tr>
+            <td>웹 사용 통계(웹사이트)</td>
+            <td>
+              Google Analytics: 쿠키(<code>_ga</code>·<code>_ga_&lt;측정 ID&gt;</code>)에 담긴 임의 식별자, 연 페이지(쿼리와 #을 지우고 명함·활동 주소는 <code>/cards/[id]</code>·<code>/activities/[id]</code>로 바꾼 경로), 이벤트(페이지 열람, 명함 열람, 명함 앱에서 열기, 브라우저에 저장, 활동 열람, 신청 링크 클릭과 그 활동 id·종류), 기기·브라우저 정보, 유입 경로, IP 주소로 추정한 대략적 지역. Vercel Web Analytics: 같은 방식으로 정리한 경로, 유입 경로, 국가, 기기·OS·브라우저(쿠키 없이 하루 단위로 바뀌는 해시로 방문을 셉니다)
+            </td>
+            <td>웹사이트의 어느 페이지와 기능이 쓰이는지 보고 고치기 위해. 이름·연락처·명함 내용·명함 접근 코드·서비스 사용자 ID는 보내지 않습니다. Google 신호와 광고 개인화 신호는 끄고 광고에 쓰지 않습니다. 앱의 사용 통계와는 별개이며, 앱은 설정 &gt; 개인정보의 &ldquo;사용 통계 보내기&rdquo;로 끕니다.</td>
           </tr>
           <tr>
             <td>광고(iOS·Android 앱, 선택 동의한 경우)</td>
@@ -144,8 +151,8 @@ export default function PrivacyPage() {
         </thead>
         <tbody>
           <tr>
-            <td>Google LLC (Firebase Analytics)</td>
-            <td>앱 사용 통계의 수집·집계(위 &ldquo;앱 사용 통계&rdquo; 항목). 서비스는 Google 광고 연결·Google 신호를 쓰지 않습니다.</td>
+            <td>Google LLC (Firebase Analytics·Google Analytics)</td>
+            <td>앱 사용 통계(Firebase Analytics)와 웹 사용 통계(Google Analytics)의 수집·집계(위 &ldquo;앱 사용 통계&rdquo;·&ldquo;웹 사용 통계&rdquo; 항목). 서비스는 Google 광고 연결·Google 신호를 쓰지 않습니다.</td>
           </tr>
           <tr>
             <td>Google LLC (Firebase Cloud Messaging)</td>
@@ -157,7 +164,7 @@ export default function PrivacyPage() {
           </tr>
           <tr>
             <td>Vercel Inc.</td>
-            <td>웹사이트 호스팅(정적 페이지와 서버 프록시, 처리 리전 서울)</td>
+            <td>웹사이트 호스팅(정적 페이지와 서버 프록시, 처리 리전 서울), 웹 사용 통계(Vercel Web Analytics)</td>
           </tr>
         </tbody>
       </table>
@@ -208,9 +215,9 @@ export default function PrivacyPage() {
           <tr>
             <td>Google LLC (<a href="mailto:googlekrsupport@google.com">googlekrsupport@google.com</a>)</td>
             <td>미국</td>
-            <td>앱을 쓰는 동안 수시로, 네트워크(TLS)로 전송</td>
-            <td>앱 사용 통계(앱 인스턴스 ID·설치 ID, 화면·이벤트, 사용자 속성, 앱·기기 정보, IP 주소로 추정한 대략적 위치)</td>
-            <td>앱 사용 통계 분석</td>
+            <td>앱을 쓰거나 웹사이트를 보는 동안 수시로, 네트워크(TLS)로 전송</td>
+            <td>앱 사용 통계(앱 인스턴스 ID·설치 ID, 화면·이벤트, 사용자 속성, 앱·기기 정보, IP 주소로 추정한 대략적 위치), 웹 사용 통계(쿠키 식별자, 정리한 경로·이벤트, 기기·브라우저 정보, 유입 경로, IP 주소로 추정한 대략적 지역)</td>
+            <td>앱·웹 사용 통계 분석</td>
             <td>수집일로부터 14개월</td>
           </tr>
           <tr>
@@ -238,6 +245,14 @@ export default function PrivacyPage() {
             <td>요청 처리 후 Vercel 정책에 따름</td>
           </tr>
           <tr>
+            <td>Vercel Inc. (<a href="mailto:privacy@vercel.com">privacy@vercel.com</a>)</td>
+            <td>미국 법인</td>
+            <td>웹사이트의 페이지를 열 때마다, 네트워크(TLS)로 전송</td>
+            <td>웹 사용 통계(정리한 경로, 유입 경로, 국가, 기기·OS·브라우저, 하루 단위 해시)</td>
+            <td>웹 사용 통계 분석(Vercel Web Analytics)</td>
+            <td>Vercel 정책에 따름</td>
+          </tr>
+          <tr>
             <td>Google LLC (AdMob) (<a href="mailto:googlekrsupport@google.com">googlekrsupport@google.com</a>)</td>
             <td>미국</td>
             <td>선택 동의한 경우, 앱에서 광고를 불러오고 보여 줄 때마다 네트워크(TLS)로 전송</td>
@@ -247,7 +262,7 @@ export default function PrivacyPage() {
           </tr>
         </tbody>
       </table>
-      <p>앱 사용 통계의 국외 이전은 앱의 설정 &gt; 개인정보에서 &ldquo;사용 통계 보내기&rdquo;를 꺼서 거부할 수 있으며, 꺼도 서비스 이용에는 제한이 없습니다. 푸시 알림의 국외 이전은 앱의 &ldquo;새 모집 알림&rdquo;을 끄거나 로그아웃하면 멈추며(기기 토큰을 지웁니다), 이 경우 푸시 알림만 받을 수 없습니다. 광고의 국외 이전은 광고 선택 동의를 하지 않거나 설정 &gt; 개인정보의 &ldquo;광고 목적 정보 제공&rdquo;을 꺼서 거부할 수 있으며, 이 경우 광고만 표시되지 않습니다.</p>
+      <p>웹 사용 통계의 국외 이전은 아래 8절의 방법으로 거부할 수 있습니다. 앱 사용 통계의 국외 이전은 앱의 설정 &gt; 개인정보에서 &ldquo;사용 통계 보내기&rdquo;를 꺼서 거부할 수 있으며, 꺼도 서비스 이용에는 제한이 없습니다. 푸시 알림의 국외 이전은 앱의 &ldquo;새 모집 알림&rdquo;을 끄거나 로그아웃하면 멈추며(기기 토큰을 지웁니다), 이 경우 푸시 알림만 받을 수 없습니다. 광고의 국외 이전은 광고 선택 동의를 하지 않거나 설정 &gt; 개인정보의 &ldquo;광고 목적 정보 제공&rdquo;을 꺼서 거부할 수 있으며, 이 경우 광고만 표시되지 않습니다.</p>
       <h2>7. 보관 기간과 삭제</h2>
       <ul>
         <li>계정·프로필·명함·받은 명함·인증자료는 계정이 있는 동안 보관하고, 사용자가 앱에서 계정을 삭제하면 모두 즉시 삭제합니다. Apple·Google 연결 정보도 함께 폐기합니다.</li>
@@ -260,22 +275,28 @@ export default function PrivacyPage() {
         <li>명함 신고 기록(신고된 명함의 사진·소개 링크 포함)은 신고 근거로 보관하며 신고일로부터 1개월이 지나면 지웁니다. 그 전에 계정을 삭제하면 내 명함에 대한 신고는 지우고, 내가 한 신고는 신고자 정보만 지운 채 남깁니다.</li>
         <li>차단 목록은 신고 기록과 별개로, 차단을 풀거나 차단한 쪽 또는 차단된 쪽이 계정을 삭제할 때까지 유지합니다. 로그인하지 않고 웹에서 한 차단은 차단일로부터 1년이 지나면 지웁니다. 비로그인 저장 세션을 지우면 함께 지웁니다.</li>
         <li>광고 동의 기록은 동의를 철회하거나 계정을 삭제하면 즉시 지웁니다. 광고 SDK가 Google로 보낸 정보는 Google 정책에 따라 보관되며, 서비스의 사용자 ID와 연결하지 않으므로 계정 삭제로 함께 지워지지는 않습니다.</li>
-        <li>앱 사용 통계는 Google Firebase Analytics에서 수집일로부터 14개월 동안 보관합니다. 서비스의 사용자 ID와 연결하지 않으므로 계정 삭제로 함께 지워지지는 않습니다.</li>
+        <li>앱 사용 통계와 웹 사용 통계(Google Analytics)는 Google에서 수집일로부터 14개월 동안 보관합니다. 웹 사용 통계(Vercel Web Analytics)는 Vercel 정책에 따라 보관합니다. 서비스의 사용자 ID와 연결하지 않으므로 계정 삭제로 함께 지워지지는 않습니다.</li>
         <li>발행한 명함은 사용자가 지울 때까지 남습니다. 단방향으로 받은 명함은 30일 뒤 목록에서 거두고, 명함을 건넨 사람이 명함을 지우면 받은 쪽에서도 사라집니다.</li>
         <li>비로그인 웹 저장은 브라우저 쿠키가 남아 있는 동안(최대 400일) 유지되며, 쿠키를 지우면 서버에서 다시 찾을 수 없습니다.</li>
         <li>법령이 보존을 요구하는 기록은 그 기간 동안만 분리 보관합니다.</li>
       </ul>
-      <h2>8. 이용자의 권리</h2>
+      <h2>8. 자동 수집 장치(쿠키)의 설치·운영과 거부</h2>
+      <ul>
+        <li>웹사이트는 Google Analytics 쿠키(<code>_ga</code>·<code>_ga_&lt;측정 ID&gt;</code>, 최대 2년)를 써서 방문을 셉니다. Vercel Web Analytics는 쿠키를 쓰지 않습니다. 비로그인 명함 저장에 쓰는 세션 쿠키(<code>__Host-dearby_guest</code>)는 위 &ldquo;비로그인 웹 저장&rdquo;입니다.</li>
+        <li>거부 방법: 브라우저 설정에서 쿠키를 차단하거나 지울 수 있고, Google이 제공하는 Google 애널리틱스 차단 브라우저 부가 기능(<a href="https://tools.google.com/dlpage/gaoptout">tools.google.com/dlpage/gaoptout</a>)을 설치해 웹 사용 통계 수집을 막을 수 있습니다. 거부해도 웹사이트 이용에 제한은 없습니다(쿠키를 모두 막으면 브라우저 저장은 쓸 수 없습니다).</li>
+        <li>이 항목은 웹사이트에만 해당합니다. 앱의 사용 통계는 설정 &gt; 개인정보의 &ldquo;사용 통계 보내기&rdquo;로 끕니다.</li>
+      </ul>
+      <h2>9. 이용자의 권리</h2>
       <p>
         사용자는 앱에서 프로필과 명함을 직접 고치거나 지울 수 있고, 계정 삭제로 모든 정보를 지울 수 있습니다. 열람·정정·삭제·처리 정지 요청은{" "}
         <strong>fixabley@naver.com</strong>로 보내 주시면 지체 없이 처리합니다.
       </p>
-      <h2>9. 안전 조치</h2>
+      <h2>10. 안전 조치</h2>
       <p>
         모든 통신은 HTTPS로 보호합니다. 비밀번호를 받지 않고 패스키와 Apple·Google 로그인만 씁니다. 서버에는 토큰의 해시만 두며, 인증자료 파일은 로그인한 본인과
         운영자만 접근할 수 있습니다.
       </p>
-      <h2>10. 변경</h2>
+      <h2>11. 변경</h2>
       <p>이 방침이 바뀌면 이 페이지에 시행일과 함께 올립니다. 중요한 변경은 앱 안에서도 알립니다.</p>
       <p className="mt-8 px-1 text-footnote text-secondary-label">
         관련 문서: <Link href="/terms">이용약관</Link>
