@@ -19,7 +19,6 @@ import { errorMessage, request, RequestError } from "@/lib/client";
 import { track } from "@/shared/lib/analytics";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
-import { cn } from "@/shared/lib/utils";
 import { Icon } from "@/shared/ui/icon";
 import { Badge } from "@/shared/ui/badge";
 import { BottomBar } from "@/shared/ui/bottom-bar";
@@ -30,7 +29,7 @@ import { TagIcon } from "@/shared/ui/tag-icon";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
-import { TimetableView } from "@/widgets/activity/timetable";
+import { TimetableSheet } from "@/widgets/activity/timetable";
 import { statusVariant } from "@/widgets/activity/activity-card";
 
 /** 사용 통계 매개변수 (contract analytics-v1.md "웹"): `source` is `link`, the web page being the shared link itself. */
@@ -51,8 +50,10 @@ export function ActivityDetail({ id }: { id: number }) {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(Date.now);
-  // The one schedule block whose 시간표 is open (contract "트랙·세션 시간표" › 앱·웹 화면).
+  // The schedule block whose 시간표 modal is open (contract "트랙·세션 시간표" › 앱·웹 화면); the id outlives `open` so the
+  // closing animation keeps its content.
   const [timetableId, setTimetableId] = useState<number>();
+  const [timetableOpen, setTimetableOpen] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     request<Activity>(`/activities/${id}`, { signal: controller.signal })
@@ -104,20 +105,26 @@ export function ActivityDetail({ id }: { id: number }) {
   // The 활동 기간 block can carry a timetable too; with 세부 일정 listed it gets its own row so the button does not disappear.
   const periodRow = activity.schedules.length && activity.activitySchedule.hasTimetable ? [activity.activitySchedule] : [];
   const openTimetable = [activity.activitySchedule, ...activity.schedules].find((schedule) => schedule.id === timetableId);
-  const timetableButton = (schedule: Schedule) =>
-    schedule.hasTimetable && (
+  // A block with a timetable is one whole-row button that opens the modal; other blocks stay plain rows.
+  const scheduleRow = (schedule: Schedule, body: React.ReactNode) =>
+    schedule.hasTimetable ? (
       <button
         type="button"
-        aria-expanded={schedule.id === timetableId}
-        aria-controls="timetable"
-        className="mt-1 inline-flex min-h-11 items-center gap-1 self-start text-subheadline font-semibold text-teal"
-        onClick={() => setTimetableId((id) => (id === schedule.id ? undefined : schedule.id))}
+        aria-haspopup="dialog"
+        className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-fill/50 active:bg-fill"
+        onClick={() => {
+          setTimetableId(schedule.id);
+          setTimetableOpen(true);
+        }}
       >
-        {schedule.title || "활동"} 시간표
-        <span className={cn("flex transition-transform motion-reduce:transition-none", schedule.id === timetableId && "rotate-180")}>
-          <Icon name="chevron-down" size="inline" />
+        {body}
+        <span className="flex shrink-0 items-center gap-0.5 self-center text-subheadline text-secondary-label">
+          시간표
+          <Icon name="chevron-right" size="inline" />
         </span>
       </button>
+    ) : (
+      <div className="flex items-start gap-3 px-4 py-3">{body}</div>
     );
   // 모집 날짜 표기 (contract "모집 날짜 표기 — 2026-10-26"): `10.1 – 10.20` with `D-3` while open; an end alone keeps `~ … 마감`.
   const recruitmentDay = recruitmentDate(activity.application, now);
@@ -180,34 +187,39 @@ export function ActivityDetail({ id }: { id: number }) {
         <InsetGroup title="일정">
           {activity.schedules.length ? (
             [...periodRow, ...activity.schedules].map((schedule) => (
-              <li key={schedule.id} className="flex items-start gap-3 px-4 py-3">
-                <Icon name="calendar" tone="teal" />
-                <div className="flex flex-col gap-0.5">
-                  <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
-                  <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
-                  {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
-                  {timetableButton(schedule)}
-                </div>
+              <li key={schedule.id}>
+                {scheduleRow(
+                  schedule,
+                  <>
+                    <Icon name="calendar" tone="teal" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
+                      <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
+                      {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
+                    </div>
+                  </>,
+                )}
               </li>
             ))
           ) : (
-            <li className="flex items-start gap-3 px-4 py-3 text-subheadline">
-              <Icon name="calendar" tone="teal" />
-              <div className="flex flex-col">
-                {scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}
-                {timetableButton(activity.activitySchedule)}
-              </div>
+            <li className="text-subheadline">
+              {scheduleRow(
+                activity.activitySchedule,
+                <>
+                  <Icon name="calendar" tone="teal" />
+                  <span className="min-w-0 flex-1">{scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}</span>
+                </>,
+              )}
             </li>
           )}
         </InsetGroup>
-        {openTimetable && (
-          <section id="timetable" aria-labelledby="timetable-title" className="mt-4">
-            <h2 id="timetable-title" className="mb-1.5 px-4 text-footnote font-semibold text-secondary-label">
-              {openTimetable.title || "활동"} 시간표
-            </h2>
-            <TimetableView key={openTimetable.id} activityId={activity.id} schedule={openTimetable} />
-          </section>
-        )}
+        <TimetableSheet
+          activityId={activity.id}
+          activityName={activity.name}
+          schedule={openTimetable}
+          open={timetableOpen}
+          onOpenChange={setTimetableOpen}
+        />
         {/* 활동 장소 (contract "활동 장소 — 2026-10-19"): curated place with a map link; otherwise the collected phrase alone. */}
         {place ? (
           <InsetGroup title="장소">
