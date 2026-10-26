@@ -21,6 +21,8 @@ struct ProfileContactFields: View {
     /// 시트에서 고른 종류. 화면이 새 항목을 `extras`에 넣는다.
     let add: (String) -> Void
     @State private var choosing = false
+    /// A kind was picked: once the sheet is gone its new row takes the focus (and the keyboard).
+    @State private var added = false
     static let kinds: [(kind: String, label: String)] = [("kakao", "카카오톡"), ("instagram", "Instagram"), ("github", "GitHub"), ("behance", "Behance")]
     var body: some View {
         Section {
@@ -44,10 +46,12 @@ struct ProfileContactFields: View {
             Button { choosing = true } label: {
                 Label("연락처 추가", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }
-            .sheet(isPresented: $choosing) {
+            .sheet(isPresented: $choosing, onDismiss: {
+                if added { added = false; focus.wrappedValue = extras.last?.id }
+            }) {
                 NavigationStack {
                     List(Self.kinds, id: \.kind) { option in
-                        Button { choosing = false; add(option.kind) } label: {
+                        Button { added = true; choosing = false; add(option.kind) } label: {
                             Label { Text(option.label).foregroundStyle(DearbyStyle.ink) } icon: {
                                 DearbyGlyphView(glyph: ContactModel.glyph(kind: option.kind))
                             }.font(.dearby(.body)).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
