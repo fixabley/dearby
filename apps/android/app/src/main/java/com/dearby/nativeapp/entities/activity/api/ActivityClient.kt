@@ -201,6 +201,7 @@ private fun JSONObject.programSummary(api: String): ProgramSummary {
         upcomingActivityCount = optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = text("nearestRecruitmentStartAt"),
         nearestIsActivityStart = optBoolean("nearestIsActivityStart", false),
         tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
+        hasTimetable = optBoolean("hasTimetable", false),
     )
 }
 

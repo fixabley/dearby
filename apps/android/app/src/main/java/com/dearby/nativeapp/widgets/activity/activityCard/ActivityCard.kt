@@ -3,8 +3,6 @@ package com.dearby.nativeapp.widgets.activity.activityCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ViewTimeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -54,10 +52,7 @@ import com.dearby.nativeapp.shared.ui.*
                 ValueRow("활동", period.ifBlank { "미정" })
                 if (place != null) ValueRow("장소", place)
             }
-            if (timetable) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Rounded.ViewTimeline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                Text("시간표", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-            }
+            if (timetable) TimetableMark()
         }
     }
 }

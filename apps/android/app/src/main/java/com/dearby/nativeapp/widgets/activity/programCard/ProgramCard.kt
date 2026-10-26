@@ -74,6 +74,8 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
      * activity start) as `M월 d일 행사` while it is ahead, else `최근 yyyy.M`.
      */
     eventDates: Boolean = false,
+    /** An open or upcoming activity has a 트랙·세션 시간표 (`ProgramSummary.hasTimetable`): a `시간표` line under the tags, as on the activity card. */
+    timetable: Boolean = false,
     /** The program heart (and its bell) left of the count badge, with their own taps and names. */
     actions: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -104,6 +106,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
                 if (newRecruitment) Badge(containerColor = TealFill, contentColor = Color.White) { Text("새 모집", Modifier.padding(horizontal = 4.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall) }
                 Text(organization, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 TagChipRow(fieldTags.firstOrNull(), traitTags, Modifier.padding(top = 4.dp))
+                if (timetable) TimetableMark(Modifier.padding(top = 2.dp))
                 if (matchedCount > 0) Text("맞는 활동 ${matchedCount}개", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp), style = MaterialTheme.typography.labelMedium)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -205,6 +205,8 @@ data class ProgramSummary(
     val logoUrl: String? = null,
     /** The 4:5 cover (contract "맞춤 대기열": `/v1/programs/{id}/cover?v=`) as an absolute URL, or null. */
     val coverUrl: String? = null,
+    /** A 모집 중·모집 예정 activity of this kind has a 트랙·세션 시간표 (contract "트랙·세션 시간표", 2026-10-26); false on an older API. */
+    val hasTimetable: Boolean = false,
 )
 
 /** One icon-and-text line: an activity's 핵심 세 줄 (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`) or an ELIGIBILITY scene item. */

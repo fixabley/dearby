@@ -75,6 +75,8 @@ data class ProgramState(
     val fieldTags: List<TagLabel> = emptyList(), val traitTags: List<TagLabel> = emptyList(),
     /** The program logo URL for the card's 44dp logo slot, or null for the initial avatar (contract "프로그램 로고"). */
     val logoUrl: String? = null,
+    /** A 모집 중·모집 예정 activity has a 트랙·세션 시간표: the collapsed card shows `시간표`. */
+    val hasTimetable: Boolean = false,
 )
 /**
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
