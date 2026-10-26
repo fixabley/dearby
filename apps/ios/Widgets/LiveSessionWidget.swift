@@ -52,10 +52,12 @@ struct LiveSessionLines: View {
     static func line(_ entry: LiveSessionAttributes.ContentState.Entry, when: String) -> String {
         [when, entry.track, entry.room, entry.title].compactMap { $0 }.joined(separator: " · ")
     }
-    /// Remaining time of the running session, else time to its start. The lower bound only sizes the interval, so it never follows now.
+    /// Remaining time of the running session, else time to its start. The view is built at each update, so the lower bound is now (clamped
+    /// to the end once stale, which reads 0:00); it only sizes the interval.
     static func countdown(_ state: LiveSessionAttributes.ContentState) -> Text {
         let end = state.running ? state.current.end : state.current.start
-        return Text(timerInterval: min(state.current.start, end)...end, countsDown: true, showsHours: end.timeIntervalSince(state.current.start) >= 3600)
+        let from = min(Date(), end)
+        return Text(timerInterval: from...end, countsDown: true, showsHours: end.timeIntervalSince(from) >= 3600)
     }
     static func link(_ context: ActivityViewContext<LiveSessionAttributes>) -> URL? {
         LiveSessionAttributes.link(activityID: context.attributes.activityID, scheduleID: context.state.current.scheduleID)
