@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <!-- 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): Android 13+ asks once, at the first program heart, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- 찜한 세션 이동 알림 (2026-10-26, device-local): exact alarms 10 minutes before a 찜한 세션 (Android 14+ grants SCHEDULE_EXACT_ALARM only when the
+         user allows it in the system settings; without it the alarm is inexact) and setting them again after a reboot. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- 맞춤 대기열 끝 광고 (2026-10-25): AdMob reads the advertising id (com.google.android.gms.permission.AD_ID, merged from the SDK) even for
          non-personalised ads, for frequency capping and fraud checks. 사용 통계 still never collects it (google_analytics_adid_collection_enabled).
          The Privacy Sandbox permissions the SDK and Firebase merge in (Topics is interest targeting, Attribution is measurement) stay removed. -->
@@ -52,6 +56,14 @@
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter>
         </service>
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="new_recruitment"/>
+        <!-- 세션 이동 알림: the alarm's receiver (explicit intents from this app only) and the reboot/exact-alarm-allowed restore (system broadcasts). -->
+        <receiver android:name=".features.reminder.SessionReminderReceiver" android:exported="false"/>
+        <receiver android:name=".app.SessionReminderBootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"/>
+            </intent-filter>
+        </receiver>
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/dearby_symbol"/>
         <!-- 2026-10-25 user decisions: no FCM token until the first program heart (Push.enable); Firebase Analytics without the advertising id,
              SSAID or ad personalisation (collection itself follows 설정 `사용 통계 보내기`, features/analytics). -->

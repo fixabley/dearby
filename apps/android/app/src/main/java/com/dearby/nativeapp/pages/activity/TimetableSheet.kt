@@ -44,8 +44,11 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun TimetableSheet(title: String, range: String?, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit,
     /** 찜 실패 알림: the app's own Snackbar sits under this full-height sheet, so the sheet shows it. */
-    notices: SnackbarHostState? = null) {
-    var favoritesOnly by remember { mutableStateOf(false) }
+    notices: SnackbarHostState? = null,
+    /** Opens on `찜한 세션` (a 세션 이동 알림 tap). */
+    favoritesFirst: Boolean = false) {
+    // Keyed so a reminder tap moves an already open sheet to 찜한 세션 too.
+    var favoritesOnly by remember(favoritesFirst) { mutableStateOf(favoritesFirst) }
     var opened by remember { mutableStateOf<String?>(null) }
     val trackOf: (SessionState) -> TrackState? = { session -> timetable?.tracks?.firstOrNull { it.id == session.trackId } }
     ModalBottomSheet(dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
