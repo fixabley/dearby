@@ -2,7 +2,7 @@
 // session cookie as Bearer, one refresh on 401, and validated bodies both ways. Nothing here is reachable without the cookies.
 import { z } from "zod";
 import { TOKEN, readGuestCookie } from "./guest-upstream";
-import { callAsAccount, clearedSessionCookies } from "./session";
+import { callAsAccount, clearedSessionCookies, withCookies } from "./session";
 import { profileConsentSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
@@ -39,7 +39,7 @@ const passkeyListSchema = z.object({ items: z.array(passkeySchema) });
 const optionsSchema = z.object({ challengeId, options: z.looseObject({}) });
 /** `POST /v1/wallet/import-guest` (server PR, contract "웹 로그인"): how many saved cards moved into the account. */
 const importSchema = z.object({ imported: z.number().int().nonnegative() });
-export const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED", "GUEST_SESSION_INVALID"];
+const KNOWN_CODES = ["CONSENT_REQUIRED", "CONSENT_VERSION", "LAST_SIGN_IN_METHOD", "BLOCKED", "GUEST_SESSION_INVALID"];
 
 type Route = { body?: keyof typeof bodies; parse: (json: unknown) => unknown; noContent?: boolean };
 /** `METHOD path` → how the request and response are validated. `:id` is a passkey credential id, `:provider` apple|google. */
@@ -132,9 +132,4 @@ export async function accountProxy(request: Request, segments: string[]): Promis
   } catch {
     return failure(502, "UPSTREAM_UNAVAILABLE");
   }
-}
-
-function withCookies(response: Response, cookies: string[]) {
-  for (const value of cookies) response.headers.append("Set-Cookie", value);
-  return response;
 }

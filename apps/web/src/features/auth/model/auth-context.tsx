@@ -22,7 +22,6 @@ export type Auth = {
   signOut: () => Promise<void>;
   /** The session ended elsewhere (account deleted, refresh refused): forget it here and optionally say why. */
   signedOutLocally: (notice?: string) => void;
-  notify: (message: string) => void;
 };
 const AuthContext = createContext<Auth | null>(null);
 const signedOut: State = { status: "signedOut", consent: undefined };
@@ -129,7 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     requireAccount,
     signOut,
     signedOutLocally,
-    notify,
   };
   return (
     <AuthContext value={value}>

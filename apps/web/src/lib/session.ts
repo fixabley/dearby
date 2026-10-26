@@ -62,7 +62,7 @@ export function accessSecondsLeft(access: string | undefined): number {
   }
 }
 
-export type AccountCall = { path: string; method?: string; body?: unknown; query?: URLSearchParams; acceptLanguage?: string };
+export type AccountCall = { path: string; method?: string; body?: unknown };
 export type AccountResult =
   /** No access token in the cookies: the browser refreshes (`POST /api/auth/refresh`) and retries, or is signed out. */
   | { kind: "signedOut" }
@@ -77,13 +77,7 @@ export type AccountResult =
 export async function callAsAccount(cookieHeader: string | null, call: AccountCall): Promise<AccountResult> {
   const { access } = readSession(cookieHeader);
   if (!access) return { kind: "signedOut" };
-  const response = await upstreamFetch(call.path, {
-    method: call.method,
-    body: call.body,
-    query: call.query,
-    bearer: access,
-    acceptLanguage: call.acceptLanguage,
-  });
+  const response = await upstreamFetch(call.path, { method: call.method, body: call.body, bearer: access });
   return { kind: "response", response };
 }
 
@@ -108,6 +102,12 @@ export async function refreshSession(cookieHeader: string | null): Promise<Refre
   if (response.status === 401 || response.status === 400) return { kind: "refused", cookies: clearedSessionCookies() };
   if (!response.ok) throw new Error("REFRESH_FAILED");
   return { kind: "refreshed", cookies: sessionCookies(tokenPairSchema.parse(await response.json())) };
+}
+
+/** Appends Set-Cookie values to a response. */
+export function withCookies(response: Response, cookies: string[]) {
+  for (const value of cookies) response.headers.append("Set-Cookie", value);
+  return response;
 }
 
 /** `POST /v1/auth/logout` with the cookie's refresh token; a failure is ignored because the cookies are cleared either way. */

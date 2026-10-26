@@ -4,15 +4,11 @@ import { z } from "zod";
 import { accountProxy } from "./account-proxy";
 import { upstreamFetch } from "./guest-upstream";
 import { profileConsentSchema, type ProfileConsent } from "./models";
-import { callAsAccount, clearedSessionCookies, logoutUpstream, readSession, refreshSession, sessionCookies, tokenPairSchema } from "./session";
+import { callAsAccount, clearedSessionCookies, logoutUpstream, readSession, refreshSession, sessionCookies, tokenPairSchema, withCookies } from "./session";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
   return Response.json({ error: { code, ...(detail && { detail }) } }, { status, headers });
-}
-function withCookies(response: Response, cookies: string[]) {
-  for (const value of cookies) response.headers.append("Set-Cookie", value);
-  return response;
 }
 
 const challengeId = z.uuid();

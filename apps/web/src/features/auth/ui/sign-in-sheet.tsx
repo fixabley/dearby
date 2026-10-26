@@ -172,7 +172,10 @@ function SignInBody({ onBusy, onSignedIn }: { onBusy: (busy: boolean) => void; o
       "애플로 로그인하지 못했어요. 다시 시도해 주세요.",
     );
   }
-  /** `패스키로 로그인`; with a pending first-time account, the same sign-in then links that account to it. */
+  /**
+   * `패스키로 로그인`; with a pending first-time account, the same sign-in then links that account to it. Once the passkey sign-in
+   * has set the cookies the person is signed in, so a failed link still finishes the sign-in (the link can be retried from 설정).
+   */
   function passkey(link?: Pending) {
     run(
       link ? "link" : "passkey",
@@ -180,8 +183,8 @@ function SignInBody({ onBusy, onSignedIn }: { onBusy: (busy: boolean) => void; o
         const { challengeId, options } = await passkeyOptions();
         const credential = await getPasskey(options);
         await passkeySignIn(challengeId, credential);
-        if (link) await linkIdentity(link.provider, link.linkToken);
-        onSignedIn();
+        if (link) await linkIdentity(link.provider, link.linkToken).finally(onSignedIn);
+        else onSignedIn();
       },
       link ? "패스키 계정에 연결하지 못했어요. 다시 시도해 주세요." : "패스키로 로그인하지 못했어요. 다시 시도하거나 Apple·Google로 로그인해 주세요.",
     );
