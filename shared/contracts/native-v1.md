@@ -775,7 +775,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - **아이콘 원본**: [Simple Icons](https://simpleicons.org) 16.36.0(저장소 CC0-1.0)의 `github`·`instagram`·`behance`·`kakaotalk` SVG를 바꾸지 않고 `shared/assets/prototype/contact-icons/`에 둔다. 출처·라이선스·브랜드 가이드·SHA256은 그 폴더 README. 마크 자체는 각 회사 상표이며 CC0가 상표권을 주지 않는다 — 모양을 바꾸지 않는다.
 - **색·크기(2026-10-26 사용자 결정, 브랜드 고유색 규칙 대체)**: 네 마크는 **단색 글리프**이고 색은 앱이 정한다 — 연락처 글리프 자리의 보조색(iOS `.secondary`, Android `onSurfaceVariant`; 라이트·다크 자동)으로 전화·메일 기호와 같은 색. 크기는 글리프 열(24) 안에 20(글자 배율 따름)으로 SF Symbols·Material 기호와 같은 여백. 참고: expo.dev 블로그 하단 소셜 글리프. 이전 브랜드 색 규칙(GitHub·Instagram 검정/흰색, Behance `#1769FF`, 카카오톡 `#FFCD00`)은 [`006b118a`](https://github.com/fixabley/dearby/blob/006b118a/shared/contracts/native-v1.md#연락처-아이콘바로가기--2026-10-26-사용자-결정).
-- **적용 위치**: 연락처를 그리는 모든 곳 — 명함 면·받은 명함 상세·내 프로필 카드(보기 모드), 프로필 수정의 연락처 입력 행, `연락처 추가` 목록, 명함 만들기의 연락처 선택 행. 한 함수(iOS `ContactModel.glyph(kind:)` → `DearbyGlyphView`, Android `contactIcon(kind)`)가 모두에 쓰인다.
+- **적용 위치**: 연락처를 그리는 모든 곳 — 명함 면·받은 명함 상세·내 프로필 카드(보기 모드), 프로필 수정의 연락처 입력 행, `연락처 추가` 목록, 명함 만들기의 연락처 선택 행. 한 함수(iOS `ContactModel.glyph(kind:)` → `DearbyGlyphView`, Android `contactIcon(kind)`)가 모두에 쓰인다. 웹 `/cards/:id`도 같은 Simple Icons 경로를 채운 단색 글리프(`Icon` 청록)로 그리고, 사용자명 값으로 같은 링크를 만든다(옛 URL 값은 사용자명으로 읽음).
 - **플랫폼**: iOS는 asset catalog 벡터(`preserves-vector-representation`, Render As Template, `Image(...).renderingMode(.template)` + `foregroundStyle`). Android는 같은 경로를 vector drawable로 옮기고(28.8 viewport 안에 2.4 이동해 24dp에 20으로) `Icon(tint = …)`.
 - **사용자명 입력(2026-10-26 사용자 결정)**: GitHub·Instagram·Behance·카카오톡은 링크를 치지 않고 **사용자명(ID)만** 입력한다. 링크는 앱이 만든다.
   - 허용: 영문·숫자·`.`·`_`·`-`. 길이 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20(공식 상한을 확인하지 못해 넉넉히 둔 값). 앞의 `@`와 공백은 지운다.
