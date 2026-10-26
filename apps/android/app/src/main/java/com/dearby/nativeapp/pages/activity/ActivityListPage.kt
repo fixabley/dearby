@@ -246,7 +246,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
 @Composable private fun Card(activity: ActivityState, open: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable,
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags, timetable = activity.hasTimetable, deadlineCount = activity.deadlineCount,
         actions = { FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { plus(activity.id) } })
 
 /** Activity row used by My Activities. */

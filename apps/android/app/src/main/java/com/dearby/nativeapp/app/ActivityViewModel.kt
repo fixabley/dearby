@@ -13,6 +13,8 @@ import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.entities.activity.model.scheduleText
+import com.dearby.nativeapp.entities.activity.model.rangeText
+import com.dearby.nativeapp.entities.activity.model.deadlineCount
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
@@ -434,20 +436,29 @@ internal fun ProgramSummary.toState() = ProgramState(id, name, organization, ope
     fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl,
     deadlineIsEvent = nearestIsActivityStart, hasTimetable = hasTimetable)
 
-private fun ActivityModel.toState(now: Instant) = ActivityState(
-    // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
-    id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-    stages().map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
-    safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
-    eligibility = eligibility?.lines() ?: emptyList(),
-    category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
-    sortKey = sortKey,
-    fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
-    place = place,
-    applicationUrl = safeHttpsUrl(applicationUrl),
-    overlapCheckable = schedules.isNotEmpty(),
-    hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
-)
+private fun ActivityModel.toState(now: Instant): ActivityState {
+    val status = statusLabel(now)
+    // 모집 날짜 표기 (user 2026-10-26): a window with both ends is a range plus a D-day badge, without a separate `모집 마감` line.
+    val range = application?.rangeText()
+    val stages = stages()
+    val deadline = stages.firstOrNull { it.kind == "APPLICATION" }?.takeIf { range != null }
+    return ActivityState(
+        // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
+        id, name, description, organization, program, status, activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
+        stages.filterNot { it === deadline }.map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it), it.scheduleId, it.hasTimetable) },
+        safeHttpsUrl(officialUrl), applyUrl(now), range ?: period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
+        eligibility = eligibility?.lines() ?: emptyList(),
+        category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
+        sortKey = sortKey,
+        fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
+        place = place,
+        applicationUrl = safeHttpsUrl(applicationUrl),
+        overlapCheckable = schedules.isNotEmpty(),
+        hasTimetable = (listOfNotNull(activitySchedule) + stageSchedules).any { it.hasTimetable },
+        periodDetail = application?.rangeText(withTime = true), deadlineCount = application?.takeIf { status == "모집 중" }?.deadlineCount(),
+        deadlineDraft = deadline?.let { draft(it) },
+    )
+}
 /**
  * The stage track with the user's [marks] (by schedule id): a PASSED status makes the stage past, the earliest other stage not
  * over by [today] is current, a FAILED status or no current stage ends the activity. No stages at all leaves an empty track.

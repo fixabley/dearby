@@ -50,6 +50,12 @@ data class ActivityState(
     val hasTimetable: Boolean = false,
     /** A 내 활동 record whose activity is gone (contract "내 활동 서버 저장"): shown as "삭제된 활동" with only 빼기. */
     val deleted: Boolean = false,
+    /**
+     * 모집 날짜 표기 (user 2026-10-26), set only for a window with both ends, whose [period] is then `10.1 – 10.20`: [periodDetail] adds the
+     * deadline time for the detail, [deadlineCount] is the `D-3`/`D-DAY` badge while 모집 중, and [deadlineDraft] is the deadline's
+     * `캘린더에 추가` (its own `모집 마감` row leaves 행사 일정, as the range already says it).
+     */
+    val periodDetail: String? = null, val deadlineCount: String? = null, val deadlineDraft: CalendarDraft? = null,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"

@@ -3,6 +3,7 @@ package com.dearby.nativeapp.entities.activity.model
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -43,3 +44,30 @@ fun scheduleText(startAt: String?, endAt: String?, startDate: String?, endDateEx
 
 /** This schedule's text by the rule above. */
 fun StageSchedule.scheduleText() = scheduleText(startAt, endAt, startDate, endDateExclusive, timeZone, dateLabel)
+
+private val shortDay = DateTimeFormatter.ofPattern("M.d", Locale.KOREAN)
+private val shortDayWithYear = DateTimeFormatter.ofPattern("yyyy.M.d", Locale.KOREAN)
+
+/** The recruitment window's first and last Seoul day and the deadline time (null for an all-day end); null unless both ends are known. */
+private fun ApplicationWindow.days(): Triple<LocalDate, LocalDate, Instant?>? {
+    val end = instant(endAt)
+    val first = instant(startAt)?.atZone(SEOUL)?.toLocalDate() ?: startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+    val last = end?.atZone(SEOUL)?.toLocalDate() ?: endDateExclusive?.let { runCatching { LocalDate.parse(it).minusDays(1) }.getOrNull() } ?: return null
+    return Triple(first, last, end)
+}
+
+/**
+ * 모집 날짜 표기 (user 2026-10-26): a window with both ends reads `10.1 – 10.20` (`yyyy.` on a day outside [today]'s year), with the deadline
+ * time on [withTime] (`10.1 – 10.20 18:00`); null when either end is unknown, where the caller keeps [scheduleText] (`~ 10월 20일 (화) 마감`).
+ */
+fun ApplicationWindow.rangeText(withTime: Boolean = false, today: LocalDate = LocalDate.now(SEOUL)): String? {
+    val (first, last, end) = days() ?: return null
+    fun day(date: LocalDate) = (if (date.year == today.year) shortDay else shortDayWithYear).format(date)
+    return day(first) + " – " + day(last) + (end?.takeIf { withTime }?.let { " " + timeText.format(it.atZone(SEOUL)) } ?: "")
+}
+
+/** `D-3` or `D-DAY` to the deadline's Seoul day for a window with both ends (the badge beside [rangeText]); null otherwise or once it passed. */
+fun ApplicationWindow.deadlineCount(today: LocalDate = LocalDate.now(SEOUL)): String? {
+    val left = ChronoUnit.DAYS.between(today, days()?.second ?: return null)
+    return when { left > 0 -> "D-$left"; left == 0L -> "D-DAY"; else -> null }
+}
