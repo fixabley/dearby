@@ -81,7 +81,22 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         // 연락처 규칙
         put(user, """{"name":"a","contacts":[{"id":"$phone","kind":"phone","label":"","value":"010-1234-5678"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts().replace("010-1234-5678", "abc")}}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts(""",{"id":"${UUID.randomUUID()}","kind":"github","label":"깃헙","value":"http://github.com/x"}""")}}""").andExpect { status { isBadRequest() } }
+        // 사용자명 종류: 프로필 URL은 사용자명으로 바뀌고, 다른 주소·허용하지 않는 글자·오픈채팅 URL은 400
+        val other = user() // 버전 수를 세는 아래 검사와 섞이지 않게
+        val github = UUID.randomUUID()
+        val (otherPhone, otherEmail) = UUID.randomUUID() to UUID.randomUUID() // 연락처 id는 전체에서 유일
+        fun extra(kind: String, value: String, id: UUID = UUID.randomUUID()) =
+            contacts(""",{"id":"$id","kind":"$kind","label":"","value":"$value"}""").replace("$phone", "$otherPhone").replace("$email", "$otherEmail")
+        val normalized = read(put(other, """{"name":"a","contacts":${extra("github", "http://www.github.com/x-y?tab=repos", github)}}""").andExpect { status { isOk() } })
+        assertEquals("x-y", normalized["contacts"][2]["value"].asString())
+        assertEquals("minjun.cho", read(put(other, """{"name":"a","contacts":${extra("instagram", " @minjun.cho ")}}""").andExpect { status { isOk() } })["contacts"][2]["value"].asString())
+        put(other, """{"name":"a","contacts":${extra("github", "https://gitlab.com/x")}}""").andExpect { status { isBadRequest() } }
+        put(other, """{"name":"a","contacts":${extra("behance", "이름")}}""").andExpect { status { isBadRequest() } }
+        put(other, """{"name":"a","contacts":${extra("kakao", "https://open.kakao.com/o/abc")}}""").andExpect { status { isBadRequest() } }
+        // 이미 저장된 그대로의 옛 값(오픈채팅 URL)은 다시 저장해도 막히지 않는다
+        val kakao = UUID.randomUUID()
+        jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'KAKAO', '', 'https://open.kakao.com/o/abc', 2)").params(kakao, other).update()
+        put(other, """{"name":"a","contacts":${extra("kakao", "https://open.kakao.com/o/abc", kakao)}}""").andExpect { status { isOk() } }
         put(user, """{"name":"","contacts":${contacts()}}""").andExpect { status { isBadRequest() } }
 
         val versions = read(mvc.get("/v1/profile/versions") { asUser(user) }.andExpect { status { isOk() } })

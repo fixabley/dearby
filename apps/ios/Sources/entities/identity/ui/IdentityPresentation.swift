@@ -72,20 +72,3 @@ struct HistoryBadge: View {
         }
     }
 }
-
-/// Row-leading contact glyph (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20): GitHub·Instagram·Behance·KakaoTalk show their brand mark in
-/// its own colours (contract "연락처 아이콘·바로가기" 2026-10-26), the rest the kind's SF Symbol in the secondary color; 24 wide, hidden from
-/// VoiceOver because the row's accessibility label names the kind.
-struct ContactSymbol: View {
-    let kind: String
-    @ScaledMetric(relativeTo: .title3) private var brandSide: CGFloat = 20
-    var body: some View {
-        Group {
-            if let brand = ContactModel.brandImage(kind: kind) {
-                Image(brand).resizable().scaledToFit().frame(width: brandSide, height: brandSide)
-            } else {
-                Image(systemName: ContactModel.symbol(kind: kind)).font(.dearby(.title3)).foregroundStyle(.secondary)
-            }
-        }.frame(width: 24).accessibilityHidden(true)
-    }
-}

@@ -65,11 +65,11 @@ struct ProfileFunnelPage: View {
             case .jobs:
                 JobTagPicker(form: $form, account: account, focus: $jobSearch)
             case .phone:
-                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "phone"), required: true, text: $form.phone, focus: $focus, value: step) {
+                DearbyFormRow(label: step.label, symbol: ContactModel.glyph(kind: "phone"), required: true, text: $form.phone, focus: $focus, value: step) {
                     $0.keyboardType(.phonePad).textContentType(.telephoneNumber)
                 }
             case .email:
-                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "email"), required: true, text: $form.email, focus: $focus, value: step) {
+                DearbyFormRow(label: step.label, symbol: ContactModel.glyph(kind: "email"), required: true, text: $form.email, focus: $focus, value: step) {
                     $0.keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                         .submitLabel(.next).onSubmit(next)
                 }

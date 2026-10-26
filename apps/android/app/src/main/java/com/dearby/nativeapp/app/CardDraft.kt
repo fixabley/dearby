@@ -22,7 +22,7 @@ data class CardDraft(
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
     val contactIds get() = profile.contacts.map { it.id }.filter { it in publicContactIds }
     val historyIds get() = profile.histories.map { it.id }.filter { it in publicHistoryIds }
-    val contacts get() = profile.contacts.map { ComposerContact(it.id, it.label, it.value, it.id in publicContactIds) }
+    val contacts get() = profile.contacts.map { ComposerContact(it.id, it.kind, ContactRules.shown(it.kind, it.value), it.id in publicContactIds) }
     val histories get() = profile.histories.map {
         ComposerHistory(it.id, it.chain.joinToString(" · "), listOf(it.roleTitle, ContactRules.period(it.startDate, it.endDate)).filter(String::isNotEmpty).joinToString(" · "),
             it.id in publicHistoryIds, if (it.isApproved) null else if (it.approval == "rejected") "거절된 이력은 명함에 넣을 수 없어요" else "관리자 승인 뒤 명함에 넣을 수 있어요")

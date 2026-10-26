@@ -197,7 +197,8 @@ class ProfileService(
         val existingJobs = current.jobs.associateBy { it.id }
         val jobEntries = input.jobs.map { job(it, foundJobs, existingJobs[it.id]) }
         val introduction = multiline(input.introduction, "자기소개", MAX_INTRODUCTION)
-        val contacts = input.contacts.map(::contact)
+        val existingContacts = current.contacts.associateBy { it.id }
+        val contacts = input.contacts.map { contact(it, existingContacts[it.id]) }
         if (contacts.map { it.id }.toSet().size != contacts.size) throw InvalidInputException("연락처 id가 겹칩니다")
         if (contacts.none { it.kind == ContactKind.PHONE } || contacts.none { it.kind == ContactKind.EMAIL }) {
             throw InvalidInputException("전화번호와 이메일을 하나 이상 넣어 주세요")
@@ -221,7 +222,9 @@ class ProfileService(
         }
     }
 
-    private fun contact(input: ContactInput): Contact {
+    // 사용자명 종류(GitHub·Instagram·Behance·카카오톡)는 사용자명만 저장한다(native-v1.md "연락처 사용자명 입력", 2026-10-26). 프로필 URL이 오면 사용자명으로 바꾸고(옛 앱 호환),
+    // 형식이 틀리면 400. 이미 저장된 그대로의 값(2026-10-26 전 오픈채팅 URL 등)은 다시 검사하지 않는다 — 변경 없는 저장이 막히지 않도록
+    private fun contact(input: ContactInput, existing: Contact?): Contact {
         val kind = ContactKind.entries.firstOrNull { it.name.equals(input.kind, ignoreCase = true) }
             ?: throw InvalidInputException("연락처 종류가 올바르지 않습니다: ${input.kind}")
         val label = text(input.label, "연락처 이름", MAX_NAME, allowEmpty = true)
@@ -229,10 +232,27 @@ class ProfileService(
         when (kind) {
             ContactKind.PHONE -> if (!PHONE.matches(value) || value.count { it.isDigit() } !in 8..15) throw InvalidInputException("전화번호 형식이 올바르지 않습니다")
             ContactKind.EMAIL -> if (!EMAIL.matches(value)) throw InvalidInputException("이메일 형식이 올바르지 않습니다")
-            else -> if (value.contains("://") && !value.startsWith("https://")) throw InvalidInputException("링크는 https 주소만 쓸 수 있습니다")
+            else -> {
+                val rule = USERNAME_RULES.getValue(kind)
+                val username = username(value, rule)
+                if (username != null) return Contact(input.id, kind, label, username)
+                if (existing?.kind != kind || existing.value != value) {
+                    throw InvalidInputException("사용자명은 영문·숫자·.·_·-로 ${rule.max}자까지입니다", "Invalid ${kind.name.lowercase()} username")
+                }
+            }
         }
         return Contact(input.id, kind, label, value)
     }
+
+    // `[https://][www.|m.]host/name[/…]`는 name, `@`·공백은 지운다. 남은 값이 허용 문자·길이를 넘으면 null
+    private fun username(value: String, rule: UsernameRule): String? {
+        val path = rule.host?.let { host -> Regex("^(https?://)?((www|m)\\.)?" + Regex.escape(host) + "/", RegexOption.IGNORE_CASE).find(value) }
+            ?.let { value.substring(it.range.last + 1).takeWhile { c -> c !in "/?#" } } ?: value
+        val id = path.filterNot { it.isWhitespace() || it == '@' }
+        return id.takeIf { it.isNotEmpty() && it.length <= rule.max && USERNAME.matches(it) }
+    }
+
+    private class UsernameRule(val host: String?, val max: Int)
 
     // 활동 정보 id가 있으면 이름을 활동 정보에서 가져오고 직접 입력 이름은 버린다. 상태는 기존 이력과 비교해 정한다
     private fun history(input: HistoryInput, existing: History?): History {
@@ -329,6 +349,12 @@ class ProfileService(
         private const val MAX_DESCRIPTION = 10_000
         private val PHONE = Regex("^[0-9+\\- ]+$")
         private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+        // 앱(iOS ContactModel.usernameRules, Android ContactRules)과 같은 표. 길이는 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20은 확인 못 해 넉넉히
+        private val USERNAME_RULES = mapOf(
+            ContactKind.GITHUB to UsernameRule("github.com", 39), ContactKind.INSTAGRAM to UsernameRule("instagram.com", 30),
+            ContactKind.BEHANCE to UsernameRule("behance.net", 64), ContactKind.KAKAO to UsernameRule(null, 20),
+        )
+        private val USERNAME = Regex("^[A-Za-z0-9._-]+$")
         private val EPOCH: OffsetDateTime = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
     }
 }
