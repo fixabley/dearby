@@ -29,6 +29,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesPage
 import com.dearby.nativeapp.pages.activity.TimetablePage
+import com.dearby.nativeapp.pages.activity.MySessionsPage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.shared.ui.TabActions
 import androidx.compose.foundation.layout.Column
@@ -63,11 +64,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     var progressId by remember { mutableStateOf<String?>(null) }
     var stageCalendar by remember { mutableStateOf<Int?>(null) }
     var prompt by remember { mutableStateOf(false) }
+    // 즐겨찾기 › 찜한 세션 (나만의 시간표).
+    var mySessions by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     LaunchedEffect(open) { open?.let { show(it, model.takeLinkSource() ?: "my_activity"); consumeOpen() } }
     // Signed in, opening 내 활동 re-reads the account's records (and retries a failed import or read).
     LaunchedEffect(mine) { if (mine) model.syncMine(announce = true) }
-    DisposableEffect(selected, progressId) { active(selected != null || progressId != null); onDispose { active(false) } }
+    DisposableEffect(selected, progressId, mySessions) { active(selected != null || progressId != null || mySessions); onDispose { active(false) } }
     val context = LocalContext.current
     // Links are already https-only from the activityModel model; failure to open stays on screen.
     val activity = selected?.let(state.known::get)
@@ -112,7 +115,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     // The timetable opened from this detail (the view model is shared by both tabs, so it shows only over its own activity).
     val openTimetable = sessions?.open?.collectAsStateWithLifecycle()?.value?.takeIf { it.activityId == selected }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
+    val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
     BackHandler(openTimetable != null) { sessions?.show(null, null) }
+    BackHandler(mySessions && selected == null) { mySessions = false }
     BackHandler(openTimetable == null && (selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
         openTimetable != null -> TimetablePage(
@@ -122,6 +127,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
             { calendar = true }, share, openMap,
             addToMine = { model.apply(activity.id, true, detailSource) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts,
             openTimetable = { sessions?.show(activity.id, it) })
+        mySessions && mine -> MySessionsPage(sessionEntries, sessionIds, sessionHeart, { show(it, "favorites") }) { mySessions = false }
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { show(progress.id, "my_activity") },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
         mine -> MineTab(segment, selectSegment, settings, notify, unread) {
@@ -131,7 +137,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                 val favoritesState by favorites.state.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { favorites.load() }
                 FavoritesPage(favoritesState, state, hearts, openDetail, plus, { favorites.seen(it); model.ensureProgram(it) }, model::retryProgram,
-                    signIn, favorites::load)
+                    signIn, favorites::load, sessionEntries.size, sessionEntries.map { it.session.startAt.toLocalDate() }.toSet()) { sessions?.load(); mySessions = true }
             }
         }
         else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread)

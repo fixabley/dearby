@@ -10,6 +10,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.HourglassEmpty
+import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +41,7 @@ import java.time.format.DateTimeFormatter
 @Composable fun TimetablePage(title: String, phase: TimetablePhase, timetable: TimetableState?, favorites: Set<String>, heart: (String) -> Unit, back: () -> Unit, retry: () -> Unit) {
     var favoritesOnly by remember { mutableStateOf(false) }
     var opened by remember { mutableStateOf<String?>(null) }
+    val trackOf: (SessionState) -> TrackState? = { session -> timetable?.tracks?.firstOrNull { it.id == session.trackId } }
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar(title, back)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -61,13 +65,15 @@ import java.time.format.DateTimeFormatter
                 }
                 val rows = remember(shown) { timetableRows(shown) }
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-                    if (tracks.isEmpty()) SingleColumn(rows, shown, card) else TrackGrid(rows, tracks, shown, card)
+                    // 찜한 세션 = 나만의 시간표 (2026-10-26 사용자): one column in time order, no sideways scrolling.
+                    if (favoritesOnly) MyTimetable(shown.map { MyTimetableEntry("", "", it, trackOf(it), tracks.indexOf(trackOf(it))) }, favorites, heart, { opened = it.id }, Modifier.padding(horizontal = 16.dp))
+                    else if (tracks.isEmpty()) SingleColumn(rows, shown, card) else TrackGrid(rows, tracks, shown, card)
                 }
             }
         }
     }
     timetable?.sessions?.firstOrNull { it.id == opened }?.let { session ->
-        SessionSheet(session, timetable.tracks, session.id in favorites, { heart(session.id) }) { opened = null }
+        SessionSheet(session, trackOf(session), session.id in favorites, { heart(session.id) }) { opened = null }
     }
 }
 
@@ -143,20 +149,22 @@ private data class Cell(val firstRow: Int, val lastRow: Int, val firstCol: Int, 
         }
     }
 
-/** A session as a card (tracks' colour by `position` order), or a 쉬는시간·점심 band. */
-@Composable internal fun SessionItem(session: SessionState, tracks: List<TrackState>, favorited: Boolean, overlap: Int, heart: () -> Unit, open: () -> Unit,
-    modifier: Modifier = Modifier, time: String? = null, bigTrack: Boolean = false) {
+/** A timetable session; the track colour follows `position` order. */
+@Composable private fun SessionItem(session: SessionState, tracks: List<TrackState>, favorited: Boolean, overlap: Int, heart: () -> Unit, open: () -> Unit, modifier: Modifier) =
+    SessionTile(session, tracks.firstOrNull { it.id == session.trackId }?.let { TrackBadge(it.name, it.room, trackColor(tracks.indexOf(it))) }, favorited, overlap, heart, open, modifier, null, false)
+
+/** A session as a card, or a 쉬는시간·점심 band. */
+@Composable private fun SessionTile(session: SessionState, track: TrackBadge?, favorited: Boolean, overlap: Int, heart: () -> Unit, open: () -> Unit,
+    modifier: Modifier, time: String?, bigTrack: Boolean) {
     if (session.isBreak) return SessionBand(session.title, session.kind == "MEAL", modifier.clickable(onClick = open), time)
-    val track = tracks.firstOrNull { it.id == session.trackId }?.let { TrackBadge(it.name, it.room, trackColor(tracks.indexOf(it))) }
     SessionCard(session.title, track, session.tags, speakers(session), favorited, heart, open, modifier, time, overlap, bigTrack)
 }
 
 /** 설명·연사 (contract: a tap on a session opens its detail). */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable private fun SessionSheet(session: SessionState, tracks: List<TrackState>, favorited: Boolean, heart: () -> Unit, dismiss: () -> Unit) =
+@Composable internal fun SessionSheet(session: SessionState, track: TrackState?, favorited: Boolean, heart: () -> Unit, dismiss: () -> Unit) =
     ModalBottomSheet(dismiss, containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            val track = tracks.firstOrNull { it.id == session.trackId }
             Text(listOfNotNull(slot(session.startAt, session.endAt), track?.name, track?.room).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
             Text(session.title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
             if (session.tags.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -183,3 +191,48 @@ internal fun slot(from: OffsetDateTime, to: OffsetDateTime) = "${from.format(CLO
 private val TIME_COLUMN = 64.dp
 private val MIN_COLUMN = 220.dp
 private val MIN_ROW = 48.dp
+
+/**
+ * 나만의 시간표 (2026-10-26 사용자 "찜했다면 해당 찜한 시간표만 따로"): the 찜한 세션 in time order, one column. Each card leads with its
+ * time and the track name and room (where to go). Between two cards: the free time and a move to another track, or — when they run at
+ * the same time — a warning band (contract "찜 겹침": `a.startAt < b.endAt && b.startAt < a.endAt`).
+ */
+@Composable internal fun MyTimetable(entries: List<MyTimetableEntry>, favorites: Set<String>, heart: (String) -> Unit, open: (SessionState) -> Unit, modifier: Modifier = Modifier) =
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val sorted = entries.sortedBy { it.session.startAt.toInstant() }
+        var latest: OffsetDateTime? = null
+        var previous: MyTimetableEntry? = null
+        sorted.forEach { entry ->
+            val session = entry.session
+            val before = previous
+            val end = latest
+            if (before != null && end != null) {
+                if (end.toInstant() > session.startAt.toInstant()) OverlapBand()
+                else Between(java.time.Duration.between(end.toInstant(), session.startAt.toInstant()).toMinutes(), before.track, entry.track)
+            }
+            val track = entry.track?.let { TrackBadge(it.name, it.room, trackColor(entry.trackPosition)) }
+            SessionTile(session, track, session.id in favorites, sorted.count { it.session.overlaps(session) }, { heart(session.id) }, { open(session) },
+                Modifier.fillMaxWidth(), slot(session.startAt, session.endAt), bigTrack = true)
+            if (end == null || session.endAt.toInstant() > end.toInstant()) latest = session.endAt
+            previous = entry
+        }
+    }
+
+/** Free time before the next 찜한 세션, and the move when it is in another track (`빈 시간 20분 · 트랙 B · 302호로 이동`). */
+@Composable private fun Between(minutes: Long, from: TrackState?, to: TrackState?) {
+    val move = to?.takeIf { from != null && it.id != from.id }?.let { listOfNotNull(it.name, it.room).joinToString(" · ") + "(으)로 이동" }
+    val free = if (minutes > 0) "빈 시간 " + listOfNotNull((minutes / 60).takeIf { it > 0 }?.let { "${it}시간" }, (minutes % 60).takeIf { it > 0 }?.let { "${it}분" }).joinToString(" ") else null
+    val text = listOfNotNull(free, move).joinToString(" · ").ifEmpty { return }
+    Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(if (move != null) Icons.AutoMirrored.Rounded.DirectionsWalk else Icons.Rounded.HourglassEmpty, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+/** Two 찜한 세션 run at the same time (contract "찜 겹침"). */
+@Composable private fun OverlapBand() = Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer, shape = RoundedCornerShape(10.dp)) {
+    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(Icons.Rounded.WarningAmber, null, Modifier.size(18.dp))
+        Text("같은 시간대에 찜한 세션이 겹쳐요", style = MaterialTheme.typography.labelLarge)
+    }
+}

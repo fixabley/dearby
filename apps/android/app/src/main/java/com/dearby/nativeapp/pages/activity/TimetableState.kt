@@ -23,6 +23,12 @@ data class SessionState(
 }
 
 /**
+ * One card of 나만의 시간표 (2026-10-26 사용자 "찜한 시간표만 따로"): a 찜한 세션 with its activity, track and the track's palette index.
+ * [track] is null for a full-width session or when the track could not be read.
+ */
+data class MyTimetableEntry(val activityId: String, val activityName: String, val session: SessionState, val track: TrackState?, val trackPosition: Int)
+
+/**
  * The table's time rows (contract "행 나누기"): every distinct start and end instant of the sessions cuts the time, and an interval no
  * session covers is dropped, so non-overlapping pairs give one row each and tracks with different boundaries split into finer rows that a
  * longer session spans. [first] and [last] are the row indexes (inclusive) a session spans, by session id.
