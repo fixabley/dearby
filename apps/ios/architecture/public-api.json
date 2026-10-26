@@ -127,6 +127,8 @@
   "widgets/activity": [
     "ActivityCard",
     "ApplyConfirmationSheet",
+    "AutopassSheet",
+    "AutopassSuggestion",
     "ActivityListPage",
     "ActivityViewModel",
     "MyActivitiesPage",

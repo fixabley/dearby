@@ -13,6 +13,8 @@ import Observation
     private(set) var ids: Set<Int64> = []
     var notice: String?
     var signInRequested = false
+    /// The first session heart asks for the notification permission (찜한 세션 이동 알림), as the first program heart does.
+    @ObservationIgnored var sessionFavorited: () -> Void = {}
     private var server: SessionFavoritesServer?
 
     func signedIn(_ server: SessionFavoritesServer) async {
@@ -43,6 +45,7 @@ import Observation
         guard let server else { signInRequested = true; return }
         let on = !ids.contains(sessionID)
         if on { ids.insert(sessionID) } else { ids.remove(sessionID); items.removeAll { $0.session.id == sessionID } }
+        if on { sessionFavorited() }
         Task {
             do { try await server.set(sessionID, on) } catch {
                 guard self.server != nil else { return }

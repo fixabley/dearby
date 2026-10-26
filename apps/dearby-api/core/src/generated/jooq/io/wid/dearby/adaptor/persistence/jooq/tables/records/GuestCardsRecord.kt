@@ -43,6 +43,14 @@ open class GuestCardsRecord() : UpdatableRecordImpl<GuestCardsRecord>(GuestCards
         set(value): Unit = set(5, value)
         get(): OffsetDateTime? = get(5) as OffsetDateTime?
 
+    open var scheduleId: Long?
+        set(value): Unit = set(6, value)
+        get(): Long? = get(6) as Long?
+
+    open var sessionId: Long?
+        set(value): Unit = set(7, value)
+        get(): Long? = get(7) as Long?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -52,13 +60,15 @@ open class GuestCardsRecord() : UpdatableRecordImpl<GuestCardsRecord>(GuestCards
     /**
      * Create a detached, initialised GuestCardsRecord
      */
-    constructor(sessionDigest: String? = null, cardId: UUID? = null, seq: Long? = null, activityId: Long? = null, savedAt: OffsetDateTime? = null, recalledAt: OffsetDateTime? = null): this() {
+    constructor(sessionDigest: String? = null, cardId: UUID? = null, seq: Long? = null, activityId: Long? = null, savedAt: OffsetDateTime? = null, recalledAt: OffsetDateTime? = null, scheduleId: Long? = null, sessionId: Long? = null): this() {
         this.sessionDigest = sessionDigest
         this.cardId = cardId
         this.seq = seq
         this.activityId = activityId
         this.savedAt = savedAt
         this.recalledAt = recalledAt
+        this.scheduleId = scheduleId
+        this.sessionId = sessionId
         resetTouchedOnNotNull()
     }
 }

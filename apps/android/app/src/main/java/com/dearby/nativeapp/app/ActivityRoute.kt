@@ -119,6 +119,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
     // The sheet belongs to this detail or 진행 단계 page: leaving it (back, another activity, the consent screen or a tab switch disposing this
     // route) closes it, so it does not come back on its own the next time the activity is opened.
     DisposableEffect(selected, progressId) { onDispose { sessions?.show(null, null) } }
+    // A 세션 이동 알림 tap (MainActivity → openLinked): once that activity's detail is up, its block's timetable opens on 찜한 세션. After the
+    // DisposableEffect above, whose disposal on the detail change would otherwise close the sheet this opens.
+    val pendingReminder = sessions?.pending?.collectAsStateWithLifecycle()?.value
+    LaunchedEffect(selected, pendingReminder) { val id = selected; if (id != null && pendingReminder != null) sessions?.showPending(id) }
     val sheetNotices = remember { SnackbarHostState() }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
     val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
@@ -143,7 +147,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
                     signIn, favorites::load, sessionEntries.size, sessionEntries.map { it.session.startAt.toLocalDate() }.toSet()) { sessions?.load(); mySessions = true }
             }
         }
-        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setStatusGroups, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread, model::setKind, model::setCategories)
+        else -> ActivityListPage(state, { show(it, "discovery") }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, notify, model::clearRefreshFailure, settings, header, hearts, plus, unread, model::setKind, model::applyFilters)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
@@ -156,7 +160,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         val block = sheetActivity?.schedules?.firstOrNull { it.scheduleId == openTimetable.scheduleId }
         val blockTitle = openTimetable.timetable?.scheduleTitle?.ifBlank { null } ?: block?.name ?: "세션"
         TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
-            sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry, sheetNotices)
+            sessionIds, sessionHeart, { sessions.show(null, null) }, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly)
     }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).

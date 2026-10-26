@@ -189,6 +189,43 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertTrue(statuses.all { it == 200 })
     }
 
+    // native-v1.md "웹 로그인": 비로그인 저장을 로그인한 계정 지갑으로 옮긴다
+    @Test
+    fun `게스트 저장을 계정으로 합치면 새 Receipt는 게스트 저장 시각을 받은 날로 쓰고, 이미 있던 것·내 명함은 건너뛰며, 게스트 목록은 비워진다`() {
+        val (owner1, card1) = ownerWithCard()
+        val (me, myCard) = ownerWithCard()
+        val (owner3, card3) = ownerWithCard()
+        fun asMe() = jwt().jwt { it.subject(me.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER"))
+        val activity = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+        val token = read(mvc.put("/v1/guest/cards/$card1") { guest(); code(qrCode(owner1, card1), activity) }.andExpect { status { isCreated() } })["guestToken"].asString()
+        mvc.put("/v1/guest/cards/$myCard") { guest(token); code(qrCode(me, myCard)) }.andExpect { status { isOk() } }
+        mvc.put("/v1/guest/cards/$card3") { guest(token); code(qrCode(owner3, card3)) }.andExpect { status { isOk() } }
+        jdbc.sql("update guest_cards set saved_at = now() - interval '3 days' where session_digest = ?").param(GuestService.digest(token)).update()
+        val guestSavedAt = read(mvc.get("/v1/guest/cards") { guest(token) })["items"].values().first { it["card"]["id"].asString() == card1 }["savedAt"].asString()
+        // card3은 이미 앱에서 받아 두었다(받은 날은 지금)
+        val already = read(mvc.put("/v1/wallet/cards/$card3") { with(asMe()); code(qrCode(owner3, card3)) }.andExpect { status { isCreated() } })["receivedAt"].asString()
+
+        fun import(value: String) = mvc.post("/v1/wallet/import-guest") { with(asMe()); contentType = MediaType.APPLICATION_JSON; content = """{"guestToken":"$value"}""" }
+        // Bearer 없음은 401, 토큰 형식·모르는 세션은 400 GUEST_SESSION_INVALID(401이 아니다)
+        mvc.post("/v1/wallet/import-guest") { contentType = MediaType.APPLICATION_JSON; content = """{"guestToken":"$token"}""" }.andExpect { status { isUnauthorized() } }
+        import("not-a-token").andExpect { status { isBadRequest() }; jsonPath("$.code") { value("GUEST_SESSION_INVALID") } }
+        import(GuestService.randomToken()).andExpect { status { isBadRequest() }; jsonPath("$.code") { value("GUEST_SESSION_INVALID") } }
+
+        // card1만 새로 생긴다. 내 명함(myCard)은 건너뛰고 card3은 이미 있던 Receipt를 그대로 둔다
+        assertEquals(1, read(import(token).andExpect { status { isOk() } })["imported"].asInt())
+        val wallet = read(mvc.get("/v1/wallet") { with(asMe()) }.andExpect { status { isOk() } })["items"]
+        assertEquals(setOf(card1, card3), wallet.values().map { it["card"]["id"].asString() }.toSet())
+        val imported = wallet.values().first { it["card"]["id"].asString() == card1 }
+        assertEquals(OffsetDateTime.parse(guestSavedAt).toInstant(), OffsetDateTime.parse(imported["receivedAt"].asString()).toInstant())
+        assertEquals(activity, imported["context"]["activityId"].asLong())
+        assertEquals(OffsetDateTime.parse(already).toInstant(), OffsetDateTime.parse(wallet.values().first { it["card"]["id"].asString() == card3 }["receivedAt"].asString()).toInstant())
+
+        // 게스트 저장은 모두 회수돼 목록이 비고 행은 남는다. 세션은 남아 있어 다시 합치면 0
+        assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isOk() } })["items"].size())
+        assertEquals(3, jdbc.sql("select count(*) from guest_cards where session_digest = ? and recalled_at is not null").param(GuestService.digest(token)).query(Int::class.java).single())
+        assertEquals(0, read(import(token).andExpect { status { isOk() } })["imported"].asInt())
+    }
+
     // native-v1.md "명함 신고·차단": 게스트도 저장한 명함을 신고하고 차단한다(웹 프록시 헤더)
     @Test
     fun `게스트는 저장한 명함을 코드 없이 신고하고, 차단하면 저장이 빠지며 다시 저장하면 409다`() {
@@ -204,5 +241,37 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertEquals("주인", block["name"].asString())
         assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
         mvc.put("/v1/guest/cards/$cardId") { guest(token); code(qrCode(owner, cardId)) }.andExpect { status { isConflict() }; jsonPath("$.code") { value("BLOCKED") } }
+    }
+
+    // native-v1.md "명함 교환" → "교환 세션 맥락"(2026-10-26): 비로그인은 찜이 없어 진행 중 블록까지만 남긴다
+    @Test
+    fun `게스트 저장은 지금 진행 중인 일정 블록을 맥락으로 남기고 세션은 남기지 않는다`() {
+        val (owner, cardId) = ownerWithCard()
+        jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, created_at, updated_at)
+            select id, '게스트 맥락 컨퍼런스', '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'DRAFT', localtimestamp, localtimestamp from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
+            """
+        ).update()
+        val activity = jdbc.sql("select id from activities where name = '게스트 맥락 컨퍼런스'").query(Long::class.java).single()
+        fun block(title: String, slot: String?, from: String, to: String) = jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, ?, ?, 'EVENT', 'CONFIRMED', 'TIMED', now() + ?::interval, now() + ?::interval, 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
+            """
+        ).params(listOf<Any?>(activity, slot, title, from, to)).query(Long::class.java).single()
+        block("활동 기간", "ACTIVITY", "-3 hours", "+5 hours")
+        val afternoon = block("오후 세션", null, "-1 hours", "+2 hours")
+        val track = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 A', '201호', 0) returning id").param(afternoon).query(Long::class.java).single()
+        jdbc.sql("insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', '세션', now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb)").params(afternoon, track).update()
+
+        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId), activity) }.andExpect { status { isCreated() } })["guestToken"].asString()
+        val context = read(mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isOk() } })["items"][0]["context"]
+        assertEquals(listOf(activity, afternoon, "오후 세션"), listOf(context["activityId"].asLong(), context["scheduleId"].asLong(), context["scheduleTitle"].asString()))
+        assertTrue(context["sessionId"].isNull && context["sessionTitle"].isNull && context["trackName"].isNull && context["room"].isNull)
+        assertEquals(
+            listOf(afternoon, null),
+            jdbc.sql("select schedule_id, session_id from guest_cards where card_id = ?").param(UUID.fromString(cardId)).query { rs, _ -> listOf(rs.getLong(1), rs.getObject(2)) }.single(),
+        )
     }
 }
