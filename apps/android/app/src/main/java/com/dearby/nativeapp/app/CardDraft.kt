@@ -21,6 +21,9 @@ data class CardDraft(
     /** 소개 링크 넣기: the switch shows only when the profile has a link. */
     val hasIntroLink get() = profile.introLink != null
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
+    /** A new card left unnamed is "내 명함", or "내 명함 2"·"내 명함 3"… when [taken] (the account's card names) already has it. */
+    fun newCardName(taken: Collection<String>) = if (cardTitle.isNotBlank()) cardName
+        else generateSequence(1) { it + 1 }.map { if (it == 1) cardName else "$cardName $it" }.first { it !in taken }
     val contactIds get() = profile.contacts.map { it.id }.filter { it in publicContactIds }
     val historyIds get() = profile.histories.map { it.id }.filter { it in publicHistoryIds }
     val contacts get() = profile.contacts.map { ComposerContact(it.id, it.kind, ContactRules.shown(it.kind, it.value), it.id in publicContactIds) }

@@ -54,6 +54,8 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
         mutable.value = if (cards.isEmpty()) MyCardsState(MyCardsPhase.NO_CARD)
             else MyCardsState(MyCardsPhase.LOADED, cards.map { MyCardChoice(it.id, it.name, it.profileName, it.job) }, selected?.id, selected?.toState())
     }
+    /** A card just published: the next load selects it (it is the newest, but a kept selection would otherwise win). */
+    fun preselect(id: String) = mutable.update { it.copy(selectedId = id) }
     /** A grid tile was tapped: show that card under the grid. */
     fun select(id: String) {
         val card = cards.find { it.id == id } ?: return
