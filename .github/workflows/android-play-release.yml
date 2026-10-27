@@ -1,13 +1,18 @@
 name: Android Play release
 # Builds the upload-key-signed release AAB and sends it with the ko-KR listing (apps/android/fastlane/metadata/android)
-# to a Play track. Play access: Workload Identity Federation (vars GCP_WIF_PROVIDER, PLAY_SERVICE_ACCOUNT). A release on `production` is Google's review submission; `internal` reaches internal testers only.
+# to a Play track. Play access: Workload Identity Federation (vars GCP_WIF_PROVIDER, PLAY_SERVICE_ACCOUNT). A release on `production` is Google's review submission;
+# `internal` reaches internal testers only; `closed` is the closed-testing track named by var PLAY_CLOSED_TRACK (Play's default closed track is `alpha`).
+# A push to `main` (the dev→main batch merge, 1–2 a day; user decision 2026-10-27) releases to the closed track with status completed.
 on:
+  push:
+    branches: [main]
+    paths: [apps/android/**, .github/workflows/android-play-release.yml]
   workflow_dispatch:
     inputs:
       track:
-        description: Play track
+        description: Play track (closed = var PLAY_CLOSED_TRACK, default alpha)
         type: choice
-        options: [internal, production]
+        options: [internal, closed, production]
         default: internal
       release_notes:
         description: 이번 버전의 새로운 기능 (empty = changelogs/default.txt)
@@ -18,15 +23,43 @@ on:
         type: choice
         options: [completed, draft]
         default: completed
-# Manual runs only (user decision 2026-10-22). id-token: Play access through Workload Identity Federation; the org forbids service-account keys.
+# id-token: Play access through Workload Identity Federation; the org forbids service-account keys. actions: the gate reads run history.
 permissions:
   contents: read
   id-token: write
+  actions: read
+# Play edits are transactional, so runs never overlap or cancel each other; a main push waits behind a manual run.
 concurrency:
   group: android-play-release
   cancel-in-progress: false
 jobs:
+  # A main push whose Android inputs match the last successful push run is skipped (safety net behind `on.push.paths`; manual runs always build).
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != push ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow android-play-release.yml --event push --branch "$GITHUB_REF_NAME" --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+          if [ -z "$last" ] || ! git cat-file -e "$last^{commit}" 2>/dev/null \
+            || git diff --name-only "$last" HEAD | grep -qE '^(apps/android/|\.github/workflows/android-play-release\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No Android changes since $last; skipping." >> "$GITHUB_STEP_SUMMARY"
+          fi
   release:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -39,8 +72,9 @@ jobs:
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      PLAY_TRACK: ${{ inputs.track }}
-      PLAY_RELEASE_STATUS: ${{ inputs.status }}
+      # A push has no inputs: closed track, completed.
+      PLAY_TRACK: ${{ (github.event_name == 'push' || inputs.track == 'closed') && (vars.PLAY_CLOSED_TRACK || 'alpha') || inputs.track }}
+      PLAY_RELEASE_STATUS: ${{ github.event_name == 'push' && 'completed' || inputs.status }}
     defaults:
       run:
         working-directory: apps/android
@@ -84,7 +118,8 @@ jobs:
           test -n "$GOOGLE_SERVER_CLIENT_ID" || echo "::warning::GOOGLE_SERVER_CLIENT_ID is empty; the release hides Google sign-in."
           test -n "$ADMOB_ANDROID_APP_ID" -a -n "$ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID" || echo "::warning::ADMOB_ANDROID_APP_ID or ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID is empty; the release shows no queue ad."
           printf '%s' "$UPLOAD_JKS" | base64 --decode > "$RUNNER_TEMP/upload.jks"
-          # Version code: monotonic above the manual first upload (1); a re-run of the same run reuses it and Play refuses the duplicate.
+          # Version code: monotonic above the manual first upload (1); a re-run of the same run reuses it and Play refuses the duplicate
+          # (start a new run with `gh workflow run` instead; docs/store/release-cd.md).
           {
             echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks"
             echo "PLAY_JSON_KEY_PATH=$PLAY_CREDENTIALS"

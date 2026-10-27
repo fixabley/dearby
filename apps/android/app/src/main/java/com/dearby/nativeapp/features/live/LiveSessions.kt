@@ -25,14 +25,17 @@ import org.json.JSONObject
 /** One 찜 session of the day's [LivePlan]: [start]/[end] epoch millis, [place] `트랙 B · 그랜드볼룸 B` (null for a session that spans every track). */
 data class LiveEntry(val sessionId: String, val start: Long, val end: Long, val place: String?, val title: String, val scheduleId: String)
 
+/** The notification's content at one instant inside the window; see [LiveSessions.frame]. */
+data class LiveFrame(val current: LiveEntry?, val next: LiveEntry?, val lines: List<String>, val chip: String, val progress: Int?)
+
 /**
  * The day's 행사 진행 중 plan (2026-10-26 user decision "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시"): the today activity of 오늘 내 행사 and its 찜 sessions
- * of that Seoul day, start order. The notification shows from 30 minutes before the first ([from]) to the end of the last ([until]).
- * Serialised into the alarm that redraws it and into the device preferences for the reboot restore.
+ * of that Seoul day, start order. The notification shows from 30 minutes before the first ([from]) to the latest end ([until]; a long 찜 may
+ * outlast one that starts after it). Serialised into the alarm that redraws it and into the device preferences for the reboot restore.
  */
 data class LivePlan(val activityId: String, val activityName: String, val entries: List<LiveEntry>) {
     val from get() = entries.first().start - LiveSessions.LEAD_MS
-    val until get() = entries.last().end
+    val until get() = entries.maxOf { it.end }
     fun toJson(): String = JSONObject().put("activityId", activityId).put("activityName", activityName).put("entries", JSONArray().apply {
         entries.forEach { put(JSONObject().put("sessionId", it.sessionId).put("start", it.start).put("end", it.end).put("place", it.place ?: JSONObject.NULL).put("title", it.title).put("scheduleId", it.scheduleId)) }
     }).toString()
@@ -86,58 +89,88 @@ object LiveSessions {
     }
 
     /**
-     * Draws [plan] for [now] and sets the alarm for the next change; null, or a plan whose last session ended, removes the notification and the alarm.
-     * Returns true while the notification is showing.
+     * Draws [plan] for [now] and sets the alarm for the next change; null, or a plan whose sessions all ended, removes the notification and the alarm.
+     * Returns true while the plan is live: showing, or waiting for its window with the alarm armed.
      */
     fun apply(context: Context, plan: LivePlan?, now: Long = System.currentTimeMillis()): Boolean {
         val alarms = context.getSystemService(AlarmManager::class.java)
         val notifications = NotificationManagerCompat.from(context)
         val intent = Intent(context, LiveSessionReceiver::class.java).setAction(ACTION)
-        if (plan == null || now >= plan.until) {
+        val next = plan?.let { nextAlarm(it, now) }
+        if (plan == null || next == null) {
             notifications.cancel(ID)
             PendingIntent.getBroadcast(context, ID, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let { alarms?.cancel(it); it.cancel() }
             return false
         }
-        val shown = now >= plan.from
-        if (shown) notify(context, plan, now) else notifications.cancel(ID)
-        val next = if (shown) nextChange(plan, now) else plan.from
+        frame(plan, now)?.let { notify(context, plan, it) } ?: notifications.cancel(ID)
         val fire = PendingIntent.getBroadcast(context, ID, intent.putExtra(PLAN, plan.toJson()), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms?.canScheduleExactAlarms() == true
         if (exact) alarms?.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, fire) else alarms?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, fire)
         return true
     }
 
-    /** The nearest instant after [now] the text or the progress should change: a start, an end, 10 minutes before a start, or 5 minutes on. */
-    private fun nextChange(plan: LivePlan, now: Long): Long =
-        (plan.entries.flatMap { listOf(it.start, it.end, it.start - NEAR_MS) }.filter { it > now } + (now + REFRESH_MS)).min()
+    /**
+     * When the alarm should redraw after [now]: the window start before it; inside, the nearest start, end, 10 minutes before a start or 5 minutes on
+     * (so the progress moves); null once every session ended.
+     */
+    internal fun nextAlarm(plan: LivePlan, now: Long): Long? = when {
+        now >= plan.until -> null
+        now < plan.from -> plan.from
+        else -> (plan.entries.flatMap { listOf(it.start, it.end, it.start - NEAR_MS) }.filter { it > now } + (now + REFRESH_MS)).min()
+    }
 
-    private fun notify(context: Context, plan: LivePlan, now: Long) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+    /**
+     * What the notification shows at [now]: the running session ([current]; of two 찜 starting together, the first in 내 시간표 order), the first one
+     * starting later ([next]), the body [lines] `지금 · 트랙 B · 그랜드볼룸 B · 제목` and `다음 14:50 · 트랙 C · 방 · 제목 · 20분 뒤`, the status bar [chip]
+     * (the running session's end `~15:30`, else the next start) and the running session's [progress] in percent. Null outside the window.
+     */
+    internal fun frame(plan: LivePlan, now: Long): LiveFrame? {
+        if (now < plan.from || now >= plan.until) return null
         val current = plan.entries.firstOrNull { it.start <= now && now < it.end }
         val next = plan.entries.firstOrNull { it.start > now }
         val lines = listOfNotNull(
             current?.let { listOfNotNull("지금", it.place, it.title).joinToString(" · ") },
             next?.let { listOfNotNull("다음 ${time(it.start)}", it.place, it.title, "${left(it.start - now)} 뒤").joinToString(" · ") })
-        val text = lines.joinToString("\n")
+        val chip = if (current != null) "~${time(current.end)}" else time(next?.start ?: plan.until)
+        val progress = current?.let { ((now - it.start) * 100 / (it.end - it.start)).toInt().coerceIn(0, 100) }
+        return LiveFrame(current, next, lines, chip, progress)
+    }
+
+    private fun notify(context: Context, plan: LivePlan, frame: LiveFrame) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val text = frame.lines.joinToString("\n")
         // The 세션 이동 알림 payload (features/reminder `kind`·`activityId`·`scheduleId`·`sessionId`): MainActivity opens the activity and the block on 내 시간표.
-        val target = current ?: next ?: plan.entries.last()
+        val target = frame.current ?: frame.next ?: plan.entries.last()
         val open = (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return)
             .putExtra("kind", "session_reminder").putExtra("activityId", plan.activityId).putExtra("scheduleId", target.scheduleId).putExtra("sessionId", target.sessionId)
         val tap = PendingIntent.getActivity(context, ID, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        // The status bar chip (Android 16+): the running session's end, else the next start.
         createChannel(context)
         val builder = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.dearby_symbol).setContentTitle(plan.activityName).setContentText(text)
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setCategory(NotificationCompat.CATEGORY_EVENT).setContentIntent(tap)
             .addAction(0, "내 시간표 보기", tap)
-            .setShowWhen(false).setRequestPromotedOngoing(true).setShortCriticalText(if (current != null) "~${time(current.end)}" else time(next!!.start))
-        if (current != null) {
-            val progress = ((now - current.start) * 100 / (current.end - current.start)).toInt().coerceIn(0, 100)
+            .setShowWhen(false).setRequestPromotedOngoing(true).setShortCriticalText(frame.chip)
+        val progress = frame.progress
+        if (progress != null) {
             // Android 16+: the live update's own progress style (Now Bar); below, the standard progress bar under the two lines.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) builder.setStyle(NotificationCompat.ProgressStyle().setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(100))).setProgress(progress))
             else builder.setProgress(100, progress, false).setStyle(NotificationCompat.BigTextStyle().bigText(text))
         } else builder.setStyle(NotificationCompat.BigTextStyle().bigText(text))
         NotificationManagerCompat.from(context).notify(ID, builder.build())
     }
+
+    /**
+     * Debug 미리보기 (설정 › 알림 `행사 진행 중 표시 미리보기`, 2026-10-27): a made-up plan to see the live update without an event today — `Dearby 미리보기`,
+     * 트랙 A's session running since 20 minutes before [now] until 7 minutes after it, 트랙 B's next starting 5 minutes later for 40 minutes. Shown through
+     * [apply] like a real plan, so its own alarm redraws and finally removes it; it is never stored, so a reboot does not restore it.
+     */
+    fun preview(now: Long = System.currentTimeMillis()): LivePlan {
+        val minute = 60_000L
+        return LivePlan("preview", "Dearby 미리보기", listOf(
+            LiveEntry("preview-a", now - 20 * minute, now + 7 * minute, "트랙 A · 그랜드볼룸 A", "라이브 업데이트로 보는 행사 진행", "preview"),
+            LiveEntry("preview-b", now + 12 * minute, now + 52 * minute, "트랙 B · 그랜드볼룸 B", "다음 세션 미리보기", "preview")))
+    }
+    /** Debug only: while true, MainActivity's day plan leaves the preview alone instead of applying (and usually removing) the real plan. */
+    var previewing = false
 
     private fun time(at: Long) = clock.format(Instant.ofEpochMilli(at).atZone(seoul))
     /** `20분`, `1시간`, `1시간 20분`; never under a minute. */

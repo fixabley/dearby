@@ -1,17 +1,32 @@
 name: iOS TestFlight
+# Archives a signed Release and uploads it to TestFlight. A push to `main` (the dev→main batch merge, 1–2 a day; user decision 2026-10-27)
+# also adds the processed build to the external TestFlight group and submits it for beta review (apps/ios/fastlane lane distribute_external).
+# A manual run stays internal unless `external` is set. The former daily 09:00 KST schedule is gone: every main merge now ships.
 on:
-  # Daily 09:00 KST, only when iOS inputs changed since the last successful upload; or on demand.
-  schedule:
-    - cron: "0 0 * * *"
+  push:
+    branches: [main]
+    paths: [apps/ios/**, shared/assets/**, .github/workflows/ios-testflight.yml]
   workflow_dispatch:
+    inputs:
+      external:
+        description: Also distribute to the external TestFlight group (var TESTFLIGHT_EXTERNAL_GROUP, default 비공개 테스터) and submit for beta review
+        type: boolean
+        default: false
+      changelog:
+        description: TestFlight "What to Test" for external testers (empty = last commit subject)
+        type: string
+        default: ""
 permissions:
   contents: read
   actions: read
+# Per event: a main push never cancels a manual run (and vice versa). A second main merge during the processing wait cancels the first
+# push run; that build stays internal-only and the newer one goes external.
 concurrency:
-  group: ios-testflight
+  group: ios-testflight-${{ github.event_name }}
   cancel-in-progress: true
 jobs:
-  # Cheap ubuntu gate so a scheduled day without iOS changes never starts a macOS runner.
+  # Cheap ubuntu gate: a main push whose iOS inputs match the last successful push run never starts a macOS runner
+  # (safety net behind `on.push.paths`; manual runs always build).
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -26,9 +41,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event_name }}" != schedule ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ios-testflight.yml --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
-          if [ -z "$last" ] || git diff --name-only "$last" HEAD | grep -qE '^(apps/ios/|shared/assets/)'; then
+          if [ "${{ github.event_name }}" != push ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Only earlier push runs count: a manual internal build on the same commit must not keep testers from getting it.
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ios-testflight.yml --event push --branch "$GITHUB_REF_NAME" --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+          if [ -z "$last" ] || ! git cat-file -e "$last^{commit}" 2>/dev/null \
+            || git diff --name-only "$last" HEAD | grep -qE '^(apps/ios/|shared/assets/|\.github/workflows/ios-testflight\.yml$)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -38,7 +55,8 @@ jobs:
     needs: gate
     if: needs.gate.outputs.run == 'true'
     runs-on: macos-26
-    timeout-minutes: 60
+    # Archive + upload take about 20 minutes; `external` then waits up to 40 minutes for App Store Connect processing.
+    timeout-minutes: 100
     env:
       # Origins come from repository variables; credentials from repository secrets. Nothing lives in the repo.
       DEARBY_API_ORIGIN: ${{ vars.DEARBY_API_ORIGIN }}
@@ -123,6 +141,8 @@ jobs:
           # Monotonic build number above the manual uploads (1, 2); re-runs get a new suffix.
           build="$((GITHUB_RUN_NUMBER + 2)).$GITHUB_RUN_ATTEMPT"
           echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+          # Same source as ios-appstore-submit.yml: the marketing version the build carries.
+          echo "APP_VERSION=$(sed -n "s/.*'MARKETING_VERSION' => '\([^']*\)'.*/\1/p" scripts/generate_project.rb | head -n 1)" >> "$GITHUB_ENV"
           xcodebuild -project Dearby.xcodeproj -scheme Dearby -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
             DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="$build" archive
@@ -144,7 +164,26 @@ jobs:
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
             -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-          echo "Uploaded build $BUILD_NUMBER" >> "$GITHUB_STEP_SUMMARY"
+          echo "Uploaded build $APP_VERSION ($BUILD_NUMBER)" >> "$GITHUB_STEP_SUMMARY"
+      # External testers (every main push, or `external`): Beta App Review Information and the group's Test Information must already be
+      # saved in App Store Connect (entered once in the console; fastlane sends neither). Each external build is submitted for TestFlight beta review.
+      - if: github.event_name == 'push' || inputs.external == true
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: apps/ios
+      - name: Distribute to external testers
+        if: github.event_name == 'push' || inputs.external == true
+        env:
+          TESTFLIGHT_EXTERNAL_GROUP: ${{ vars.TESTFLIGHT_EXTERNAL_GROUP || '비공개 테스터' }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          # Push runs have no input: the merge commit subject, or a plain fallback.
+          CHANGELOG=${CHANGELOG:-$(git log -1 --format=%s)}
+          CHANGELOG=${CHANGELOG:-업데이트}
+          CHANGELOG="$CHANGELOG" bundle exec fastlane ios distribute_external
+          echo "Distributed to TestFlight group \"$TESTFLIGHT_EXTERNAL_GROUP\" and submitted for beta review" >> "$GITHUB_STEP_SUMMARY"
       - name: Clean up signing material
         if: always()
         run: |
