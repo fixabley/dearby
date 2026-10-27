@@ -49,13 +49,13 @@ import androidx.compose.ui.unit.dp
 }
 
 /**
- * Debug only (2026-10-27): 설정 › 알림 `행사 진행 중 표시 미리보기` — [on] while the made-up 행사 진행 중 notification is showing; [toggle] posts it or removes it.
- * Not in the release settings (`BuildConfig.DEBUG` at the caller).
+ * Debug only (2026-10-27): 설정 › 알림 `행사 진행 중 표시 미리보기` — [moving] the made-up 행사 진행 중 notification shown: null none, false 세션 중,
+ * true 이동; each tap ([next]) goes none → 세션 중 → 이동 → none. Not in the release settings (`BuildConfig.DEBUG` at the caller).
  */
-@Composable fun LiveSessionPreviewRow(on: Boolean, toggle: () -> Unit) {
-    ListItem({ Text("행사 진행 중 표시 미리보기") }, Modifier.clickable(onClick = toggle, role = Role.Button),
-        supportingContent = { Text(if (on) "가짜 행사 알림이 보이는 중이에요. 누르면 지워요" else "가짜 행사로 진행 중 알림을 바로 띄워요 (Debug)") },
-        trailingContent = { Text(if (on) "지우기" else "띄우기", color = MaterialTheme.colorScheme.primary) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+@Composable fun LiveSessionPreviewRow(moving: Boolean?, next: () -> Unit) {
+    ListItem({ Text("행사 진행 중 표시 미리보기") }, Modifier.clickable(onClick = next, role = Role.Button),
+        supportingContent = { Text(when (moving) { null -> "가짜 행사로 진행 중 알림을 바로 띄워요 (Debug)"; false -> "세션 중 모습이 보이는 중이에요. 누르면 이동 모습으로 바꿔요"; true -> "이동 모습이 보이는 중이에요. 누르면 지워요" }) },
+        trailingContent = { Text(when (moving) { null -> "띄우기"; false -> "이동 보기"; true -> "지우기" }, color = MaterialTheme.colorScheme.primary) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
 }
 
 /** 설정 `개인정보` `사용 통계 보내기` (2026-10-25): screens and a few actions, never name or contacts; on until turned off, signed in or not. */

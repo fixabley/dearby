@@ -82,10 +82,10 @@ import kotlinx.coroutines.launch
             }
             // Debug only (2026-10-27 user decision): a fake 행사 진행 중 notification on demand, also signed out, so the live update can be checked on any device.
             if (BuildConfig.DEBUG) {
-                var previewing by remember { mutableStateOf(LiveSessions.previewing) }
-                LiveSessionPreviewRow(previewing) {
-                    previewing = !previewing; LiveSessions.previewing = previewing
-                    LiveSessions.apply(context, if (previewing) LiveSessions.preview() else null)
+                var moving by remember { mutableStateOf(LiveSessions.previewMoving) }
+                LiveSessionPreviewRow(moving) {
+                    moving = when (moving) { null -> false; false -> true; true -> null }; LiveSessions.previewMoving = moving
+                    LiveSessions.apply(context, moving?.let { LiveSessions.preview(it) })
                 }
             }
         } },
