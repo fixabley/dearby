@@ -29,6 +29,7 @@ import XCTest
         XCTAssertEqual(plan?.entries.map(\.scheduleID), ["10"])
         XCTAssertEqual(plan?.entries.first?.title, "세션 2")
         XCTAssertEqual(plan?.analytics["activity_id"], "2")
+        XCTAssertEqual(plan?.entries.first?.trackPosition, 0, "the track's color comes along")
     }
 
     // MARK: 찜 없음 · 오늘 아님
@@ -69,10 +70,12 @@ import XCTest
         XCTAssertEqual(running.state?.current.scheduleID, "1")
         XCTAssertEqual(running.state?.running, true)
         XCTAssertEqual(running.state?.next?.scheduleID, "2")
+        XCTAssertEqual(running.state.map { [$0.position, $0.total] }, [0, 3], "진행 트랙: first of three")
         let waiting = LiveSessionModel.moment(plan, now: at(14, 0))
         XCTAssertEqual(waiting.state?.current.scheduleID, "2", "between sessions the next one is current")
         XCTAssertEqual(waiting.state?.running, false)
         XCTAssertEqual(waiting.state?.next?.scheduleID, "3")
+        XCTAssertEqual(waiting.state?.position, 1, "in a gap the session walked to is the current segment")
         let last = LiveSessionModel.moment(plan, now: at(16, 10))
         XCTAssertEqual(last.state?.current.scheduleID, "3")
         XCTAssertNil(last.state?.next, "nothing after the last session")

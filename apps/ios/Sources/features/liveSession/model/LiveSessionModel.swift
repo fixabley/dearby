@@ -25,8 +25,8 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
     @ObservationIgnored private var applying: Task<Void, Never>?
     @ObservationIgnored private var timer: Task<Void, Never>?
     #if DEBUG
-    /// 라이브 액티비티 미리보기 (설정 › Debug) stands in for the saved plan (`togglePreview`).
-    var previewing = false
+    /// 라이브 액티비티 미리보기 (설정 › Debug): the mode shown in place of the saved plan (`togglePreview`); nil when off.
+    var previewing: PreviewMode?
     @ObservationIgnored private var planBeforePreview: Plan?
     #endif
 
@@ -82,7 +82,9 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
         guard now >= opens, let current = entries.first(where: { $0.end > now }) else { return Moment(state: nil, boundary: opens) }
         let next = entries.first { $0.start > current.start && $0.end > now }
         let boundary = entries.flatMap { [$0.start, $0.end] }.filter { $0 > now }.min()
-        return Moment(state: .init(current: current, next: next, running: current.start <= now), boundary: boundary)
+        let position = entries.firstIndex(of: current) ?? 0
+        return Moment(state: .init(current: current, next: next, running: current.start <= now, position: position, total: entries.count),
+                      boundary: boundary)
     }
     /// The gate `apply` goes through: nothing with the switch off or without a saved plan (a sign-out clears it, `sync(nil)`).
     nonisolated static func moment(enabled: Bool, plan: Plan?, now: Date) -> Moment? {
@@ -164,28 +166,36 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
 #if DEBUG
 extension LiveSessionModel {
     nonisolated static let previewActivityID = "preview"
-    /// 라이브 액티비티 미리보기 (설정 › Debug, 2026-10-27 사용자 결정): a made-up 행사 `Dearby 미리보기` — a 트랙 A session running until 7 minutes from
-    /// now, then a 트랙 B session for 5 minutes — started at once through the real path (`sync` → `apply`), with no account. A second tap ends it
-    /// and puts the saved plan back; `DearbyApp.syncLiveSession` leaves the plan alone meanwhile. Not compiled into Release; not counted in 사용 통계.
+    /// What the preview shows: a session running (세션 중), or the gap before the next one (이동).
+    enum PreviewMode: CaseIterable { case running, moving }
+    /// 라이브 액티비티 미리보기 (설정 › Debug, 2026-10-27 사용자 결정): a made-up 행사 `Dearby 미리보기` of four sessions, started at once through the
+    /// real path (`sync` → `apply`) with no account. Each tap moves on — 세션 중, then 이동 — and the next one ends it and puts the saved plan back;
+    /// `DearbyApp.syncLiveSession` leaves the plan alone meanwhile. Not compiled into Release; not counted in 사용 통계.
     func togglePreview(now: Date = Date()) {
-        if previewing {
-            previewing = false
+        let modes = PreviewMode.allCases
+        let next = previewing.flatMap { modes.firstIndex(of: $0) }.map { $0 + 1 } ?? 0
+        if previewing == nil { planBeforePreview = Self.load() }
+        if next < modes.count {
+            previewing = modes[next]
+            sync(Self.previewPlan(modes[next], now: now), now: now)
+        } else {
+            previewing = nil
             sync(planBeforePreview, now: now)
             planBeforePreview = nil
-        } else {
-            planBeforePreview = Self.load()
-            previewing = true
-            sync(Self.previewPlan(now: now), now: now)
         }
     }
-    nonisolated static func previewPlan(now: Date) -> Plan {
-        let handover = now.addingTimeInterval(7 * 60)
-        let entries = [
-            LiveSessionAttributes.ContentState.Entry(scheduleID: previewActivityID, title: "지금 진행 중인 세션", track: "트랙 A", room: "그랜드볼룸 A",
-                                                     start: now.addingTimeInterval(-20 * 60), end: handover),
-            LiveSessionAttributes.ContentState.Entry(scheduleID: previewActivityID, title: "다음 세션", track: "트랙 B", room: "그랜드볼룸 B",
-                                                     start: handover, end: handover.addingTimeInterval(5 * 60))
-        ]
+    /// 세션 중: the second session runs for 7 more minutes. 이동: the second ended 3 minutes ago and the third starts in 7, in another room.
+    nonisolated static func previewPlan(_ mode: PreviewMode, now: Date) -> Plan {
+        func entry(_ title: String, _ track: Int, _ room: String, _ from: Double, _ to: Double) -> LiveSessionAttributes.ContentState.Entry {
+            .init(scheduleID: previewActivityID, title: title, track: "트랙 " + ["A", "B", "C"][track], room: room,
+                  start: now.addingTimeInterval(from * 60), end: now.addingTimeInterval(to * 60), trackPosition: track)
+        }
+        let entries = switch mode {
+        case .running: [entry("키노트: 행사의 시작", 0, "그랜드볼룸 A", -90, -50), entry("모바일 앱 디자인 시스템 만들기", 0, "그랜드볼룸 A", -20, 7),
+                        entry("라이브 액티비티 실전", 1, "그랜드볼룸 B", 12, 40), entry("마무리 토크", 2, "세미나실 3", 50, 80)]
+        case .moving: [entry("키노트: 행사의 시작", 0, "그랜드볼룸 A", -90, -50), entry("모바일 앱 디자인 시스템 만들기", 0, "그랜드볼룸 A", -35, -3),
+                       entry("라이브 액티비티 실전", 1, "그랜드볼룸 B", 7, 35), entry("마무리 토크", 2, "세미나실 3", 50, 80)]
+        }
         return Plan(attributes: LiveSessionAttributes(activityID: previewActivityID, activityTitle: "Dearby 미리보기", zone: "Asia/Seoul"),
                     entries: entries, analytics: [:])
     }

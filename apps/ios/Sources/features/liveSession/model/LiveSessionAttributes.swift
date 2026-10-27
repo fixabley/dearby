@@ -13,13 +13,18 @@ struct LiveSessionAttributes: ActivityAttributes, Hashable {
             let room: String?
             let start: Date
             let end: Date
+            /// The track's `position` (its color, `DearbyStyle.palette`); nil for a full-width session.
+            var trackPosition: Int?
         }
         /// The session running, or the next one before it starts.
         let current: Entry
         /// The one after `current`; nil during the last.
         let next: Entry?
-        /// `current` has started: `지금` and the countdown to its end; else its time and the countdown to its start.
+        /// `current` has started (세션 중); else the gap before it (이동, contract "표시 디자인 — 2026-10-27").
         let running: Bool
+        /// `current`'s place among the day's favorited sessions (0-based) and their count: the 진행 트랙 segments.
+        let position: Int
+        let total: Int
     }
     let activityID: String
     let activityTitle: String

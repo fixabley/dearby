@@ -219,7 +219,7 @@ import SwiftUI
     /// launch, or offline at the venue) the saved plan keeps the display going.
     private func syncLiveSession() {
         #if DEBUG
-        if liveSession.previewing { return }
+        if liveSession.previewing != nil { return }
         #endif
         if account.phase == .signedOut {
             liveSession.sync(nil)

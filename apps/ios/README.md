@@ -180,7 +180,7 @@ ruby apps/ios/scripts/generate_project.rb
 xcodebuild test -project apps/ios/Dearby.xcodeproj -scheme Dearby -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:DearbyTests
 ```
 
-라이브 액티비티 화면은 Debug 빌드의 설정 › `Debug` › `라이브 액티비티 미리보기`로 본다(가짜 행사, 계정 불필요, 다시 누르면 끝). Release에는 들어가지 않는다.
+라이브 액티비티 화면은 Debug 빌드의 설정 › `Debug` › `라이브 액티비티 미리보기`로 본다(가짜 행사, 계정 불필요, 누를 때마다 세션 중 → 이동 → 끝). Release에는 들어가지 않는다.
 
 ## 검증
 

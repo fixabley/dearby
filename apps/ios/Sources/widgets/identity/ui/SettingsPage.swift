@@ -249,13 +249,13 @@ struct SettingsPage: View {
     }
     #if DEBUG
     /// 라이브 액티비티 미리보기 (2026-10-27 사용자 결정), Debug builds only: a made-up 행사 through `LiveSessionModel.togglePreview`, so the 잠금 화면·Dynamic
-    /// Island looks can be checked without an event day or an account; a second tap ends it.
+    /// Island looks can be checked without an event day or an account; each tap moves to the next mode, then ends it.
     private func debugSection(_ liveSession: LiveSessionModel) -> some View {
         Section {
             Button { liveSession.togglePreview() } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("라이브 액티비티 미리보기").foregroundStyle(.primary)
-                    Text(liveSession.previewing ? "진행 중 · 다시 누르면 끝나요" : "가짜 행사(트랙 A 진행 중 7분, 다음 트랙 B 5분)를 바로 띄워요")
+                    Text(Self.previewHint(liveSession.previewing))
                         .font(.dearby(.footnote)).foregroundStyle(.secondary)
                 }
             }.accessibilityIdentifier("settings-live-preview")
@@ -263,6 +263,13 @@ struct SettingsPage: View {
             Text("Debug").font(.dearby(.footnote))
         } footer: {
             Text("Debug 빌드에만 있어요. 행사 진행 중 표시 스위치와 iOS 설정의 실시간 현황이 켜져 있어야 보여요.").font(.dearby(.footnote))
+        }
+    }
+    private static func previewHint(_ mode: LiveSessionModel.PreviewMode?) -> String {
+        switch mode {
+        case nil: "가짜 행사를 바로 띄워요. 누를 때마다 세션 중 → 이동 → 끝"
+        case .running: "세션 중 · 누르면 이동으로"
+        case .moving: "이동 · 누르면 끝나요"
         }
     }
     #endif

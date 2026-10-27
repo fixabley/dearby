@@ -54,16 +54,12 @@ struct StageTrack: View {
         }
         .accessibilityElement(children: .ignore).accessibilityLabel(progress.accessibilityLabel)
     }
-    @ViewBuilder private func segment(_ stage: ActivityStage) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 3)
-        if stage.mark.kind == .failed {
-            shape.fill(DearbyStyle.danger)
-        } else {
-            switch stage.state {
-            case .past: shape.fill(DearbyStyle.teal)
-            case .current: shape.fill(DearbyStyle.mint).overlay(shape.stroke(DearbyStyle.teal, lineWidth: 1.5))
-            case .upcoming: shape.fill(Color(.opaqueSeparator))
-            }
+    private func segment(_ stage: ActivityStage) -> StageSegment {
+        guard stage.mark.kind != .failed else { return StageSegment(state: .failed) }
+        return switch stage.state {
+        case .past: StageSegment(state: .past)
+        case .current: StageSegment(state: .current)
+        case .upcoming: StageSegment(state: .upcoming)
         }
     }
 }

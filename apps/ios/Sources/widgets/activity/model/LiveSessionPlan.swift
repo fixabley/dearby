@@ -12,7 +12,8 @@ extension LiveSessionModel.Plan {
         guard let first = mine.first else { return nil }
         let entries = mine.map {
             LiveSessionAttributes.ContentState.Entry(scheduleID: $0.scheduleID, title: $0.session.title, track: $0.track?.name,
-                                                     room: $0.track?.room, start: $0.session.start, end: $0.session.end)
+                                                     room: $0.track?.room, start: $0.session.start, end: $0.session.end,
+                                                     trackPosition: $0.track?.position)
         }
         return Self(attributes: LiveSessionAttributes(activityID: event.activity.id, activityTitle: event.activity.title, zone: first.zone),
                     entries: entries, analytics: AppAnalytics.activity(event.activity.id, event.activity).mapValues { "\($0)" })
