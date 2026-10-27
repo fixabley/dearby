@@ -188,7 +188,7 @@ object LiveSessions {
             val style = NotificationCompat.ProgressStyle()
                 .setProgressSegments(line.segments.map { (length, session) -> NotificationCompat.ProgressStyle.Segment(length).setColor(if (session) TEAL else GAP) })
                 .setProgressPoints(line.points.map { NotificationCompat.ProgressStyle.Point(it).setColor(TEAL) }).setProgress(line.position)
-            if (frame.moving) style.setProgressTrackerIcon(IconCompat.createWithResource(context, R.drawable.ic_live_walk))
+            if (frame.moving) style.setProgressTrackerIcon(IconCompat.createWithResource(context, R.drawable.ic_live_walk).setTint(TEAL))
             builder.setStyle(style)
         } else builder.setStyle(NotificationCompat.BigTextStyle().bigText(text + "\n" + steps(plan, now)))
         NotificationManagerCompat.from(context).notify(ID, builder.build())
