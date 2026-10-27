@@ -233,7 +233,6 @@ function SignInBody({ onBusy, onSignedIn, footer }: { onBusy: (busy: boolean) =>
         {appleShown && <AppleButton onClick={apple} disabled={busy || appleReadyFor !== attempt} busy={running === "apple"} />}
         {googleShown && (
           <div className="relative flex min-h-[44px] justify-center" aria-busy={running === "google"}>
-            {/* Sized here, not by Google: the button is rendered at this host's width (see `renderGoogleButton`). */}
             <div ref={googleHost} className={cn("w-full max-w-[400px]", (busy || googleReadyFor !== attempt) && "pointer-events-none opacity-50")} />
             {running === "google" && <Spinner className="absolute top-1/2 -mt-2.5 text-teal" />}
           </div>
