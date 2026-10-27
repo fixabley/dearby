@@ -180,15 +180,9 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
             message={`다른 검색어로 찾아보거나 전체 ${kind === "event" ? "이벤트를" : "프로그램을"} 확인해 보세요.`}
             primary={{ label: `전체 ${KIND_LABEL[kind]} 보기`, href: homePath(kind, "", groups, categories) }}
           />
-        ) : categories.length ? (
-          <CenteredMessage
-            icon="explore"
-            title={`고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
-            message="다른 종류를 고르거나 종류 필터를 지워 보세요."
-            primary={{ label: "종류 필터 지우기", onClick: () => applyFilters({ groups, categories: [] }) }}
-          />
         ) : statusKey === "available" ? (
-          // Default 묶음 (contract "활동 상태" 빈 안내 2026-10-27): offer the closed ones — every 묶음, same 종류·검색 — same wording in event mode.
+          // Default 묶음 (contract "활동 상태" 빈 안내 2026-10-27, 종류를 골랐어도): offer the closed ones — every 묶음, same 종류·검색 — same
+          // wording in event mode.
           <CenteredMessage
             icon="explore"
             title="지금 지원할 수 있는 활동이 없어요"
@@ -196,7 +190,7 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
             primary={{ label: "마감된 활동 보기", onClick: () => applyFilters({ groups: STATUS_GROUP_IDS, categories }) }}
           />
         ) : (
-          // Already widened and still nothing: back to the default (applies at once, unlike the sheet's `초기화`).
+          // Already widened and still nothing: back to the default 묶음 and every 종류 (applies at once, unlike the sheet's `초기화`).
           <CenteredMessage
             icon="explore"
             title="고른 조건의 활동이 없어요"

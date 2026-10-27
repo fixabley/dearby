@@ -66,21 +66,16 @@ struct ActivityListPage: View {
                     if let query = state.query, !query.isEmpty {
                         CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
                             .frame(minHeight: viewport)
-                    } else if !state.categories.isEmpty {
-                        // 종류 필터 (contract "종류 필터" 2026-10-26): the way out is clearing the 종류.
-                        CenteredMessage(symbol: "calendar", title: "고른 조건의 \(state.kind == .event ? "이벤트가" : "프로그램이") 없어요",
-                                        message: "다른 종류를 고르거나 종류 필터를 지워 보세요.", embedded: true,
-                                        primary: MessageAction("종류 필터 지우기", identifier: "activity-clear-categories") { apply(state.statusGroups, []) })
-                            .frame(minHeight: viewport)
                     } else if state.statusGroups == [.available] {
-                        // Default 묶음 (contract "활동 상태" 빈 안내 2026-10-27): offer the closed ones — every 묶음, same 종류·검색 — same wording in event mode.
+                        // Default 묶음 (contract "활동 상태" 빈 안내 2026-10-27, 종류를 골랐어도): offer the closed ones — every 묶음, same 종류·검색 —
+                        // same wording in event mode.
                         CenteredMessage(symbol: "calendar", title: "지금 지원할 수 있는 활동이 없어요", message: "신청이 마감된 활동도 볼까요?", embedded: true,
                                         primary: MessageAction("마감된 활동 보기", identifier: "activity-show-closed") {
                                             apply(Set(StatusGroup.allCases), state.categories)
                                         })
                             .frame(minHeight: viewport)
                     } else {
-                        // Already widened and still nothing: back to the default (applies at once, unlike the sheet's `초기화`).
+                        // Already widened and still nothing: back to the default 묶음 and every 종류 (applies at once, unlike the sheet's `초기화`).
                         CenteredMessage(symbol: "calendar", title: "고른 조건의 활동이 없어요", embedded: true,
                                         primary: MessageAction("필터 초기화", identifier: "activity-reset-filters") { apply([.available], []) })
                             .frame(minHeight: viewport)
