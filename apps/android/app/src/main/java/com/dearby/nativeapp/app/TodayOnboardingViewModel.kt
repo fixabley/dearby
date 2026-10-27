@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  * 오늘 행사 온보딩 (2026-10-27 사용자 "오늘 진행 중인 행사 중 참여 중인 게 있는지 물어보는 온보딩"). [check] reads the short events not open for
  * application ([fetch]: `GET /v1/activities?category=CONFERENCE,MEETUP,LECTURE,WORKSHOP&status=IN_PROGRESS,RECRUITMENT_CLOSED,NO_RECRUITMENT&size=50`)
  * and asks about the ones with a 활동 일정 block on today's Seoul date that are not in 내 활동 yet, once per Seoul date on this device
- * ([DevicePreferences.todayOnboardingDay], set when the sheet shows; a day without one asks nothing and is checked again on the next return).
+ * ([DevicePreferences.todayOnboardingDay], set once a read succeeds, so a day without one is not read again; a failed read is retried on the next return).
  * Signed in or not. analytics `today_onboarding_shown(count)` and `today_onboarding_answer(result, count)`.
  *
  * Debug only, [DevicePreferences.todayOnboardingFake]: the nearest coming day with such an event stands in for today, so the sheet and what
@@ -46,11 +46,12 @@ class TodayOnboardingViewModel(private val fetch: suspend () -> List<ActivityMod
                 Log.w("Dearby", "Today events load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
                 return@launch
             }
+            // One read a day once it succeeded (a failure is tried again on the next return).
+            device.todayOnboardingDay = today.toString()
             val open = items.filter { it.id !in mine }
             val day = if (fake) open.flatMap { model -> model.blocks().filter { it.lastDay!! >= today }.map { maxOf(it.day!!, today) } }.minOrNull() ?: return@launch else today
             val found = todayEvents(open, day)
             if (found.isEmpty()) return@launch
-            device.todayOnboardingDay = today.toString()
             askFlow.value = Ask(day, found.map { (model, time) -> model.choice(time) }, found.map { it.first })
             Analytics.event("today_onboarding_shown", "count" to found.size.toString())
         }

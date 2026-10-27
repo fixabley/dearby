@@ -339,7 +339,8 @@ class ActivityViewModel(
      */
     private fun offerAutopass(id: String, confirm: Boolean) {
         val model = models[id]?.takeIf { it.status != "ENDED" } ?: return
-        if (autopassAsked(id)) return
+        // 오늘 행사 온보딩's add ([confirm]) passes them even when this activity was asked before.
+        if (!confirm && autopassAsked(id)) return
         val now = Instant.now()
         val own = marks[id].orEmpty()
         val selection = model.stages().withIndex().filter { it.value.selection }

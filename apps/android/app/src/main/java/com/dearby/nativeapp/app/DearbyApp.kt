@@ -181,6 +181,7 @@ private sealed interface Route {
     androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { foreground++; onPauseOrDispose {} }
     val todayAsk = todayOnboarding?.asking?.collectAsStateWithLifecycle()?.value
     val todayFree = screenshot == null && route == null && recoFunnel == null && !signingIn && !walletState.needSignIn && !activityDetail &&
+        activityListState.asking == null && activityListState.autopass == null &&
         (!signedIn || (ready && !reco.needsFunnel && !activityListState.mineLoading))
     LaunchedEffect(foreground, todayFree) { if (todayFree) todayOnboarding?.check(activityListState.known.values.filter { it.applied }.map { it.id }.toSet()) }
     // `참여해요`: the first chosen event's day opens on 내 시간표 over 발견 (or 내 활동, when that is the tab), consumed by its ActivityRoute.
