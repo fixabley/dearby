@@ -79,14 +79,18 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
         let boundary = entries.flatMap { [$0.start, $0.end] }.filter { $0 > now }.min()
         return Moment(state: .init(current: current, next: next, running: current.start <= now), boundary: boundary)
     }
+    /// The gate `apply` goes through: nothing with the switch off or without a saved plan (a sign-out clears it, `sync(nil)`).
+    nonisolated static func moment(enabled: Bool, plan: Plan?, now: Date) -> Moment? {
+        guard enabled, let plan else { return nil }
+        return moment(plan, now: now)
+    }
 
     /// Starts, updates or ends the activity from the saved plan and the switch; asks for a background wake-up at the next boundary and
     /// returns it. Runs for the app (`refresh`) and for the background task alike; nonisolated so the activities never cross an actor.
     @discardableResult nonisolated static func apply(now: Date = Date()) async -> Date? {
         let enabled = UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
-        let plan = enabled ? load() : nil
-        // Named apart from `moment(_:now:)` and called on `Self`: Xcode 26's compiler otherwise picks SwiftUI's `Gesture.map` here.
-        let current = plan.map { Self.moment($0, now: now) }
+        let plan = load()
+        let current = Self.moment(enabled: enabled, plan: plan, now: now)
         let activities = Activity<LiveSessionAttributes>.activities.filter { [.active, .stale].contains($0.activityState) }
         if let plan, let state = current?.state {
             let content = ActivityContent(state: state, staleDate: current?.boundary)
@@ -148,3 +152,4 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
         }
     }
 }
+

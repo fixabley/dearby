@@ -1658,6 +1658,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 ### 프로젝트·서명 (apps/ios)
 
 - `generate_project.rb`가 위젯 확장 타깃 `DearbyWidgets`(번들 `io.wid.dearby.widgets`, 코드 `apps/ios/Widgets/`, `ActivityAttributes`는 `Sources/features/liveSession/model/LiveSessionAttributes.swift` 하나를 두 타깃에 넣음)을 만든다. 앱 Info.plist(두 파일 같음) `NSSupportsLiveActivities` YES. App Group `group.io.wid.dearby`는 **확장 entitlements에만** 둔다 — 1단계 라이브 액티비티는 공유 저장소가 필요 없어 앱 entitlements와 앱의 App Store 프로파일은 그대로다(2단계에서 앱↔확장 공유 저장이 필요해지면 앱 entitlements·프로파일에 함께 넣는다).
+- 계획 로직 단위 테스트(2026-10-27 합의): `apps/ios/Tests/LiveSessionPlanTests.swift`(XCTest 타깃 `DearbyTests`, `Dearby` 스킴의 테스트 액션, 고정 `now`)가 오늘 활동 선택(오늘 우선·가장 이른 블록), 창(첫 찜 30분 전 ~ 마지막 찜 끝, 밖이면 없음), `현재`/`다음`, 같은 시작 시각 찜(id 순, 같은 시작은 `다음`이 아님), 다음 갱신 경계(남은 시작·끝 중 가장 가까운 것, 창 전에는 창 시작), 찜 없음, 스위치 끔·로그아웃(계획 없음)을 검증한다. CI(native.yml)는 아직 돌리지 않는다. Debug 빌드의 설정 › `Debug` › `라이브 액티비티 미리보기`는 가짜 행사 `Dearby 미리보기`(트랙 A 진행 중 7분 → 트랙 B 5분)를 같은 경로로 띄우고 다시 누르면 내린다(계정 불필요, `live_session_shown` 제외, Release에는 없음).
 - Release 수동 서명: 확장용 App Store 프로파일 이름 `DEARBY_RELEASE_PROFILE_WIDGETS`(CI 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`)가 비어 있으면 **확장 타깃을 프로젝트에서 빼고** 앱만 만든다 — **확장 프로파일을 등록하기 전까지 TestFlight 빌드에는 라이브 액티비티가 없다**(설정 스위치는 보이되 아무것도 띄우지 않는다). Debug 자동 서명과 CI 시뮬레이터 빌드(native.yml)는 확장을 포함한다. 사용자가 만들 것: App ID `io.wid.dearby.widgets`(App Groups 기능 + `group.io.wid.dearby`), 그 App ID의 App Store 프로파일(Apple Distribution 인증서는 앱과 같은 것), 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`.
 
 ### Android — 진행 중 알림·라이브 업데이트 (PR #452, 2026-10-26)
