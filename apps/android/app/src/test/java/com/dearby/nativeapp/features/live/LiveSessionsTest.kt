@@ -7,12 +7,14 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * 행사 당일 진행 중 알림의 계획 로직 (2026-10-27 user decision: unit tests for the live plan with a fixed clock; the screen is checked through the Debug 미리보기).
- * Pure Kotlin on the JVM: [LiveSessions.plan], [LivePlan.from]·[LivePlan.until], [LiveSessions.frame] and [LiveSessions.nextAlarm]; the notification itself is not built here.
+ * Pure Kotlin on the JVM: [LiveSessions.plan], [LivePlan.from]·[LivePlan.until], [LiveSessions.frame], [LiveSessions.timeline] and [LiveSessions.nextAlarm]; the notification itself is not built here.
  */
 class LiveSessionsTest {
     private val seoul = ZoneId.of("Asia/Seoul")
@@ -35,85 +37,133 @@ class LiveSessionsTest {
         favorite("talk-b", "11:00", "11:40", trackB, "서버 사이드 코틀린"),
         favorite("other", "10:00", "11:00", trackA, activityId = "other-conf"),
         favorite("yesterday", "10:00", "11:00", trackA, date = day.minusDays(1)))
-    private val plan = LiveSessions.plan("conf", "컨퍼런스", favorites, day)!!
+    private val plan = LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("09:00"))!!
 
-    @Test fun `plan keeps only the activity's 찜 of the day in start order, without a place for a session spanning every track`() {
+    @Test fun `plan keeps only the activity's 찜 of the day in start order, without track or room for a session spanning every track`() {
         assertEquals(listOf("keynote", "talk-a", "talk-b"), plan.entries.map { it.sessionId })
-        assertEquals(listOf(null, "트랙 A · 그랜드볼룸 A", "트랙 B · 그랜드볼룸 B"), plan.entries.map { it.place })
+        assertEquals(listOf(null, "트랙 A", "트랙 B"), plan.entries.map { it.track })
+        assertEquals(listOf(null, "그랜드볼룸 A", "그랜드볼룸 B"), plan.entries.map { it.room })
         assertEquals("컨퍼런스", plan.activityName)
         assertEquals("day-1", plan.entries.first().scheduleId)
     }
 
     @Test fun `without 찜 of the day there is no plan`() {
-        assertNull(LiveSessions.plan("conf", "컨퍼런스", emptyList(), day))
-        assertNull(LiveSessions.plan("conf", "컨퍼런스", favorites, day.plusDays(1)))
-        assertNull(LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("empty", "10:00", "10:00", trackA)), day))
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", emptyList(), day, at("09:00")))
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", favorites, day.plusDays(1), at("09:00")))
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("empty", "10:00", "10:00", trackA)), day, at("09:00")))
     }
 
-    @Test fun `the window runs from 30 minutes before the first 찜 to the latest end`() {
+    @Test fun `the guide runs from the user's start, whatever the time, to the latest end`() {
         assertEquals(at("09:00"), plan.from)
         assertEquals(at("11:40"), plan.until)
         assertNull(LiveSessions.frame(plan, at("08:59")))
-        assertEquals("09:30", LiveSessions.frame(plan, at("09:00"))?.chip)
-        assertEquals("~11:40", LiveSessions.frame(plan, at("11:39"))?.chip)
+        assertEquals("30분", LiveSessions.frame(plan, at("09:00"))?.chip)
+        assertEquals("1분", LiveSessions.frame(plan, at("11:39"))?.chip)
         assertNull(LiveSessions.frame(plan, at("11:40")))
+        // Started two hours early it is 이동 at once; started after the first session ended the plan keeps it for the track.
+        val early = LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("07:00"))!!
+        assertEquals("2시간 30분 뒤 시작", LiveSessions.frame(early, at("07:00"))!!.title)
+        assertEquals(at("07:01"), LiveSessions.nextAlarm(early, at("07:00")))
+        val late = LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("10:55"))!!
+        assertEquals(listOf("keynote", "talk-a", "talk-b"), late.entries.map { it.sessionId })
+        assertEquals("5분 뒤 시작 · 그랜드볼룸 B로 이동", LiveSessions.frame(late, at("10:55"))!!.title)
+        // Once every 찜 ended there is nothing to start.
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("11:40")))
         // A long 찜 outlasting one that starts later keeps the window open until it ends.
-        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day)!!
+        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day, at("09:00"))!!
         assertEquals(at("12:00"), long.until)
         assertEquals("long", LiveSessions.frame(long, at("11:30"))?.current?.sessionId)
     }
 
-    @Test fun `during a session the body says 지금 and the next with its start and the time left`() {
+    @Test fun `during a session the title is its name, then the track and the time with the room, the chip its end`() {
         val frame = LiveSessions.frame(plan, at("10:30"))!!
         assertEquals("talk-a", frame.current?.sessionId)
         assertEquals("talk-b", frame.next?.sessionId)
-        assertEquals(listOf("지금 · 트랙 A · 그랜드볼룸 A · 모바일 라이브 업데이트", "다음 11:00 · 트랙 B · 그랜드볼룸 B · 서버 사이드 코틀린 · 30분 뒤"), frame.lines)
-        assertEquals("~10:50", frame.chip)
-        assertEquals(60, frame.progress)
+        assertFalse(frame.moving)
+        assertEquals("모바일 라이브 업데이트", frame.title)
+        assertEquals(listOf("트랙 A", "10:00 – 10:50 · 그랜드볼룸 A"), frame.lines)
+        assertEquals("20분", frame.chip)
+        // A session spanning every track has neither line part.
+        assertEquals(listOf("09:30 – 09:50"), LiveSessions.frame(plan, at("09:40"))!!.lines)
     }
 
-    @Test fun `between sessions only the next is shown, without progress, with the chip at its start`() {
-        val frame = LiveSessions.frame(plan, at("09:10"))!!
+    @Test fun `between sessions and before the first it is 이동, time first, to the room or else the track, the chip the time left`() {
+        val frame = LiveSessions.frame(plan, at("10:50"))!!
         assertNull(frame.current)
-        assertEquals(listOf("다음 09:30 · 키노트 · 20분 뒤"), frame.lines)
-        assertEquals("09:30", frame.chip)
-        assertNull(frame.progress)
-        // After the last session started nothing is next.
-        assertEquals(listOf("지금 · 트랙 B · 그랜드볼룸 B · 서버 사이드 코틀린"), LiveSessions.frame(plan, at("11:20"))!!.lines)
+        assertTrue(frame.moving)
+        assertEquals("10분 뒤 시작 · 그랜드볼룸 B로 이동", frame.title)
+        assertEquals(listOf("서버 사이드 코틀린", "트랙 B"), frame.lines)
+        assertEquals("그랜드볼룸… 10분", frame.chip)
+        // Before the first session too; a session spanning every track has no destination.
+        val early = LiveSessions.frame(plan, at("09:10"))!!
+        assertTrue(early.moving)
+        assertEquals("20분 뒤 시작", early.title)
+        assertEquals(listOf("키노트"), early.lines)
+        // Without a room the track is the destination, and 으로 follows a final consonant other than ㄹ.
+        val hall = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("x", "14:50", "15:30", Track("t", "본관 강당", null, 0), "오후 세션")), day, at("09:00"))!!
+        assertEquals("20분 뒤 시작 · 본관 강당으로 이동", LiveSessions.frame(hall, at("14:30"))!!.title)
     }
 
-    @Test fun `time left reads 20분, 1시간 and 1시간 20분`() {
-        val afternoon = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("late", "14:50", "15:30", trackB, "오후 세션")), day)!!
-        fun line(now: String) = LiveSessions.frame(afternoon, at(now))!!.lines.single()
-        assertEquals("다음 14:50 · 트랙 B · 그랜드볼룸 B · 오후 세션 · 20분 뒤", line("14:30"))
-        // 60 minutes and more read in hours, so the window must start earlier than 30 minutes before for these; use a plan with an earlier 찜.
-        val two = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("early", "13:00", "13:10", trackA), favorite("late", "14:50", "15:30", trackB, "오후 세션")), day)!!
-        assertEquals("다음 14:50 · 트랙 B · 그랜드볼룸 B · 오후 세션 · 1시간 20분 뒤", LiveSessions.frame(two, at("13:30"))!!.lines.last())
-        assertEquals("다음 14:50 · 트랙 B · 그랜드볼룸 B · 오후 세션 · 1시간 뒤", LiveSessions.frame(two, at("13:50"))!!.lines.last())
+    @Test fun `the title reads 20분, 1시간 and 1시간 20분 while the chip is whole minutes until the end or the start`() {
+        val two = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("early", "13:00", "13:10", trackA), favorite("late", "14:50", "16:00", trackB, "오후 세션")), day, at("09:00"))!!
+        fun frame(now: Long) = LiveSessions.frame(two, now)!!
+        assertEquals("1시간 20분 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("13:30")).title)
+        assertEquals("그랜드볼룸… 80분", frame(at("13:30")).chip)
+        assertEquals("1시간 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("13:50")).title)
+        assertEquals("그랜드볼룸… 60분", frame(at("13:50")).chip)
+        assertEquals("그랜드볼룸… 20분", frame(at("14:30")).chip)
         // Seconds round up to the next minute, never under one.
-        assertEquals("다음 14:50 · 트랙 B · 그랜드볼룸 B · 오후 세션 · 1분 뒤", LiveSessions.frame(two, at("14:49") + 30_000)!!.lines.last())
+        assertEquals("그랜드볼룸… 1분", frame(at("14:49") + 30_000).chip)
+        assertEquals("1분 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("14:49") + 30_000).title)
+        // The 이동 chip is the place and the minutes: a short room whole, else the track, the minutes alone when it would not fit.
+        fun moving(track: Track, now: String) = LiveSessions.frame(LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("x", "14:50", "15:30", track)), day, at("09:00"))!!, at(now))!!.chip
+        assertEquals("B홀 12분", moving(Track("t", "트랙 B", "B홀", 0), "14:38"))
+        assertEquals("트랙 B 12분", moving(Track("t", "트랙 B", null, 0), "14:38"))
+        assertEquals("125분", moving(trackB, "12:45"))
+        // During a session: minutes until it ends, also past an hour.
+        assertEquals("70분", frame(at("14:50")).chip)
+        assertEquals("5분", frame(at("13:05")).chip)
     }
 
-    @Test fun `two 찜 starting together are both in the plan, the first in 내 시간표 order is 지금 and the other is not 다음`() {
-        val pair = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("a", "13:00", "13:50", trackA, "A 발표"), favorite("b", "13:00", "13:50", trackB, "B 발표")), day)!!
+    @Test fun `two 찜 starting together are both in the plan, the first in 내 시간표 order is current and the other is not next`() {
+        val pair = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("a", "13:00", "13:50", trackA, "A 발표"), favorite("b", "13:00", "13:50", trackB, "B 발표")), day, at("09:00"))!!
         assertEquals(listOf("a", "b"), pair.entries.map { it.sessionId })
-        assertEquals(at("12:30"), pair.from)
         val frame = LiveSessions.frame(pair, at("13:10"))!!
         assertEquals("a", frame.current?.sessionId)
         assertNull(frame.next)
-        assertEquals(listOf("지금 · 트랙 A · 그랜드볼룸 A · A 발표"), frame.lines)
-        // Before they start both are 다음 candidates; the first is announced once.
-        assertEquals(listOf("다음 13:00 · 트랙 A · 그랜드볼룸 A · A 발표 · 20분 뒤"), LiveSessions.frame(pair, at("12:40"))!!.lines)
+        // Before they start the first is announced.
+        assertEquals("20분 뒤 시작 · 그랜드볼룸 A로 이동", LiveSessions.frame(pair, at("12:40"))!!.title)
     }
 
-    @Test fun `the next alarm is the window start, then the nearest start, end, 10 minutes before a start or 5 minutes on, and none after the end`() {
+    @Test fun `the track has a segment per session and 공백 in minutes, points at the inner boundaries and now's position`() {
+        // 09:30–09:50 키노트, 공백 to 10:00, 10:00–10:50, 공백 to 11:00, 11:00–11:40.
+        val line = LiveSessions.timeline(plan, at("10:55"))
+        assertEquals(listOf(20 to true, 10 to false, 50 to true, 10 to false, 40 to true), line.segments)
+        assertEquals(listOf(20, 30, 80, 90), line.points)
+        assertEquals(85, line.position)
+        assertEquals(0, LiveSessions.timeline(plan, at("09:10")).position)
+        // Overlapping 찜 cut each other, and the overlap is one session segment.
+        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day, at("09:00"))!!
+        assertEquals(listOf(30 to true, 30 to true, 60 to true), LiveSessions.timeline(long, at("10:40")).segments)
+        // Below Android 16, one line of steps.
+        assertEquals("●●○", LiveSessions.steps(plan, at("10:55")))
+        assertEquals("●◉○", LiveSessions.steps(plan, at("10:30")))
+    }
+
+    @Test fun `the next alarm is the window start, then every whole minute before the end or start the chip counts to, none after the end`() {
         assertEquals(at("09:00"), LiveSessions.nextAlarm(plan, at("08:00")))
-        assertEquals(at("09:05"), LiveSessions.nextAlarm(plan, at("09:00")))  // 5 minutes on
-        assertEquals(at("09:20"), LiveSessions.nextAlarm(plan, at("09:17")))  // 10 minutes before the keynote
-        assertEquals(at("09:30"), LiveSessions.nextAlarm(plan, at("09:26")))  // the keynote starts
-        assertEquals(at("09:50"), LiveSessions.nextAlarm(plan, at("09:46")))  // it ends (also 10 minutes before 트랙 A)
-        assertEquals(at("10:05"), LiveSessions.nextAlarm(plan, at("10:00")))  // a start now is not "after now"
+        assertEquals(at("09:01"), LiveSessions.nextAlarm(plan, at("09:00")))  // 이동 before the keynote: every minute
+        assertEquals(at("09:01"), LiveSessions.nextAlarm(plan, at("09:00") + 20_000))  // on the minute before the start, so `n분` turns exactly
+        assertEquals(at("10:01"), LiveSessions.nextAlarm(plan, at("10:00")))  // in a session too
+        assertEquals(at("10:50"), LiveSessions.nextAlarm(plan, at("10:49")))  // it ends and 이동 begins
+        assertEquals(at("10:51"), LiveSessions.nextAlarm(plan, at("10:50")))
         assertEquals(at("11:40"), LiveSessions.nextAlarm(plan, at("11:39")))  // the last end
         assertNull(LiveSessions.nextAlarm(plan, at("11:40")))
+    }
+
+    @Test fun `the preview shows 세션 중 or 이동 at once`() {
+        val now = at("10:00")
+        assertFalse(LiveSessions.frame(LiveSessions.preview(false, now), now)!!.moving)
+        assertEquals("12분 뒤 시작 · 그랜드볼룸 B로 이동", LiveSessions.frame(LiveSessions.preview(true, now), now)!!.title)
     }
 }

@@ -12,6 +12,10 @@ import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.features.calendar.CalendarConflictFlow
 import com.dearby.nativeapp.features.calendar.openCalendarInsert
+import com.dearby.nativeapp.features.live.LiveDisplaySheet
+import com.dearby.nativeapp.features.live.LiveDisplayState
+import com.dearby.nativeapp.features.live.LiveGuideButton
+import com.dearby.nativeapp.features.live.LiveSessions
 import com.dearby.nativeapp.pages.activity.ActivityState
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import androidx.compose.foundation.layout.Box
@@ -45,6 +49,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.delay
 
 /**
@@ -62,6 +67,8 @@ import kotlinx.coroutines.delay
     ready: Boolean = false, showQr: (String) -> Unit = {},
     /** 오늘 행사 온보딩 `참여해요` (2026-10-27): the event and day whose timetable should open on 내 시간표 over this tab, consumed once. */
     guide: Pair<String, LocalDate>? = null, consumeGuide: () -> Unit = {},
+    /** `행사 안내 시작` asks the notification permission once (the same rule as a 세션 찜). */
+    askNotifications: () -> Unit = {},
     active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
@@ -171,6 +178,26 @@ import kotlinx.coroutines.delay
     val sheetNotices = remember { SnackbarHostState() }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
     val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
+    // 행사 안내 (2026-10-27 "네이버지도의 길찾기 안내 시작처럼", features/live): `행사 안내 시작` while [activityId] has 찜 sessions today that have not all
+    // ended, `안내 중 · 종료` while its guide runs; null otherwise. The start begins at once, whatever the time (before the first session it is 이동).
+    val guided by LiveSessions.guide(context).collectAsStateWithLifecycle()
+    // 실시간 표시 안내 (2026-10-27 "앱 내에서 유도"): at a start while 실시간 알림 is off (Android 16+), until `나중에`.
+    var display by remember { mutableStateOf<LiveDisplayState?>(null) }
+    fun guideSlot(activityId: String, name: String, highlight: Boolean = false): (@Composable () -> Unit)? {
+        fun plan(at: Instant) = LiveSessions.plan(activityId, name, favoriteItems, at.atZone(seoul).toLocalDate(), at.toEpochMilli())
+        val guiding = guided?.activityId == activityId
+        if (!guiding && plan(now) == null) return null
+        return { LiveGuideButton(guiding, highlight = highlight, start = {
+            plan(Instant.now())?.let { plan ->
+                askNotifications(); LiveSessions.start(context, plan)
+                // analytics-v1 `live_session_shown` once per Seoul day, at the start.
+                val device = DevicePreferences(context); val day = LocalDate.now(seoul).toString()
+                if (device.liveSessionShownDay != day) { device.liveSessionShownDay = day; Analytics.event("live_session_shown") }
+                val hints = LiveDisplayState.of(context)
+                if (!device.liveDisplayAsked && hints.promotionOff) display = hints
+            }
+        }, stop = { LiveSessions.stop(context) }) }
+    }
     // The card opens the block's timetable (찜한 세션 first when the body is a 찜), else the progress page; `명함 QR` goes to the card QR with this activity.
     val discoveryHeader: (@Composable () -> Unit)? = if (todayEvent == null) header else { {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -179,7 +206,8 @@ import kotlinx.coroutines.delay
                     Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "timetable")
                     todaySheet = todayEvent.activityId; sessions.show(todayEvent.activityId, todayEvent.scheduleId, favoritesOnly = todayEvent.favoritesFirst)
                 } else { Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "progress"); progressId = todayEvent.activityId }
-            }, qr = { Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "qr"); showQr(todayEvent.activityId) })
+            }, qr = { Analytics.event("today_card_tap", *model.track(todayEvent.activityId), "target" to "qr"); showQr(todayEvent.activityId) },
+                guide = guideSlot(todayEvent.activityId, todayEvent.name))
             header?.invoke()
         }
     } }
@@ -208,6 +236,11 @@ import kotlinx.coroutines.delay
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
+    display?.let { hints ->
+        LiveDisplaySheet(hints, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, "나중에") {
+            DevicePreferences(context).liveDisplayAsked = true; display = null
+        }
+    }
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), activityLink(activity.id), openPrivacy) { calendar = false }
     if (openTimetable != null && sessions != null) {
@@ -221,13 +254,13 @@ import kotlinx.coroutines.delay
             ?.filterIsInstance<ScheduleGroup.Day<ScheduleItemState>>()?.firstOrNull { group -> group.items.any { it.scheduleId == openTimetable.scheduleId } }
         TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
             sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly, viewDay = day?.let { { showDay(it) } },
-            highlightGuide = openTimetable.highlightGuide)
+            guide = sheetActivity?.let { guideSlot(it.id, it.title, openTimetable.highlightGuide) })
     }
     if (openDay != null && sessions != null) {
         val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
         LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
         DayTimetableSheet(listOfNotNull(sheetActivity?.title, dayLabel(openDay.day)).joinToString(" · "), daySummary(openDay.loads.map { it.block }), openDay.loads,
-            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, openDay.favoritesOnly, openDay.highlightGuide)
+            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, openDay.favoritesOnly, sheetActivity?.let { guideSlot(it.id, it.title, openDay.highlightGuide) })
     }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).
@@ -260,3 +293,12 @@ enum class MineSegment(val label: String) { MINE("내 활동"), FAVORITES("즐�
  * and what 활동 공유 sends (contract "유니버설 링크·App Links·활동 공유·오픈그래프").
  */
 private fun activityLink(id: String) = "${BuildConfig.WEB_ORIGIN.trimEnd('/')}/activities/$id"
+
+private val seoul: ZoneId = ZoneId.of("Asia/Seoul")
+
+/** `설정 열기` of the 실시간 표시 안내: [intent], else the app's notification settings when this device has no such screen. */
+internal fun openLiveDisplay(context: android.content.Context, intent: Intent) {
+    runCatching { context.startActivity(intent) }.recoverCatching {
+        context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+    }
+}

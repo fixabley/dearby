@@ -19,7 +19,7 @@ API = {
     'widgets.activity.sessionCard': {'SessionCard', 'SessionBand', 'TrackBadge'},
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardHistoryRow', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
-    'pages.profile': {'NotificationRow', 'SessionReminderRow', 'LiveSessionRow', 'LiveSessionPreviewRow', 'UsageStatsRow', 'AdConsentRow', 'ConsentPage', 'ConsentRequiredMessage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ContactVerifyState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
+    'pages.profile': {'NotificationRow', 'SessionReminderRow', 'LiveDisplayRow', 'LiveSessionPreviewRow', 'UsageStatsRow', 'AdConsentRow', 'ConsentPage', 'ConsentRequiredMessage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ContactVerifyState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'CardQrState', 'QrActivity'},
     'features.passkey': {'Passkeys'},
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
@@ -28,7 +28,8 @@ API = {
     # 찜한 세션 이동 알림 (2026-10-26, device-local): the alarm plan, its receiver and the tap extras MainActivity reads.
     'features.reminder': {'SessionReminders', 'SessionReminderReceiver', 'Reminder'},
     # 행사 당일 진행 중 알림 (2026-10-26, device-local): the day plan, the ongoing notification and its redraw alarm's receiver.
-    'features.live': {'LiveSessions', 'LiveSessionReceiver', 'LivePlan', 'LiveEntry', 'LiveFrame'},
+    # Since 2026-10-27 the user starts it (`행사 안내 시작`): the button, its 실시간 표시 안내 and the guide kept on the device.
+    'features.live': {'LiveSessions', 'LiveSessionReceiver', 'LiveGuideButton', 'LiveDisplaySheet', 'LiveDisplayState', 'LivePlan', 'LiveEntry', 'LiveFrame'},
     'features.analytics': {'Analytics'},
     'features.ads': {'QueueAd', 'NativeAdCard', 'AdConsentSheet'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
@@ -93,7 +94,9 @@ def check_source(path, text):
                # Contract "기기 캘린더 겹침" (2026-10-19): only the device calendar source reads CalendarContract
                'features/calendar/DeviceCalendar.kt': {'CalendarContract'},
                # Contract "내 캘린더에 추가" (2026-10-22): the insert intent only opens the calendar app's add screen; nothing is read or written here.
-               'features/calendar/CalendarInsert.kt': {'CalendarContract'}}.get(path.as_posix(), set())
+               'features/calendar/CalendarInsert.kt': {'CalendarContract'},
+               # 행사 안내 (2026-10-27): the guide the user started, in its own file, so the `안내 종료` action and the reboot restore can end or show it without the app.
+               'features/live/LiveSessions.kt': {'getSharedPreferences'}}.get(path.as_posix(), set())
     blocked = [term for term in ('Room', 'HttpClient', 'OkHttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
     if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors

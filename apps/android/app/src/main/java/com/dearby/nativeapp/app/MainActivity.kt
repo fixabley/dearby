@@ -135,37 +135,22 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    // 행사 당일 진행 중 알림 (2026-10-26, device-local): 설정 `행사 진행 중 표시`; off removes it.
-    private val liveSessionOn by lazy { MutableStateFlow(device.liveSessionEnabled) }
-    /** The live plan decided from the current state; null when the app cannot say yet. [plan] null removes the notification. */
-    private class LiveDecision(val plan: LivePlan?)
     /**
-     * 행사 당일 진행 중 알림 (features/live, 2026-10-26 user decision "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시"): while the app is in front, whenever 내 활동,
-     * 내 시간표, the account or the switch changes and each time it comes back, the day plan is decided again — the today activity of 오늘 내 행사
-     * ([ActivityViewModel.todayEvent], the same judgment as the 발견 card) and its 찜 sessions of today; a day without either removes the notification.
-     * Signed out or off: removed. Not ready (consent unknown), 내 활동 still loading or 내 시간표 not read yet (offline start): left as it is, so the
-     * alarm-driven notification survives. The plan is kept for the reboot restore ([SessionReminderBootReceiver]); analytics-v1 `live_session_shown` once a day.
+     * 행사 안내 (features/live; since 2026-10-27 started by the user's `행사 안내 시작`, never on its own): while the app is in front, whenever 내 시간표 or the
+     * account changes and each time it comes back, the guided day is drawn again from the current 찜 — a changed 찜 redraws it, a day without 찜
+     * left or a sign-out ends it. 내 시간표 not read yet (offline start) leaves it as it is, so the alarm-driven notification survives.
      */
     private fun planLiveSession() = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.RESUMED) {
             val signedOut = account.state.map { it.phase == AccountPhase.SIGNED_OUT }.distinctUntilChanged()
-            combine(activityModel.state, sessions.items, signedOut, account.ready, liveSessionOn) { list, items, out, ready, on ->
-                when {
-                    out || !on -> LiveDecision(null)
-                    !ready || items == null || list.mineLoading -> null
-                    else -> {
-                        val now = Instant.now()
-                        val today = activityModel.todayEvent(list, items, now)?.takeIf { it.today }
-                        LiveDecision(today?.let { LiveSessions.plan(it.activityId, it.name, items, now.atZone(seoul).toLocalDate()) })
-                    }
-                }
-            }.filterNotNull().distinctUntilChanged { a, b -> a.plan == b.plan }.collect { decision ->
+            combine(LiveSessions.guide(applicationContext), sessions.items, signedOut) { guide, items, out -> Triple(guide, items, out) }.collect { (guide, items, out) ->
                 // 설정 › 알림 `행사 진행 중 표시 미리보기` (Debug only, 2026-10-27): the fake plan stays until the row removes it or its sessions end.
-                if (BuildConfig.DEBUG && LiveSessions.previewing) return@collect
-                device.liveSession = decision.plan
-                if (!LiveSessions.apply(applicationContext, decision.plan)) return@collect
-                val day = LocalDate.now(seoul).toString()
-                if (device.liveSessionShownDay != day) { device.liveSessionShownDay = day; Analytics.event("live_session_shown") }
+                if (guide == null || (BuildConfig.DEBUG && LiveSessions.previewing)) return@collect
+                if (out) { LiveSessions.stop(applicationContext); return@collect }
+                if (items == null) return@collect
+                val day = Instant.ofEpochMilli(guide.started).atZone(seoul).toLocalDate()
+                val plan = LiveSessions.plan(guide.activityId, guide.activityName, items, day, guide.started)
+                when (plan) { null -> LiveSessions.stop(applicationContext); guide -> LiveSessions.apply(applicationContext, plan); else -> LiveSessions.start(applicationContext, plan) }
             }
         }
     }
@@ -209,7 +194,7 @@ class MainActivity : ComponentActivity() {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
                     sessions, favoritesLink, { favoritesLink = false }, sessionRemindersOn.collectAsStateWithLifecycle().value, { device.sessionRemindersEnabled = it; sessionRemindersOn.value = it },
-                    liveSessionOn.collectAsStateWithLifecycle().value, { device.liveSessionEnabled = it; liveSessionOn.value = it }, screenshot, todayOnboarding)
+                    screenshot, todayOnboarding)
                 PendingAccountRoute(account)
             } }
         }

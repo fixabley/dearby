@@ -7,8 +7,10 @@ import androidx.core.net.toUri
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.profile.NotificationRow
 import com.dearby.nativeapp.features.live.LiveSessions
+import com.dearby.nativeapp.features.live.LiveDisplaySheet
+import com.dearby.nativeapp.features.live.LiveDisplayState
+import com.dearby.nativeapp.pages.profile.LiveDisplayRow
 import com.dearby.nativeapp.pages.profile.LiveSessionPreviewRow
-import com.dearby.nativeapp.pages.profile.LiveSessionRow
 import com.dearby.nativeapp.pages.profile.SessionReminderRow
 import com.dearby.nativeapp.features.reminder.SessionReminders
 import com.dearby.nativeapp.pages.profile.UsageStatsRow
@@ -45,8 +47,6 @@ import androidx.compose.ui.semantics.Role
 @Composable fun SettingsRoute(model: SettingsViewModel, account: AccountViewModel, profile: ProfileViewModel, notifications: NotificationViewModel?, analytics: Boolean, setAnalytics: (Boolean) -> Unit,
     /** 세션 이동 알림 (device-local, 2026-10-26), shown with the account's notification rows. */
     sessionReminders: Boolean, setSessionReminders: (Boolean) -> Unit,
-    /** 행사 진행 중 표시 (device-local, 2026-10-26), under it. */
-    liveSession: Boolean, setLiveSession: (Boolean) -> Unit,
     /** Debug only: 오늘 행사 온보딩's fake-day switch (2026-10-27); null hides it. */
     todayOnboarding: TodayOnboardingViewModel? = null, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
@@ -87,14 +87,16 @@ import androidx.compose.ui.semantics.Role
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
                         runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())) }
                 }
-                LiveSessionRow(liveSession, setLiveSession)
+                var display by remember { mutableStateOf<LiveDisplayState?>(null) }
+                LiveDisplayRow { display = LiveDisplayState.of(context) }
+                display?.let { LiveDisplaySheet(it, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, "닫기") { display = null } }
             }
             // Debug only (2026-10-27 user decision): a fake 행사 진행 중 notification on demand, also signed out, so the live update can be checked on any device.
             if (BuildConfig.DEBUG) {
-                var previewing by remember { mutableStateOf(LiveSessions.previewing) }
-                LiveSessionPreviewRow(previewing) {
-                    previewing = !previewing; LiveSessions.previewing = previewing
-                    LiveSessions.apply(context, if (previewing) LiveSessions.preview() else null)
+                var moving by remember { mutableStateOf(LiveSessions.previewMoving) }
+                LiveSessionPreviewRow(moving) {
+                    moving = when (moving) { null -> false; false -> true; true -> null }; LiveSessions.previewMoving = moving
+                    LiveSessions.apply(context, moving?.let { LiveSessions.preview(it) })
                 }
             }
         } },
