@@ -51,7 +51,7 @@ data class LiveDisplayState(val promotionOff: Boolean, val samsung: Boolean) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("행사 안내를 실시간으로 보기", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             if (state.promotionOff) Step("잠금 화면·상태 표시줄에 실시간으로 보이려면 '실시간 알림'을 켜 주세요.", openPromotion)
-            if (state.samsung) Step("Now Bar에 띄우려면 설정 › 잠금 화면 및 AOD › Now bar에서 Dearby를 켜 주세요. 목록에 없으면 이 기기에서는 알림으로만 보여요.", openNowBar)
+            if (state.samsung) Step("Now Bar에 띄우려면 설정 › 잠금화면 및 AOD › Now bar에서 Dearby를 켜 주세요. 목록에 없으면 이 기기에서는 알림으로만 보여요.", openNowBar)
             if (!state.any) Text("실시간 알림이 켜져 있어요.", style = MaterialTheme.typography.bodyMedium)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { TextButton(close) { Text(closeLabel) } }
         }

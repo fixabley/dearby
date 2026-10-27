@@ -93,7 +93,7 @@ class LiveSessionsTest {
         assertTrue(frame.moving)
         assertEquals("10분 뒤 시작 · 그랜드볼룸 B로 이동", frame.title)
         assertEquals(listOf("서버 사이드 코틀린", "트랙 B"), frame.lines)
-        assertEquals("10분", frame.chip)
+        assertEquals("그랜드볼룸… 10분", frame.chip)
         // Before the first session too; a session spanning every track has no destination.
         val early = LiveSessions.frame(plan, at("09:10"))!!
         assertTrue(early.moving)
@@ -108,13 +108,18 @@ class LiveSessionsTest {
         val two = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("early", "13:00", "13:10", trackA), favorite("late", "14:50", "16:00", trackB, "오후 세션")), day, at("09:00"))!!
         fun frame(now: Long) = LiveSessions.frame(two, now)!!
         assertEquals("1시간 20분 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("13:30")).title)
-        assertEquals("80분", frame(at("13:30")).chip)
+        assertEquals("그랜드볼룸… 80분", frame(at("13:30")).chip)
         assertEquals("1시간 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("13:50")).title)
-        assertEquals("60분", frame(at("13:50")).chip)
-        assertEquals("20분", frame(at("14:30")).chip)
+        assertEquals("그랜드볼룸… 60분", frame(at("13:50")).chip)
+        assertEquals("그랜드볼룸… 20분", frame(at("14:30")).chip)
         // Seconds round up to the next minute, never under one.
-        assertEquals("1분", frame(at("14:49") + 30_000).chip)
+        assertEquals("그랜드볼룸… 1분", frame(at("14:49") + 30_000).chip)
         assertEquals("1분 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("14:49") + 30_000).title)
+        // The 이동 chip is the place and the minutes: a short room whole, else the track, the minutes alone when it would not fit.
+        fun moving(track: Track, now: String) = LiveSessions.frame(LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("x", "14:50", "15:30", track)), day, at("09:00"))!!, at(now))!!.chip
+        assertEquals("B홀 12분", moving(Track("t", "트랙 B", "B홀", 0), "14:38"))
+        assertEquals("트랙 B 12분", moving(Track("t", "트랙 B", null, 0), "14:38"))
+        assertEquals("125분", moving(trackB, "12:45"))
         // During a session: minutes until it ends, also past an hour.
         assertEquals("70분", frame(at("14:50")).chip)
         assertEquals("5분", frame(at("13:05")).chip)

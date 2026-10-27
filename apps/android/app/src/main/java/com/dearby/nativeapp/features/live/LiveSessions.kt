@@ -180,8 +180,8 @@ object LiveSessions {
      * starting together, the first in 내 시간표 order) and the first one starting later ([next]). During a session the title is its name, the [lines] its
      * track and `14:50 – 15:30 · 그랜드볼룸 B`, the [chip] the minutes until it ends `12분`. Otherwise (between sessions or before the first, whatever the room — a
      * conference is mostly one venue, so "same room" is not judged) it is 이동: the title `12분 뒤 시작 · 그랜드볼룸 B로 이동` (the track without a room,
-     * only `12분 뒤 시작` without either), the lines the next session's name and track, the chip the minutes until it starts. The chip (status bar,
-     * Now Bar collapsed) is always whole minutes — `65분`, not `1시간 5분`; `1분` under a minute. Null outside the window.
+     * only `12분 뒤 시작` without either), the lines the next session's name and track, the chip the room (else track) and the minutes until it starts ([chip]). The chip's
+     * time (status bar, Now Bar collapsed) is always whole minutes — `65분`, not `1시간 5분`; `1분` under a minute. Null outside the window.
      */
     internal fun frame(plan: LivePlan, now: Long): LiveFrame? {
         if (now < plan.from || now >= plan.until) return null
@@ -192,7 +192,7 @@ object LiveSessions {
         // No session runs and the window is open, so one starts later (the window ends with the latest end).
         val upcoming = next ?: return null
         val title = listOfNotNull("${left(upcoming.start - now)} 뒤 시작", (upcoming.room ?: upcoming.track)?.let { "${toward(it)} 이동" }).joinToString(" · ")
-        return LiveFrame(null, upcoming, true, title, listOfNotNull(upcoming.title, upcoming.track), minutes(upcoming.start - now))
+        return LiveFrame(null, upcoming, true, title, listOfNotNull(upcoming.title, upcoming.track), chip(upcoming.room ?: upcoming.track, minutes(upcoming.start - now)))
     }
 
     /** The day's 진행 트랙 at [now]; see [LiveTimeline]. Overlapping 찜 cut each other's segments, so every start and end is a boundary. */
@@ -225,6 +225,9 @@ object LiveSessions {
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setCategory(NotificationCompat.CATEGORY_EVENT).setContentIntent(tap)
             .addAction(0, "내 시간표 보기", tap)
             .addAction(0, "안내 종료", PendingIntent.getBroadcast(context, ID, Intent(context, LiveSessionReceiver::class.java).setAction(STOP), PendingIntent.FLAG_IMMUTABLE))
+            // Android 14+ lets the user swipe even a foreground service's notification away: drawn again at once, so only `안내 종료` ends it.
+            .setDeleteIntent(PendingIntent.getBroadcast(context, ID + 1, Intent(context, LiveSessionReceiver::class.java).setAction(ACTION).putExtra(PLAN, plan.toJson()),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
             .setShowWhen(false).setRequestPromotedOngoing(true).setShortCriticalText(frame.chip)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             // Android 16+: the live update's own progress style (Now Bar) as 내 활동's 진행 트랙 — 찜 sessions teal (`TealFill`), 공백 the track's
@@ -264,6 +267,16 @@ object LiveSessions {
         val euro = if (batchim >= 0) batchim != 0 && batchim != 8 else last.uppercaseChar() in "036MN"
         return place.trimEnd() + if (euro) "으로" else "로"
     }
+    /**
+     * The 이동 chip (2026-10-27 "장소명 n분"): `B홀 12분`, the place cut to its first [CHIP_PLACE] characters and `…` so the minutes always show
+     * (`그랜드볼룸… 12분`); only the minutes past [CHIP_MAX] characters or without a place.
+     */
+    private fun chip(place: String?, minutes: String): String {
+        val short = place?.trim()?.takeIf { it.isNotEmpty() }?.let { if (it.length > CHIP_PLACE) it.take(CHIP_PLACE).trimEnd() + "…" else it } ?: return minutes
+        return "$short $minutes".takeIf { it.length <= CHIP_MAX } ?: minutes
+    }
+    private const val CHIP_PLACE = 5
+    private const val CHIP_MAX = 10
     /** The chip's `12분`, `65분`: whole minutes rounded up, never under one. */
     private fun minutes(ms: Long) = "${((ms + MINUTE - 1) / MINUTE).coerceAtLeast(1)}분"
     /** `20분`, `1시간`, `1시간 20분`; never under a minute. */
@@ -283,8 +296,8 @@ class LiveSessionReceiver : BroadcastReceiver() {
 }
 
 /**
- * 행사 안내 (2026-10-27 "알림이 사라지지 않았으면"): while a guide runs its notification belongs to this foreground service, so Android 14+ does not let it
- * be swiped away. It only holds the notification — no location, no network; [LiveSessions.apply] redraws it on the same id and stops the service at the
+ * 행사 안내 (2026-10-27 "알림이 사라지지 않았으면"): while a guide runs its notification belongs to this foreground service — not cleared by 모두 지우기
+ * nor on the lock screen; a swipe Android 14+ still allows is drawn again at once by the notification's delete intent. It only holds the notification — no location, no network; [LiveSessions.apply] redraws it on the same id and stops the service at the
  * end or `안내 종료`. Type `specialUse` (no other type fits a schedule shown on the device; manifest subtype property). Not sticky: if the system
  * stops it, the next redraw alarm starts it again.
  */
