@@ -6,6 +6,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.core.net.toUri
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.profile.NotificationRow
+import com.dearby.nativeapp.features.live.LiveSessions
+import com.dearby.nativeapp.pages.profile.LiveSessionPreviewRow
 import com.dearby.nativeapp.pages.profile.LiveSessionRow
 import com.dearby.nativeapp.pages.profile.SessionReminderRow
 import com.dearby.nativeapp.features.reminder.SessionReminders
@@ -64,18 +66,28 @@ import kotlinx.coroutines.launch
         unlink = model::unlink, addPasskey = { model.addPasskey(Passkeys(context)) }, renamePasskey = model::renamePasskey, deletePasskey = model::deletePasskey, unblock = model::unblock,
         openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }, openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
         dismissNotice = model::dismissNotice, googleAvailable = auth.googleAvailable,
-        notifications = notifications?.let { push -> {
-            val notice by push.state.collectAsStateWithLifecycle()
-            NotificationRow(notice.newRecruitment, notice.saving, !systemOn, push::setNewRecruitment) {
-                runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
+        notifications = if (notifications == null && !BuildConfig.DEBUG) null else { {
+            notifications?.let { push ->
+                val notice by push.state.collectAsStateWithLifecycle()
+                NotificationRow(notice.newRecruitment, notice.saving, !systemOn, push::setNewRecruitment) {
+                    runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
+                }
+                notice.message?.let { value -> AlertDialog(onDismissRequest = push::dismissMessage, title = { Text("알림") }, text = { Text(value) }, confirmButton = { TextButton(push::dismissMessage) { Text("확인") } }) }
+                // Android 12+ `알람 및 리마인더` (SCHEDULE_EXACT_ALARM) for this app; the setting intent exists from that version on.
+                SessionReminderRow(sessionReminders, !exactAlarms, setSessionReminders) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
+                        runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())) }
+                }
+                LiveSessionRow(liveSession, setLiveSession)
             }
-            notice.message?.let { value -> AlertDialog(onDismissRequest = push::dismissMessage, title = { Text("알림") }, text = { Text(value) }, confirmButton = { TextButton(push::dismissMessage) { Text("확인") } }) }
-            // Android 12+ `알람 및 리마인더` (SCHEDULE_EXACT_ALARM) for this app; the setting intent exists from that version on.
-            SessionReminderRow(sessionReminders, !exactAlarms, setSessionReminders) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
-                    runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())) }
+            // Debug only (2026-10-27 user decision): a fake 행사 진행 중 notification on demand, also signed out, so the live update can be checked on any device.
+            if (BuildConfig.DEBUG) {
+                var previewing by remember { mutableStateOf(LiveSessions.previewing) }
+                LiveSessionPreviewRow(previewing) {
+                    previewing = !previewing; LiveSessions.previewing = previewing
+                    LiveSessions.apply(context, if (previewing) LiveSessions.preview() else null)
+                }
             }
-            LiveSessionRow(liveSession, setLiveSession)
         } },
         privacy = {
             UsageStatsRow(analytics, setAnalytics)

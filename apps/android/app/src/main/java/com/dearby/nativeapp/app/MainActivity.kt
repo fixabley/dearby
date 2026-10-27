@@ -154,6 +154,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }.filterNotNull().distinctUntilChanged { a, b -> a.plan == b.plan }.collect { decision ->
+                // 설정 › 알림 `행사 진행 중 표시 미리보기` (Debug only, 2026-10-27): the fake plan stays until the row removes it or its sessions end.
+                if (BuildConfig.DEBUG && LiveSessions.previewing) return@collect
                 device.liveSession = decision.plan
                 if (!LiveSessions.apply(applicationContext, decision.plan)) return@collect
                 val day = LocalDate.now(seoul).toString()
