@@ -98,7 +98,7 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `activity_view` | 활동 상세(`/activities/:id`)를 불러옴 | `activity_id`, `category`, `source` = `link` |
 | `apply_click` | 하단 CTA가 신청 링크일 때 누름(공식 안내 링크는 보내지 않음) | `activity_id`, `category`, `source` = `link` |
 | `discovery_status_filter` | 발견 필터 시트 `적용`·칩 ×·빈 안내의 `마감된 활동 보기`·`필터 초기화`로 `활동 상태`를 바꿈(앱과 같음, 2026-10-27 [native-v1.md](native-v1.md) "활동 상태" 빈 안내) | `groups` |
-| `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기`·종류를 골랐던 뒤의 `필터 초기화` 포함) | `categories` |
+| `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 빈 안내의 `종류 필터 지우기` 포함) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표"). 하루 시간표 모달(날짜 행의 `시간표 보기`·블록 모달의 `이 날 전체 보기`, "하루 시간표")도 열 때 `activity_id`로 한 번 | `activity_id` |
 | `myactivity_add` | 활동 카드·활동 상세의 `+`로 내 활동에 추가 성공(2026-10-26 웹 2단계 B, [native-v1.md](native-v1.md) "웹 로그인" › 2단계 B; 앱과 같은 이름) | `activity_id`, `category`, `source` = `discovery`(발견 카드)·`link`(활동 상세) |
 | `stage_mark` | 진행 단계(`/mine/:id`)에서 선발 단계의 상태를 고름(서버 저장 전에 보냄). 지난 선발 단계 통과 제안의 `통과로 표시`는 단계마다 보내며 `via=autopass_prompt` | `activity_id`, `category`, `kind` = `passed`·`waiting`·`failed`·`other`, `via`(제안에서만) |
