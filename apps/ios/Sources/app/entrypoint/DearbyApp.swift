@@ -21,6 +21,14 @@ import SwiftUI
     @State private var queue: DiscoveryQueueModel
     @State private var adConsent: AdConsentModel
     @State private var showsQueue = false
+    /// 오늘 행사 온보딩 (contract "오늘 행사 온보딩" 2026-10-27): once per Seoul day, after the intro, sign-in, consent, funnel and queue.
+    @State private var todayOnboarding: TodayOnboardingModel
+    /// `참여해요`'s next screen, opened once the onboarding sheet is gone (two sheets cannot swap in one transaction).
+    @State private var afterOnboarding: AfterOnboarding?
+    private enum AfterOnboarding { case timetable(TimetableRoute), progress(String) }
+    @State private var onboardingTimetable: TimetableRoute?
+    /// The 추천 funnel was closed this run: a funnel never finished no longer holds the onboarding back.
+    @State private var funnelClosed = false
     /// Signed out, the queue row, its 설정 and 프로필 `관심 분야·활동 종류` open sign-in (contract "비로그인에서 만들기·추천을 막음" 2026-10-25);
     /// once signed in and the account's answers are read, `afterSignIn` continues where the tap was going.
     @State private var signingIn = false
@@ -74,6 +82,7 @@ import SwiftUI
         _profile = State(initialValue: ProfileModel(account: account, webOrigin: links.origins.web))
         _recommendations = State(initialValue: RecommendationModel(tags: links.tagOptions))
         _queue = State(initialValue: DiscoveryQueueModel())
+        _todayOnboarding = State(initialValue: TodayOnboardingModel(fetch: { try await links.todayEventCandidates() }, logoURL: { links.programLogo($0) }))
         _adConsent = State(initialValue: AdConsentModel(webOrigin: links.origins.web))
         _eligibility = State(initialValue: EligibilityModel(account: account))
         let notifications = NotificationModel(account: account)
@@ -83,7 +92,7 @@ import SwiftUI
     }
     var body: some Scene {
         WindowGroup {
-            liveSessionHooks(sessionHooks(accountSync(Group {
+            todayOnboardingHooks(liveSessionHooks(sessionHooks(accountSync(Group {
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
@@ -102,6 +111,13 @@ import SwiftUI
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel, adConsent: adConsent)
                     }
+                    .sheet(item: $todayOnboarding.prompt, onDismiss: todayOnboardingClosed) { prompt in
+                        TodayOnboardingSheet(candidates: prompt.candidates, logoURL: todayOnboarding.logoURL, join: joinToday) {
+                            todayOnboarding.answer(joined: nil)
+                        }
+                        .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+                    }
+                    .timetableSheet($onboardingTimetable, state: activityModel)
                     .promptLayer()
                 }
             }
@@ -165,6 +181,7 @@ import SwiftUI
                 if show { presentFunnel("auto") }
             }
             .fullScreenCover(isPresented: $recommendations.presentingFunnel, onDismiss: {
+                funnelClosed = true
                 guard recommendations.queueAfterFunnel else { return }
                 recommendations.queueAfterFunnel = false
                 showsQueue = true
@@ -200,9 +217,53 @@ import SwiftUI
                     sessionReminders.refresh()
                     // A new day, or the session boundary passed while the app was away.
                     syncLiveSession()
+                    checkTodayOnboarding()
                 }
-            })
+            }))
         }
+    }
+    /// 오늘 행사 온보딩 (contract "오늘 행사 온보딩" 2026-10-27), kept apart from `body` for the compiler: checked at launch, on return to the
+    /// foreground and once 내 활동 is known (signed out, or signed in with the server's list read); shown once nothing else is up.
+    private func todayOnboardingHooks(_ content: some View) -> some View {
+        content
+            .onChange(of: account.phase == .signedOut || (accountReady && activityModel.mineReady), initial: true) { _, known in
+                if known { checkTodayOnboarding() }
+            }
+            .onChange(of: todayOnboarding.pending != nil && screenClear, initial: true) { _, clear in
+                if clear { todayOnboarding.present(applied: activityModel.appliedIDs) }
+            }
+    }
+    /// Nothing the onboarding must wait for is up: the intro, sign-in, consent, the 추천 funnel (also the one about to open on 발견 for an
+    /// account that never finished it, until it was closed once), the queue, or a 내 활동 prompt.
+    private var screenClear: Bool {
+        let funnelAhead = accountReady && (!recommendations.ready || (tab == 0 && recommendations.needsFunnel && !funnelClosed))
+        return !showIntro && !signingIn && !(showsConsent && consentNeeded) && !recommendations.presentingFunnel && !funnelAhead && !showsQueue
+            && activityModel.asking == nil && activityModel.autopass == nil
+    }
+    private func checkTodayOnboarding() {
+        #if DEBUG
+        if ScreenshotScene.current != nil { return }
+        #endif
+        guard account.phase == .signedOut || (accountReady && activityModel.mineReady) else { return }
+        Task { await todayOnboarding.check(applied: activityModel.appliedIDs) }
+    }
+    /// `참여해요`: the chosen events join 내 활동 with their 통과 제안 accepted, then the first one's timetable for today on `내 시간표` (its
+    /// 진행 단계 when today has no timetable) once the sheet is gone.
+    private func joinToday(_ rows: [TodayCandidate]) {
+        if let first = rows.first {
+            afterOnboarding = first.timetableRoute(now: todayOnboarding.now).map { .timetable($0) } ?? .progress(first.id)
+        }
+        activityModel.joinFromOnboarding(rows.map(\.activity))
+        todayOnboarding.answer(joined: rows)
+    }
+    private func todayOnboardingClosed() {
+        todayOnboarding.dismissed()
+        switch afterOnboarding {
+        case .timetable(let route): onboardingTimetable = route
+        case .progress(let id): activityModel.showInMine = id
+        case nil: break
+        }
+        afterOnboarding = nil
     }
     /// 행사 당일 진행 중 표시: the Live Activity follows 내 활동, 내 시간표 and the switch (`syncLiveSession`), kept apart from `body` for the compiler.
     private func liveSessionHooks(_ content: some View) -> some View {

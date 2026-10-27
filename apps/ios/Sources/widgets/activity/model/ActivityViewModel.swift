@@ -232,8 +232,24 @@ import Observation
     func acceptAutopass() {
         guard let autopass else { return }
         self.autopass = nil
+        accept(autopass, via: "autopass_prompt")
+    }
+    /// 오늘 행사 온보딩 `참여해요` (contract "오늘 행사 온보딩" 2026-10-27): each chosen activity joins 내 활동 (사용 통계 `myactivity_add`
+    /// `source=today_onboarding`) and its 통과 제안 is accepted without asking — the user already said they take part (`stage_mark`
+    /// `via=today_onboarding`); it counts as asked, so the activity never asks it later.
+    func joinFromOnboarding(_ activities: [ActivityModel]) {
+        for activity in activities {
+            remember(activity)
+            guard !appliedIDs.contains(activity.id) else { continue }
+            AppAnalytics.event("myactivity_add", AppAnalytics.activity(activity.id, activity).merging(["source": "today_onboarding"]) { $1 })
+            apply(activity.id, true)
+            if let suggestion = autopassSuggestion(activity.id) { accept(suggestion, via: "today_onboarding") }
+        }
+    }
+    /// Every suggested stage takes its schedule's 통과 status (`via` is the 사용 통계 `stage_mark` source).
+    private func accept(_ autopass: AutopassSuggestion, via: String) {
         let marks = autopass.stages.compactMap { stage in stage.passedOption.map { (stage.source.id, StageMark($0)) } }
-        for (scheduleID, mark) in marks { record(autopass.id, scheduleID, mark, via: "autopass_prompt") }
+        for (scheduleID, mark) in marks { record(autopass.id, scheduleID, mark, via: via) }
         guard let server, synced, let activity = Int64(autopass.id) else { return }
         save {
             _ = try await server.put(activity)
