@@ -60,7 +60,7 @@ jobs:
           printf '%s' "$ASC_KEY_P8" > "$key" && chmod 600 "$key"
           echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
           if [ -z "$VERSION" ]; then
-            VERSION=$(sed -n "s/.*'MARKETING_VERSION' => '\([^']*\)'.*/\1/p" scripts/generate_project.rb)
+            VERSION=$(sed -n "s/.*'MARKETING_VERSION' => '\([^']*\)'.*/\1/p" scripts/generate_project.rb | head -n 1)
           fi
           test -n "$VERSION" || { echo "no version"; exit 1; }
           echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
