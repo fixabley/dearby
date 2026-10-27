@@ -55,8 +55,7 @@ private sealed interface Route {
     favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, sessions: SessionFavoritesViewModel, favoritesLink: Boolean = false, consumeFavoritesLink: () -> Unit = {},
     /** 설정 `세션 이동 알림` (device-local, 2026-10-26); MainActivity plans the alarms from it. */
     sessionReminders: Boolean = true, setSessionReminders: (Boolean) -> Unit = {},
-    /** 설정 `행사 진행 중 표시` (device-local, 2026-10-26); MainActivity draws the notification from it. */
-    liveSession: Boolean = true, setLiveSession: (Boolean) -> Unit = {}, screenshot: String? = null) {
+    screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -250,10 +249,9 @@ private sealed interface Route {
                         (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
                         route = null
                     }
-                    // Turning 세션 이동 알림 or 행사 진행 중 표시 on asks the notification permission once too (contract "찜한 세션 이동 알림").
+                    // Turning 세션 이동 알림 on asks the notification permission once too (contract "찜한 세션 이동 알림").
                     Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) },
-                        sessionReminders, { on -> if (on) askNotificationsOnce(); setSessionReminders(on) },
-                        liveSession, { on -> if (on) askNotificationsOnce(); setLiveSession(on) }) { route = null }
+                        sessionReminders, { on -> if (on) askNotificationsOnce(); setSessionReminders(on) }) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }
                         ConsentPage(profileState.consenting, profileState.consentError,
@@ -288,7 +286,7 @@ private sealed interface Route {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
                                 openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; route = Route.Consent }, header = recoHeader,
                                 hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread,
-                                sessions = sessions, sessionHeart = sessionHeart, ready = ready, showQr = showTodayQr) { activityDetail = it }
+                                sessions = sessions, sessionHeart = sessionHeart, ready = ready, showQr = showTodayQr, askNotifications = askNotificationsOnce) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)

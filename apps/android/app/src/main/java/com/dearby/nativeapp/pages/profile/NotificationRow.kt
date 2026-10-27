@@ -41,11 +41,10 @@ import androidx.compose.ui.unit.dp
     }
 }
 
-/** 설정 `알림` `행사 진행 중 표시` (2026-10-26 "행사 당일 진행 중 알림"): the device-local switch ([on]) for the ongoing notification on the day of a 내 활동 with 찜 sessions. */
-@Composable fun LiveSessionRow(on: Boolean, toggle: (Boolean) -> Unit) {
-    ListItem({ Text("행사 진행 중 표시") }, Modifier.toggleable(on, role = Role.Switch, onValueChange = toggle),
-        supportingContent = { Text("행사 당일 내 시간표의 지금·다음 세션을 알림에 계속 보여요") }, trailingContent = { Switch(on, null) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+/** 설정 › 알림 `실시간 표시 설정` (2026-10-27): opens the 실시간 표시 안내 again ([open]), also after `나중에`. */
+@Composable fun LiveDisplayRow(open: () -> Unit) {
+    ListItem({ Text("실시간 표시 설정") }, Modifier.clickable(onClick = open, role = Role.Button),
+        supportingContent = { Text("행사 안내를 잠금 화면·상태 표시줄·Now Bar에 실시간으로 보이게 해요") }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
 }
 
 /**

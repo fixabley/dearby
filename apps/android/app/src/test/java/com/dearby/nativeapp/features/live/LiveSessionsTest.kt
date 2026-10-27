@@ -37,7 +37,7 @@ class LiveSessionsTest {
         favorite("talk-b", "11:00", "11:40", trackB, "서버 사이드 코틀린"),
         favorite("other", "10:00", "11:00", trackA, activityId = "other-conf"),
         favorite("yesterday", "10:00", "11:00", trackA, date = day.minusDays(1)))
-    private val plan = LiveSessions.plan("conf", "컨퍼런스", favorites, day)!!
+    private val plan = LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("09:00"))!!
 
     @Test fun `plan keeps only the activity's 찜 of the day in start order, without track or room for a session spanning every track`() {
         assertEquals(listOf("keynote", "talk-a", "talk-b"), plan.entries.map { it.sessionId })
@@ -48,20 +48,29 @@ class LiveSessionsTest {
     }
 
     @Test fun `without 찜 of the day there is no plan`() {
-        assertNull(LiveSessions.plan("conf", "컨퍼런스", emptyList(), day))
-        assertNull(LiveSessions.plan("conf", "컨퍼런스", favorites, day.plusDays(1)))
-        assertNull(LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("empty", "10:00", "10:00", trackA)), day))
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", emptyList(), day, at("09:00")))
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", favorites, day.plusDays(1), at("09:00")))
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("empty", "10:00", "10:00", trackA)), day, at("09:00")))
     }
 
-    @Test fun `the window runs from 30 minutes before the first 찜 to the latest end`() {
+    @Test fun `the guide runs from the user's start, whatever the time, to the latest end`() {
         assertEquals(at("09:00"), plan.from)
         assertEquals(at("11:40"), plan.until)
         assertNull(LiveSessions.frame(plan, at("08:59")))
         assertEquals("30분", LiveSessions.frame(plan, at("09:00"))?.chip)
         assertEquals("1분", LiveSessions.frame(plan, at("11:39"))?.chip)
         assertNull(LiveSessions.frame(plan, at("11:40")))
+        // Started two hours early it is 이동 at once; started after the first session ended the plan keeps it for the track.
+        val early = LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("07:00"))!!
+        assertEquals("2시간 30분 뒤 시작", LiveSessions.frame(early, at("07:00"))!!.title)
+        assertEquals(at("07:01"), LiveSessions.nextAlarm(early, at("07:00")))
+        val late = LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("10:55"))!!
+        assertEquals(listOf("keynote", "talk-a", "talk-b"), late.entries.map { it.sessionId })
+        assertEquals("5분 뒤 시작 · 그랜드볼룸 B로 이동", LiveSessions.frame(late, at("10:55"))!!.title)
+        // Once every 찜 ended there is nothing to start.
+        assertNull(LiveSessions.plan("conf", "컨퍼런스", favorites, day, at("11:40")))
         // A long 찜 outlasting one that starts later keeps the window open until it ends.
-        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day)!!
+        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day, at("09:00"))!!
         assertEquals(at("12:00"), long.until)
         assertEquals("long", LiveSessions.frame(long, at("11:30"))?.current?.sessionId)
     }
@@ -91,12 +100,12 @@ class LiveSessionsTest {
         assertEquals("20분 뒤 시작", early.title)
         assertEquals(listOf("키노트"), early.lines)
         // Without a room the track is the destination, and 으로 follows a final consonant other than ㄹ.
-        val hall = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("x", "14:50", "15:30", Track("t", "본관 강당", null, 0), "오후 세션")), day)!!
+        val hall = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("x", "14:50", "15:30", Track("t", "본관 강당", null, 0), "오후 세션")), day, at("09:00"))!!
         assertEquals("20분 뒤 시작 · 본관 강당으로 이동", LiveSessions.frame(hall, at("14:30"))!!.title)
     }
 
     @Test fun `the title reads 20분, 1시간 and 1시간 20분 while the chip is whole minutes until the end or the start`() {
-        val two = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("early", "13:00", "13:10", trackA), favorite("late", "14:50", "16:00", trackB, "오후 세션")), day)!!
+        val two = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("early", "13:00", "13:10", trackA), favorite("late", "14:50", "16:00", trackB, "오후 세션")), day, at("09:00"))!!
         fun frame(now: Long) = LiveSessions.frame(two, now)!!
         assertEquals("1시간 20분 뒤 시작 · 그랜드볼룸 B로 이동", frame(at("13:30")).title)
         assertEquals("80분", frame(at("13:30")).chip)
@@ -112,7 +121,7 @@ class LiveSessionsTest {
     }
 
     @Test fun `two 찜 starting together are both in the plan, the first in 내 시간표 order is current and the other is not next`() {
-        val pair = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("a", "13:00", "13:50", trackA, "A 발표"), favorite("b", "13:00", "13:50", trackB, "B 발표")), day)!!
+        val pair = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("a", "13:00", "13:50", trackA, "A 발표"), favorite("b", "13:00", "13:50", trackB, "B 발표")), day, at("09:00"))!!
         assertEquals(listOf("a", "b"), pair.entries.map { it.sessionId })
         val frame = LiveSessions.frame(pair, at("13:10"))!!
         assertEquals("a", frame.current?.sessionId)
@@ -129,7 +138,7 @@ class LiveSessionsTest {
         assertEquals(85, line.position)
         assertEquals(0, LiveSessions.timeline(plan, at("09:10")).position)
         // Overlapping 찜 cut each other, and the overlap is one session segment.
-        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day)!!
+        val long = LiveSessions.plan("conf", "컨퍼런스", listOf(favorite("long", "10:00", "12:00", trackA), favorite("short", "10:30", "11:00", trackB)), day, at("09:00"))!!
         assertEquals(listOf(30 to true, 30 to true, 60 to true), LiveSessions.timeline(long, at("10:40")).segments)
         // Below Android 16, one line of steps.
         assertEquals("●●○", LiveSessions.steps(plan, at("10:55")))

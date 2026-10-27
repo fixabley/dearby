@@ -27,10 +27,10 @@ data class TodayEventState(val activityId: String, val name: String, val badge: 
 
 /**
  * The 발견 top card for [state] (discovery card look, Material 3 `Card`): the badge and the activity name read as `오늘 · {활동 이름}`, the body
- * line under them, and on a today card a secondary `명함 QR` button ([qr]) that is its own tap; the rest of the card is [open]. Test tags
+ * line under them, and on a today card [guide] (`행사 안내 시작`, 2026-10-27) and a secondary `명함 QR` button ([qr]) that are their own taps; the rest of the card is [open]. Test tags
  * `today-card`·`today-card-qr` (contract).
  */
-@Composable fun TodayEventCard(state: TodayEventState, open: () -> Unit, qr: () -> Unit, modifier: Modifier = Modifier) {
+@Composable fun TodayEventCard(state: TodayEventState, open: () -> Unit, qr: () -> Unit, modifier: Modifier = Modifier, guide: (@Composable () -> Unit)? = null) {
     val (container, content) = if (state.today) TealFill to Color.White else MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
     Card(open, modifier.fillMaxWidth().testTag("today-card"), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = if (state.today) 6.dp else 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -40,7 +40,9 @@ data class TodayEventState(val activityId: String, val name: String, val badge: 
                 if (state.others > 0) Text("외 ${state.others}개", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
             Text(state.body, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (state.today) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            if (state.today) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                guide?.invoke()
+                Spacer(Modifier.weight(1f))
                 TextButton(qr, Modifier.heightIn(min = 40.dp).testTag("today-card-qr")) {
                     Icon(Icons.Rounded.QrCode2, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
