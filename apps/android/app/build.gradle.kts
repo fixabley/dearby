@@ -125,6 +125,8 @@ dependencies {
     // 맞춤 대기열 끝 광고 (2026-10-25): one AdMob native ad per queue view, requested non-personalised (features/ads).
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // 행사 진행 중 계획 로직의 JVM 단위 테스트 (2026-10-27 user decision; `app/src/test`, pure Kotlin, no Robolectric).
+    testImplementation("junit:junit:4.13.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
 }
