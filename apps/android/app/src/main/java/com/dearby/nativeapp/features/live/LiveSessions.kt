@@ -158,6 +158,19 @@ object LiveSessions {
         NotificationManagerCompat.from(context).notify(ID, builder.build())
     }
 
+    /**
+     * Debug 미리보기 (설정 › 알림 `행사 진행 중 표시 미리보기`, 2026-10-27): a made-up plan to see the live update without an event today — `Dearby 미리보기`,
+     * 트랙 A's session running since 20 minutes before [now] until 7 minutes after it, 트랙 B's next starting 5 minutes later for 40 minutes. Shown through
+     * [apply] like a real plan, so its own alarm redraws and finally removes it; it is never stored, so a reboot does not restore it.
+     */
+    fun preview(now: Long = System.currentTimeMillis()): LivePlan {
+        val minute = 60_000L
+        return LivePlan("preview", "Dearby 미리보기", listOf(
+            LiveEntry("preview-a", now - 20 * minute, now + 7 * minute, "트랙 A · 그랜드볼룸 A", "라이브 업데이트로 보는 행사 진행", "preview"),
+            LiveEntry("preview-b", now + 12 * minute, now + 52 * minute, "트랙 B · 그랜드볼룸 B", "다음 세션 미리보기", "preview")))
+    }
+    /** Debug only: while true, MainActivity's day plan leaves the preview alone instead of applying (and usually removing) the real plan. */
+    var previewing = false
 
     private fun time(at: Long) = clock.format(Instant.ofEpochMilli(at).atZone(seoul))
     /** `20분`, `1시간`, `1시간 20분`; never under a minute. */

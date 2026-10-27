@@ -19,7 +19,7 @@ API = {
     'widgets.activity.sessionCard': {'SessionCard', 'SessionBand', 'TrackBadge'},
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardHistoryRow', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
-    'pages.profile': {'NotificationRow', 'SessionReminderRow', 'LiveSessionRow', 'UsageStatsRow', 'AdConsentRow', 'ConsentPage', 'ConsentRequiredMessage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ContactVerifyState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
+    'pages.profile': {'NotificationRow', 'SessionReminderRow', 'LiveSessionRow', 'LiveSessionPreviewRow', 'UsageStatsRow', 'AdConsentRow', 'ConsentPage', 'ConsentRequiredMessage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ContactVerifyState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'CardQrState', 'QrActivity'},
     'features.passkey': {'Passkeys'},
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
