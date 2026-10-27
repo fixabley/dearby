@@ -66,21 +66,18 @@ struct ActivityListPage: View {
                     if let query = state.query, !query.isEmpty {
                         CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
                             .frame(minHeight: viewport)
-                    } else if !state.categories.isEmpty {
-                        // 종류 필터 (contract "종류 필터" 2026-10-26): the way out is clearing the 종류.
-                        CenteredMessage(symbol: "calendar", title: "고른 조건의 \(state.kind == .event ? "이벤트가" : "프로그램이") 없어요",
-                                        message: "다른 종류를 고르거나 종류 필터를 지워 보세요.", embedded: true,
-                                        primary: MessageAction("종류 필터 지우기", identifier: "activity-clear-categories") { apply(state.statusGroups, []) })
-                            .frame(minHeight: viewport)
-                    } else if !state.statusGroups.contains(.past) {
-                        CenteredMessage(symbol: "calendar", title: emptyTitle,
-                                        message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘지난 활동’도 고르면 최근 활동한 프로그램도 보여요.", embedded: true,
-                                        primary: MessageAction("지난 활동도 보기", identifier: "activity-show-closed") {
-                                            apply(state.statusGroups.union([.past]), state.categories)
+                    } else if state.statusGroups == [.available] {
+                        // Default 묶음 (contract "활동 상태" 빈 안내 2026-10-27, 종류를 골랐어도): offer the closed ones — every 묶음, same 종류·검색 —
+                        // same wording in event mode.
+                        CenteredMessage(symbol: "calendar", title: "지금 지원할 수 있는 활동이 없어요", message: "신청이 마감된 활동도 볼까요?", embedded: true,
+                                        primary: MessageAction("마감된 활동 보기", identifier: "activity-show-closed") {
+                                            apply(Set(StatusGroup.allCases), state.categories)
                                         })
                             .frame(minHeight: viewport)
                     } else {
-                        CenteredMessage(symbol: "calendar", title: state.kind == .event ? "최근 열린 이벤트가 없어요" : "최근 활동한 프로그램이 없어요", message: "활동이 수집되면 여기에서 볼 수 있어요.", embedded: true)
+                        // Already widened and still nothing: back to the default 묶음 and every 종류 (applies at once, unlike the sheet's `초기화`).
+                        CenteredMessage(symbol: "calendar", title: "고른 조건의 활동이 없어요", embedded: true,
+                                        primary: MessageAction("필터 초기화", identifier: "activity-reset-filters") { apply([.available], []) })
                             .frame(minHeight: viewport)
                     }
                 case .loaded:
@@ -197,12 +194,6 @@ struct ActivityListPage: View {
         if changed.categories {
             AppAnalytics.event("discovery_category_filter", ["categories": state.categoryList.map { $0.rawValue.lowercased() }.joined(separator: ",")])
         }
-    }
-    /// The empty list's title without 지난 활동: the old wording for `지원 가능` alone, else the chosen states.
-    private var emptyTitle: String {
-        let noun = state.kind == .event ? "이벤트가" : "프로그램이"
-        guard state.statusGroups == [.available] else { return "고른 조건의 \(noun) 없어요" }
-        return state.kind == .event ? "지금 열리는 이벤트가 없어요" : "지금 모집 중인 프로그램이 없어요"
     }
     #if DEBUG
     /// Store screenshots (`ScreenshotScene`): the scenes on the discovery stack, once.
