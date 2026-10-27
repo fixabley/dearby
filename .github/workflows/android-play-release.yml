@@ -1,13 +1,14 @@
 name: Android Play release
 # Builds the upload-key-signed release AAB and sends it with the ko-KR listing (apps/android/fastlane/metadata/android)
-# to a Play track. Play access: Workload Identity Federation (vars GCP_WIF_PROVIDER, PLAY_SERVICE_ACCOUNT). A release on `production` is Google's review submission; `internal` reaches internal testers only.
+# to a Play track. Play access: Workload Identity Federation (vars GCP_WIF_PROVIDER, PLAY_SERVICE_ACCOUNT). A release on `production` is Google's review submission;
+# `internal` reaches internal testers only; `closed` is the closed-testing track named by var PLAY_CLOSED_TRACK (Play's default closed track is `alpha`).
 on:
   workflow_dispatch:
     inputs:
       track:
-        description: Play track
+        description: Play track (closed = var PLAY_CLOSED_TRACK, default alpha)
         type: choice
-        options: [internal, production]
+        options: [internal, closed, production]
         default: internal
       release_notes:
         description: 이번 버전의 새로운 기능 (empty = changelogs/default.txt)
@@ -39,7 +40,7 @@ jobs:
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      PLAY_TRACK: ${{ inputs.track }}
+      PLAY_TRACK: ${{ inputs.track == 'closed' && (vars.PLAY_CLOSED_TRACK || 'alpha') || inputs.track }}
       PLAY_RELEASE_STATUS: ${{ inputs.status }}
     defaults:
       run:
