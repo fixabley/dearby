@@ -49,6 +49,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     var highlights: [ActivityHighlight] = []
     /// 활동 상태 from the server (contract "활동 상태" 2026-10-26); nil on older responses or an unknown value. Read it through `status(at:)`.
     var serverStatus: ActivityStatus? = nil
+    /// `program.id`, for the program logo (`/v1/programs/{id}/logo`, contract "오늘 행사 온보딩" 2026-10-27); nil when the API sent none.
+    var programID: Int64? = nil
 
     /// The status to show: the server's, else (an older server) one read from the recruitment window alone — 모집 중·예정, otherwise 마감.
     func status(at now: Date) -> ActivityStatus? {

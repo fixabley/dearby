@@ -142,6 +142,20 @@ struct ConnectionProvider: Sendable {
                 }
             })
     }
+    /// 오늘 행사 온보딩 (contract "오늘 행사 온보딩" 2026-10-27): events that may run today — 컨퍼런스·밋업·강연·워크샵 in 진행 중·모집 마감·모집 정보 없음,
+    /// the first 50; the app keeps those with a block today.
+    func todayEventCandidates() async throws -> [ActivityModel] {
+        do {
+            return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, size: 50,
+                                                  status: [.inProgress, .recruitmentClosed, .noRecruitment],
+                                                  categories: [.conference, .meetup, .lecture, .workshop]).items
+        } catch {
+            log.warning("Today events load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
+    }
+    /// A program's logo (contract "프로그램 로고"); 404 without one, which the logo slot shows as the initial.
+    func programLogo(_ programID: Int64) -> URL { origins.api.appending(path: "v1/programs/\(programID)/logo") }
     /// One program's activities in the given 활동 상태 (server-judged), up to 100.
     func programActivities(programID: Int64, status: [ActivityStatus], kind: DiscoveryKind, categories: [ActivityCategory]) async throws -> ActivityPage {
         do {

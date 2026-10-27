@@ -15,6 +15,8 @@ struct TimetableRoute: Identifiable {
     var day: ActivityDay?
     /// Opens on the day (the day row's `시간표 보기`).
     var wholeDay = false
+    /// Opened by 오늘 행사 온보딩's `참여해요` (contract "오늘 행사 온보딩"): the sheet stresses `행사 안내 시작` once that button exists.
+    var highlightsGuide = false
     var id: String { activityID + "/" + (wholeDay ? day?.id ?? scheduleID : scheduleID) }
     /// A block's sheet, with the day it shares with other blocks of `activity`'s 활동 일정.
     init(activity: ActivityModel, block: ActivityStageModel, title: String, date: String, now: Date, favoritesFirst: Bool = false) {

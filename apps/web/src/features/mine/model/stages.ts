@@ -272,19 +272,33 @@ function blockDays(schedule: Schedule): { first: string; last: string } | undefi
   if (!first || !last || last < first || (Date.parse(last) - Date.parse(first)) / DAY > 7) return;
   return { first, last };
 }
+type EventBlock = { block: Schedule; first: string; last: string };
+/** The track's 활동 일정 blocks that count as event days (`blockDays`), by first day and then start. */
+function eventBlocks(progress: Progress): EventBlock[] {
+  return progress.stages
+    .filter((stage) => stage.inActivitySection)
+    .flatMap((stage) => {
+      const days = blockDays(stage.schedule);
+      return days ? [{ block: stage.schedule, ...days }] : [];
+    })
+    .sort((a, b) => a.first.localeCompare(b.first) || (parseTime(a.block.startAt) ?? 0) - (parseTime(b.block.startAt) ?? 0));
+}
+/** Blocks covering a Seoul day; a block stays on its day after it ended. */
+const onDay = (blocks: EventBlock[], day: string) => blocks.filter(({ first, last }) => first <= day && day <= last).map(({ block }) => block);
+/**
+ * Today's 활동 일정 blocks of any activity, in block order (contract "오늘 행사 온보딩" › 대상: the 오늘 판정 of the 오늘 내 행사 card). Marks
+ * do not decide which blocks are in the 활동 일정 section, so a public activity outside 내 활동 is read the same way.
+ */
+export function todayBlocks(activity: Activity, now: number): Schedule[] {
+  return onDay(eventBlocks(buildProgress(activity, undefined, now)), seoulDay(now));
+}
 export function pickTodayEvent(applied: { activity: Activity; progress: Progress }[], favorites: FavoriteSession[], now: number): TodayEvent | undefined {
   const today = seoulDay(now);
   const found: { event: TodayEvent; rank: number; start: number }[] = [];
   for (const { activity, progress } of applied) {
     if (ended(progress)) continue;
-    const blocks = progress.stages
-      .filter((stage) => stage.inActivitySection)
-      .flatMap((stage) => {
-        const days = blockDays(stage.schedule);
-        return days ? [{ block: stage.schedule, ...days }] : [];
-      })
-      .sort((a, b) => a.first.localeCompare(b.first) || (parseTime(a.block.startAt) ?? 0) - (parseTime(b.block.startAt) ?? 0));
-    const todays = blocks.filter(({ first, last }) => first <= today && today <= last).map(({ block }) => block);
+    const blocks = eventBlocks(progress);
+    const todays = onDay(blocks, today);
     if (todays.length) {
       const mine = favorites
         .filter((favorite) => favorite.activityId === activity.id && calendarDay(Date.parse(favorite.session.startAt), SEOUL) === today)
