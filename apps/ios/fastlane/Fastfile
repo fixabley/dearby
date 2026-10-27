@@ -17,10 +17,18 @@ platform :ios do
     end
     wait_for_processing(version, build)
     # Beta App Review Information and the group's Test Information stay as saved in App Store Connect (no beta_app_review_info here).
-    upload_to_testflight(
-      api_key: api_key, app_platform: "ios", distribute_only: true, app_version: version, build_number: build,
-      distribute_external: true, groups: [group], changelog: ENV.fetch("CHANGELOG"), notify_external_testers: true
-    )
+    begin
+      upload_to_testflight(
+        api_key: api_key, app_platform: "ios", distribute_only: true, app_version: version, build_number: build,
+        distribute_external: true, groups: [group], changelog: ENV.fetch("CHANGELOG"), notify_external_testers: true
+      )
+    rescue => e
+      # Only one build per version train can be in beta review. The build is uploaded and stays internal;
+      # once the earlier review finishes, add this (or a later) build to the group in App Store Connect or re-run.
+      raise unless e.message.include?("Another build is in review")
+      UI.important("Beta review already in progress for #{version}; build #{build} not submitted (#{e.message.lines.first&.strip})")
+      sh("echo '::warning::Build #{build} uploaded but not submitted: another build of #{version} is in beta review' ") rescue nil
+    end
   end
 
   desc "Attach a processed TestFlight build to the App Store version, upload the listing, optionally submit for review"
