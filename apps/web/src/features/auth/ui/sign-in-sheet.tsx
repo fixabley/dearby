@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { RequestError } from "@/lib/client";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { AppleButton, Spinner } from "@/shared/ui/apple-button";
 import { BrandLockup } from "@/shared/ui/brand-lockup";
@@ -232,7 +233,7 @@ function SignInBody({ onBusy, onSignedIn, footer }: { onBusy: (busy: boolean) =>
         {appleShown && <AppleButton onClick={apple} disabled={busy || appleReadyFor !== attempt} busy={running === "apple"} />}
         {googleShown && (
           <div className="relative flex min-h-[44px] justify-center" aria-busy={running === "google"}>
-            <div ref={googleHost} className={busy || googleReadyFor !== attempt ? "pointer-events-none opacity-50" : undefined} />
+            <div ref={googleHost} className={cn("w-full max-w-[400px]", (busy || googleReadyFor !== attempt) && "pointer-events-none opacity-50")} />
             {running === "google" && <Spinner className="absolute top-1/2 -mt-2.5 text-teal" />}
           </div>
         )}
