@@ -49,7 +49,9 @@ import java.time.format.DateTimeFormatter
     /** 찜 실패 알림: the app's own Snackbar sits under this full-height sheet, so the sheet shows it. */
     notices: SnackbarHostState? = null,
     /** Opens on `내 시간표` (a 세션 이동 알림 tap). */
-    favoritesFirst: Boolean = false, viewDay: (() -> Unit)? = null) {
+    favoritesFirst: Boolean = false, viewDay: (() -> Unit)? = null,
+    /** `행사 안내 시작` (2026-10-27) atop 내 시간표 while the day has 찜 sessions (stressed by the caller for 오늘 행사 온보딩). */
+    guide: (@Composable () -> Unit)? = null) {
     // Keyed so a reminder tap moves an already open sheet to 내 시간표 too.
     var favoritesOnly by remember(favoritesFirst) { mutableStateOf(favoritesFirst) }
     var opened by remember { mutableStateOf<String?>(null) }
@@ -70,6 +72,7 @@ import java.time.format.DateTimeFormatter
                     SegmentedButton(favoritesOnly == (index == 1), { favoritesOnly = index == 1 }, SegmentedButtonDefaults.itemShape(index, 2)) { Text(label) }
                 }
             }
+            if (favoritesOnly) guide?.let { Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { it() } }
             val all = timetable?.sessions.orEmpty()
             val shown = if (favoritesOnly) all.filter { it.id in favorites } else all
             when {
@@ -108,10 +111,10 @@ import java.time.format.DateTimeFormatter
  * Loading until every block's read ended; [retry] rereads the day.
  */
 @Composable fun DayTimetableSheet(title: String, range: String, loads: List<DayBlockLoad>, favorites: Set<String>, heart: (String) -> Unit, dismiss: () -> Unit, retry: () -> Unit,
-    notices: SnackbarHostState? = null) {
+    notices: SnackbarHostState? = null, favoritesFirst: Boolean = false, guide: (@Composable () -> Unit)? = null) {
     val phase = if (loads.any { it.phase == TimetablePhase.LOADING }) TimetablePhase.LOADING else TimetablePhase.LOADED
     val timetable = remember(loads) { dayTimetable(loads) }
-    TimetableSheet(title, range, phase, timetable, favorites, heart, dismiss, retry, notices)
+    TimetableSheet(title, range, phase, timetable, favorites, heart, dismiss, retry, notices, favoritesFirst, guide = guide)
 }
 
 /** A whole block as one row of the day table (키노트·쉬는시간 without sessions, or a block whose timetable could not be read). */

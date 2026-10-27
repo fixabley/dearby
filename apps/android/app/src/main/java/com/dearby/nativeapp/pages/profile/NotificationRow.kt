@@ -41,21 +41,20 @@ import androidx.compose.ui.unit.dp
     }
 }
 
-/** 설정 `알림` `행사 진행 중 표시` (2026-10-26 "행사 당일 진행 중 알림"): the device-local switch ([on]) for the ongoing notification on the day of a 내 활동 with 찜 sessions. */
-@Composable fun LiveSessionRow(on: Boolean, toggle: (Boolean) -> Unit) {
-    ListItem({ Text("행사 진행 중 표시") }, Modifier.toggleable(on, role = Role.Switch, onValueChange = toggle),
-        supportingContent = { Text("행사 당일 내 시간표의 지금·다음 세션을 알림에 계속 보여요") }, trailingContent = { Switch(on, null) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+/** 설정 › 알림 `실시간 표시 설정` (2026-10-27): opens the 실시간 표시 안내 again ([open]), also after `나중에`. */
+@Composable fun LiveDisplayRow(open: () -> Unit) {
+    ListItem({ Text("실시간 표시 설정") }, Modifier.clickable(onClick = open, role = Role.Button),
+        supportingContent = { Text("행사 안내를 잠금 화면·상태 표시줄에 실시간으로 보이게 해요") }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
 }
 
 /**
- * Debug only (2026-10-27): 설정 › 알림 `행사 진행 중 표시 미리보기` — [on] while the made-up 행사 진행 중 notification is showing; [toggle] posts it or removes it.
- * Not in the release settings (`BuildConfig.DEBUG` at the caller).
+ * Debug only (2026-10-27): 설정 › 알림 `행사 진행 중 표시 미리보기` — [moving] the made-up 행사 진행 중 notification shown: null none, false 세션 중,
+ * true 이동; each tap ([next]) goes none → 세션 중 → 이동 → none. Not in the release settings (`BuildConfig.DEBUG` at the caller).
  */
-@Composable fun LiveSessionPreviewRow(on: Boolean, toggle: () -> Unit) {
-    ListItem({ Text("행사 진행 중 표시 미리보기") }, Modifier.clickable(onClick = toggle, role = Role.Button),
-        supportingContent = { Text(if (on) "가짜 행사 알림이 보이는 중이에요. 누르면 지워요" else "가짜 행사로 진행 중 알림을 바로 띄워요 (Debug)") },
-        trailingContent = { Text(if (on) "지우기" else "띄우기", color = MaterialTheme.colorScheme.primary) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+@Composable fun LiveSessionPreviewRow(moving: Boolean?, next: () -> Unit) {
+    ListItem({ Text("행사 진행 중 표시 미리보기") }, Modifier.clickable(onClick = next, role = Role.Button),
+        supportingContent = { Text(when (moving) { null -> "가짜 행사로 진행 중 알림을 바로 띄워요 (Debug)"; false -> "세션 중 모습이 보이는 중이에요. 누르면 이동 모습으로 바꿔요"; true -> "이동 모습이 보이는 중이에요. 누르면 지워요" }) },
+        trailingContent = { Text(when (moving) { null -> "띄우기"; false -> "이동 보기"; true -> "지우기" }, color = MaterialTheme.colorScheme.primary) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
 }
 
 /** 설정 `개인정보` `사용 통계 보내기` (2026-10-25): screens and a few actions, never name or contacts; on until turned off, signed in or not. */

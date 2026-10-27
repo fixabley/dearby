@@ -15,6 +15,8 @@ struct TimetableRoute: Identifiable {
     var day: ActivityDay?
     /// Opens on the day (the day row's `시간표 보기`).
     var wholeDay = false
+    /// Opened by 오늘 행사 온보딩's `참여해요` (contract "오늘 행사 온보딩"): the sheet stresses `행사 안내 시작` once that button exists.
+    var highlightsGuide = false
     var id: String { activityID + "/" + (wholeDay ? day?.id ?? scheduleID : scheduleID) }
     /// A block's sheet, with the day it shares with other blocks of `activity`'s 활동 일정.
     init(activity: ActivityModel, block: ActivityStageModel, title: String, date: String, now: Date, favoritesFirst: Bool = false) {
@@ -127,8 +129,11 @@ struct TimetablePage: View {
             CenteredMessage(symbol: "heart", title: "내 시간표가 비어 있어요", message: "세션에 하트를 누르면 내 시간표에 모여요.")
         } else {
             ScrollView {
-                MyTimetableList(items: mine.map { MyTimetable.Item(session: $0, track: timetable.track($0.trackID)) }, zone: timetable.zone) { opened = $0 }
-                    .padding(16)
+                VStack(spacing: 16) {
+                    // 행사 안내 시작 (contract "행사 당일 진행 중 표시" 2026-10-27): shows only on the day, for today's plan.
+                    LiveGuideButton(activityID: route.activityID)
+                    MyTimetableList(items: mine.map { MyTimetable.Item(session: $0, track: timetable.track($0.trackID)) }, zone: timetable.zone) { opened = $0 }
+                }.padding(16)
             }
         }
     }

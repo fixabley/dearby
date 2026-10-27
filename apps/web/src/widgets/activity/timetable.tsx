@@ -44,7 +44,8 @@ type Loaded = { caption: string; tracks: Track[]; entries: Entry[]; timeZone: st
  * switch since "웹 화면 — 2단계 A"): a near-full-height bottom sheet on phones, a large centred dialog from `md`. Radix gives ESC, the
  * focus trap, focus return and `aria-labelledby`/`aria-describedby` from the title and time range. Content mounts on open, so each
  * open loads afresh and starts on `전체`. A block view offers `이 날 전체 보기` when its day has other timed blocks; the day view swaps
- * in inside the same sheet so the dialog is not re-opened. Signed out, the 전체 view carries a one-line sign-in hint.
+ * in inside the same sheet so the dialog is not re-opened. Signed out, the 전체 view carries a one-line sign-in hint. `initialView` is the
+ * view each open starts on (`내 시간표` from the 오늘 행사 온보딩, contract "오늘 행사 온보딩" › 웹).
  */
 export function TimetableSheet({
   activityId,
@@ -53,6 +54,7 @@ export function TimetableSheet({
   open,
   onOpenChange,
   onTargetChange,
+  initialView = "all",
 }: {
   activityId: number;
   activityName: string;
@@ -60,14 +62,15 @@ export function TimetableSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTargetChange: (target: TimetableTarget) => void;
+  initialView?: View;
 }) {
-  const [view, setView] = useState<View>("all");
+  const [view, setView] = useState<View>(initialView);
   const { signedIn } = useAuth();
   return (
     <Sheet
       open={open && !!target}
       onOpenChange={(next) => {
-        if (!next) setView("all");
+        if (!next) setView(initialView);
         onOpenChange(next);
       }}
     >

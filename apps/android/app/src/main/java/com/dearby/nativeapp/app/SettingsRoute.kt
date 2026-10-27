@@ -7,8 +7,10 @@ import androidx.core.net.toUri
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.profile.NotificationRow
 import com.dearby.nativeapp.features.live.LiveSessions
+import com.dearby.nativeapp.features.live.LiveDisplaySheet
+import com.dearby.nativeapp.features.live.LiveDisplayState
+import com.dearby.nativeapp.pages.profile.LiveDisplayRow
 import com.dearby.nativeapp.pages.profile.LiveSessionPreviewRow
-import com.dearby.nativeapp.pages.profile.LiveSessionRow
 import com.dearby.nativeapp.pages.profile.SessionReminderRow
 import com.dearby.nativeapp.features.reminder.SessionReminders
 import com.dearby.nativeapp.pages.profile.UsageStatsRow
@@ -29,6 +31,13 @@ import com.dearby.nativeapp.pages.settings.SettingsPage
 import com.dearby.nativeapp.shared.config.AuthProvider
 import com.dearby.nativeapp.shared.config.ConsentVersions
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 
 /**
  * 설정 (contract "설정"): loads on entry and again after signing in, a successful Apple/Google link ([AccountState.linked]) or signing out.
@@ -38,8 +47,8 @@ import kotlinx.coroutines.launch
 @Composable fun SettingsRoute(model: SettingsViewModel, account: AccountViewModel, profile: ProfileViewModel, notifications: NotificationViewModel?, analytics: Boolean, setAnalytics: (Boolean) -> Unit,
     /** 세션 이동 알림 (device-local, 2026-10-26), shown with the account's notification rows. */
     sessionReminders: Boolean, setSessionReminders: (Boolean) -> Unit,
-    /** 행사 진행 중 표시 (device-local, 2026-10-26), under it. */
-    liveSession: Boolean, setLiveSession: (Boolean) -> Unit, close: () -> Unit) {
+    /** Debug only: 오늘 행사 온보딩's fake-day switch (2026-10-27); null hides it. */
+    todayOnboarding: TodayOnboardingViewModel? = null, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     val deletion by profile.deletion.collectAsStateWithLifecycle()
@@ -78,20 +87,29 @@ import kotlinx.coroutines.launch
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
                         runCatching { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())) }
                 }
-                LiveSessionRow(liveSession, setLiveSession)
+                var display by remember { mutableStateOf<LiveDisplayState?>(null) }
+                LiveDisplayRow { display = LiveDisplayState.of(context) }
+                display?.let { LiveDisplaySheet(it, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, "닫기") { display = null } }
             }
             // Debug only (2026-10-27 user decision): a fake 행사 진행 중 notification on demand, also signed out, so the live update can be checked on any device.
             if (BuildConfig.DEBUG) {
-                var previewing by remember { mutableStateOf(LiveSessions.previewing) }
-                LiveSessionPreviewRow(previewing) {
-                    previewing = !previewing; LiveSessions.previewing = previewing
-                    LiveSessions.apply(context, if (previewing) LiveSessions.preview() else null)
+                var moving by remember { mutableStateOf(LiveSessions.previewMoving) }
+                LiveSessionPreviewRow(moving) {
+                    moving = when (moving) { null -> false; false -> true; true -> null }; LiveSessions.previewMoving = moving
+                    LiveSessions.apply(context, moving?.let { LiveSessions.preview(it) })
                 }
             }
         } },
         privacy = {
             UsageStatsRow(analytics, setAnalytics)
             state.adConsent?.let { on -> AdConsentRow(on, !state.busy) { if (it) askingAd = true else model.setAdConsent(false) } }
+            // Debug only (2026-10-27): 오늘 행사 온보딩 on a day without an event — the nearest coming event day stands in for today, asked again at once.
+            if (BuildConfig.DEBUG && todayOnboarding != null) {
+                var fake by remember { mutableStateOf(todayOnboarding.fake) }
+                ListItem({ Text("오늘 행사 온보딩 가짜 날짜") }, Modifier.toggleable(fake, role = Role.Switch) { fake = it; todayOnboarding.setFake(it) },
+                    supportingContent = { Text("가장 가까운 행사 날을 오늘로 보고 설정을 닫으면 다시 물어요 (Debug)") }, trailingContent = { Switch(fake, null) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }
         })
     if (askingAd) AdConsentSheet({ askingAd = false; model.setAdConsent(true) }, { askingAd = false }) { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     // Link failures and the deletion result are one-time notices of their own owners.
