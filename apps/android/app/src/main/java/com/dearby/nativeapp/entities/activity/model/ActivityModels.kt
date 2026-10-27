@@ -113,6 +113,8 @@ data class ActivityModel(
     val highlights: List<Highlight> = emptyList(),
     /** The server's state (contract "활동 상태", 2026-10-26: `RECRUITING` …); null from an older API, then [statusLabel] judges by dates. */
     val status: String? = null,
+    /** The program's id (`program.id`), null when the API left it out; 오늘 행사 온보딩 draws the program logo from it (2026-10-27). */
+    val programId: String? = null,
 ) {
     /** The venue name to show: the curated place, else the collected phrase, else the schedule address. */
     val venue: String? get() = place?.name ?: location ?: address

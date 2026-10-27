@@ -57,4 +57,12 @@ class DevicePreferences(context: Context) {
     var liveSessionShownDay: String?
         get() = preferences.getString("liveSessionShownDay", null)
         set(value) = preferences.edit { putString("liveSessionShownDay", value) }
+    /** 오늘 행사 온보딩 (2026-10-27): the Seoul day (`yyyy-MM-dd`) it was last asked, once a day. */
+    var todayOnboardingDay: String?
+        get() = preferences.getString("todayOnboardingDay", null)
+        set(value) = preferences.edit { putString("todayOnboardingDay", value) }
+    /** Debug only: 설정 `오늘 행사 온보딩 가짜 날짜` — the nearest coming event day stands in for today. */
+    var todayOnboardingFake: Boolean
+        get() = preferences.getBoolean("todayOnboardingFake", false)
+        set(value) = preferences.edit { putBoolean("todayOnboardingFake", value) }
 }

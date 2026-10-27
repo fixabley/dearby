@@ -31,6 +31,13 @@ import com.dearby.nativeapp.pages.settings.SettingsPage
 import com.dearby.nativeapp.shared.config.AuthProvider
 import com.dearby.nativeapp.shared.config.ConsentVersions
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 
 /**
  * 설정 (contract "설정"): loads on entry and again after signing in, a successful Apple/Google link ([AccountState.linked]) or signing out.
@@ -39,7 +46,9 @@ import kotlinx.coroutines.launch
  */
 @Composable fun SettingsRoute(model: SettingsViewModel, account: AccountViewModel, profile: ProfileViewModel, notifications: NotificationViewModel?, analytics: Boolean, setAnalytics: (Boolean) -> Unit,
     /** 세션 이동 알림 (device-local, 2026-10-26), shown with the account's notification rows. */
-    sessionReminders: Boolean, setSessionReminders: (Boolean) -> Unit, close: () -> Unit) {
+    sessionReminders: Boolean, setSessionReminders: (Boolean) -> Unit,
+    /** Debug only: 오늘 행사 온보딩's fake-day switch (2026-10-27); null hides it. */
+    todayOnboarding: TodayOnboardingViewModel? = null, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     val deletion by profile.deletion.collectAsStateWithLifecycle()
@@ -94,6 +103,13 @@ import kotlinx.coroutines.launch
         privacy = {
             UsageStatsRow(analytics, setAnalytics)
             state.adConsent?.let { on -> AdConsentRow(on, !state.busy) { if (it) askingAd = true else model.setAdConsent(false) } }
+            // Debug only (2026-10-27): 오늘 행사 온보딩 on a day without an event — the nearest coming event day stands in for today, asked again at once.
+            if (BuildConfig.DEBUG && todayOnboarding != null) {
+                var fake by remember { mutableStateOf(todayOnboarding.fake) }
+                ListItem({ Text("오늘 행사 온보딩 가짜 날짜") }, Modifier.toggleable(fake, role = Role.Switch) { fake = it; todayOnboarding.setFake(it) },
+                    supportingContent = { Text("가장 가까운 행사 날을 오늘로 보고 설정을 닫으면 다시 물어요 (Debug)") }, trailingContent = { Switch(fake, null) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }
         })
     if (askingAd) AdConsentSheet({ askingAd = false; model.setAdConsent(true) }, { askingAd = false }) { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     // Link failures and the deletion result are one-time notices of their own owners.

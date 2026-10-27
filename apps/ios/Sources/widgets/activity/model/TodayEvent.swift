@@ -55,8 +55,7 @@ struct TodayEvent: Equatable {
         var found: [(event: TodayEvent, rank: Int, start: Date)] = []
         for item in applied {
             guard let progress = item.progress, !progress.ended else { continue }
-            let blocks = progress.stages.filter(\.inActivitySection).map(\.source).compactMap { block in days(block).map { (block: block, days: $0) } }
-                .sorted { ($0.block.start ?? .distantFuture) < ($1.block.start ?? .distantFuture) }
+            let blocks = eventBlocks(progress.stages)
             let todays = blocks.filter { $0.days.contains(today) }.map(\.block)
             if !todays.isEmpty {
                 let mine = favorites.filter { $0.activityID == item.id && seoul.isDate($0.session.start, inSameDayAs: now) }
@@ -75,6 +74,17 @@ struct TodayEvent: Equatable {
         guard var first = found.first?.event else { return nil }
         first.others = found.count - 1
         return first
+    }
+    /// The 활동 일정 blocks of a track that count as event days, with the Seoul days each covers, in start order.
+    private static func eventBlocks(_ stages: [ActivityStage]) -> [(block: ActivityStageModel, days: ClosedRange<Date>)] {
+        stages.filter(\.inActivitySection).map(\.source).compactMap { block in days(block).map { (block: block, days: $0) } }
+            .sorted { ($0.block.start ?? .distantFuture) < ($1.block.start ?? .distantFuture) }
+    }
+    /// The activity's 활동 일정 blocks that cover `now`'s Seoul day, in start order, judged as above without the user's marks (오늘 행사 온보딩,
+    /// contract "오늘 행사 온보딩" 2026-10-27: an activity not in 내 활동 yet).
+    static func todayBlocks(of activity: ActivityModel, now: Date) -> [ActivityStageModel] {
+        let today = seoul.startOfDay(for: now)
+        return eventBlocks(ActivityStages.build(activity, marks: [:], now: now)?.stages ?? []).filter { $0.days.contains(today) }.map(\.block)
     }
     /// The Seoul days a block covers, first midnight through last midnight; nil without a start, when it ends before it starts, or when it
     /// spans more than 7 days. A timed block without an end is its start day; an all-day block's `end` is exclusive.

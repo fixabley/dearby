@@ -69,7 +69,7 @@ struct ProgramHeader<Accessory: View>: View {
     }
     private var information: some View {
         HStack(alignment: .top, spacing: 12) {
-            logo
+            ProgramLogo(name: name, url: logoURL)
             VStack(alignment: .leading, spacing: 2) {
                 if let category {
                     Label(category.label, systemImage: category.systemImage).font(.dearby(.caption)).foregroundStyle(.secondary).lineLimit(1)
@@ -90,21 +90,6 @@ struct ProgramHeader<Accessory: View>: View {
     private var spokenLabel: String {
         [category?.label, name, newRecruitment ? "새 모집" : nil, showsTimetable ? "시간표 있음" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
             .compactMap { $0 }.joined(separator: ", ")
-    }
-    /// The 44-point logo slot: the image filled and clipped to a 14-point continuous corner; the initial avatar until it loads, on failure or without a URL.
-    @ViewBuilder private var logo: some View {
-        if let logoURL {
-            AsyncImage(url: logoURL) { phase in
-                if let image = phase.image { image.resizable().scaledToFill() } else { initial }
-            }
-            .frame(width: 44, height: 44).clipShape(.rect(cornerRadius: 14, style: .continuous))
-        } else {
-            initial
-        }
-    }
-    private var initial: some View {
-        Text(String(name.prefix(1))).font(.dearby(fixedSize: 18, weight: .bold)).foregroundStyle(DearbyStyle.teal)
-            .frame(width: 44, height: 44).background(DearbyStyle.mint, in: .rect(cornerRadius: 14, style: .continuous))
     }
     /// Collapsed: the count as a prominent capsule badge. Expanded: a bordered circular chevron pointing up (`chevron.down` rotated 180°).
     @ViewBuilder private func control(_ toggle: @escaping () -> Void) -> some View {
@@ -182,3 +167,24 @@ struct ProgramHeader<Accessory: View>: View {
     }.padding(16).background(Color(.systemGroupedBackground))
 }
 #endif
+
+/// The 44-point program logo slot (contract "프로그램 로고"): the image filled and clipped to a 14-point continuous corner; the initial avatar
+/// until it loads, on failure or without a URL. 발견 프로그램 카드와 오늘 행사 온보딩 행이 같이 쓴다.
+struct ProgramLogo: View {
+    let name: String
+    let url: URL?
+    var body: some View {
+        if let url {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image { image.resizable().scaledToFill() } else { initial }
+            }
+            .frame(width: 44, height: 44).clipShape(.rect(cornerRadius: 14, style: .continuous))
+        } else {
+            initial
+        }
+    }
+    private var initial: some View {
+        Text(String(name.prefix(1))).font(.dearby(fixedSize: 18, weight: .bold)).foregroundStyle(DearbyStyle.teal)
+            .frame(width: 44, height: 44).background(DearbyStyle.mint, in: .rect(cornerRadius: 14, style: .continuous))
+    }
+}

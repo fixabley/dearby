@@ -34,7 +34,7 @@ API = {
     'features.ads': {'QueueAd', 'NativeAdCard', 'AdConsentSheet'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.settings': {'SettingsPage', 'SettingsState', 'SettingsPhase', 'SettingsIdentityState', 'SettingsPasskeyState', 'SettingsBlockState'},
-    'pages.onboarding': {'IntroPage'},
+    'pages.onboarding': {'IntroPage', 'TodayEventsSheet', 'TodayEventChoice'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'SharedCardPage', 'SharedCard', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
     # Contract "프로필 사진" (2026-10-26): the user's own circular crop and the square JPEG upload.

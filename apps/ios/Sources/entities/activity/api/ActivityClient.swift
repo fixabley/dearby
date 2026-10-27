@@ -324,7 +324,7 @@ enum ActivityClient {
             place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) },
             hook: activity.hook?.value.flatMap { $0.isEmpty ? nil : $0 },
             highlights: (activity.highlights?.value ?? []).filter { !$0.text.isEmpty }.map(\.highlight),
-            serverStatus: activity.status.flatMap(ActivityStatus.init(rawValue:)))
+            serverStatus: activity.status.flatMap(ActivityStatus.init(rawValue:)), programID: activity.program?.id)
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day (either day may be missing), or date-less.
     /// An unknown kind reads as an event.
@@ -385,7 +385,7 @@ enum ActivityClient {
         let id: Int64; let name: String; let nameEn: String?; let kind: String?
         var tag: Tag { Tag(id: id, name: name, nameEn: nameEn, kind: kind.flatMap(Tag.Kind.init(rawValue:)) ?? .trait) }
     }
-    private struct Named: Decodable { let name: String }
+    private struct Named: Decodable { let id: Int64?; let name: String }
     private struct Schedule: Decodable {
         let id: Int64; let title: String; let kind: String?; let startAt: String?; let endAt: String?; let timeZone: String?
         let startDate: String?; let endDateExclusive: String?; let dateLabel: String

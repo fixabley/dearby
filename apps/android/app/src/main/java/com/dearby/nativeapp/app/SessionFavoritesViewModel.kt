@@ -41,11 +41,15 @@ import java.time.LocalDate
  * null until read: an unread list must not cancel the alarms already set.
  */
 class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewModel() {
-    /** [favoritesOnly] opens the sheet on 내 시간표 (a 세션 이동 알림 tap). */
-    data class Open(val activityId: String, val scheduleId: String, val phase: TimetablePhase = TimetablePhase.LOADING, val timetable: TimetableState? = null, val favoritesOnly: Boolean = false)
+    /**
+     * [favoritesOnly] opens the sheet on 내 시간표 (a 세션 이동 알림 tap, 오늘 행사 온보딩). [highlightGuide] (오늘 행사 온보딩, 2026-10-27) asks the
+     * sheet to stress its `행사 안내 시작` button (PR #464); the sheet ignores it until that button exists.
+     */
+    data class Open(val activityId: String, val scheduleId: String, val phase: TimetablePhase = TimetablePhase.LOADING, val timetable: TimetableState? = null, val favoritesOnly: Boolean = false,
+        val highlightGuide: Boolean = false)
 
     /** 하루 시간표 (2026-10-26): one date's timed blocks, each read on its own; [loads] in block order. Open instead of [Open], never with it. */
-    data class OpenDay(val activityId: String, val day: LocalDate, val loads: List<DayBlockLoad>)
+    data class OpenDay(val activityId: String, val day: LocalDate, val loads: List<DayBlockLoad>, val favoritesOnly: Boolean = false, val highlightGuide: Boolean = false)
 
     private val openFlow = MutableStateFlow<Open?>(null)
     val open = openFlow.asStateFlow()
@@ -79,11 +83,11 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
     }
 
     /** Shows the block's timetable; null closes it (and a day sheet). */
-    fun show(activityId: String?, scheduleId: String?, favoritesOnly: Boolean = false) {
+    fun show(activityId: String?, scheduleId: String?, favoritesOnly: Boolean = false, highlightGuide: Boolean = false) {
         timetableJob?.cancel()
         dayFlow.value = null
         if (activityId == null || scheduleId == null) { openFlow.value = null; return }
-        openFlow.value = Open(activityId, scheduleId, favoritesOnly = favoritesOnly)
+        openFlow.value = Open(activityId, scheduleId, favoritesOnly = favoritesOnly, highlightGuide = highlightGuide)
         timetableJob = viewModelScope.launch {
             val result = try { withContext(Dispatchers.IO) { fetchTimetable(ApiOrigin.current, activityId, scheduleId) } }
             catch (e: CancellationException) { throw e } catch (e: Exception) {
@@ -96,16 +100,19 @@ class SessionFavoritesViewModel(private val account: AccountViewModel) : ViewMod
         }
         load()
     }
-    fun retry() { openFlow.value?.let { show(it.activityId, it.scheduleId, it.favoritesOnly) }; dayFlow.value?.let { showDay(it.activityId, it.day, it.loads.map { load -> load.block }) } }
+    fun retry() {
+        openFlow.value?.let { show(it.activityId, it.scheduleId, it.favoritesOnly, it.highlightGuide) }
+        dayFlow.value?.let { showDay(it.activityId, it.day, it.loads.map { load -> load.block }, it.favoritesOnly, it.highlightGuide) }
+    }
 
     /**
      * Shows the day's blocks as one table (하루 시간표): every block with a timetable is read at once, each landing in [OpenDay.loads] as it ends
      * (a 404 is MISSING, drawn as a title row; a failure FAILED). A block without a timetable is MISSING from the start and not fetched.
      */
-    fun showDay(activityId: String, day: LocalDate, blocks: List<DayBlock>) {
+    fun showDay(activityId: String, day: LocalDate, blocks: List<DayBlock>, favoritesOnly: Boolean = false, highlightGuide: Boolean = false) {
         timetableJob?.cancel()
         openFlow.value = null
-        dayFlow.value = OpenDay(activityId, day, blocks.map { DayBlockLoad(it, if (it.hasTimetable && it.scheduleId != null) TimetablePhase.LOADING else TimetablePhase.MISSING, null) })
+        dayFlow.value = OpenDay(activityId, day, blocks.map { DayBlockLoad(it, if (it.hasTimetable && it.scheduleId != null) TimetablePhase.LOADING else TimetablePhase.MISSING, null) }, favoritesOnly, highlightGuide)
         timetableJob = viewModelScope.launch {
             blocks.filter { it.hasTimetable && it.scheduleId != null }.forEach { block ->
                 launch {
