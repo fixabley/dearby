@@ -84,9 +84,8 @@ import kotlinx.coroutines.launch
             if (BuildConfig.DEBUG) {
                 var previewing by remember { mutableStateOf(LiveSessions.previewing) }
                 LiveSessionPreviewRow(previewing) {
-                    LiveSessions.previewing = !previewing
-                    LiveSessions.apply(context, if (LiveSessions.previewing) LiveSessions.preview() else null)
-                    previewing = LiveSessions.previewing
+                    previewing = !previewing; LiveSessions.previewing = previewing
+                    LiveSessions.apply(context, if (previewing) LiveSessions.preview() else null)
                 }
             }
         } },
