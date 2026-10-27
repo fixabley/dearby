@@ -47,7 +47,7 @@
 | `activity_view`(활동 상세 열림) | `activity_id`, `field`, `category`, `source` = `discovery`·`queue`·`favorites`·`link`·`push`·`inbox`(알림 목록 행)·`my_activity`(내 활동 목록) |
 | `favorite_add` · `favorite_remove` | `type` = `program`·`activity`·`session`(세션 찜, 2026-10-26 추가 — 아래 "비공개 테스트 성공 지표"; `id` = 세션 id, `activity_id` 함께), `id`, `field`, `category` |
 | `notify_level_set` | `type`, `level` = `all`·`application`·`none` |
-| `myactivity_add` | `activity_id`, `field`, `category`, `source` |
+| `myactivity_add` | `activity_id`, `field`, `category`, `source`(오늘 행사 온보딩의 `참여해요`는 `today_onboarding`, 2026-10-27) |
 | `apply_click`(공식 신청 링크) | `activity_id`, `field`, `category`, `source` |
 | `push_open`(알림을 눌러 앱 열림) | `kind` = `new`·`application`·`schedule`·`summary` |
 | `session_reminder_scheduled`(찜한 세션 이동 알림을 기기에 예약함, 2026-10-26, [native-v1.md](native-v1.md) "찜한 세션 이동 알림") | `count`(이번에 예약한 알림 수; 찜 변경·스위치·포그라운드 복귀로 다시 예약해 실제로 넣을 때마다. 로컬 알림이라 눌러도 `push_open`은 보내지 않는다) |
@@ -64,6 +64,8 @@
 | `discovery_status_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `활동 상태` 묶음이 실제로 바뀜(기억된 값 복원·시트 안 체크만은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태"·"필터 시트") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`; `in_progress`는 2026-10-26 재정의 뒤 `진행·예정`) |
 | `discovery_category_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `종류`가 실제로 바뀜(기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음; 이벤트 모드에는 종류 필터가 없다, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터"·"필터 시트") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
 | `today_card_tap` | 발견 맨 위 `오늘 내 행사` 카드를 누름(2026-10-26, [native-v1.md](native-v1.md) "오늘 내 행사 카드") | `target` = `timetable`(오늘, 블록 시간표 시트)·`progress`(진행 단계)·`qr`(`명함 QR`), `activity_id`, `field`, `category` |
+| `today_onboarding_shown` | 오늘 행사 온보딩 시트가 보임(서울 날짜당 1회, 2026-10-27, [native-v1.md](native-v1.md) "오늘 행사 온보딩") | `count` = 목록의 행사 수(1–5) |
+| `today_onboarding_answer` | 그 시트에 답함 | `result` = `joined`(`참여해요`)·`skip`(`오늘은 아니에요`·끌어내려 닫기), `count` = 고른 행사 수(`skip`은 0) |
 | `contact_verify` | 프로필 수정의 연락처 인증을 끝냄(2026-10-26, [native-v1.md](native-v1.md) "연락처 인증"): GitHub 연결은 콜백 뒤(`complete` 200이 `ok`, 시트 취소·`error=cancelled`는 `cancelled`, 그 밖은 `failed`), 이메일은 `확인`을 눌러 `verify`가 답한 뒤(200 `ok`, 400·그 밖 `failed`; 인증번호 받기만 하고 그만둔 것은 보내지 않음). 주소·사용자명은 넣지 않는다 | `kind` = `github`·`email`, `result` = `ok`·`cancelled`·`failed` |
 
 접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
@@ -100,9 +102,11 @@ GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을
 | `discovery_status_filter` | 발견 필터 시트 `적용`·칩 ×·빈 안내의 `마감된 활동 보기`·`필터 초기화`로 `활동 상태`를 바꿈(앱과 같음, 2026-10-27 [native-v1.md](native-v1.md) "활동 상태" 빈 안내) | `groups` |
 | `discovery_category_filter` | 발견 필터 시트 `적용`·칩 ×로 `종류`를 바꿈(앱과 같음, 종류를 골랐던 뒤 빈 안내의 `필터 초기화` 포함; 2026-10-27 전에는 `종류 필터 지우기`) | `categories` |
 | `timetable_view` | 활동 상세에서 일정 행을 눌러 시간표 모달을 열 때마다(2026-10-26, [native-v1.md](native-v1.md) "트랙·세션 시간표"). 하루 시간표 모달(날짜 행의 `시간표 보기`·블록 모달의 `이 날 전체 보기`, "하루 시간표")도 열 때 `activity_id`로 한 번 | `activity_id` |
-| `myactivity_add` | 활동 카드·활동 상세의 `+`로 내 활동에 추가 성공(2026-10-26 웹 2단계 B, [native-v1.md](native-v1.md) "웹 로그인" › 2단계 B; 앱과 같은 이름) | `activity_id`, `category`, `source` = `discovery`(발견 카드)·`link`(활동 상세) |
-| `stage_mark` | 진행 단계(`/mine/:id`)에서 선발 단계의 상태를 고름(서버 저장 전에 보냄). 지난 선발 단계 통과 제안의 `통과로 표시`는 단계마다 보내며 `via=autopass_prompt` | `activity_id`, `category`, `kind` = `passed`·`waiting`·`failed`·`other`, `via`(제안에서만) |
+| `myactivity_add` | 활동 카드·활동 상세의 `+`로 내 활동에 추가 성공(2026-10-26 웹 2단계 B, [native-v1.md](native-v1.md) "웹 로그인" › 2단계 B; 앱과 같은 이름) | `activity_id`, `category`, `source` = `discovery`(발견 카드)·`link`(활동 상세)·`today_onboarding`(오늘 행사 시트의 `참여해요`) |
+| `stage_mark` | 진행 단계(`/mine/:id`)에서 선발 단계의 상태를 고름(서버 저장 전에 보냄). 지난 선발 단계 통과 제안의 `통과로 표시`는 단계마다 보내며 `via=autopass_prompt`(오늘 행사 온보딩의 자동 수락은 `via=today_onboarding`) | `activity_id`, `category`, `kind` = `passed`·`waiting`·`failed`·`other`, `via`(제안·온보딩에서만) |
 | `today_card_tap` | 발견 맨 위 `오늘 내 행사` 카드를 누름 | `target` = `timetable`(시간표 모달)·`progress`(진행 단계; 웹은 `qr` 없음), `activity_id`, `category` |
+| `today_onboarding_shown` | 발견 맨 위 오늘 행사 배너가 보임(서울 날짜당 1회, 2026-10-27) | `count` = 대상 행사 수(1–5) |
+| `today_onboarding_answer` | 배너의 시트에서 답하거나 배너를 닫음 | `result` = `joined`·`skip`(`오늘은 아니에요`·시트 바깥 닫기·배너 ×), `count` = 고른 행사 수(`skip`은 0) |
 | `favorite_add` · `favorite_remove` | 하트를 켜고 끔이 서버에 반영된 뒤(2026-10-26 웹 로그인 2단계 A, [native-v1.md](native-v1.md) "웹 화면 — 2단계 A"): 발견 프로그램 카드·활동 카드·활동 상세·`/favorites`의 하트, 시간표 모달·`내 시간표`의 세션 하트. 비로그인의 하트 탭(로그인 시트만 열림)과 실패해 되돌린 탭은 보내지 않음 | `type`(`program`·`activity`·`session`), `id`(그 대상의 id), `activity_id`(세션만: 세션이 속한 활동), `category`(활동·프로그램의 종류 code 소문자, 있을 때만; 웹은 `field`를 보내지 않음) |
 | `tester_cta_tap` | 비공개 테스트 초대의 링크를 누름 — 공개 명함 저장 버튼 아래·`/saved` 상단(비로그인)·로그인 시트의 `비공개 테스트로 앱 받기`(2026-10-26, [native-v1.md](native-v1.md) "명함 교환" › 받는 사람(웹)). iOS는 버튼이 곧 TestFlight 링크, Android·데스크톱은 시트 안의 단계 링크를 누를 때 보낸다(시트를 여는 것만으로는 보내지 않음) | `platform`(`ios`·`android`·`desktop`, UA 판정), `target`(`testflight`·`play_group`·`play_test`) |
 | `card_received` | 로그인 상태의 공개 명함에서 `내 지갑에 저장`이 201로 성공(이미 있어 200이면 보내지 않음; 2026-10-26 "웹 화면 — 2단계 C") | `activity_id`(교환 활동이 있을 때), `reciprocal` = `yes`·`no` |
@@ -122,7 +126,7 @@ GA 웹 스트림(2026-10-26 생성)은 **향상된 측정을 끈다**: 켜 두�
 ### 지표 1 — 추가한 활동이 참석까지
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
-| `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄). 지난 선발 단계 통과 제안(native-v1.md "지난 선발 단계 통과 제안" 2026-10-26)의 `통과로 표시`도 표시한 단계마다 보내며 `via=autopass_prompt`를 더한다(진행 단계 화면에서 고른 것은 `via` 없음) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자), `via`(제안에서만) = `autopass_prompt` |
+| `stage_mark` | 진행 단계 화면에서 선발 단계(`SELECTION`)의 상태를 고름(기본 대기·통과·탈락과 어드민 지정 상태 모두; 서버 저장 전에 보냄). 지난 선발 단계 통과 제안(native-v1.md "지난 선발 단계 통과 제안" 2026-10-26)의 `통과로 표시`도 표시한 단계마다 보내며 `via=autopass_prompt`를 더한다(진행 단계 화면에서 고른 것은 `via` 없음) | `activity_id`, `kind` = `passed`·`waiting`·`failed`·`other`(일정 상태의 `kind` 소문자), `via`(제안에서만) = `autopass_prompt`, 오늘 행사 온보딩의 `참여해요`가 자동 수락한 단계는 `today_onboarding`(2026-10-27) |
 | `participation_reached` | 내 활동의 활동이 처음 **참여 중**이 됨 — `via=selection_passed`: 선발 단계가 모두 `통과`로 표시되고 뒤에 활동 단계가 남음(진행 트랙의 `참여 중` 배지와 같은 조건, 표시를 바꾼 직후 판정). `via=no_selection`: 선발 단계가 하나도 없는 활동(모집 슬롯도 `SELECTION` 세부 일정도 없음)을 내 활동에 추가함(`myactivity_add`와 함께; 모집 슬롯이 있는 활동은 컨퍼런스라도 해당하지 않는다 — 운영의 우아콘 2026(id 156)은 `신청 기간`·`입장권 추첨 결과 발송`이 `SELECTION`이다, 2026-10-26 확인). 활동마다 기기에 보냈음을 기록해 한 번만 보낸다(표시를 되돌렸다 다시 통과해도 다시 보내지 않음) | `activity_id`, `via` = `selection_passed`·`no_selection` |
 | `activity_day_action` | 내 활동에 있는 활동의 `ACTIVITY` 일정 블록(활동 기간·`ACTIVITY` 세부 일정)이 진행 중인 날(서울 날짜, 블록 시작일~끝일)에 그 활동에서 한 행동. 탈락 표시한 활동은 보내지 않음. 같은 날 반복해도 매번 보내고, 지표는 사용자 수로 센다 | `activity_id`, `action` = `progress`(진행 단계 화면 열기)·`detail`(활동 상세 열기)·`timetable`(시간표 시트 열기)·`session_favorite`(세션 찜) |
 | `favorite_add` · `favorite_remove`(확장) | `type` = `session`을 더한다: 시간표·내 시간표(찜한 세션)에서 세션 하트 | `type` = `session`, `id` = 세션 id, `activity_id`(세션이 속한 활동), `field`·`category`는 그 활동 것 |
