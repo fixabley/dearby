@@ -34,12 +34,11 @@ struct LiveSessionWidget: Widget {
                     }.padding(.top, 4)
                 }
             } compactLeading: {
-                LiveSessionLines.mark(context.state)
+                LiveSessionLines.mark(context.state).frame(width: 20)
             } compactTrailing: {
-                LiveSessionLines.countdown(context.state).font(.caption2.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(context.state.running ? Color.primary : DearbyStyle.teal).frame(minWidth: 40)
+                LiveSessionLines.compactTrailing(context.state)
             } minimal: {
-                LiveSessionLines.mark(context.state)
+                LiveSessionLines.minimal(context.state)
             }
             .widgetURL(LiveSessionLines.link(context))
             .keylineTint(DearbyStyle.tealFill)
@@ -67,13 +66,13 @@ struct LiveSessionLines: View {
             }
         }
     }
-    /// 이동: the walking figure, `6:59 뒤 시작 · 그랜드볼룸 B로 이동` (the countdown largest, 청록) › 세션명 › 트랙명.
+    /// 이동: the walking figure, `12분 뒤 시작 · 그랜드볼룸 B로 이동` (the minutes largest, 청록; minutes only, no seconds) › 세션명 › 트랙명.
     private var moving: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "figure.walk").font(.title2.weight(.semibold)).foregroundStyle(DearbyStyle.teal).accessibilityLabel("이동")
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Self.countdown(state).font(.title3.monospacedDigit().weight(.bold)).foregroundStyle(DearbyStyle.teal).multilineTextAlignment(.leading).frame(maxWidth: 76, alignment: .leading)
+                    Text("\(state.minutes)분").font(.title3.monospacedDigit().weight(.bold)).foregroundStyle(DearbyStyle.teal).layoutPriority(1)
                     Text(["뒤 시작", Self.destination(entry)].compactMap { $0 }.joined(separator: " · "))
                         .font(.subheadline.weight(.semibold)).foregroundStyle(DearbyStyle.teal).lineLimit(1)
                 }
@@ -91,7 +90,32 @@ struct LiveSessionLines: View {
         }
         .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.secondary)
     }
-    /// Compact leading and minimal: the track's dot while a session runs, the walking figure in a gap.
+    /// Compact trailing, kept narrow so the island stays close to the system's: running, the remaining time in a fixed width (`12:30`; `65분`
+    /// with an hour or more); 이동, `그랜드볼룸 B 12분` (the room, else the track; the name gives way, the minutes always show), 청록.
+    @ViewBuilder static func compactTrailing(_ state: LiveSessionAttributes.ContentState) -> some View {
+        let font = Font.caption2.monospacedDigit().weight(.semibold)
+        if state.running {
+            Group {
+                if state.minutes > 60 { Text("\(state.minutes)분") } else { countdown(state) }
+            }
+            .font(font).multilineTextAlignment(.trailing).frame(width: 42, alignment: .trailing)
+        } else {
+            HStack(spacing: 3) {
+                if let place = state.current.room ?? state.current.track { Text(place).lineLimit(1).truncationMode(.tail) }
+                Text("\(state.minutes)분").layoutPriority(1)
+            }
+            .font(font).foregroundStyle(DearbyStyle.teal).frame(maxWidth: 84, alignment: .trailing)
+        }
+    }
+    /// Minimal: running, the track's dot; 이동, `12분` (the walking figure from 100 minutes on, where it would not fit).
+    @ViewBuilder static func minimal(_ state: LiveSessionAttributes.ContentState) -> some View {
+        if !state.running, state.minutes < 100 {
+            Text("\(state.minutes)분").font(.caption2.monospacedDigit().weight(.semibold)).foregroundStyle(DearbyStyle.teal).minimumScaleFactor(0.8)
+        } else {
+            mark(state)
+        }
+    }
+    /// Compact leading (and minimal while running): the track's dot while a session runs, the walking figure in a gap.
     @ViewBuilder static func mark(_ state: LiveSessionAttributes.ContentState) -> some View {
         if state.running {
             Circle().fill(color(state.current.trackPosition)).frame(width: 10, height: 10).padding(4).accessibilityLabel("세션 중")

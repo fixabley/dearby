@@ -25,6 +25,9 @@ struct LiveSessionAttributes: ActivityAttributes, Hashable {
         /// `current`'s place among the day's favorited sessions (0-based) and their count: the 진행 트랙 segments.
         let position: Int
         let total: Int
+        /// Whole minutes, rounded up (at least 1), to `current`'s end while running, else to its start: 이동 shows only these (`12분`), and the
+        /// compact island while an hour or more is left. Refreshed at each minute boundary (`LiveSessionModel.moment`).
+        var minutes = 1
     }
     let activityID: String
     let activityTitle: String

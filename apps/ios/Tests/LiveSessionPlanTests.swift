@@ -52,7 +52,8 @@ import XCTest
         let early = LiveSessionModel.moment(plan, now: at(9, 0))
         XCTAssertEqual(early.state?.current.scheduleID, "1", "started hours before: 이동 to the first session")
         XCTAssertEqual(early.state?.running, false)
-        XCTAssertEqual(early.boundary, at(13, 0))
+        XCTAssertEqual(early.state?.minutes, 240, "이동: whole minutes to the start, past an hour too")
+        XCTAssertEqual(early.boundary, at(9, 1), "the next minute boundary")
         XCTAssertTrue(plan.open(at: at(15, 29)))
         XCTAssertFalse(plan.open(at: at(15, 30)), "no 행사 안내 button once the last session ended")
         let lastSecond = LiveSessionModel.moment(plan, now: at(15, 29))
@@ -101,7 +102,10 @@ import XCTest
         XCTAssertEqual(LiveSessionModel.moment(plan, now: at(13, 10)).boundary, at(13, 30), "another session's start before the current one's end")
         XCTAssertEqual(LiveSessionModel.moment(plan, now: at(13, 40)).boundary, at(13, 45))
         XCTAssertEqual(LiveSessionModel.moment(plan, now: at(13, 50)).boundary, at(14, 0))
-        XCTAssertEqual(LiveSessionModel.moment(plan, now: at(14, 10)).boundary, at(14, 50))
+        let walking = LiveSessionModel.moment(plan, now: at(14, 10).addingTimeInterval(30))
+        XCTAssertEqual(walking.state?.minutes, 40, "39분 30초 → 40분")
+        XCTAssertEqual(walking.boundary, at(14, 11), "이동 moves on each minute")
+        XCTAssertEqual(LiveSessionModel.moment(plan, now: at(14, 49).addingTimeInterval(50)).state?.minutes, 1, "under a minute reads 1분")
         XCTAssertEqual(LiveSessionModel.moment(plan, now: at(15, 0)).boundary, at(15, 30))
     }
 

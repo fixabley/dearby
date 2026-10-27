@@ -95,15 +95,20 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
     }
 
     /// From now to the end of the last session: `current` is the first session not over (before it starts, the one to walk to), `next` the
-    /// first starting after it and not over. The boundary is the nearest start or end still ahead.
+    /// first starting after it and not over. The boundary is the nearest start or end still ahead, or sooner the moment `minutes` changes
+    /// while it is shown: always in 이동, while running only with an hour or more left (contract "표시 디자인", 분 단위 2026-10-27).
     nonisolated static func moment(_ plan: Plan, now: Date) -> Moment {
         let entries = plan.entries
         guard let current = entries.first(where: { $0.end > now }) else { return Moment(state: nil, boundary: nil) }
         let next = entries.first { $0.start > current.start && $0.end > now }
-        let boundary = entries.flatMap { [$0.start, $0.end] }.filter { $0 > now }.min()
+        let running = current.start <= now
+        let target = running ? current.end : current.start
+        let minutes = max(1, Int((target.timeIntervalSince(now) / 60).rounded(.up)))
+        var boundaries = entries.flatMap { [$0.start, $0.end] }.filter { $0 > now }
+        if !running || minutes > 60 { boundaries.append(target.addingTimeInterval(-60 * Double(minutes - 1))) }
         let position = entries.firstIndex(of: current) ?? 0
-        return Moment(state: .init(current: current, next: next, running: current.start <= now, position: position, total: entries.count),
-                      boundary: boundary)
+        return Moment(state: .init(current: current, next: next, running: running, position: position, total: entries.count, minutes: minutes),
+                      boundary: boundaries.filter { $0 > now }.min())
     }
     /// The gate `apply` goes through: nothing unless the guide runs and a plan is saved (a sign-out clears both).
     nonisolated static func moment(guiding: Bool, plan: Plan?, now: Date) -> Moment? {
