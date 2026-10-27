@@ -1,8 +1,28 @@
-# App Store submission (.github/workflows/ios-appstore-submit.yml). The binary is already on TestFlight; this lane only picks
-# that build, uploads metadata/ko and screenshots/ko, and optionally submits for review. Credentials come from the environment.
+# TestFlight external distribution (.github/workflows/ios-testflight.yml) and App Store submission
+# (.github/workflows/ios-appstore-submit.yml). Neither lane builds: the binary is already on TestFlight.
+# Credentials come from the environment.
 default_platform(:ios)
 
 platform :ios do
+  desc "Add the processed TestFlight build to an external group and submit it for beta review"
+  lane :distribute_external do
+    api_key = app_store_connect_api_key(key_id: ENV.fetch("ASC_KEY_ID"), issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+                                        key_filepath: ENV.fetch("ASC_KEY_PATH"))
+    version = ENV.fetch("APP_VERSION")
+    build = ENV.fetch("BUILD_NUMBER")
+    group = ENV.fetch("TESTFLIGHT_EXTERNAL_GROUP")
+    # pilot silently skips a group it cannot find; fail before the processing wait instead.
+    unless asc_app.get_beta_groups.any? { |g| g.name == group }
+      UI.user_error!("TestFlight group \"#{group}\" does not exist; create it in App Store Connect or set var TESTFLIGHT_EXTERNAL_GROUP")
+    end
+    wait_for_processing(version, build)
+    # Beta App Review Information and the group's Test Information stay as saved in App Store Connect (no beta_app_review_info here).
+    upload_to_testflight(
+      api_key: api_key, distribute_only: true, app_version: version, build_number: build,
+      distribute_external: true, groups: [group], changelog: ENV.fetch("CHANGELOG"), notify_external_testers: true
+    )
+  end
+
   desc "Attach a processed TestFlight build to the App Store version, upload the listing, optionally submit for review"
   lane :submit do
     api_key = app_store_connect_api_key(key_id: ENV.fetch("ASC_KEY_ID"), issuer_id: ENV.fetch("ASC_ISSUER_ID"),
@@ -23,9 +43,13 @@ platform :ios do
   end
 end
 
+def asc_app
+  Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+end
+
 # A just-uploaded build is not attachable until App Store Connect finishes processing it (often 5–30 minutes).
 def wait_for_processing(version, build)
-  app = Spaceship::ConnectAPI::App.find(CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+  app = asc_app
   40.times do
     state = app.get_builds(filter: { "preReleaseVersion.version" => version, version: build }).first&.processing_state
     return UI.success("Build #{version} (#{build}) is processed") if state == "VALID"

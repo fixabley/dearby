@@ -1,9 +1,20 @@
 name: iOS TestFlight
+# Archives a signed Release and uploads it to TestFlight (internal testers). With `external`, the processed build is also added
+# to an external TestFlight group and submitted for beta review (apps/ios/fastlane lane distribute_external). Scheduled runs stay internal.
 on:
   # Daily 09:00 KST, only when iOS inputs changed since the last successful upload; or on demand.
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      external:
+        description: Also distribute to the external TestFlight group (var TESTFLIGHT_EXTERNAL_GROUP, default 비공개 테스터) and submit for beta review
+        type: boolean
+        default: false
+      changelog:
+        description: TestFlight "What to Test" for external testers (empty = last commit subject)
+        type: string
+        default: ""
 permissions:
   contents: read
   actions: read
@@ -38,7 +49,8 @@ jobs:
     needs: gate
     if: needs.gate.outputs.run == 'true'
     runs-on: macos-26
-    timeout-minutes: 60
+    # Archive + upload take about 20 minutes; `external` then waits up to 40 minutes for App Store Connect processing.
+    timeout-minutes: 100
     env:
       # Origins come from repository variables; credentials from repository secrets. Nothing lives in the repo.
       DEARBY_API_ORIGIN: ${{ vars.DEARBY_API_ORIGIN }}
@@ -123,6 +135,8 @@ jobs:
           # Monotonic build number above the manual uploads (1, 2); re-runs get a new suffix.
           build="$((GITHUB_RUN_NUMBER + 2)).$GITHUB_RUN_ATTEMPT"
           echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+          # Same source as ios-appstore-submit.yml: the marketing version the build carries.
+          echo "APP_VERSION=$(sed -n "s/.*'MARKETING_VERSION' => '\([^']*\)'.*/\1/p" scripts/generate_project.rb)" >> "$GITHUB_ENV"
           xcodebuild -project Dearby.xcodeproj -scheme Dearby -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
             DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="$build" archive
@@ -144,7 +158,24 @@ jobs:
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
             -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-          echo "Uploaded build $BUILD_NUMBER" >> "$GITHUB_STEP_SUMMARY"
+          echo "Uploaded build $APP_VERSION ($BUILD_NUMBER)" >> "$GITHUB_STEP_SUMMARY"
+      # External testers: Beta App Review Information and the group's Test Information must already be saved in App Store Connect
+      # (entered once in the console; fastlane sends neither). The first external build goes through TestFlight beta review.
+      - if: inputs.external == true
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: apps/ios
+      - name: Distribute to external testers
+        if: inputs.external == true
+        env:
+          TESTFLIGHT_EXTERNAL_GROUP: ${{ vars.TESTFLIGHT_EXTERNAL_GROUP || '비공개 테스터' }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          if [ -z "$CHANGELOG" ]; then CHANGELOG=$(git log -1 --format=%s); fi
+          CHANGELOG="$CHANGELOG" bundle exec fastlane ios distribute_external
+          echo "Distributed to TestFlight group \"$TESTFLIGHT_EXTERNAL_GROUP\" and submitted for beta review" >> "$GITHUB_STEP_SUMMARY"
       - name: Clean up signing material
         if: always()
         run: |
