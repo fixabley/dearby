@@ -85,7 +85,9 @@ const GIS = "https://accounts.google.com/gsi/client";
 
 /**
  * Renders Google's own `Google로 계속하기` button (the only button path that yields an ID token) with the nonce fixed at
- * initialisation. Re-rendered with a fresh nonce after an attempt, because the server accepts each nonce once.
+ * initialisation. Re-rendered with a fresh nonce after an attempt, because the server accepts each nonce once. The button is an
+ * iframe of a fixed pixel width (Google allows 200–400), so it takes the host's laid-out width; the host must be sized by its
+ * container (`w-full`), or an empty host measures 0 and the button could only guess.
  */
 export async function renderGoogleButton(parent: HTMLElement, clientId: string, nonce: string, onCredential: (idToken: string) => void) {
   await loadScript(GIS);
@@ -100,7 +102,7 @@ export async function renderGoogleButton(parent: HTMLElement, clientId: string, 
     text: "continue_with",
     shape: "rectangular",
     logo_alignment: "center",
-    width: Math.min(400, Math.max(200, parent.clientWidth || 400)),
+    width: Math.min(400, Math.max(200, parent.clientWidth)),
     locale: "ko",
   });
 }

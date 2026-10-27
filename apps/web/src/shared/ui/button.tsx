@@ -5,6 +5,9 @@ import { cn } from "@/shared/lib/utils";
 /**
  * shadcn/ui Button in iOS terms: `filled` = `.borderedProminent` (teal fill, white label), `tinted` = `.bordered` (teal 12% fill,
  * teal label), `plain` = `.borderless` text button, `destructive` = red text button. Every size is at least 44px tall.
+ *
+ * `lg` is the full-width CTA: it shrinks to share a row (two `lg` buttons side by side split it evenly) and wraps a label that
+ * does not fit, instead of keeping its text width like the inline sizes do and pushing past a 360px sheet.
  */
 const buttonVariants = cva(
   "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-semibold whitespace-nowrap transition-[opacity,background-color] select-none active:opacity-70 disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0",
@@ -18,7 +21,7 @@ const buttonVariants = cva(
       },
       size: {
         default: "min-h-11 px-4 text-body",
-        lg: "min-h-[50px] w-full px-5 text-body",
+        lg: "min-h-[50px] w-full min-w-0 shrink px-5 text-center text-body break-keep whitespace-normal",
         sm: "min-h-11 px-3 text-subheadline",
         icon: "size-11 rounded-full",
       },
