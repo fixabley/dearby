@@ -15,7 +15,11 @@ if include_widgets
   widgets = project.new_target(:app_extension, 'DearbyWidgets', :ios, '18.0')
   widget_group = project.main_group.new_group('Widgets')
   Dir.glob('Widgets/**/*.swift').sort.each { |file| widgets.source_build_phase.add_file_reference(widget_group.new_file(file)) }
-  widgets.source_build_phase.add_file_reference(source_refs.fetch('Sources/features/liveSession/model/LiveSessionAttributes.swift'))
+  # The 진행 트랙 segment and the color tokens it uses, and the `안내 종료` intent, are shared with the app (contract "표시 디자인·행사 안내 — 2026-10-27").
+  %w[Sources/features/liveSession/model/LiveSessionAttributes.swift Sources/features/liveSession/model/EndLiveGuideIntent.swift
+     Sources/shared/ui/StageSegment.swift Sources/shared/ui/DearbyStyle.swift].each do |file|
+    widgets.source_build_phase.add_file_reference(source_refs.fetch(file))
+  end
   widgets.resources_build_phase.add_file_reference(widget_group.new_file('Widgets/Assets.xcassets'))
   app.add_dependency(widgets)
   embed = app.new_copy_files_build_phase('Embed Foundation Extensions')
@@ -67,6 +71,13 @@ uitests = project.new_target(:ui_test_bundle, 'DearbyUITests', :ios, '18.0')
 uitests.add_dependency(app)
 ui_sources = project.main_group.new_group('UITests')
 Dir.glob('UITests/**/*.swift').sort.each { |file| uitests.source_build_phase.add_file_reference(ui_sources.new_file(file)) }
+# 계획 로직 단위 테스트 (native-v1.md "행사 당일 진행 중 표시", 2026-10-27 사용자 합의): `Tests/` is an XCTest bundle hosted in the app
+# (`@testable import Dearby`), in the `Dearby` scheme's test action only — `xcodebuild … build` on that scheme does not compile it;
+# `xcodebuild test -scheme Dearby -only-testing:DearbyTests` runs it (README "단위 테스트").
+tests = project.new_target(:unit_test_bundle, 'DearbyTests', :ios, '18.0')
+tests.add_dependency(app)
+test_sources = project.main_group.new_group('Tests')
+Dir.glob('Tests/**/*.swift').sort.each { |file| tests.source_build_phase.add_file_reference(test_sources.new_file(file)) }
 admob_test_app = 'ca-app-pub-3940256099942544~1458002511'
 admob_release = [ENV.fetch('ADMOB_IOS_APP_ID', ''), ENV.fetch('ADMOB_IOS_QUEUE_NATIVE_UNIT_ID', '')]
 admob_release = [admob_test_app, ''] if admob_release.any?(&:empty?)
@@ -93,6 +104,9 @@ project.targets.each do |target|
       })
     end
     config.build_settings['TEST_TARGET_NAME'] = 'Dearby' if target == uitests
+    if target == tests
+      config.build_settings.merge!({ 'TEST_HOST' => '$(BUILT_PRODUCTS_DIR)/Dearby.app/Dearby', 'BUNDLE_LOADER' => '$(TEST_HOST)' })
+    end
     if target == widgets
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Widgets/Info.plist',
@@ -137,6 +151,7 @@ end
 project.save
 scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(app)
+scheme.add_test_target(tests)
 scheme.set_launch_target(app)
 scheme.save_as(project.path, 'Dearby', true)
 ui_scheme = Xcodeproj::XCScheme.new
