@@ -152,7 +152,7 @@ import kotlinx.coroutines.delay
     // DisposableEffect above, whose disposal on the detail change would otherwise close the sheet this opens.
     val pendingReminder = sessions?.pending?.collectAsStateWithLifecycle()?.value
     LaunchedEffect(selected, pendingReminder) { val id = selected; if (id != null && pendingReminder != null) sessions?.showPending(id) }
-    // 오늘 행사 온보딩: the day's blocks as one table when it has several (else the one block's timetable), on 내 시간표 so the hearts come next;
+    // 오늘 행사 온보딩: the day's blocks as one table when it has several (else the one block's timetable);
     // without any timetable the 진행 단계 page. After the DisposableEffect above, like the reminder.
     LaunchedEffect(guide) {
         val (id, day) = guide ?: return@LaunchedEffect
@@ -160,9 +160,11 @@ import kotlinx.coroutines.delay
         val rows = state.known[id]?.schedules.orEmpty()
         val group = dayGroups(rows.filterNot { it.selection }) { it.block }.filterIsInstance<ScheduleGroup.Day<ScheduleItemState>>().firstOrNull { it.day == day && it.hasTimetable }
         val block = rows.firstOrNull { it.day == day && it.hasTimetable }?.scheduleId
+        // Coordinator 2026-10-27: 내 시간표 once this event has a heart, else 전체 so the sessions to heart are in sight.
+        val mineFirst = sessions?.items?.value.orEmpty().any { it.activityId == id }
         when {
-            sessions != null && group != null -> { todaySheet = id; sessions.showDay(id, day, group.blocks, favoritesOnly = true, highlightGuide = true) }
-            sessions != null && block != null -> { todaySheet = id; sessions.show(id, block, favoritesOnly = true, highlightGuide = true) }
+            sessions != null && group != null -> { todaySheet = id; sessions.showDay(id, day, group.blocks, favoritesOnly = mineFirst, highlightGuide = true) }
+            sessions != null && block != null -> { todaySheet = id; sessions.show(id, block, favoritesOnly = mineFirst, highlightGuide = true) }
             else -> progressId = id
         }
     }
