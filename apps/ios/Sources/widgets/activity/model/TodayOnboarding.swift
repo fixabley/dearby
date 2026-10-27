@@ -32,7 +32,7 @@ struct TodayCandidate: Identifiable, Equatable {
 
 /// 오늘 행사 온보딩 (contract "오늘 행사 온보딩" 2026-10-27): on opening the app, asks once per Seoul day whether the user takes part in an event
 /// running today. `check` reads the events (`GET /v1/activities?category=…&status=…&size=50`, no token) and keeps the rows as `pending`; the
-/// app moves them to `prompt` once nothing else is on screen (`present`), and the day is remembered on the device then.
+/// app moves them to `prompt` once nothing else is on screen (`present`). The day is remembered on the device once the read succeeds.
 @MainActor @Observable final class TodayOnboardingModel {
     /// The sheet's content while it is up.
     struct Prompt: Identifiable {
@@ -75,24 +75,25 @@ struct TodayCandidate: Identifiable, Equatable {
         #endif
     }
     private var today: String { ActivityText.format(now, "yyyyMMdd", zone: ActivityText.seoul) }
-    /// Reads today's events unless the sheet was shown today, one check at a time; `applied` is 내 활동 as it stands now (complete: the app
+    /// Reads today's events unless they were read today, one check at a time; `applied` is 내 활동 as it stands now (complete: the app
     /// calls this signed out, or signed in once the server's 내 활동 is read). A failed read asks nothing.
     func check(applied: Set<String>) async {
         guard !checking, prompt == nil, !(remembers && UserDefaults.standard.string(forKey: Self.shownDayKey) == today) else { return }
         checking = true
         defer { checking = false }
         guard let activities = try? await fetch() else { return }
+        // Remembered on a successful read, so a day without events does not ask the server on every return.
+        if remembers { UserDefaults.standard.set(today, forKey: Self.shownDayKey) }
         let rows = TodayCandidate.pick(activities, applied: applied, now: now)
         pending = rows.isEmpty ? nil : rows
     }
-    /// The app found the screen clear: the pending rows go up and the day is remembered (pulled down, it is not asked again today).
+    /// The app found the screen clear: the pending rows go up (the day was remembered when they were read).
     /// Rows that joined 내 활동 meanwhile (`applied`) drop out; none left asks nothing.
     func present(applied: Set<String>) {
         guard let rows = pending?.filter({ !applied.contains($0.id) }), prompt == nil else { return }
         pending = nil
         guard !rows.isEmpty else { return }
         answered = false
-        if remembers { UserDefaults.standard.set(today, forKey: Self.shownDayKey) }
         prompt = Prompt(day: today, candidates: rows)
         AppAnalytics.event("today_onboarding_shown", ["count": rows.count])
     }

@@ -247,11 +247,12 @@ import SwiftUI
         guard account.phase == .signedOut || (accountReady && activityModel.mineReady) else { return }
         Task { await todayOnboarding.check(applied: activityModel.appliedIDs) }
     }
-    /// `참여해요`: the chosen events join 내 활동 with their 통과 제안 accepted, then the first one's timetable for today on `내 시간표` (its
+    /// `참여해요`: the chosen events join 내 활동 with their 통과 제안 accepted, then the first one's timetable for today (`내 시간표` with a favorite; its
     /// 진행 단계 when today has no timetable) once the sheet is gone.
     private func joinToday(_ rows: [TodayCandidate]) {
         if let first = rows.first {
-            afterOnboarding = first.timetableRoute(now: todayOnboarding.now).map { .timetable($0) } ?? .progress(first.id)
+            let favorited = Set(sessionFavorites.items.filter { $0.activityID == first.id }.map(\.scheduleID))
+            afterOnboarding = first.timetableRoute(now: todayOnboarding.now, favorited: favorited).map { .timetable($0) } ?? .progress(first.id)
         }
         activityModel.joinFromOnboarding(rows.map(\.activity))
         todayOnboarding.answer(joined: rows)

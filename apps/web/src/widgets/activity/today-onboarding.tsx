@@ -17,6 +17,8 @@ import { TimetableSheet, type TimetableTarget } from "./timetable";
 
 const DISMISSED_KEY = "dearby.todayOnboarding.dismissedDay";
 const SHOWN_KEY = "dearby.todayOnboarding.shownDay";
+/** A read that found no event today (contract: once per day on a successful read): not asked again that day. */
+const NONE_KEY = "dearby.todayOnboarding.noneDay";
 /** 대상 읽기 (contract "오늘 행사 온보딩" › 대상): events of any open-or-running state, first page only, without signing in. */
 const CANDIDATES = "/activities?category=CONFERENCE,MEETUP,LECTURE,WORKSHOP&status=IN_PROGRESS,RECRUITMENT_CLOSED,NO_RECRUITMENT&size=50";
 const SEOUL = "Asia/Seoul";
@@ -62,7 +64,8 @@ function timetableTarget(blocks: Schedule[], now: number): TimetableTarget | und
  * 오늘 행사 온보딩 on the web (contract "오늘 행사 온보딩 — 2026-10-27" › 웹): a one-line banner at the top of 발견, above the 오늘 내 행사
  * card, asking about today's events the account has not added. Only once 내 활동 is read (signed in, consent given), with a target,
  * and not closed today (`dearby.todayOnboarding.dismissedDay`, Seoul `yyyyMMdd`). `고르기` opens the sheet; `참여해요` adds the chosen
- * events, accepts their 통과 제안 without asking and opens the first one's today timetable on `내 시간표` (no timetable → `/mine/:id`).
+ * events, accepts their 통과 제안 without asking and opens the first one's today timetable (`내 시간표` with a favorite there, else `전체`;
+ * no timetable → `/mine/:id`). A read with no event today is remembered for the day (`dearby.todayOnboarding.noneDay`).
  * A failed read shows nothing: the banner is optional.
  */
 export function TodayOnboarding({ className }: { className?: string }) {
@@ -77,19 +80,22 @@ export function TodayOnboarding({ className }: { className?: string }) {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [timetable, setTimetable] = useState<{ activity: Activity; target: TimetableTarget }>();
+  const [timetable, setTimetable] = useState<{ activity: Activity; target: TimetableTarget; favorited: boolean }>();
   const [timetableOpen, setTimetableOpen] = useState(false);
   const ready = mine.status === "ready";
 
   useEffect(() => {
-    if (!ready || dismissed) return;
+    if (!ready || dismissed || stored(NONE_KEY) === today) return;
     const controller = new AbortController();
     publicRead<ActivityPage>(CANDIDATES, { signal: controller.signal }).then(
-      (page) => setFound(page.items),
+      (page) => {
+        if (!page.items.some((activity) => todayBlocks(activity, now).length)) store(NONE_KEY, today);
+        setFound(page.items);
+      },
       () => {},
     );
     return () => controller.abort();
-  }, [ready, dismissed]);
+  }, [ready, dismissed, today, now]);
 
   // Today's events not in 내 활동 (by id, so a row still loading its activity counts), first block first, at most five.
   const targets = useMemo(() => {
@@ -153,7 +159,10 @@ export function TodayOnboarding({ className }: { className?: string }) {
     track("today_onboarding_answer", { result: "joined", count: chosen.length });
     const target = timetableTarget(first.blocks, Date.now());
     if (!target) return router.push(`/mine/${first.activity.id}`);
-    setTimetable({ activity: first.activity, target });
+    // `내 시간표` only when a session shown there is already favorited; otherwise `전체` (contract › 시트).
+    const shown = new Set((target.kind === "day" ? target.day.schedules : [target.schedule]).map((schedule) => schedule.id));
+    const favorited = mine.favorites.some((item) => item.activityId === first.activity.id && shown.has(item.scheduleId));
+    setTimetable({ activity: first.activity, target, favorited });
     setTimetableOpen(true);
   }
 
@@ -224,7 +233,7 @@ export function TodayOnboarding({ className }: { className?: string }) {
           open={timetableOpen}
           onOpenChange={setTimetableOpen}
           onTargetChange={(target) => setTimetable({ ...timetable, target })}
-          initialView="mine"
+          initialView={timetable.favorited ? "mine" : "all"}
         />
       )}
     </>

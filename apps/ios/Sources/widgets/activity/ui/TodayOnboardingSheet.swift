@@ -71,16 +71,17 @@ struct TodayOnboardingSheet: View {
 }
 
 extension TodayCandidate {
-    /// `참여해요`'s timetable (contract "오늘 행사 온보딩"): on `내 시간표`, the day when today's blocks fold into one ("하루 시간표"), else the first
-    /// of today's blocks with a timetable; nil when none has one (the app opens 진행 단계 instead).
-    func timetableRoute(now: Date) -> TimetableRoute? {
+    /// `참여해요`'s timetable (contract "오늘 행사 온보딩"): the day when today's blocks fold into one ("하루 시간표"), else the first of today's
+    /// blocks with a timetable, on `내 시간표` when a session of it is favorited (`favorited`: schedule ids) and `전체` otherwise; nil when none has
+    /// a timetable (the app opens 진행 단계 instead). `highlightsGuide` asks the sheet to stress `행사 안내 시작`.
+    func timetableRoute(now: Date, favorited: Set<String>) -> TimetableRoute? {
         guard let block = blocks.first(where: \.hasTimetable) else { return nil }
         var route = TimetableRoute(activity: activity, block: block, title: block.title.isEmpty ? "활동" : block.title, date: block.text(now: now) ?? "",
-                                   now: now, favoritesFirst: true)
-        if let day = route.day, day.hasTimetable {
-            route = TimetableRoute(activity: activity, day: day, now: now)
-            route.favoritesFirst = true
-        }
+                                   now: now)
+        if let day = route.day, day.hasTimetable { route = TimetableRoute(activity: activity, day: day, now: now) }
+        let shown = route.wholeDay ? Set(route.day?.stages.map(\.id) ?? []) : [block.id]
+        route.favoritesFirst = !shown.isDisjoint(with: favorited)
+        route.highlightsGuide = true
         return route
     }
 }
