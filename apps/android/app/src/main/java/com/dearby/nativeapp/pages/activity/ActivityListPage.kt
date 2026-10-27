@@ -135,10 +135,12 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
-                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "필터에서 ‘진행·예정’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
-                    // A chosen 종류 offers `종류 필터 지우기` (back to 전체, contract "종류 필터" 빈 결과).
-                    programs.isEmpty() -> DearbyEmptyState("고른 조건의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize(),
-                        action = if (state.kind.categoryQuery(state.categories) != null) MessageAction("종류 필터 지우기", { applyFilters(state.statusGroups, emptySet()) }) else null)
+                    // Default status groups (지원 가능 only) and nothing open (2026-10-27 user decision): offer every group at once, keeping 종류 and the search.
+                    programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT -> DearbyEmptyState("지금 지원할 수 있는 활동이 없어요", "신청이 마감된 활동도 볼까요?", Modifier.fillMaxSize(),
+                        action = MessageAction("마감된 활동 보기", { applyFilters(StatusGroup.entries.toSet(), state.categories) }))
+                    // Already widened and still nothing: back to the defaults (지원 가능 only, every 종류), as the sheet's 초기화 does.
+                    programs.isEmpty() -> DearbyEmptyState("고른 조건의 활동이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize(),
+                        action = MessageAction("필터 초기화", { applyFilters(StatusGroup.DEFAULT, emptySet()) }))
                     else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
