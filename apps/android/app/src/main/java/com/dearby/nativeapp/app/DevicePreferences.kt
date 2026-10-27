@@ -49,7 +49,7 @@ class DevicePreferences(context: Context) {
         get() = preferences.getStringSet("sessionReminders", emptySet()).orEmpty().mapNotNull(Reminder::parse).sortedBy { it.at }
         set(value) = preferences.edit { putStringSet("sessionReminders", value.map { it.toJson() }.toSet()) }
     // `liveSessionEnabled`·`liveSession` (2026-10-26 switch and auto plan) are no longer read since 2026-10-27's 행사 안내 시작; features/live keeps the guide.
-    /** The 실시간 표시 안내 at `행사 안내 시작` was answered `나중에`, or shown once on Samsung (2026-10-27); 설정 › 알림 `실시간 표시 설정` still opens it. */
+    /** The 실시간 표시 안내 at `행사 안내 시작` was answered `나중에` (2026-10-27); 설정 › 알림 `실시간 표시 설정` still opens it. */
     var liveDisplayAsked: Boolean
         get() = preferences.getBoolean("liveDisplayAsked", false)
         set(value) = preferences.edit { putBoolean("liveDisplayAsked", value) }

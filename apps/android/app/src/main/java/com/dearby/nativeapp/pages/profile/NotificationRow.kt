@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 /** 설정 › 알림 `실시간 표시 설정` (2026-10-27): opens the 실시간 표시 안내 again ([open]), also after `나중에`. */
 @Composable fun LiveDisplayRow(open: () -> Unit) {
     ListItem({ Text("실시간 표시 설정") }, Modifier.clickable(onClick = open, role = Role.Button),
-        supportingContent = { Text("행사 안내를 잠금 화면·상태 표시줄·Now Bar에 실시간으로 보이게 해요") }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+        supportingContent = { Text("행사 안내를 잠금 화면·상태 표시줄에 실시간으로 보이게 해요") }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
 }
 
 /**

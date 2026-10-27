@@ -89,7 +89,7 @@ import androidx.compose.ui.semantics.Role
                 }
                 var display by remember { mutableStateOf<LiveDisplayState?>(null) }
                 LiveDisplayRow { display = LiveDisplayState.of(context) }
-                display?.let { LiveDisplaySheet(it, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, { openLiveDisplay(context, LiveDisplayState.nowBarSettings) }, "닫기") { display = null } }
+                display?.let { LiveDisplaySheet(it, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, "닫기") { display = null } }
             }
             // Debug only (2026-10-27 user decision): a fake 행사 진행 중 notification on demand, also signed out, so the live update can be checked on any device.
             if (BuildConfig.DEBUG) {

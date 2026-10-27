@@ -181,8 +181,7 @@ import kotlinx.coroutines.delay
     // 행사 안내 (2026-10-27 "네이버지도의 길찾기 안내 시작처럼", features/live): `행사 안내 시작` while [activityId] has 찜 sessions today that have not all
     // ended, `안내 중 · 종료` while its guide runs; null otherwise. The start begins at once, whatever the time (before the first session it is 이동).
     val guided by LiveSessions.guide(context).collectAsStateWithLifecycle()
-    // 실시간 표시 안내 (2026-10-27 "앱 내에서 유도"): at a start while 실시간 알림 is off (Android 16+) or on Samsung (Now Bar), until `나중에`;
-    // on Samsung only at the first start, since whether Now Bar allows the app cannot be read.
+    // 실시간 표시 안내 (2026-10-27 "앱 내에서 유도"): at a start while 실시간 알림 is off (Android 16+), until `나중에`.
     var display by remember { mutableStateOf<LiveDisplayState?>(null) }
     fun guideSlot(activityId: String, name: String, highlight: Boolean = false): (@Composable () -> Unit)? {
         fun plan(at: Instant) = LiveSessions.plan(activityId, name, favoriteItems, at.atZone(seoul).toLocalDate(), at.toEpochMilli())
@@ -195,7 +194,7 @@ import kotlinx.coroutines.delay
                 val device = DevicePreferences(context); val day = LocalDate.now(seoul).toString()
                 if (device.liveSessionShownDay != day) { device.liveSessionShownDay = day; Analytics.event("live_session_shown") }
                 val hints = LiveDisplayState.of(context)
-                if (!device.liveDisplayAsked && hints.any) { if (hints.samsung) device.liveDisplayAsked = true; display = hints }
+                if (!device.liveDisplayAsked && hints.promotionOff) display = hints
             }
         }, stop = { LiveSessions.stop(context) }) }
     }
@@ -238,7 +237,7 @@ import kotlinx.coroutines.delay
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     display?.let { hints ->
-        LiveDisplaySheet(hints, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, { openLiveDisplay(context, LiveDisplayState.nowBarSettings) }, "나중에") {
+        LiveDisplaySheet(hints, { openLiveDisplay(context, LiveDisplayState.promotionSettings(context)) }, "나중에") {
             DevicePreferences(context).liveDisplayAsked = true; display = null
         }
     }
