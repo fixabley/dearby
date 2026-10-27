@@ -132,8 +132,7 @@ class MainActivity : ComponentActivity() {
     /**
      * 행사 안내 (features/live; since 2026-10-27 started by the user's `행사 안내 시작`, never on its own): while the app is in front, whenever 내 시간표 or the
      * account changes and each time it comes back, the guided day is drawn again from the current 찜 — a changed 찜 redraws it, a day without 찜
-     * left or a sign-out ends it. 내 시간표 not read yet (offline start) leaves it as it is, so the alarm-driven notification survives. Drawing it
-     * again from the front also brings back the foreground service if the system had stopped it.
+     * left or a sign-out ends it. 내 시간표 not read yet (offline start) leaves it as it is, so the alarm-driven notification survives.
      */
     private fun planLiveSession() = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.RESUMED) {

@@ -12,11 +12,6 @@
     <!-- 행사 당일 진행 중 알림 (2026-10-26, device-local): Android 16's live update (status bar chip, One UI 8 Now Bar) is granted per app with this
          normal permission, which the user can revoke in the notification settings; below Android 16 it is an ordinary ongoing notification. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
-    <!-- 행사 안내 (2026-10-27 "알림이 사라지지 않았으면"): while the user's guide runs, its notification belongs to a foreground service so it cannot be
-         swiped away (Android 14+). Type specialUse: it only shows the user's own schedule (no location, network, media or device connection), which no
-         other type covers; Google Play asks for the declaration of this use in the Play Console. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <!-- 맞춤 대기열 끝 광고 (2026-10-25): AdMob reads the advertising id (com.google.android.gms.permission.AD_ID, merged from the SDK) even for
          non-personalised ads, for frequency capping and fraud checks. 사용 통계 still never collects it (google_analytics_adid_collection_enabled).
          The Privacy Sandbox permissions the SDK and Firebase merge in (Topics is interest targeting, Attribution is measurement) stay removed. -->
@@ -76,10 +71,6 @@
         <receiver android:name=".features.reminder.SessionReminderReceiver" android:exported="false"/>
         <!-- 행사 진행 중: the redraw alarm's receiver (explicit intents from this app only); the reboot restore is the boot receiver below. -->
         <receiver android:name=".features.live.LiveSessionReceiver" android:exported="false"/>
-        <service android:name=".features.live.LiveGuideService" android:exported="false" android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-started event guide: keeps the ongoing notification of the user's own conference session schedule (current session, time to the next one) until the last session ends or the user taps End guide. No location, network or media."/>
-        </service>
         <receiver android:name=".app.SessionReminderBootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

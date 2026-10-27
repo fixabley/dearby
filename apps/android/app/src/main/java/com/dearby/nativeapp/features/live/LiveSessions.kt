@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
-import android.app.Service
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -12,12 +11,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.ServiceInfo
-import android.os.IBinder
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.ServiceCompat
 import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -51,7 +47,7 @@ data class LiveTimeline(val segments: List<Pair<Int, Boolean>>, val points: List
  * The day's 행사 안내 plan (2026-10-26 user decision "컨퍼런스 참여 시 다이나믹 아일랜드처럼 표시"; since 2026-10-27 "네이버지도의 길찾기 안내 시작처럼" only
  * once the user starts it): an activity and its 찜 sessions of one Seoul day, start order. The notification shows from the start tap ([started] = [from],
  * whenever it is — before the first session it is 이동) to the latest end ([until]; a long 찜 may outlast one that starts after it). Serialised into
- * the alarm that redraws it, the foreground service and the device-local store ([LiveSessions.guide]) for the reboot restore.
+ * the alarm that redraws it and the device-local store ([LiveSessions.guide]) for the reboot restore.
  */
 data class LivePlan(val activityId: String, val activityName: String, val entries: List<LiveEntry>, val started: Long) {
     val from get() = started
@@ -90,7 +86,7 @@ object LiveSessions {
     private const val ACTION = "com.dearby.nativeapp.LIVE_SESSION"
     internal const val STOP = "com.dearby.nativeapp.LIVE_SESSION_STOP"
     internal const val PLAN = "plan"
-    /** The notification id (also the foreground service's) and the alarm's request code: one of each, so a new plan replaces the old. */
+    /** The notification id and the alarm's request code: one of each, so a new plan replaces the old. */
     internal val ID = "live-session".hashCode()
     private val seoul: ZoneId = ZoneId.of("Asia/Seoul")
     private val clock: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -122,9 +118,9 @@ object LiveSessions {
         store(context).edit { if (plan == null) remove(PLAN) else putString(PLAN, plan.toJson()) }
         guided(context).value = plan
     }
-    /** `행사 안내 시작` (or the app redrawing a changed 찜 day): keeps [plan] as the guide and shows it through the foreground service. */
+    /** `행사 안내 시작` (or the app redrawing a changed 찜 day): keeps [plan] as the guide and shows it. */
     fun start(context: Context, plan: LivePlan) { keep(context, plan); apply(context, plan) }
-    /** `안내 종료`, sign-out or a day without 찜 left: forgets the guide and removes the notification, the service and the alarm. */
+    /** `안내 종료`, sign-out or a day without 찜 left: forgets the guide and removes the notification and the alarm. */
     fun stop(context: Context) { keep(context, null); apply(context, null) }
     /** After a reboot: the kept guide again, if it has not ended meanwhile. */
     fun restore(context: Context) { guided(context).value?.let { if (!apply(context, it)) keep(context, null) } }
@@ -141,23 +137,13 @@ object LiveSessions {
         val intent = Intent(context, LiveSessionReceiver::class.java).setAction(ACTION)
         val next = plan?.let { nextAlarm(it, now) }
         if (plan == null || next == null) {
-            context.stopService(Intent(context, LiveGuideService::class.java))
             notifications.cancel(ID)
             PendingIntent.getBroadcast(context, ID, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let { alarms?.cancel(it); it.cancel() }
             // The guide's last session ended: it is over.
             if (plan != null && guided(context).value == plan) keep(context, null)
             return false
         }
-        val notification = notification(context, plan, now)
-        when {
-            notification == null -> notifications.cancel(ID)
-            // Already foreground: posting on its id redraws the service's notification, which stays undismissable.
-            LiveGuideService.running -> notifications.notify(ID, notification)
-            // Not running (first start, or the process died): start it; from the background this is allowed only for an exact alarm or the boot
-            // restore — otherwise the plain ongoing notification, which Android 14+ lets the user swipe away, until the app is in front again.
-            else -> runCatching { ContextCompat.startForegroundService(context, Intent(context, LiveGuideService::class.java).putExtra(PLAN, plan.toJson())) }
-                .onFailure { notifications.notify(ID, notification) }
-        }
+        notification(context, plan, now)?.let { notifications.notify(ID, it) } ?: notifications.cancel(ID)
         val fire = PendingIntent.getBroadcast(context, ID, intent.putExtra(PLAN, plan.toJson()), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms?.canScheduleExactAlarms() == true
         if (exact) alarms?.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, fire) else alarms?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, fire)
@@ -225,7 +211,8 @@ object LiveSessions {
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setCategory(NotificationCompat.CATEGORY_EVENT).setContentIntent(tap)
             .addAction(0, "내 시간표 보기", tap)
             .addAction(0, "안내 종료", PendingIntent.getBroadcast(context, ID, Intent(context, LiveSessionReceiver::class.java).setAction(STOP), PendingIntent.FLAG_IMMUTABLE))
-            // Android 14+ lets the user swipe even a foreground service's notification away: drawn again at once, so only `안내 종료` ends it.
+            // 2026-10-27 "알림이 사라지지 않았으면": Android 14+ lets the user swipe an ongoing notification away (a foreground service's too, so none is
+            // used); it is drawn again at once, so only `안내 종료` ends the guide.
             .setDeleteIntent(PendingIntent.getBroadcast(context, ID + 1, Intent(context, LiveSessionReceiver::class.java).setAction(ACTION).putExtra(PLAN, plan.toJson()),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
             .setShowWhen(false).setRequestPromotedOngoing(true).setShortCriticalText(frame.chip)
@@ -295,21 +282,3 @@ class LiveSessionReceiver : BroadcastReceiver() {
     }
 }
 
-/**
- * 행사 안내 (2026-10-27 "알림이 사라지지 않았으면"): while a guide runs its notification belongs to this foreground service — not cleared by 모두 지우기
- * nor on the lock screen; a swipe Android 14+ still allows is drawn again at once by the notification's delete intent. It only holds the notification — no location, no network; [LiveSessions.apply] redraws it on the same id and stops the service at the
- * end or `안내 종료`. Type `specialUse` (no other type fits a schedule shown on the device; manifest subtype property). Not sticky: if the system
- * stops it, the next redraw alarm starts it again.
- */
-class LiveGuideService : Service() {
-    override fun onCreate() { super.onCreate(); running = true }
-    override fun onDestroy() { running = false; super.onDestroy() }
-    override fun onBind(intent: Intent?): IBinder? = null
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = intent?.getStringExtra(LiveSessions.PLAN)?.let(LivePlan::parse)?.let { LiveSessions.notification(this, it, System.currentTimeMillis()) }
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
-        if (notification == null || runCatching { ServiceCompat.startForeground(this, LiveSessions.ID, notification, type) }.isFailure) stopSelf(startId)
-        return START_NOT_STICKY
-    }
-    companion object { @Volatile var running = false; private set }
-}

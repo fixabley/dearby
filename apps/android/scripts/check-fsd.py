@@ -28,8 +28,8 @@ API = {
     # 찜한 세션 이동 알림 (2026-10-26, device-local): the alarm plan, its receiver and the tap extras MainActivity reads.
     'features.reminder': {'SessionReminders', 'SessionReminderReceiver', 'Reminder'},
     # 행사 당일 진행 중 알림 (2026-10-26, device-local): the day plan, the ongoing notification and its redraw alarm's receiver.
-    # Since 2026-10-27 the user starts it (`행사 안내 시작`): the button and the foreground service that keeps the notification.
-    'features.live': {'LiveSessions', 'LiveSessionReceiver', 'LiveGuideService', 'LiveGuideButton', 'LiveDisplaySheet', 'LiveDisplayState', 'LivePlan', 'LiveEntry', 'LiveFrame'},
+    # Since 2026-10-27 the user starts it (`행사 안내 시작`): the button, its 실시간 표시 안내 and the guide kept on the device.
+    'features.live': {'LiveSessions', 'LiveSessionReceiver', 'LiveGuideButton', 'LiveDisplaySheet', 'LiveDisplayState', 'LivePlan', 'LiveEntry', 'LiveFrame'},
     'features.analytics': {'Analytics'},
     'features.ads': {'QueueAd', 'NativeAdCard', 'AdConsentSheet'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},

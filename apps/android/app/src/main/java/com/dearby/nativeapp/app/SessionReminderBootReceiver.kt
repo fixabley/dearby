@@ -11,7 +11,7 @@ import com.dearby.nativeapp.features.reminder.SessionReminders
  * Alarms do not survive a reboot: at `BOOT_COMPLETED` the reminders this device had planned ([DevicePreferences.sessionReminders]) are set again
  * (future ones only), unless 세션 이동 알림 is off. The same when the user allows exact alarms in the system settings (Android 12+
  * `SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED`), so the pending ones move from inexact to exact. The app's own plan ([MainActivity]) takes over at the next start.
- * A 행사 안내 the user started and that has not ended (features/live) is shown again, with its foreground service and redraw alarm.
+ * A 행사 안내 the user started and that has not ended (features/live) is shown again, with its redraw alarm.
  */
 class SessionReminderBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
