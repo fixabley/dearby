@@ -24,6 +24,11 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
     private nonisolated static let shownDayKey = "dearby.liveSession.shownDay"
     @ObservationIgnored private var applying: Task<Void, Never>?
     @ObservationIgnored private var timer: Task<Void, Never>?
+    #if DEBUG
+    /// 라이브 액티비티 미리보기 (설정 › Debug) stands in for the saved plan (`togglePreview`).
+    var previewing = false
+    @ObservationIgnored private var planBeforePreview: Plan?
+    #endif
 
     init() {
         enabled = UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true
@@ -136,6 +141,9 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
     }
     /// 사용 통계 `live_session_shown` once per Seoul day, when the activity is started.
     private static func reportShown(_ plan: Plan, now: Date) {
+        #if DEBUG
+        if plan.attributes.activityID == previewActivityID { return }
+        #endif
         let day = ActivityText.format(now, "yyyy-MM-dd", zone: ActivityText.seoul)
         guard UserDefaults.standard.string(forKey: shownDayKey) != day else { return }
         UserDefaults.standard.set(day, forKey: shownDayKey)
@@ -153,3 +161,33 @@ private let log = Logger(subsystem: "com.dearby.app", category: "liveSession")
     }
 }
 
+#if DEBUG
+extension LiveSessionModel {
+    nonisolated static let previewActivityID = "preview"
+    /// 라이브 액티비티 미리보기 (설정 › Debug, 2026-10-27 사용자 결정): a made-up 행사 `Dearby 미리보기` — a 트랙 A session running until 7 minutes from
+    /// now, then a 트랙 B session for 5 minutes — started at once through the real path (`sync` → `apply`), with no account. A second tap ends it
+    /// and puts the saved plan back; `DearbyApp.syncLiveSession` leaves the plan alone meanwhile. Not compiled into Release; not counted in 사용 통계.
+    func togglePreview(now: Date = Date()) {
+        if previewing {
+            previewing = false
+            sync(planBeforePreview, now: now)
+            planBeforePreview = nil
+        } else {
+            planBeforePreview = Self.load()
+            previewing = true
+            sync(Self.previewPlan(now: now), now: now)
+        }
+    }
+    nonisolated static func previewPlan(now: Date) -> Plan {
+        let handover = now.addingTimeInterval(7 * 60)
+        let entries = [
+            LiveSessionAttributes.ContentState.Entry(scheduleID: previewActivityID, title: "지금 진행 중인 세션", track: "트랙 A", room: "그랜드볼룸 A",
+                                                     start: now.addingTimeInterval(-20 * 60), end: handover),
+            LiveSessionAttributes.ContentState.Entry(scheduleID: previewActivityID, title: "다음 세션", track: "트랙 B", room: "그랜드볼룸 B",
+                                                     start: handover, end: handover.addingTimeInterval(5 * 60))
+        ]
+        return Plan(attributes: LiveSessionAttributes(activityID: previewActivityID, activityTitle: "Dearby 미리보기", zone: "Asia/Seoul"),
+                    entries: entries, analytics: [:])
+    }
+}
+#endif

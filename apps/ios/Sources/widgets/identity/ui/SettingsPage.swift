@@ -15,7 +15,8 @@ struct SettingsPage: View {
     let notifications: NotificationModel?
     /// 세션 이동 알림 (contract "찜한 세션 이동 알림" 2026-10-26); nil signed out or before consent, as the section it sits in.
     let sessionReminders: SessionReminderModel?
-    /// 행사 진행 중 표시 (contract "행사 당일 진행 중 표시" 2026-10-26); nil signed out or before consent, as the section it sits in.
+    /// 행사 진행 중 표시 (contract "행사 당일 진행 중 표시" 2026-10-26): the switch sits in the 알림 section (signed in with consent); in Debug builds
+    /// the model also backs the 라이브 액티비티 미리보기 row, signed in or not.
     let liveSession: LiveSessionModel?
     /// 광고 목적 정보 제공; nil signed out or before consent (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25).
     let adConsent: AdConsentModel?
@@ -70,6 +71,9 @@ struct SettingsPage: View {
                 } footer: { Text("차단한 사람의 명함은 받은 명함에 들어오지 않아요.").font(.dearby(.footnote)) }
             }
             if let notifications { notificationSection(notifications) }
+            #if DEBUG
+            if let liveSession { debugSection(liveSession) }
+            #endif
             privacySection
             about
         }
@@ -243,6 +247,25 @@ struct SettingsPage: View {
             Button("확인", role: .cancel) {}
         }
     }
+    #if DEBUG
+    /// 라이브 액티비티 미리보기 (2026-10-27 사용자 결정), Debug builds only: a made-up 행사 through `LiveSessionModel.togglePreview`, so the 잠금 화면·Dynamic
+    /// Island looks can be checked without an event day or an account; a second tap ends it.
+    private func debugSection(_ liveSession: LiveSessionModel) -> some View {
+        Section {
+            Button { liveSession.togglePreview() } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("라이브 액티비티 미리보기").foregroundStyle(.primary)
+                    Text(liveSession.previewing ? "진행 중 · 다시 누르면 끝나요" : "가짜 행사(트랙 A 진행 중 7분, 다음 트랙 B 5분)를 바로 띄워요")
+                        .font(.dearby(.footnote)).foregroundStyle(.secondary)
+                }
+            }.accessibilityIdentifier("settings-live-preview")
+        } header: {
+            Text("Debug").font(.dearby(.footnote))
+        } footer: {
+            Text("Debug 빌드에만 있어요. 행사 진행 중 표시 스위치와 iOS 설정의 실시간 현황이 켜져 있어야 보여요.").font(.dearby(.footnote))
+        }
+    }
+    #endif
     private var privacySection: some View {
         Section {
             Toggle(isOn: $analyticsEnabled) {

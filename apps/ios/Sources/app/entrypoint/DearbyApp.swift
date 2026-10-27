@@ -96,7 +96,7 @@ import SwiftUI
                                                                                          leaveSetup: { tab = 0 },
                                              consentNeeded: consentNeeded, askConsent: { showsConsent = true }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil,
-                                                 sessionReminders: accountReady ? sessionReminders : nil, liveSession: accountReady ? liveSession : nil,
+                                                 sessionReminders: accountReady ? sessionReminders : nil, liveSession: liveSession,
                                                  adConsent: accountReady ? adConsent : nil) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
@@ -218,6 +218,9 @@ import SwiftUI
     /// Signed out, the activity ends. Signed in, the plan is rebuilt once 내 활동 and 내 시간표 were both read this run; before that (a cold
     /// launch, or offline at the venue) the saved plan keeps the display going.
     private func syncLiveSession() {
+        #if DEBUG
+        if liveSession.previewing { return }
+        #endif
         if account.phase == .signedOut {
             liveSession.sync(nil)
         } else if accountReady, activityModel.mineReady, [.loaded, .unavailable].contains(sessionFavorites.phase) {
