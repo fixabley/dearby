@@ -45,16 +45,16 @@ import XCTest
         XCTAssertNil(Plan.today([soon], favorites: [favorite(1, activity: "3", at(13, 0, day: 29)...at(13, 50, day: 29))], now: now), "upcoming, not today")
     }
 
-    // MARK: 창 (첫 찜 30분 전 ~ 마지막 찜 끝)
+    // MARK: 기간 (안내 시작부터 마지막 찜 끝까지, 2026-10-27 행사 안내)
 
-    func testWindowOpensThirtyMinutesBeforeFirstAndClosesAtLastEnd() {
+    func testShowsFromStartUntilLastEndWithTheFirstSessionToWalkTo() {
         let plan = plan([(1, at(13, 0)...at(13, 50)), (2, at(14, 50)...at(15, 30))])
-        let before = LiveSessionModel.moment(plan, now: at(12, 29))
-        XCTAssertNil(before.state)
-        XCTAssertEqual(before.boundary, at(12, 30), "wakes when the window opens")
-        let opening = LiveSessionModel.moment(plan, now: at(12, 30))
-        XCTAssertEqual(opening.state?.current.scheduleID, "1")
-        XCTAssertEqual(opening.state?.running, false)
+        let early = LiveSessionModel.moment(plan, now: at(9, 0))
+        XCTAssertEqual(early.state?.current.scheduleID, "1", "started hours before: 이동 to the first session")
+        XCTAssertEqual(early.state?.running, false)
+        XCTAssertEqual(early.boundary, at(13, 0))
+        XCTAssertTrue(plan.open(at: at(15, 29)))
+        XCTAssertFalse(plan.open(at: at(15, 30)), "no 행사 안내 button once the last session ended")
         let lastSecond = LiveSessionModel.moment(plan, now: at(15, 29))
         XCTAssertEqual(lastSecond.state?.current.scheduleID, "2")
         XCTAssertNil(lastSecond.state?.next)
@@ -105,13 +105,13 @@ import XCTest
         XCTAssertEqual(LiveSessionModel.moment(plan, now: at(15, 0)).boundary, at(15, 30))
     }
 
-    // MARK: 스위치 끔 · 로그아웃
+    // MARK: 안내 꺼짐 · 로그아웃
 
-    func testSwitchOffOrNoSavedPlanShowsNothing() {
+    func testNothingShowsUnlessTheGuideRunsWithASavedPlan() {
         let plan = plan([(1, at(13, 0)...at(13, 50))])
-        XCTAssertNotNil(LiveSessionModel.moment(enabled: true, plan: plan, now: at(13, 10))?.state)
-        XCTAssertNil(LiveSessionModel.moment(enabled: false, plan: plan, now: at(13, 10)), "행사 진행 중 표시 off")
-        XCTAssertNil(LiveSessionModel.moment(enabled: true, plan: nil, now: at(13, 10)), "signed out: the plan was cleared")
+        XCTAssertNotNil(LiveSessionModel.moment(guiding: true, plan: plan, now: at(13, 10))?.state)
+        XCTAssertNil(LiveSessionModel.moment(guiding: false, plan: plan, now: at(13, 10)), "not started (or 안내 종료): nothing on its own")
+        XCTAssertNil(LiveSessionModel.moment(guiding: true, plan: nil, now: at(13, 10)), "signed out: the plan was cleared")
     }
 
     // MARK: Fixtures

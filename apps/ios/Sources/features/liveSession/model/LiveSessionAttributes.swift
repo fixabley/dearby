@@ -31,6 +31,9 @@ struct LiveSessionAttributes: ActivityAttributes, Hashable {
     /// The block's time zone for the session times.
     let zone: String
 
+    /// 행사 안내 (`LiveSessionModel.Guide`: off·on·dismissed) in the app's `UserDefaults`; `EndLiveGuideIntent` turns it off from the activity.
+    static let guideKey = "dearby.liveSession.guide"
+
     /// A tap opens that block's timetable sheet on 내 시간표 (`IncomingLink.timetable`).
     static func link(activityID: String, scheduleID: String) -> URL? { URL(string: "dearby://timetable/\(activityID)/\(scheduleID)") }
 }

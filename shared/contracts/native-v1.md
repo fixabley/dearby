@@ -1634,10 +1634,10 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 ### 표시 조건과 기간
 
 - 대상: "오늘 내 행사 카드"가 **오늘**로 가리키는 활동(같은 `TodayEvent` 판정 재사용 — 내 활동 중 활동 일정 블록이 오늘인 활동, 끝남·탈락 제외)이 있고, 그 활동의 **그 날(서울 날짜) 내 시간표(찜한 세션)** 가 하나 이상일 때. 둘 중 하나가 없으면 띄우지 않는다. 데이터는 이미 읽는 내 활동·세션 찜을 재사용하고 추가 서버 호출이 없다.
-- 기간: **첫 찜 세션 30분 전**부터 **마지막 찜 세션 끝**까지. 끝나면 바로 내린다(잠금 화면에 남기지 않음).
+- 기간: ~~첫 찜 세션 30분 전부터 자동으로~~ → 2026-10-27부터 **사용자가 `행사 안내 시작`을 누른 때**부터 **마지막 찜 세션 끝**까지(아래 "행사 안내 — 2026-10-27"). 자동으로 띄우지 않는다.
 - 내용: 찜 세션을 시작 시각 순으로 두고 `현재` = 아직 끝나지 않은 첫 세션(시작 전이면 다음에 올 세션), `다음` = 현재보다 늦게 시작하고 끝나지 않은 첫 세션. 세션 경계(각 시작·끝)마다 내용을 갈아 끼운다.
-- 갱신: 앱이 **포그라운드**일 때 시작·갱신·종료한다(내 활동·세션 찜·스위치가 바뀔 때, 포그라운드 복귀, 열려 있는 동안은 다음 경계에 타이머). 그 날의 계획(세션 목록)은 기기에 저장해 두고, 다음 경계에 `BGTaskScheduler`(`BGAppRefreshTask`, 식별자 `io.wid.dearby.liveSession.refresh`, `UIBackgroundModes: fetch`)로 깨어나 저장한 계획으로 갱신을 **시도**한다. **보장은 없다** — 앱이 꺼져 있거나 iOS가 깨우지 않으면 다음 세션으로 넘어가지 않을 수 있고, 남은 시간 카운트다운만 OS가 계속 돈다(`Text(timerInterval:)`). 이를 메우는 것이 2단계 서버 푸시다. 로그아웃·탈퇴(목록이 빔)는 종료로 끝난다. 이번 실행에서 내 활동·세션 찜을 아직 둘 다 읽지 못했으면(막 켰거나 현장에서 오프라인) 저장한 계획을 지우지 않고 그대로 쓴다.
-- iOS 설정에서 앱의 실시간 현황을 꺼 두면(`ActivityAuthorizationInfo().areActivitiesEnabled` false) 띄우지 못한다. 앱이 따로 권한을 묻지 않으며, 설정 스위치 설명이 그 사실을 알린다.
+- 갱신: 앱이 **포그라운드**일 때 시작·갱신·종료한다(내 활동·세션 찜이 바뀔 때, 포그라운드 복귀, 열려 있는 동안은 다음 경계에 타이머). 그 날의 계획(세션 목록)은 기기에 저장해 두고, 다음 경계에 `BGTaskScheduler`(`BGAppRefreshTask`, 식별자 `io.wid.dearby.liveSession.refresh`, `UIBackgroundModes: fetch`)로 깨어나 저장한 계획으로 갱신을 **시도**한다. **보장은 없다** — 앱이 꺼져 있거나 iOS가 깨우지 않으면 다음 세션으로 넘어가지 않을 수 있고, 남은 시간 카운트다운만 OS가 계속 돈다(`Text(timerInterval:)`). 이를 메우는 것이 2단계 서버 푸시다. 로그아웃·탈퇴(목록이 빔)는 종료로 끝난다. 이번 실행에서 내 활동·세션 찜을 아직 둘 다 읽지 못했으면(막 켰거나 현장에서 오프라인) 저장한 계획을 지우지 않고 그대로 쓴다.
+- iOS 설정에서 앱의 실시간 현황을 꺼 두면(`ActivityAuthorizationInfo().areActivitiesEnabled` false) 띄우지 못한다. 앱이 따로 권한을 묻지 않으며, `행사 안내 시작` 버튼 아래 한 줄이 그 사실을 알린다.
 
 ### 내용과 모양
 
@@ -1657,9 +1657,15 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **Android 작은 화면**(상태 표시줄 칩·Now Bar 접힌 표시): 상태별 남은 시간을 분 단위(`12분`, 60분 이상도 `65분`, 1분 미만은 `1분`)로 보이고 분 경계마다 갱신한다. iOS compact·minimal은 `Text(timerInterval:)` 초 단위 카운트다운 그대로다(OS가 앱 없이 돌림).
 - Debug 미리보기(설정 › `Debug` › `라이브 액티비티 미리보기`): 누를 때마다 세션 중 → 이동 → 끝.
 
-### 설정
+### 행사 안내 — 2026-10-27 사용자 결정
 
-- 설정 › `알림`에 `세션 이동 알림` 아래 `행사 진행 중 표시` 스위치(설명 `행사 당일 내 시간표 세션 진행을 잠금 화면과 Dynamic Island에 보여요`, 기본 켬, 기기 저장 `UserDefaults` `dearby.liveSession.enabled`). 끄면 바로 내린다. 섹션과 같이 로그인 + 동의 뒤에만 보인다.
+사용자: "알림이 사라지지 않았으면 좋겠고, 앱 내에서 진입점이 필요해 보여. 네이버지도의 길찾기 안내 시작처럼."
+
+- **진입점**: 오늘 카드(`오늘`일 때)와 시간표 시트의 `내 시간표` 보기 맨 위에, 오늘의 계획(위 대상 조건)이 그 활동이고 아직 끝나지 않은 찜 세션이 있으면 `행사 안내 시작`(채움 버튼, `figure.walk`). 누르면 바로 시작한다(30분 창 없음; 첫 세션 전이면 이동 모드). 안내 중에는 같은 자리에 `안내 중 · 종료`(테두리 버튼).
+- **자동 시작 없음**: 사용자가 시작했을 때만 보인다. 마지막 세션이 끝나면 종료하되 잠금 화면에 15분 남긴다(iOS `end(dismissalPolicy: .after(끝 + 15분))`). 라이브 액티비티에 `안내 종료` 버튼(iOS `LiveActivityIntent` `EndLiveGuideIntent`, 앱을 열지 않음).
+- **설정 스위치는 지운다**(시작이 명시적이라 켜고 끄는 스위치가 겹친다; 단순한 쪽). 이전 `dearby.liveSession.enabled` 값은 읽지 않는다. 안내 상태는 기기 `UserDefaults` `dearby.liveSession.guide`(`off`·`on`·`dismissed`).
+- **사라지지 않게 — 한계를 사실대로**: iOS는 라이브 액티비티를 최대 8시간 뒤 끝내고(잠금 화면에는 그 뒤 최대 4시간 남음), 사용자는 잠금 화면에서 밀어 지울 수 있다 — 앱이 막을 수 없다. 대신 (a) 안내 중에는 `staleDate`를 다음 세션 경계로 두어, 앱이 깨어나지 못하면 오래된 내용이 흐리게(stale) 보인다. (b) 앱이 포그라운드가 될 때 안내 중인데 라이브 액티비티가 없으면(사용자가 지웠거나 iOS가 끝냄) 다시 띄우지 않고 버튼만 `안내 다시 시작`으로 바꾼다(`dismissed`).
+- **Android**(feat/android-live-design): 포그라운드 서비스의 지워지지 않는 진행 중 알림 + 같은 진입점·버튼 문구. 플랫폼 차이: Android는 사용자가 밀어 지울 수 없고 시간 제한이 없다; iOS는 위 한계가 있다. 위 "Android" 소절의 자동 표시·스위치 규칙은 이 결정으로 대체된다(Android 담당이 고친다).
 
 ### 사용 통계·개인정보
 
@@ -1669,7 +1675,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 ### 프로젝트·서명 (apps/ios)
 
 - `generate_project.rb`가 위젯 확장 타깃 `DearbyWidgets`(번들 `io.wid.dearby.widgets`, 코드 `apps/ios/Widgets/`, `ActivityAttributes`는 `Sources/features/liveSession/model/LiveSessionAttributes.swift` 하나를 두 타깃에 넣음)을 만든다. 앱 Info.plist(두 파일 같음) `NSSupportsLiveActivities` YES. App Group `group.io.wid.dearby`는 **확장 entitlements에만** 둔다 — 1단계 라이브 액티비티는 공유 저장소가 필요 없어 앱 entitlements와 앱의 App Store 프로파일은 그대로다(2단계에서 앱↔확장 공유 저장이 필요해지면 앱 entitlements·프로파일에 함께 넣는다).
-- 계획 로직 단위 테스트(2026-10-27 합의): `apps/ios/Tests/LiveSessionPlanTests.swift`(XCTest 타깃 `DearbyTests`, `Dearby` 스킴의 테스트 액션, 고정 `now`)가 오늘 활동 선택(오늘 우선·가장 이른 블록), 창(첫 찜 30분 전 ~ 마지막 찜 끝, 밖이면 없음), `현재`/`다음`, 같은 시작 시각 찜(id 순, 같은 시작은 `다음`이 아님), 다음 갱신 경계(남은 시작·끝 중 가장 가까운 것, 창 전에는 창 시작), 찜 없음, 스위치 끔·로그아웃(계획 없음)을 검증한다. CI(native.yml)는 아직 돌리지 않는다. Debug 빌드의 설정 › `Debug` › `라이브 액티비티 미리보기`는 가짜 행사 `Dearby 미리보기`(세션 4개)를 같은 경로로 띄우고 누를 때마다 세션 중 → 이동 → 끝으로 넘긴다(계정 불필요, `live_session_shown` 제외, Release에는 없음).
+- 계획 로직 단위 테스트(2026-10-27 합의): `apps/ios/Tests/LiveSessionPlanTests.swift`(XCTest 타깃 `DearbyTests`, `Dearby` 스킴의 테스트 액션, 고정 `now`)가 오늘 활동 선택(오늘 우선·가장 이른 블록), 기간(안내 시작부터 마지막 찜 끝, 첫 세션 전은 이동), `현재`/`다음`, 같은 시작 시각 찜(id 순, 같은 시작은 `다음`이 아님), 다음 갱신 경계(남은 시작·끝 중 가장 가까운 것), 찜 없음, 안내 꺼짐·로그아웃(계획 없음)을 검증한다. CI(native.yml)는 아직 돌리지 않는다. Debug 빌드의 설정 › `Debug` › `라이브 액티비티 미리보기`는 가짜 행사 `Dearby 미리보기`(세션 4개)를 같은 경로로 띄우고 누를 때마다 세션 중 → 이동 → 끝으로 넘긴다(계정 불필요, `live_session_shown` 제외, Release에는 없음).
 - Release 수동 서명: 확장용 App Store 프로파일 이름 `DEARBY_RELEASE_PROFILE_WIDGETS`(CI 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`)가 비어 있으면 **확장 타깃을 프로젝트에서 빼고** 앱만 만든다 — **확장 프로파일을 등록하기 전까지 TestFlight 빌드에는 라이브 액티비티가 없다**(설정 스위치는 보이되 아무것도 띄우지 않는다). Debug 자동 서명과 CI 시뮬레이터 빌드(native.yml)는 확장을 포함한다. 사용자가 만들 것: App ID `io.wid.dearby.widgets`(App Groups 기능 + `group.io.wid.dearby`), 그 App ID의 App Store 프로파일(Apple Distribution 인증서는 앱과 같은 것), 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`.
 
 ### Android — 진행 중 알림·라이브 업데이트 (PR #452, 2026-10-26)

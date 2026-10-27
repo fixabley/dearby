@@ -1,4 +1,3 @@
-import ActivityKit
 import AuthenticationServices
 import SwiftUI
 
@@ -15,8 +14,8 @@ struct SettingsPage: View {
     let notifications: NotificationModel?
     /// 세션 이동 알림 (contract "찜한 세션 이동 알림" 2026-10-26); nil signed out or before consent, as the section it sits in.
     let sessionReminders: SessionReminderModel?
-    /// 행사 진행 중 표시 (contract "행사 당일 진행 중 표시" 2026-10-26): the switch sits in the 알림 section (signed in with consent); in Debug builds
-    /// the model also backs the 라이브 액티비티 미리보기 row, signed in or not.
+    /// 라이브 액티비티 미리보기 (Debug builds, signed in or not). The `행사 진행 중 표시` switch is gone (contract "행사 안내" 2026-10-27): the Live
+    /// Activity starts only from `행사 안내 시작`.
     let liveSession: LiveSessionModel?
     /// 광고 목적 정보 제공; nil signed out or before consent (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25).
     let adConsent: AdConsentModel?
@@ -219,18 +218,6 @@ struct SettingsPage: View {
                     }
                 }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-session-reminders")
             }
-            if let liveSession {
-                // The Live Activity (contract "행사 당일 진행 중 표시"): off ends it at once (`DearbyApp` refreshes on the change). When 실시간 현황 is
-                // off for the app in iOS 설정, the line says so instead of the description; the system permission is not asked by the app.
-                Toggle(isOn: Binding(get: { liveSession.enabled }, set: { liveSession.enabled = $0 })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("행사 진행 중 표시")
-                        Text(ActivityAuthorizationInfo().areActivitiesEnabled
-                             ? "행사 당일 내 시간표 세션 진행을 잠금 화면과 Dynamic Island에 보여요"
-                             : "iOS 설정 › Dearby에서 실시간 현황을 켜면 보여요").font(.dearby(.footnote)).foregroundStyle(.secondary)
-                    }
-                }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-live-session")
-            }
             if notifications.denied {
                 Button {
                     AppAnalytics.event("menu_open", ["menu": "notifications"])
@@ -262,7 +249,7 @@ struct SettingsPage: View {
         } header: {
             Text("Debug").font(.dearby(.footnote))
         } footer: {
-            Text("Debug 빌드에만 있어요. 행사 진행 중 표시 스위치와 iOS 설정의 실시간 현황이 켜져 있어야 보여요.").font(.dearby(.footnote))
+            Text("Debug 빌드에만 있어요. iOS 설정의 실시간 현황이 켜져 있어야 보여요.").font(.dearby(.footnote))
         }
     }
     private static func previewHint(_ mode: LiveSessionModel.PreviewMode?) -> String {

@@ -15,8 +15,9 @@ if include_widgets
   widgets = project.new_target(:app_extension, 'DearbyWidgets', :ios, '18.0')
   widget_group = project.main_group.new_group('Widgets')
   Dir.glob('Widgets/**/*.swift').sort.each { |file| widgets.source_build_phase.add_file_reference(widget_group.new_file(file)) }
-  # The 진행 트랙 segment and the color tokens it uses are shared with the app (contract "표시 디자인 — 2026-10-27").
-  %w[Sources/features/liveSession/model/LiveSessionAttributes.swift Sources/shared/ui/StageSegment.swift Sources/shared/ui/DearbyStyle.swift].each do |file|
+  # The 진행 트랙 segment and the color tokens it uses, and the `안내 종료` intent, are shared with the app (contract "표시 디자인·행사 안내 — 2026-10-27").
+  %w[Sources/features/liveSession/model/LiveSessionAttributes.swift Sources/features/liveSession/model/EndLiveGuideIntent.swift
+     Sources/shared/ui/StageSegment.swift Sources/shared/ui/DearbyStyle.swift].each do |file|
     widgets.source_build_phase.add_file_reference(source_refs.fetch(file))
   end
   widgets.resources_build_phase.add_file_reference(widget_group.new_file('Widgets/Assets.xcassets'))

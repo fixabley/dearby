@@ -213,7 +213,6 @@ import SwiftUI
             .onChange(of: sessionFavorites.items) { _, _ in syncLiveSession() }
             .onChange(of: sessionFavorites.phase) { _, _ in syncLiveSession() }
             .onChange(of: account.phase) { _, _ in syncLiveSession() }
-            .onChange(of: liveSession.enabled) { _, _ in liveSession.refresh() }
     }
     /// Signed out, the activity ends. Signed in, the plan is rebuilt once 내 활동 and 내 시간표 were both read this run; before that (a cold
     /// launch, or offline at the venue) the saved plan keeps the display going.
@@ -235,6 +234,8 @@ import SwiftUI
     private func sessionHooks(_ content: some View) -> some View {
         content
             .environment(sessionFavorites)
+            // 행사 안내 시작 (contract "행사 당일 진행 중 표시" 2026-10-27) on the 오늘 카드 and the timetable's 내 시간표.
+            .environment(liveSession)
             .onChange(of: sessionFavorites.signInRequested) { _, requested in
                 guard requested else { return }
                 sessionFavorites.signInRequested = false

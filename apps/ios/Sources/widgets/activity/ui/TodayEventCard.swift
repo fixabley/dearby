@@ -10,6 +10,15 @@ struct TodayEventCard: View {
     let showQR: () -> Void
     private var today: Bool { event.timing == .today }
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            row
+            // 행사 안내 시작 (contract "행사 당일 진행 중 표시" 2026-10-27): only today, with 내 시간표 sessions of this activity left.
+            if today { LiveGuideButton(activityID: event.activity.id) }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
+    }
+    private var row: some View {
         HStack(alignment: .center, spacing: 12) {
             Button(action: open) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -40,7 +49,5 @@ struct TodayEventCard: View {
                 .accessibilityHint("내 명함의 QR을 이 활동으로 보여요").accessibilityIdentifier("today-card-qr")
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
     }
 }

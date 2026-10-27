@@ -6,7 +6,7 @@ import WidgetKit
 /// 세션 중: 세션명 > 트랙명 > 시간·위치 with the remaining time. 이동 (any gap before the next favorited session, the first one included): a walking
 /// figure and the time to its start in 청록 with where to go, then 세션명 > 트랙명. The 잠금 화면 puts the day's session track on top; the expanded
 /// Dynamic Island puts it under the same three lines. Compact: the track's dot (or the walking figure) and the countdown; minimal: that mark.
-/// A tap opens that block's timetable sheet on 내 시간표 in the app.
+/// A tap opens that block's timetable sheet on 내 시간표 in the app; `안내 종료` ends the guide (`EndLiveGuideIntent`).
 struct LiveSessionWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LiveSessionAttributes.self) { context in
@@ -14,6 +14,7 @@ struct LiveSessionWidget: Widget {
                 HStack(spacing: 8) {
                     Text(context.attributes.activityTitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     Spacer(minLength: 0)
+                    LiveSessionLines.endButton
                 }
                 LiveSessionTrack(state: context.state)
                 LiveSessionLines(attributes: context.attributes, state: context.state)
@@ -26,7 +27,10 @@ struct LiveSessionWidget: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 10) {
                         LiveSessionLines(attributes: context.attributes, state: context.state)
-                        LiveSessionTrack(state: context.state)
+                        HStack(spacing: 12) {
+                            LiveSessionTrack(state: context.state)
+                            LiveSessionLines.endButton
+                        }
                     }.padding(.top, 4)
                 }
             } compactLeading: {
@@ -80,6 +84,13 @@ struct LiveSessionLines: View {
     }
     private var timeRange: String { Self.time(entry.start, zone: attributes.zone) + " – " + Self.time(entry.end, zone: attributes.zone) }
 
+    /// `안내 종료` (`EndLiveGuideIntent`, contract "행사 안내" 2026-10-27): ends the guide without opening the app.
+    static var endButton: some View {
+        Button(intent: EndLiveGuideIntent()) {
+            Label("안내 종료", systemImage: "xmark").font(.caption.weight(.semibold))
+        }
+        .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.secondary)
+    }
     /// Compact leading and minimal: the track's dot while a session runs, the walking figure in a gap.
     @ViewBuilder static func mark(_ state: LiveSessionAttributes.ContentState) -> some View {
         if state.running {
