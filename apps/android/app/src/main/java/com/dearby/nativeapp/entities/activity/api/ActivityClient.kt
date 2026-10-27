@@ -44,8 +44,8 @@ import org.json.JSONObject
  * "활동 상태", comma-joined enum values; the client never judges states itself). Transport or parsing failure throws, never an empty page.
  * Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, status: String? = null, kind: String? = null, category: String? = null): ActivityPage =
-    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, status?.let { "status" to it }, kind?.let { "kind" to it }, category?.let { "category" to it })))
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, status: String? = null, kind: String? = null, category: String? = null, size: Int? = null): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, status?.let { "status" to it }, kind?.let { "kind" to it }, category?.let { "category" to it }, size?.let { "size" to it.toString() })))
 
 /**
  * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
@@ -154,6 +154,7 @@ private fun parseActivity(activity: JSONObject): ActivityModel {
         activity.text("hook"),
         activity.highlights("highlights"),
         activity.text("status"),
+        activity.getJSONObject("program").optLong("id", 0).takeIf { it > 0 }?.toString(),
     )
 }
 
