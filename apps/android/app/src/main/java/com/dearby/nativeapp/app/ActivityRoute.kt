@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 
 /**
@@ -59,6 +60,8 @@ import kotlinx.coroutines.delay
     sessions: SessionFavoritesViewModel? = null, sessionHeart: (String) -> Unit = {},
     /** 오늘 내 행사 (2026-10-26) shows on the 발견 root only while [ready] (signed in with consent); its `명함 QR` is [showQr] with the activity for the chip. */
     ready: Boolean = false, showQr: (String) -> Unit = {},
+    /** 오늘 행사 온보딩 `참여해요` (2026-10-27): the event and day whose timetable should open on 내 시간표 over this tab, consumed once. */
+    guide: Pair<String, LocalDate>? = null, consumeGuide: () -> Unit = {},
     active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
@@ -149,6 +152,20 @@ import kotlinx.coroutines.delay
     // DisposableEffect above, whose disposal on the detail change would otherwise close the sheet this opens.
     val pendingReminder = sessions?.pending?.collectAsStateWithLifecycle()?.value
     LaunchedEffect(selected, pendingReminder) { val id = selected; if (id != null && pendingReminder != null) sessions?.showPending(id) }
+    // 오늘 행사 온보딩: the day's blocks as one table when it has several (else the one block's timetable), on 내 시간표 so the hearts come next;
+    // without any timetable the 진행 단계 page. After the DisposableEffect above, like the reminder.
+    LaunchedEffect(guide) {
+        val (id, day) = guide ?: return@LaunchedEffect
+        consumeGuide()
+        val rows = state.known[id]?.schedules.orEmpty()
+        val group = dayGroups(rows.filterNot { it.selection }) { it.block }.filterIsInstance<ScheduleGroup.Day<ScheduleItemState>>().firstOrNull { it.day == day && it.hasTimetable }
+        val block = rows.firstOrNull { it.day == day && it.hasTimetable }?.scheduleId
+        when {
+            sessions != null && group != null -> { todaySheet = id; sessions.showDay(id, day, group.blocks, favoritesOnly = true, highlightGuide = true) }
+            sessions != null && block != null -> { todaySheet = id; sessions.show(id, block, favoritesOnly = true, highlightGuide = true) }
+            else -> progressId = id
+        }
+    }
     val sheetNotices = remember { SnackbarHostState() }
     val sessionIds = sessions?.ids?.collectAsStateWithLifecycle()?.value.orEmpty()
     val sessionEntries = sessions?.entries?.collectAsStateWithLifecycle()?.value.orEmpty()
@@ -201,13 +218,14 @@ import kotlinx.coroutines.delay
         val day = sheetActivity?.schedules?.let { rows -> dayGroups(rows.filterNot { it.selection }) { it.block } }
             ?.filterIsInstance<ScheduleGroup.Day<ScheduleItemState>>()?.firstOrNull { group -> group.items.any { it.scheduleId == openTimetable.scheduleId } }
         TimetableSheet(listOfNotNull(sheetActivity?.title, blockTitle).joinToString(" · "), block?.dateText, openTimetable.phase, openTimetable.timetable,
-            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly, viewDay = day?.let { { showDay(it) } })
+            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, favoritesFirst = openTimetable.favoritesOnly, viewDay = day?.let { { showDay(it) } },
+            highlightGuide = openTimetable.highlightGuide)
     }
     if (openDay != null && sessions != null) {
         val sessionNotice by sessions.notice.collectAsStateWithLifecycle()
         LaunchedEffect(sessionNotice) { sessionNotice?.let { try { sheetNotices.showSnackbar(it) } finally { sessions.dismissNotice() } } }
         DayTimetableSheet(listOfNotNull(sheetActivity?.title, dayLabel(openDay.day)).joinToString(" · "), daySummary(openDay.loads.map { it.block }), openDay.loads,
-            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices)
+            sessionIds, sessionHeart, closeTimetable, sessions::retry, sheetNotices, openDay.favoritesOnly, openDay.highlightGuide)
     }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).

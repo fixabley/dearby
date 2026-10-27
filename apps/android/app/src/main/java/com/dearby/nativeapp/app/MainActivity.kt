@@ -108,6 +108,12 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed,
             { device.pushStarted }, { device.pushStarted = true; Push.enable(applicationContext) }) } }
     }
+    // 오늘 행사 온보딩 (2026-10-27): today's short events not open for application, one page of 50.
+    private val todayOnboarding: TodayOnboardingViewModel by viewModels {
+        viewModelFactory { initializer { TodayOnboardingViewModel({ withContext(Dispatchers.IO) {
+            fetchActivities(ApiOrigin.current, null, null, status = "IN_PROGRESS,RECRUITMENT_CLOSED,NO_RECRUITMENT", category = "CONFERENCE,MEETUP,LECTURE,WORKSHOP", size = 50).items
+        } }, device, ApiOrigin.current) } }
+    }
     // `오늘 일정 n개` opens 즐겨찾기 (dearby://favorites), consumed once by DearbyApp.
     private var favoritesLink by mutableStateOf(false)
     // 찜한 세션 이동 알림 (2026-10-26, device-local): 설정 `세션 이동 알림`; off cancels every alarm.
@@ -203,7 +209,7 @@ class MainActivity : ComponentActivity() {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
                     sessions, favoritesLink, { favoritesLink = false }, sessionRemindersOn.collectAsStateWithLifecycle().value, { device.sessionRemindersEnabled = it; sessionRemindersOn.value = it },
-                    liveSessionOn.collectAsStateWithLifecycle().value, { device.liveSessionEnabled = it; liveSessionOn.value = it }, screenshot)
+                    liveSessionOn.collectAsStateWithLifecycle().value, { device.liveSessionEnabled = it; liveSessionOn.value = it }, screenshot, todayOnboarding)
                 PendingAccountRoute(account)
             } }
         }

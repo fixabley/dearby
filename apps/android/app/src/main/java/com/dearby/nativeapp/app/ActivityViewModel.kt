@@ -315,14 +315,17 @@ class ActivityViewModel(
         write { account, session -> account.client.saveScheduleStatus(id, scheduleId, option.id, option.kind, session) }
     }
     /** Marks [id] applied. Removing it (contract "빼기는 눈에 보이게") also clears the stage statuses. */
-    /** [source] is analytics-v1 `myactivity_add.source` (where the add was made). */
-    fun apply(id: String, value: Boolean, source: String = "detail") {
+    /**
+     * [source] is analytics-v1 `myactivity_add.source` (where the add was made). [passEarlier] (오늘 행사 온보딩 `참여해요`, 2026-10-27) marks the
+     * 지난 선발 단계 PASSED at once instead of asking: someone at the event today is through them.
+     */
+    fun apply(id: String, value: Boolean, source: String = "detail", passEarlier: Boolean = false) {
         if ((state.value.known[id] ?: return).applied == value) return
         update(id) { it.copy(applied = value) }
         if (value) Analytics.event("myactivity_add", *track(id), "source" to source)
         if (value) write { account, session -> account.client.saveMyActivity(id, session) }
         else write { account, session -> account.client.deleteMyActivity(id, session) }
-        if (value) return offerAutopass(id)
+        if (value) return offerAutopass(id, passEarlier)
         if (id !in marks) return
         marks = marks - id
         models[id]?.let { model -> mutable.update { it.copy(progress = it.progress + (id to model.toProgress(emptyMap(), today()))) } }
@@ -334,7 +337,7 @@ class ActivityViewModel(
      * the passed ones and the undated ones between them — that have no mark yet are offered as [ActivityListState.autopass]. Undated stages after
      * a stage still ahead stay out (coordinator 2026-10-26). Nothing is offered when no dated stage has passed.
      */
-    private fun offerAutopass(id: String) {
+    private fun offerAutopass(id: String, confirm: Boolean) {
         val model = models[id]?.takeIf { it.status != "ENDED" } ?: return
         if (autopassAsked(id)) return
         val now = Instant.now()
@@ -347,16 +350,17 @@ class ActivityViewModel(
         rememberAutopassAsked(id)
         val remaining = if (ahead < 0) emptyList() else selection.drop(ahead).map { it.value.name }
         mutable.update { it.copy(autopass = AutopassPrompt(id, offered.map { it.index }, offered.map { it.value.name }, remaining)) }
+        if (confirm) autopass(true, via = "today_onboarding")
     }
     /** `통과로 표시` ([confirm]) marks each offered stage PASSED as the progress page would; `그대로 두기` leaves them. A failed write undoes only its stage. */
-    fun autopass(confirm: Boolean) {
+    fun autopass(confirm: Boolean, via: String = "autopass_prompt") {
         val prompt = state.value.autopass ?: return
         mutable.update { it.copy(autopass = null) }
         if (!confirm) return
         val stages = models[prompt.id]?.stages() ?: return
         prompt.stages.forEach { index ->
             val passed = stages.getOrNull(index)?.statuses?.firstOrNull { it.kind == ScheduleStatus.PASSED } ?: return@forEach
-            Analytics.event("stage_mark", *track(prompt.id), "kind" to "passed", "via" to "autopass_prompt")
+            Analytics.event("stage_mark", *track(prompt.id), "kind" to "passed", "via" to via)
             mark(prompt.id, index, StatusOption(passed.id, passed.name, passed.kind))
         }
     }

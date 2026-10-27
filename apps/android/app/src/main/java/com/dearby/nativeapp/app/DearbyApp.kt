@@ -26,6 +26,7 @@ import com.dearby.nativeapp.pages.inbox.InboxPage
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.cards.MyCardsPhase
+import com.dearby.nativeapp.pages.onboarding.TodayEventsSheet
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector, val code: String) {
@@ -56,7 +57,9 @@ private sealed interface Route {
     /** 설정 `세션 이동 알림` (device-local, 2026-10-26); MainActivity plans the alarms from it. */
     sessionReminders: Boolean = true, setSessionReminders: (Boolean) -> Unit = {},
     /** 설정 `행사 진행 중 표시` (device-local, 2026-10-26); MainActivity draws the notification from it. */
-    liveSession: Boolean = true, setLiveSession: (Boolean) -> Unit = {}, screenshot: String? = null) {
+    liveSession: Boolean = true, setLiveSession: (Boolean) -> Unit = {}, screenshot: String? = null,
+    /** 오늘 행사 온보딩 (2026-10-27); null never asks. */
+    todayOnboarding: TodayOnboardingViewModel? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -171,6 +174,24 @@ private sealed interface Route {
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
     LaunchedEffect(tab, route, reco.needsFunnel, ready) { if (screenshot == null && ready && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true, entry = "auto") }
+    // 오늘 행사 온보딩 (2026-10-27): each time the app comes to the front with nothing else up — after the intro (drawn before this shell), the
+    // sign-in sheet, the consent screen and the 추천 funnel, and once 내 활동 is read when signed in so its events are left out — the view model
+    // asks once a Seoul day. The sheet itself also waits for the funnel, which may come up while the events load.
+    var foreground by remember { mutableIntStateOf(0) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { foreground++; onPauseOrDispose {} }
+    val todayAsk = todayOnboarding?.asking?.collectAsStateWithLifecycle()?.value
+    val todayFree = screenshot == null && route == null && recoFunnel == null && !signingIn && !walletState.needSignIn && !activityDetail &&
+        (!signedIn || (ready && !reco.needsFunnel && !activityListState.mineLoading))
+    LaunchedEffect(foreground, todayFree) { if (todayFree) todayOnboarding?.check(activityListState.known.values.filter { it.applied }.map { it.id }.toSet()) }
+    // `참여해요`: the first chosen event's day opens on 내 시간표 over 발견 (or 내 활동, when that is the tab), consumed by its ActivityRoute.
+    var todayGuide by remember { mutableStateOf<Pair<String, java.time.LocalDate>?>(null) }
+    val joinToday: (List<String>) -> Unit = { ids ->
+        val day = todayAsk?.day
+        val chosen = todayOnboarding?.answer(ids).orEmpty()
+        activityModel.adopt(chosen)
+        chosen.forEach { activityModel.apply(it.id, true, "today_onboarding", passEarlier = true) }
+        if (day != null && chosen.isNotEmpty()) { if (tab != Tab.Discovery && tab != Tab.Mine) tab = Tab.Discovery; todayGuide = chosen.first().id to day }
+    }
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
     LaunchedEffect(activityDetail) {
         if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue }
@@ -253,7 +274,7 @@ private sealed interface Route {
                     // Turning 세션 이동 알림 or 행사 진행 중 표시 on asks the notification permission once too (contract "찜한 세션 이동 알림").
                     Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) },
                         sessionReminders, { on -> if (on) askNotificationsOnce(); setSessionReminders(on) },
-                        liveSession, { on -> if (on) askNotificationsOnce(); setLiveSession(on) }) { route = null }
+                        liveSession, { on -> if (on) askNotificationsOnce(); setLiveSession(on) }, todayOnboarding) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }
                         ConsentPage(profileState.consenting, profileState.consentError,
@@ -288,7 +309,7 @@ private sealed interface Route {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
                                 openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; route = Route.Consent }, header = recoHeader,
                                 hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread,
-                                sessions = sessions, sessionHeart = sessionHeart, ready = ready, showQr = showTodayQr) { activityDetail = it }
+                                sessions = sessions, sessionHeart = sessionHeart, ready = ready, showQr = showTodayQr, guide = todayGuide, consumeGuide = { todayGuide = null }) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
@@ -336,6 +357,7 @@ private sealed interface Route {
             confirmButton = { TextButton({ activityModel.autopass(true) }) { Text("통과로 표시") } },
             dismissButton = { TextButton({ activityModel.autopass(false) }) { Text("그대로 두기") } })
     }
+    todayAsk?.takeIf { recoFunnel == null && route == null && !signingIn }?.let { ask -> TodayEventsSheet(ask.events, joinToday) { todayOnboarding?.answer(emptyList()) } }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
     reco.notice?.let { value -> AlertDialog(onDismissRequest = recommendation::dismissNotice, title = { Text("추천") }, text = { Text(value) }, confirmButton = { TextButton(recommendation::dismissNotice) { Text("확인") } }) }
     walletState.notice?.let { value -> AlertDialog(onDismissRequest = wallet::dismissNotice, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton(wallet::dismissNotice) { Text("확인") } }) }
