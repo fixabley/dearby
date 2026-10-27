@@ -139,11 +139,11 @@
 
 ## 행사 당일 진행 중 표시 (2026-10-26, 라이브 액티비티)
 
-계약 native-v1.md "행사 당일 진행 중 표시". 오늘 내 행사 카드가 오늘로 가리키는 활동에 그 날 내 시간표(찜한 세션)가 있으면 첫 세션 30분 전부터 마지막 세션 끝까지 라이브 액티비티(잠금 화면·Dynamic Island)를 띄운다. 기기 안에서만 갱신하며 서버·푸시 토큰이 없다.
+계약 native-v1.md "행사 당일 진행 중 표시". 오늘 내 행사 카드가 오늘로 가리키는 활동에 그 날 내 시간표(찜한 세션)가 있으면, 사용자가 오늘 카드나 `내 시간표`의 `행사 안내 시작`을 누른 때부터 마지막 세션 끝(+15분)까지 라이브 액티비티(잠금 화면·Dynamic Island)를 띄운다(2026-10-27 "행사 안내", 자동 시작 없음). 기기 안에서만 갱신하며 서버·푸시 토큰이 없다.
 
 - 코드: `features/liveSession/model/LiveSessionModel.swift`(시작·갱신·종료, 계획 저장 `dearby.liveSession.plan`, `BGAppRefreshTask` `io.wid.dearby.liveSession.refresh` 예약), `widgets/activity/model/LiveSessionPlan.swift`(`TodayEvent`+세션 찜 → 계획), `Widgets/`(확장 `DearbyWidgets`: `LiveSessionWidget` 화면, 자체 `Assets.xcassets`에 `DearbySymbol` 사본), 두 타깃이 함께 컴파일하는 `features/liveSession/model/LiveSessionAttributes.swift`. `AppDelegate`가 시작 전 백그라운드 작업을 등록한다. 탭 링크 `dearby://timetable/<activityId>/<scheduleId>`는 `IncomingLink.timetable` → `openLinkedTimetable`(세션 이동 알림과 같은 시트, 내 시간표 보기).
 - Info.plist(두 파일 같음): `NSSupportsLiveActivities`, `UIBackgroundModes` `fetch`, `BGTaskSchedulerPermittedIdentifiers`.
-- 설정 › 알림 `행사 진행 중 표시`(기본 켬, `dearby.liveSession.enabled`). 사용 통계 `live_session_shown`(서울 날짜당 1회).
+- 진입점 `widgets/activity/ui/LiveGuideButton.swift`(`행사 안내 시작`·`안내 중 · 종료`·`안내 다시 시작`, 상태 `dearby.liveSession.guide`), 라이브 액티비티의 `안내 종료`는 `features/liveSession/model/EndLiveGuideIntent.swift`(앱·확장 공용). 설정 스위치는 2026-10-27에 지웠다. 사용 통계 `live_session_shown`(서울 날짜당 1회).
 - 프로젝트: `generate_project.rb`가 확장 타깃(번들 `io.wid.dearby.widgets`, `Widgets/Info.plist`, entitlements의 App Group `group.io.wid.dearby`는 확장에만)을 만들고 앱에 `Embed Foundation Extensions`로 넣는다. SwiftLint 범위에 `Widgets`를 더했다.
 - 서명: Debug 자동 서명은 그대로(기기 설치 때 Xcode가 `io.wid.dearby.widgets` App ID와 App Group을 등록해야 한다). Release(`DEARBY_RELEASE_PROFILE` 있음)는 `DEARBY_RELEASE_PROFILE_WIDGETS`가 비어 있으면 **확장 타깃을 만들지 않아** 앱만 아카이브된다 — **확장 프로파일을 등록하기 전까지 TestFlight 빌드에는 라이브 액티비티가 없다**. `ios-testflight.yml`은 선택 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`가 있으면 그 프로파일을 설치해 이름을 넘기고 ExportOptions에 `io.wid.dearby.widgets` 항목을 더한다. 사용자가 만들 것: App ID `io.wid.dearby.widgets`(App Groups + `group.io.wid.dearby`), 그 App ID의 App Store 프로파일(기존 Apple Distribution 인증서), 시크릿 `IOS_APPSTORE_PROFILE_WIDGETS_BASE64`(`base64 -i <profile>.mobileprovision | gh secret set IOS_APPSTORE_PROFILE_WIDGETS_BASE64`).
 - 확인: `ruby scripts/generate_project.rb` 뒤 generic Simulator 빌드(확장 포함). `DEARBY_RELEASE_PROFILE=x DEARBY_TEAM_ID=y ruby scripts/generate_project.rb`로 만든 프로젝트에는 `DearbyWidgets`가 없어야 한다. 실기기 표시·백그라운드 갱신은 실기기에서만 본다(시뮬레이터는 `BGTaskScheduler`를 지원하지 않는다).
