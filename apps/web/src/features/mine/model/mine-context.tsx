@@ -21,13 +21,18 @@ export type Mine = {
   entries: MineEntry[];
   favorites: FavoriteSession[];
   entry: (activityId: number) => MineEntry | undefined;
-  /** `PUT /me/activities/{id}` (idempotent), 사용 통계 `myactivity_add`, then the 통과 제안 once per activity. Throws on failure. */
-  add: (activity: Activity, source: "discovery" | "link") => Promise<void>;
+  /**
+   * `PUT /me/activities/{id}` (idempotent), 사용 통계 `myactivity_add`, then the 통과 제안 once per activity — or, from the 오늘 행사 온보딩's
+   * `참여해요`, the suggestion accepted without asking (contract "오늘 행사 온보딩" › 시트). Throws when the add fails.
+   */
+  add: (activity: Activity, source: AddSource) => Promise<void>;
   remove: (activityId: number) => Promise<void>;
   /** Marks one 선발 단계 (`stage_mark` first); the server's item replaces the local one. Throws on failure. */
   mark: (activityId: number, stage: Stage, status: ScheduleStatus) => Promise<void>;
   reload: () => void;
 };
+/** 사용 통계 `myactivity_add` `source` (analytics-v1.md "웹"): a discovery card, the activity detail, the 오늘 행사 온보딩. */
+export type AddSource = "discovery" | "link" | "today_onboarding";
 const MineContext = createContext<Mine | null>(null);
 
 /** 사용 통계 매개변수 (analytics-v1.md): ids and codes only. */
@@ -121,6 +126,34 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
     [expired],
   );
 
+  /**
+   * `통과로 표시`: every suggested stage takes its schedule's 통과 status, one by one (`stage_mark` with `via` first); a failed one is left
+   * as it was and a toast says so.
+   */
+  const passAll = useCallback(
+    async (activity: Activity, stages: Stage[], via: "autopass_prompt" | "today_onboarding") => {
+      let failure = false;
+      for (const stage of stages) {
+        const passed = passedOption(stage);
+        if (!passed) continue;
+        track("stage_mark", { ...activityParams(activity), kind: "passed", via });
+        try {
+          replace(await markStage(activity.id, stage.id, pickOf(passed)));
+        } catch (error) {
+          if (error instanceof RequestError && error.status === 401) return expired();
+          failure = true;
+        }
+      }
+      if (failure) setNotice({ id: Date.now(), text: "일부 단계를 통과로 표시하지 못했어요. 내 활동에서 다시 표시해 주세요." });
+    },
+    [replace, expired],
+  );
+  function acceptAutopass() {
+    if (!suggestion) return;
+    setSuggestion(undefined);
+    void passAll(suggestion.activity, suggestion.stages, "autopass_prompt");
+  }
+
   const add = useCallback<Mine["add"]>(
     async (activity, source) => {
       const now = Date.now();
@@ -131,12 +164,18 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
       const progress = buildProgress(activity, item, now);
       if (activityStatus(activity, now) === "ENDED" || ended(progress)) return;
       const stages = autopassCandidates(progress, now);
-      if (!stages.length || askedBefore(activity.id)) return;
+      if (!stages.length) return;
+      if (source === "today_onboarding") {
+        // The user just said they take part: record the activity as asked (the answer stands even if asked before) and mark at once.
+        askedBefore(activity.id);
+        return passAll(activity, stages, "today_onboarding");
+      }
+      if (askedBefore(activity.id)) return;
       const ids = new Set(stages.map((stage) => stage.id));
       const remaining = progress.stages.filter((stage) => stage.selection && !ids.has(stage.id) && stage.mark.kind !== "PASSED");
       setSuggestion({ activity, stages, remaining });
     },
-    [replace, failed],
+    [replace, failed, passAll],
   );
   const remove = useCallback<Mine["remove"]>(
     async (activityId) => {
@@ -154,26 +193,6 @@ export function MineProvider({ children }: { children: React.ReactNode }) {
     },
     [entries, replace, failed],
   );
-  /** `통과로 표시`: every suggested stage takes its schedule's 통과 status, one by one; a failed one is left as it was. */
-  async function acceptAutopass() {
-    if (!suggestion) return;
-    const { activity, stages } = suggestion;
-    setSuggestion(undefined);
-    let failure = false;
-    for (const stage of stages) {
-      const passed = passedOption(stage);
-      if (!passed) continue;
-      track("stage_mark", { ...activityParams(activity), kind: "passed", via: "autopass_prompt" });
-      try {
-        replace(await markStage(activity.id, stage.id, pickOf(passed)));
-      } catch (error) {
-        if (error instanceof RequestError && error.status === 401) return expired();
-        failure = true;
-      }
-    }
-    if (failure) setNotice({ id: Date.now(), text: "일부 단계를 통과로 표시하지 못했어요. 내 활동에서 다시 표시해 주세요." });
-  }
-
   const value = useMemo<Mine>(
     () => ({
       status,
