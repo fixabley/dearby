@@ -9,6 +9,7 @@ import {
   type ProgramPage,
   type ProgramSummary,
   type StatusGroup,
+  STATUS_GROUP_IDS,
   STATUS_GROUPS,
   activityStatus,
   deadlineLabel,
@@ -186,24 +187,20 @@ export function Discovery({ q, kind, groups, categories }: { q: string; kind: Ki
             message="다른 종류를 고르거나 종류 필터를 지워 보세요."
             primary={{ label: "종류 필터 지우기", onClick: () => applyFilters({ groups, categories: [] }) }}
           />
-        ) : groups.includes("past") ? (
+        ) : statusKey === "available" ? (
+          // Default 묶음 (contract "활동 상태" 빈 안내 2026-10-27): offer the closed ones — every 묶음, same 종류·검색 — same wording in event mode.
           <CenteredMessage
             icon="explore"
-            title={kind === "event" ? "최근 3년 안에 열린 이벤트가 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}
-            message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. 잠시 후 다시 찾아와 주세요."
+            title="지금 지원할 수 있는 활동이 없어요"
+            message="신청이 마감된 활동도 볼까요?"
+            primary={{ label: "마감된 활동 보기", onClick: () => applyFilters({ groups: STATUS_GROUP_IDS, categories }) }}
           />
         ) : (
+          // Already widened and still nothing: back to the default (applies at once, unlike the sheet's `초기화`).
           <CenteredMessage
             icon="explore"
-            title={
-              statusKey !== "available"
-                ? `고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`
-                : kind === "event"
-                  ? "지금 열린 이벤트가 없어요"
-                  : "지금 모집 중인 프로그램이 없어요"
-            }
-            message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. ‘지난 활동’도 고르면 최근 활동한 프로그램도 보여요."
-            primary={{ label: "지난 활동도 보기", onClick: () => applyFilters({ groups: [...groups, "past"], categories }) }}
+            title="고른 조건의 활동이 없어요"
+            primary={{ label: "필터 초기화", onClick: () => applyFilters({ groups: ["available"], categories: [] }) }}
           />
         )
       ) : (
