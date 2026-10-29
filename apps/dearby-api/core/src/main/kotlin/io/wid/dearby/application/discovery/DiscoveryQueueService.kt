@@ -37,7 +37,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.math.pow
 
-// 맞춤 대기열(native-v1.md "맞춤 대기열(스토리형 쇼츠)·조직 친화도·활동 벡터"). LLM을 쓰지 않고 서버 안에서 규칙 점수 + 취향 벡터 유사도 + 조직 친화도로 고른다.
+// 맞춤 대기열(native-v1.md "맞춤 대기열(스토리형 쇼츠)·조직 친화도·활동 벡터"). LLM을 쓰지 않고 서버 안에서 규칙 점수 + 취향 벡터 유사도 + 관심 조직 가중치로 고른다.
 // 사용자 데이터는 서버 밖으로 나가지 않는다(벡터는 배치가 공개 활동 글로만 만든다)
 @Service
 class DiscoveryQueueService(
@@ -152,7 +152,7 @@ class DiscoveryQueueService(
         return rows
     }
 
-    // 점수 = 규칙/100 + 0.25 × 취향 유사도 + 0.15 × (조직 친화도 + 새 기수 가산) − 분야 덜 보기. MMR(λ=0.7)로 고르고 프로그램당 2개
+    // 점수 = min(규칙/100, 1) + 0.25 × 취향 유사도 + 0.15 × 관심 조직 가중치 − 0.5 × 분야 덜 보기. MMR(λ=0.7)로 고르고 프로그램당 2개
     private fun pick(user: UserInputs, catalog: Catalog, exclude: Set<Id>, already: List<Id>, count: Int): List<QueueRow> {
         if (count <= 0) return emptyList()
         val candidates = user.candidates.filter { it.activity.id !in exclude }
@@ -163,7 +163,7 @@ class DiscoveryQueueService(
             val similarity = if (vector != null && user.taste != null) Vectors.cosine(user.taste, vector) else 0.0
             val (affinity, affinityReason) = user.affinity.of(rule.listing)
             val penalty = user.lessField.entries.sumOf { (tagId, weight) -> if (activity.fieldTags.any { it.id == tagId || it.parentId == tagId }) weight else 0.0 }
-            val total = rule.points / RecommendationRules.MAX_POINTS + TASTE_WEIGHT * similarity + AFFINITY_WEIGHT * affinity - LESS_FIELD_WEIGHT * penalty
+            val total = (rule.points / RecommendationRules.MAX_POINTS).coerceAtMost(1.0) + TASTE_WEIGHT * similarity + AFFINITY_WEIGHT * affinity - LESS_FIELD_WEIGHT * penalty
             val reasons = rule.reasons.filter { it != RecommendationRules.UNCHECKED_REASON } +
                 listOfNotNull(vector?.let { user.similarLike(activity.id, it) }, affinityReason) +
                 rule.reasons.filter { it == RecommendationRules.UNCHECKED_REASON }
