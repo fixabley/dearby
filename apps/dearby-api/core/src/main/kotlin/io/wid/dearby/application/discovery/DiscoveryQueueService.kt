@@ -65,13 +65,15 @@ class DiscoveryQueueService(
         return page(user, catalog, rows)
     }
 
-    // 더 받기: 오늘 이미 받은 활동을 빼고 남은 후보로 10개를 뒤에 붙인다(남은 후보가 없으면 그대로)
+    // 더 받기: 오늘 이미 받은 활동을 빼고 남은 후보로 10개를 뒤에 붙인다(남은 후보가 없으면 그대로).
+    // 이미 받은 카드도 MMR 비교·프로그램당 2개에 넣어 비슷한 활동이 다시 오지 않게 한다
     @Transactional
     fun refill(userId: UserId): QueuePage {
         val catalog = loadCatalog()
         val user = load(userId, catalog)
         val current = discovery.queue(userId, today())
-        val added = pick(user, catalog, exclude = current.map { it.activityId }.toSet(), already = emptyList(), count = SIZE)
+        val received = current.map { it.activityId }
+        val added = pick(user, catalog, exclude = received.toSet(), already = received, count = SIZE)
         val rows = current + added.mapIndexed { i, it -> it.copy(position = (current.maxOfOrNull { r -> r.position } ?: -1) + 1 + i) }
         discovery.replaceQueue(userId, today(), rows)
         return page(user, catalog, rows)
