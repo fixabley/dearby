@@ -42,7 +42,7 @@
 
 계약은 admin-v1.md("프로그램"·"일정 직접 지정…"·"운영자 지정 필드"·"이전 기수 정보 자동완성")와 native-v1.md("활동 종류"·"대상자 조건")에 있다. 여기에는 수집기 쪽 동작만 적는다.
 
-- **활동 단위**: 활동은 **프로그램의 기수(회차) 하나**다(예 "부스트캠프 10기", "Let'Swift 2026"; 트랙은 따로 지원하는 기수일 때만 별도 활동). 그 기수 안의 선발 단계·테스트·챌린지·교육 기간·결과 발표·면접·마감은 `schedules`에 `kind`(DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT)로 들어간다. `source_id` = 프로그램 + `roundKey`(페이지 주소 제외). 이전 규칙으로 쪼개져 들어온 초안은 자동으로 합쳐지지 않아 어드민에서 지웠다(지운 초안은 다시 만들지 않음).
+- **활동 단위**: 활동은 **프로그램의 기수(회차) 하나**다(예 "부스트캠프 10기", "Let'Swift 2026"; 트랙은 따로 지원하는 기수일 때만 별도 활동). 그 기수 안의 선발 단계·테스트·챌린지·교육 기간·결과 발표·면접·마감은 `schedules`에 `kind`(DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT)로 들어간다. `source_id` = 프로그램 + `roundKey`(페이지 주소 제외). 이전 규칙으로 쪼개져 들어온 초안은 자동으로 합쳐지지 않아 어드민에서 지웠다(지운 초안은 다시 만들지 않음). 연합동아리·연합 학회처럼 기수마다 회원을 뽑는 단체(기수제 서포터즈·기자단·봉사단 포함)도 모집 한 번이 활동 하나이고, 기수 번호 없이 한 해에 여러 번 모집하면 `roundKey`에 연도와 학기·반기를 쓴다(2026-11-02 사용자 "연합동아리 같은 경우도 기수별 모집 활동으로 취급해주세요"; 연도만 쓰면 상·하반기 모집이 같은 `source_id`로 합쳐진다).
 - **두 기간의 정의**: 모집 기간(`recruitmentStartAt/EndAt` 또는 `recruitmentStartDate/EndDate`)은 모집·접수·지원·신청·원서·마감 낱말이 붙은 날짜, 활동 기간(`dateLabel`·`startDate`·`endDate`)은 교육·과정·행사·운영·개최가 실제로 진행되는 기간. 같은 날짜를 두 기간에 넣지 않고, 모집 기간만 있으면 `dateLabel`은 빈 문자열. 날짜만 적힌 기간은 종일 일정(`startDate`, `endDateExclusive`)으로 저장하고 `dateLabel`은 원문 보존용. 날짜가 아닌 문구("2026 신입생 모집")는 기간 필드에 넣지 않고, 다른 프로그램의 활동은 뽑지 않는다.
 - **종류**: `category`(BOOTCAMP·CONFERENCE·WORKSHOP·STUDY·CLUB·LECTURE·HACKATHON·CONTEST·MEETUP·OTHER, 모르면 null)를 뽑는다. null이면 프로그램 기본 종류(`programs.category`)를 쓴다.
 - **대상자 조건**: `eligibility` 트리(어휘·예시를 지시문에 넣음)와 `audience` 원문. 어휘 밖 필드는 서버가 `기타`로 바꾼다.
