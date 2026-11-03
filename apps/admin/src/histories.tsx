@@ -39,12 +39,12 @@ const kindPaths = { organization: "organizations", program: "programs", activity
 function Matched({ history }: { history: HistoryForReview }) {
   const { owner, role, roleName } = history;
   // Context above the unit: the program's organization, or the activity's organization·program.
-  const above = owner.kind === "organization" ? [] : [history.organization, owner.kind === "activity" ? history.program : null].filter((ref) => ref && ref.id !== owner.id);
+  const above = (owner.kind === "organization" ? [] : [history.organization, owner.kind === "activity" ? history.program : null]).filter((ref): ref is NonNullable<Ref> => !!ref);
   return (
     <div className="chain">
       <span className="chain-step">
         <Tag bordered={false}>{ownerKindLabels[owner.kind]}</Tag>
-        {above.length > 0 && <span className="muted">{above.map((ref) => ref!.name).join(" · ")} · </span>}
+        {above.length > 0 && <span className="muted">{above.map((ref) => ref.name).join(" · ")} · </span>}
         {owner.name}
         {owner.id === null && <Tag color="orange">직접 입력</Tag>}
       </span>
