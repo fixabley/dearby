@@ -150,6 +150,10 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         // 단위 이름까지 직접 적으면 owner.id가 없고 승인 대기
         val fourth = byId.getValue(named.toString())
         assertEquals(listOf("pending", "program", true, "직접 적은 프로그램", true), listOf(fourth["approval"].asString(), fourth["owner"]["kind"].asString(), fourth["owner"]["id"].isNull, fourth["owner"]["name"].asString(), fourth["organization"].isNull))
+        // 호환 필드(배포된 앱·웹 모델용, 2026-11-03 밤 조율 결정): kind·organizationName·programName·activityName은 파생값
+        assertEquals(listOf("activity", third["organization"]["name"].asString(), third["program"]["name"].asString(), third["activity"]["name"].asString()), listOf(third["kind"].asString(), third["organizationName"].asString(), third["programName"].asString(), third["activityName"].asString()))
+        assertEquals(listOf("organization", true, true), listOf(first["kind"].asString(), first["activityName"].isNull, first["organizationName"].isString))
+        assertEquals(listOf("organization", true, "직접 적은 프로그램", true), listOf(fourth["kind"].asString(), fourth["organizationName"].isNull, fourth["programName"].asString(), fourth["activityName"].isNull))
 
         // 관리자가 거절한 뒤 그대로 저장하면 유지, 직접 입력을 고치면 다시 대기
         jdbc.sql("update profile_histories set approval_status = 'REJECTED', approval_reason = '확인 안 됨' where id = ?").param(custom).update()
@@ -346,14 +350,27 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
     @Test
     fun `V18 이전 버전 스냅샷의 직함 문자열은 승인된 직접 입력 직무로 읽히고 되돌릴 수 있다`() {
         val user = user()
+        val (organization, _) = letswift()
         put(user, """{"name":"지금","contacts":${contacts()}}""").andExpect { status { isOk() } }
-        val snapshot = """{"name":"옛날","job":"옛 직함","introduction":"","contacts":${json.writeValueAsString(contacts().replace("\"phone\"", "\"PHONE\"").replace("\"email\"", "\"EMAIL\""))},"histories":"[]"}""" // 스냅샷 형식은 ProfileJson(대문자 kind)
+        // V67 전 이력 스냅샷(kind·*Name, owner 없음): 등록 조직 + 지워진 전역 역할(999999), 조직 이름만 직접 적은 것
+        val picked = UUID.randomUUID()
+        val named = UUID.randomUUID()
+        val histories = """[{"id":"$picked","kind":"ORGANIZATION","organization":{"id":$organization,"name":"옛 조직"},"organizationName":null,"program":null,"programName":null,"activity":null,"activityName":null,"role":{"id":999999,"name":"옛 역할"},"roleName":null,"startDate":"2025-01-01","endDate":null,"description":"","approval":"APPROVED","approvalReason":null,"verification":"UNVERIFIED"},
+            {"id":"$named","kind":"ORGANIZATION","organization":null,"organizationName":"직접 적은 조직","program":null,"programName":null,"activity":null,"activityName":null,"role":null,"roleName":"운영진","startDate":"2025-01-01","endDate":null,"description":"","approval":"PENDING","approvalReason":null,"verification":"UNVERIFIED"}]"""
+        val snapshot = """{"name":"옛날","job":"옛 직함","introduction":"","contacts":${json.writeValueAsString(contacts().replace("\"phone\"", "\"PHONE\"").replace("\"email\"", "\"EMAIL\""))},"histories":${json.writeValueAsString(histories)}}""" // 스냅샷 형식은 ProfileJson(대문자 kind)
         jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 7, ?::jsonb, now())").params(user, snapshot).update()
         val old = read(mvc.get("/v1/profile/versions/7") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf("옛 직함", "approved"), listOf(old["profile"]["jobs"][0]["jobName"].asString(), old["profile"]["jobs"][0]["approval"].asString()))
+        // 옛 이력은 조직 참조에서 귀속을 만들고, 등록된 것이 없으면 이름만 남는다
+        val oldHistories = old["profile"]["histories"].values().associateBy { it["id"].asString() }
+        assertEquals(listOf("organization", organization, 999999L, "옛 역할"), listOf(oldHistories.getValue(picked.toString())["owner"]["kind"].asString(), oldHistories.getValue(picked.toString())["owner"]["id"].asLong(), oldHistories.getValue(picked.toString())["role"]["id"].asLong(), oldHistories.getValue(picked.toString())["roleName"].asString()))
+        assertEquals(listOf(true, "직접 적은 조직", "운영진"), listOf(oldHistories.getValue(named.toString())["owner"]["id"].isNull, oldHistories.getValue(named.toString())["owner"]["name"].asString(), oldHistories.getValue(named.toString())["roleName"].asString()))
         val restored = read(mvc.post("/v1/profile/versions/7/restore") { asUser(user) }.andExpect { status { isOk() } })
-        // 되돌린 직무는 지금 규칙대로 직접 입력이라 승인 대기가 된다
+        // 되돌린 직무는 지금 규칙대로 직접 입력이라 승인 대기가 된다. 지워진 역할은 이름만 남아 승인 대기
         assertEquals(listOf("옛날", "옛 직함", "pending"), listOf(restored["name"].asString(), restored["jobs"][0]["jobName"].asString(), restored["jobs"][0]["approval"].asString()))
+        val restoredHistories = restored["histories"].values().associateBy { it["id"].asString() }
+        assertEquals(listOf(true, "옛 역할", organization, "pending"), listOf(restoredHistories.getValue(picked.toString())["role"].isNull, restoredHistories.getValue(picked.toString())["roleName"].asString(), restoredHistories.getValue(picked.toString())["owner"]["id"].asLong(), restoredHistories.getValue(picked.toString())["approval"].asString()))
+        assertEquals(listOf(true, "pending"), listOf(restoredHistories.getValue(named.toString())["owner"]["id"].isNull, restoredHistories.getValue(named.toString())["approval"].asString()))
     }
 
     @Test
