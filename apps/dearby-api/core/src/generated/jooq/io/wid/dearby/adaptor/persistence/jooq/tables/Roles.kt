@@ -5,12 +5,14 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.OrganizationsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs.ProgramsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.RolesRecord
 
@@ -185,6 +187,22 @@ open class Roles(
      */
     fun programs(): ProgramsPath = programs
     val programs: ProgramsPath by lazy { ProgramsPath(this, ROLES__ROLES_PROGRAM_ID_FKEY, null) }
+
+    private lateinit var _profileHistories: ProfileHistoriesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_histories</code> table
+     */
+    fun profileHistories(): ProfileHistoriesPath {
+        if (!this::_profileHistories.isInitialized)
+            _profileHistories = ProfileHistoriesPath(this, null, PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY.inverseKey)
+
+        return _profileHistories;
+    }
+
+    val profileHistories: ProfileHistoriesPath
+        get(): ProfileHistoriesPath = profileHistories()
     override fun getChecks(): List<Check<RolesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("roles_owner_check"), "((num_nonnulls(organization_id, program_id, activity_id) = 1))", true),
         Internal.createCheck(this, DSL.name("roles_source_check"), "(((source)::text = ANY ((ARRAY['CURATED'::character varying, 'COLLECTED'::character varying])::text[])))", true)

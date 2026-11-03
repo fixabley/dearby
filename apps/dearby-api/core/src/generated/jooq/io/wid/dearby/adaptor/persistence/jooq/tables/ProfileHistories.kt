@@ -10,8 +10,10 @@ import io.wid.dearby.adaptor.persistence.jooq.indexes.PROFILE_HISTORIES_ROLE_ID_
 import io.wid.dearby.adaptor.persistence.jooq.indexes.PROFILE_HISTORIES_USER_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.HISTORY_EVIDENCE__HISTORY_EVIDENCE_HISTORY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence.HistoryEvidencePath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Roles.RolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users.UsersPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfileHistoriesRecord
 
@@ -102,7 +104,7 @@ open class ProfileHistories(
     /**
      * The column <code>public.profile_histories.role_name</code>.
      */
-    val ROLE_NAME: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("role_name"), SQLDataType.VARCHAR(100), this, "")
+    val ROLE_NAME: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("role_name"), SQLDataType.VARCHAR(200), this, "")
 
     /**
      * The column <code>public.profile_histories.start_date</code>.
@@ -198,7 +200,13 @@ open class ProfileHistories(
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(PROFILE_HISTORIES_REVIEW_IDX, PROFILE_HISTORIES_ROLE_ID_IDX, PROFILE_HISTORIES_USER_ID_IDX)
     override fun getPrimaryKey(): UniqueKey<ProfileHistoriesRecord> = PROFILE_HISTORIES_PKEY
-    override fun getReferences(): List<ForeignKey<ProfileHistoriesRecord, *>> = listOf(PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<ProfileHistoriesRecord, *>> = listOf(PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY, PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY)
+
+    /**
+     * Get the implicit join path to the <code>public.roles</code> table.
+     */
+    fun roles(): RolesPath = roles
+    val roles: RolesPath by lazy { RolesPath(this, PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY, null) }
 
     /**
      * Get the implicit join path to the <code>public.users</code> table.
@@ -223,7 +231,6 @@ open class ProfileHistories(
         get(): HistoryEvidencePath = historyEvidence()
     override fun getChecks(): List<Check<ProfileHistoriesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("profile_histories_approval_status_check"), "(((approval_status)::text = ANY ((ARRAY['APPROVED'::character varying, 'PENDING'::character varying, 'REJECTED'::character varying])::text[])))", true),
-        Internal.createCheck(this, DSL.name("profile_histories_approved_check"), "((((approval_status)::text <> 'APPROVED'::text) OR ((owner_id IS NOT NULL) AND (role_id IS NOT NULL))))", true),
         Internal.createCheck(this, DSL.name("profile_histories_owner_kind_check"), "(((owner_kind)::text = ANY ((ARRAY['ORGANIZATION'::character varying, 'PROGRAM'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("profile_histories_verification_status_check"), "(((verification_status)::text = ANY ((ARRAY['UNVERIFIED'::character varying, 'PENDING'::character varying, 'VERIFIED'::character varying, 'REJECTED'::character varying])::text[])))", true)
     )
