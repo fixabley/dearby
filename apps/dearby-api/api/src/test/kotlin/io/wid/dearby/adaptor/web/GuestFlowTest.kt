@@ -40,7 +40,10 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         val user = UUID.randomUUID()
         jdbc.sql("insert into users (id) values (?)").param(user).update()
         val contact = Contact(UUID.randomUUID(), ContactKind.EMAIL, "메일", "$user@example.com")
-        val history = History(UUID.randomUUID(), HistoryKind.ORGANIZATION, null, "조직", null, null, null, null, null, "역할", LocalDate.of(2026, 1, 1), null, "", ApprovalStatus.APPROVED, null, VerificationStatus.UNVERIFIED, emptyList())
+        // 승인된 이력은 등록된 단위의 등록된 역할에 매칭돼 있다(V67 check)
+        val organization = jdbc.sql("select id from organizations order by id limit 1").query(Long::class.java).single()
+        val role = jdbc.sql("insert into roles (organization_id, name, source, position, created_at, updated_at) values (?, ?, 'CURATED', 0, now(), now()) returning id").params(organization, "역할 $user").query(Long::class.java).single()
+        val history = History(UUID.randomUUID(), ActivityInfoRef(role, "역할"), "역할", RoleOwner(RoleOwnerKind.ORGANIZATION, organization, "조직"), ActivityInfoRef(organization, "조직"), null, null, LocalDate.of(2026, 1, 1), null, "", ApprovalStatus.APPROVED, null, VerificationStatus.UNVERIFIED, emptyList())
         profiles.save(Profile(user, "주인", emptyList(), "소개", listOf(contact), listOf(history), 1, OffsetDateTime.now()))
         val card = read(mvc.post("/v1/cards") {
             with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
