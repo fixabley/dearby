@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Form, Input, Modal, Popconfirm, Select, Space, Spin, Table, Tag } from "antd";
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
@@ -8,6 +8,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateSelectArg, EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core";
+import koLocale from "@fullcalendar/core/locales/ko";
 import { api, useSingleFlight } from "./api";
 import { type RecurrenceDraft, recurrenceDays, recurrenceDraft, recurrenceInput } from "./recurrence";
 import {
@@ -97,6 +98,7 @@ function byTime(a: Schedule, b: Schedule): number {
 export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleEditorActivity; onClose: () => void }) {
   const [form, setForm] = useState<{ schedule?: Schedule; selection?: CalendarSelection } | null>(null);
   const [statusesFor, setStatusesFor] = useState<Schedule | null>(null);
+  const calendarRef = useRef<FullCalendar | null>(null);
   const { message } = App.useApp();
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: ["activities"] });
@@ -110,7 +112,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
   });
   const undated = useMemo(() => activity.schedules.filter((schedule) => !startDay(schedule) && schedule.dateLabel).sort(byTime), [activity.schedules]);
   return (
-    <Modal open title={`일정 · ${activity.name}`} onCancel={onClose} footer={null} width={1100} destroyOnClose>
+    <Modal open title={`일정 · ${activity.name}`} onCancel={onClose} footer={null} width={1100} destroyOnClose afterOpenChange={(open) => open && calendarRef.current?.getApi().updateSize()}>
       <Space style={{ marginBottom: 12 }} wrap>
         <span className="muted">
           활동 기간 {scheduleText(activity.activitySchedule)} <PhaseTag phase="ACTIVITY" fixed />
@@ -120,7 +122,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
           <span className="schedule-band-swatch application" /> 모집 기간 <span className="schedule-band-swatch activity" /> 활동 기간 · 빈 날이나 시간을 끌어 일정을 만들어요.
         </span>
       </Space>
-      <ScheduleCalendar activity={activity} onSelect={(selection) => setForm({ selection })} onPickSchedule={(schedule) => setForm({ schedule })} onSaved={refresh} />
+      <ScheduleCalendar activity={activity} calendarRef={calendarRef} onSelect={(selection) => setForm({ selection })} onPickSchedule={(schedule) => setForm({ schedule })} onSaved={refresh} />
       <UndatedSchedules schedules={undated} onEdit={(schedule) => setForm({ schedule })} onStatuses={setStatusesFor} activityId={activity.id} onDelete={(schedule) => remove.mutate(schedule.id)} />
       {form && <ScheduleForm activityId={activity.id} schedule={form.schedule} selection={form.selection} onClose={() => setForm(null)} onSaved={refresh} onDelete={form.schedule ? async () => { await remove.mutateAsync(form.schedule!.id); setForm(null); } : undefined} onStatuses={form.schedule ? () => { setForm(null); setStatusesFor(form.schedule!); } : undefined} />}
       {statusesFor && <ScheduleStatusesModal activityId={activity.id} schedule={statusesFor} onClose={() => setStatusesFor(null)} />}
@@ -174,11 +176,13 @@ function selectionFor({ start, end, allDay }: DateSelectArg): CalendarSelection 
 /** FullCalendar month/week editor. Slot periods are background-only events; detail schedules carry their resolved phase color. */
 function ScheduleCalendar({
   activity,
+  calendarRef,
   onSelect,
   onPickSchedule,
   onSaved,
 }: {
   activity: ScheduleEditorActivity;
+  calendarRef: RefObject<FullCalendar | null>;
   onSelect: (selection: CalendarSelection) => void;
   onPickSchedule: (schedule: Schedule) => void;
   onSaved: () => Promise<unknown>;
@@ -203,8 +207,14 @@ function ScheduleCalendar({
     mutationFn: ({ schedule, start, end, allDay }: { schedule: Schedule; start: Date; end: Date | null; allDay: boolean }) => {
       const first = dayjs(start).tz(SEOUL);
       const last = dayjs(end ?? start).tz(SEOUL);
-      const period = scheduleInput({ range: allDay ? [first, last.subtract(1, "day")] : [first, last], timed: !allDay });
-      return api<Schedule>(`activities/${activity.id}/schedules/${schedule.id}`, "PATCH", period ?? {});
+      const period = scheduleInput({ range: allDay ? [first, last.subtract(1, "day")] : [first, last], timed: !allDay }) ?? {};
+      if (allDay) return api<Schedule>(`activities/${activity.id}/schedules/${schedule.id}`, "PATCH", period);
+      // A one-sided time is meaningful (for example, only a deadline). Do not turn it into a zero-length range by dragging it.
+      const { startAt, endAt } = period;
+      return api<Schedule>(`activities/${activity.id}/schedules/${schedule.id}`, "PATCH", {
+        ...(schedule.startAt && startAt ? { startAt } : {}),
+        ...(schedule.endAt && endAt ? { endAt } : {}),
+      });
     },
     onSuccess: async () => {
       message.success("일정을 옮겼어요.");
@@ -221,12 +231,13 @@ function ScheduleCalendar({
   return (
     <div className="schedule-fullcalendar">
       <FullCalendar
+        ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         initialDate={initial.format("YYYY-MM-DD")}
         // FullCalendar needs a named-zone plugin for Asia/Seoul. Operators use Korea-local browsers, so local keeps Date drag values and ISO instants aligned.
         timeZone="local"
-        locale="ko"
+        locale={koLocale}
         headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek" }}
         buttonText={{ today: "오늘", month: "월", week: "주" }}
         height="auto"
