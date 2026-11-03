@@ -9,7 +9,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
-import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
@@ -128,11 +127,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.activity_participations</code>.
      */
     val ACTIVITY_PARTICIPATIONS: ActivityParticipations get() = ActivityParticipations.ACTIVITY_PARTICIPATIONS
-
-    /**
-     * The table <code>public.activity_roles</code>.
-     */
-    val ACTIVITY_ROLES: ActivityRoles get() = ActivityRoles.ACTIVITY_ROLES
 
     /**
      * The table <code>public.activity_tags</code>.
@@ -502,7 +496,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS,
         ActivityEmbeddings.ACTIVITY_EMBEDDINGS,
         ActivityParticipations.ACTIVITY_PARTICIPATIONS,
-        ActivityRoles.ACTIVITY_ROLES,
         ActivityTags.ACTIVITY_TAGS,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCardPhotos.BUSINESS_CARD_PHOTOS,

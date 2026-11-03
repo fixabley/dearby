@@ -17,21 +17,21 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_EMBEDDINGS__ACTIVITY_EMBEDDINGS_ACTIVITY_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_NOTIFICATIONS__USER_NOTIFICATIONS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings.ActivityEmbeddingsPath
-import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles.ActivityRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Roles.RolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications.UserNotificationsPath
@@ -353,22 +353,6 @@ open class Activities(
     val activityEmbeddings: ActivityEmbeddingsPath
         get(): ActivityEmbeddingsPath = activityEmbeddings()
 
-    private lateinit var _activityRoles: ActivityRolesPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.activity_roles</code> table
-     */
-    fun activityRoles(): ActivityRolesPath {
-        if (!this::_activityRoles.isInitialized)
-            _activityRoles = ActivityRolesPath(this, null, ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY.inverseKey)
-
-        return _activityRoles;
-    }
-
-    val activityRoles: ActivityRolesPath
-        get(): ActivityRolesPath = activityRoles()
-
     private lateinit var _activityTags: ActivityTagsPath
 
     /**
@@ -432,6 +416,21 @@ open class Activities(
 
     val recommendationSignals: RecommendationSignalsPath
         get(): RecommendationSignalsPath = recommendationSignals()
+
+    private lateinit var _roles: RolesPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.roles</code> table
+     */
+    fun roles(): RolesPath {
+        if (!this::_roles.isInitialized)
+            _roles = RolesPath(this, null, ROLES__ROLES_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _roles;
+    }
+
+    val roles: RolesPath
+        get(): RolesPath = roles()
 
     private lateinit var _schedules: SchedulesPath
 

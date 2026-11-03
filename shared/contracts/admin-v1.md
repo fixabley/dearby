@@ -112,7 +112,7 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
 | GET /v1/admin/histories | `approval?`(pending·approved·rejected), `verification?`(unverified·pending·verified·rejected), `cursor?`(이력 id), `size?` | 200 `{items: HistoryForReview[], nextCursor}` |
-| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", roleId?, reason?}` | 200 HistoryForReview. `roleId`는 그 이력의 귀속 단위(`owner`)에 속한 역할이어야 하며 아니면 400, 거절에 사유 없으면 400 |
+| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", ownerKind?, ownerId?, roleId?, reason?}` | 200 HistoryForReview. `roleId`는 그 이력의 귀속 단위(`owner`)에 속한 역할이어야 하며 아니면 400, 거절에 사유 없으면 400. 단위 이름만 직접 적은 이력(`owner.id`가 null)은 `ownerKind`·`ownerId`로 등록된 단위를 골라 줘야 승인되고 없으면 400(2026-11-03 밤 조율 결정, 직접 입력 이력 보존). 승인 뒤에는 역할이 등록된 것이어야 하므로 `roleId`도 없고 이력의 역할도 직접 입력이면 400 |
 | POST /v1/admin/histories/:id/verification | `{decision: "verify"\|"reject"}` | 200 HistoryForReview |
 | GET /v1/admin/histories/:id/evidence/:eid | — | 200 파일(inline) |
 | GET /v1/admin/roles | `organizationId?`·`programId?`·`activityId?`(셋 중 하나 필수), `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}`. 전역 목록 없음 |
@@ -121,7 +121,7 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 | DELETE /v1/admin/roles/:id | — | 204. 이력이 쓰면 400 |
 
 - Role: `{id, name, nameEn, owner: {kind, id, name}, source: "curated"\|"collected"}`. 활동 역할은 수집이 공고의 모집 역할 문구로 만든 것(`collected`)이 있고, 운영자가 고치면 `curated`가 되어 다음 수집이 바꾸지 않는다(활동 편집의 `roles` 문자열 목록은 이 역할 행들이다).
-- HistoryForReview: `native-v1.md`의 History에 `profileName`을 더한 것.
+- HistoryForReview: `native-v1.md`의 History에 `profileName`을 더한 것. 공개 History의 호환 필드(`kind`·`organizationName`·`programName`·`activityName`)는 앱·웹용이라 여기에는 싣지 않는다. 호환 필드는 앱(iOS·Android)·웹 모델이 새 모양으로 갱신·배포된 뒤 제거(2026-11-03 밤 조율 결정).
 - 승인 때 `roleId`를 주면 직접 입력 역할 이름을 그 역할로 바꾼다. 없으면 그 귀속 단위 아래에 역할을 먼저 만든다(`POST /v1/admin/roles`). 귀속 단위(조직·프로그램·활동) 자체는 사용자가 등록된 것에서 골랐으므로 여기서 만들지 않는다.
 - 역할 관리 화면: 전역 "역할" 메뉴(`roles.tsx`)를 없애고 조직·프로그램·활동 편집 화면 안의 "역할" 절에서 그 단위의 역할을 만들고 고치고 순서를 정한다.
 

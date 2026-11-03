@@ -5,7 +5,7 @@ import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.PublicationStatus
 import java.time.OffsetDateTime
 
-// 운영자용 활동 정보. 공개 Activity와 같은 activities 행(+activity_roles)에 저장하지만 공개 API는 내보내지 않는다.
+// 운영자용 활동 정보. 공개 Activity와 같은 activities 행(+roles의 활동 역할)에 저장하지만 공개 API는 내보내지 않는다.
 // 같은 DB를 쓰는 운영자(admin) 모듈이 다룬다
 data class ActivityCuration(
     val activityId: Id,
@@ -17,7 +17,7 @@ data class ActivityCuration(
     val cost: String?,
     val audience: String?,
     val qualification: Map<String, List<String>>, // 자격요건. 조건 이름 → 값들. 없으면 빈 맵
-    val roles: List<String>, // 모집 역할 문구(순서 유지)
+    val roles: List<String>, // 활동 역할 이름(roles 행, 순서 유지). 쓰기는 admin-v1.md "이력 검토·역할"의 /v1/admin/roles
     val applicationUrl: String?, // 신청 링크
     val sourceCheckedAt: OffsetDateTime?, // 공식 안내를 마지막으로 확인한 시각
     val validUntil: OffsetDateTime?, // 확인 내용이 유효한 끝 시각

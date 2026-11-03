@@ -67,7 +67,7 @@ class AccountDeletionFlowTest(
         jdbc.sql("insert into profile_photos (user_id, data, updated_at) values (?, '\\xffd8', now())").param(id).update()
         jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 1, '{}', now())").param(id).update()
         val history = UUID.randomUUID()
-        jdbc.sql("insert into profile_histories (id, user_id, kind, organization_name, role_name, start_date, description, position, approval_status, verification_status, created_at, updated_at) values (?, ?, 'ORGANIZATION', '조직', '역할', '2026-01-01', '', 0, 'PENDING', 'UNVERIFIED', now(), now())").params(history, id).update()
+        jdbc.sql("insert into profile_histories (id, user_id, owner_kind, owner_name, role_name, start_date, description, position, approval_status, verification_status, created_at, updated_at) values (?, ?, 'ORGANIZATION', '조직', '역할', '2026-01-01', '', 0, 'PENDING', 'UNVERIFIED', now(), now())").params(history, id).update()
         jdbc.sql("insert into history_evidence (id, history_id, user_id, file_name, content_type, size, data, uploaded_at) values (?, ?, ?, 'a.png', 'image/png', 1, '\\x00', now())").params(UUID.randomUUID(), history, id).update()
         val card = UUID.randomUUID()
         jdbc.sql("insert into business_cards (id, user_id, name, description, template, introduction, profile_name, job, contacts, histories, created_at, updated_at) values (?, ?, '명함', '', '', '', '이름', '', '[]', '[]', now(), now())").params(card, id).update()

@@ -40,7 +40,7 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
 
     private fun read(result: ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
 
-    // 프로필과 직접 입력 이력을 DB에 바로 넣는다(사용자 API는 api 모듈)
+    // 프로필과 직접 입력 이력(조직 이름·역할 이름을 직접 적음, 승인 대기)을 DB에 바로 넣는다(사용자 API는 api 모듈)
     private fun userWithHistory(approval: String = "PENDING", verification: String = "UNVERIFIED", withEvidence: Boolean = false): Pair<UUID, UUID> {
         val user = UUID.randomUUID()
         jdbc.sql("insert into users (id) values (?)").param(user).update()
@@ -48,9 +48,9 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
         val history = UUID.randomUUID()
         jdbc.sql(
             """
-            insert into profile_histories (id, user_id, kind, organization_name, program_name, role_name, start_date, description, position,
+            insert into profile_histories (id, user_id, owner_kind, owner_name, role_name, start_date, description, position,
                                            approval_status, verification_status, created_at, updated_at)
-            values (?, ?, 'ORGANIZATION', '직접 적은 조직', '직접 적은 프로그램', '운영진', '2026-01-01', '', 0, ?, ?, now(), now())
+            values (?, ?, 'ORGANIZATION', '직접 적은 조직', '운영진', '2026-01-01', '', 0, ?, ?, now(), now())
             """
         ).params(history, user, approval, verification).update()
         if (withEvidence) {
@@ -61,25 +61,30 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
     }
 
     @Test
-    fun `승인 대기 이력을 보고, 활동 정보 id로 바꿔 승인하면 직접 입력 값이 그 항목으로 바뀐다`() {
+    // admin-v1.md "이력 검토·역할": 이름만 적은 단위는 ownerKind·ownerId로 등록된 단위를, 직접 적은 역할은 그 단위의 roleId를 줘야 승인된다
+    fun `승인 대기 이력을 보고, 등록된 단위와 그 단위의 역할로 바꿔 승인하면 직접 입력 값이 그 항목으로 바뀐다`() {
         val (_, history) = userWithHistory()
         val organization = read(mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"검토용 조직 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()
-        val role = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"name":"운영진 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        val other = read(mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"다른 조직 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        val role = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$organization,"name":"운영진 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        val otherRole = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$other,"name":"운영진 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()
 
         val pending = read(mvc.get("/v1/admin/histories?approval=pending") { asAdmin() })["items"]
         val item = pending.values().single { it["id"].asString() == history.toString() }
         assertEquals("검토 대상", item["profileName"].asString())
-        assertEquals(listOf("직접 적은 조직", null, "운영진"), listOf(item["organizationName"].asString(), item["organization"].takeUnless { it.isNull }, item["roleName"].asString()))
+        assertEquals(listOf("organization", true, "직접 적은 조직", true, "운영진"), listOf(item["owner"]["kind"].asString(), item["owner"]["id"].isNull, item["owner"]["name"].asString(), item["organization"].isNull, item["roleName"].asString()))
         // 계정 id는 싣지 않는다
         assertEquals(false, item.has("userId"))
 
-        mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","organizationId":999999}""") }.andExpect { status { isBadRequest() } }
-        val approved = read(mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","organizationId":$organization,"roleId":$role}""") }.andExpect { status { isOk() } })
+        // 단위를 고르지 않으면, 단위만 주고 역할이 직접 입력이면, 없는 단위면, 다른 단위의 역할이면 400
+        mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","roleId":$role}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","ownerKind":"organization","ownerId":$organization}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","ownerKind":"organization","ownerId":999999,"roleId":$role}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","ownerKind":"organization","ownerId":$organization,"roleId":$otherRole}""") }.andExpect { status { isBadRequest() } }
+        val approved = read(mvc.post("/v1/admin/histories/$history/approval") { asAdmin(); body("""{"decision":"approve","ownerKind":"organization","ownerId":$organization,"roleId":$role}""") }.andExpect { status { isOk() } })
         assertEquals("approved", approved["approval"].asString())
-        assertEquals(organization, approved["organization"]["id"].asLong())
-        assertEquals(role, approved["role"]["id"].asLong())
-        // 프로그램은 id를 주지 않아 직접 입력 그대로 남는다
-        assertEquals("직접 적은 프로그램", approved["programName"].asString())
+        assertEquals(listOf(organization, organization), listOf(approved["owner"]["id"].asLong(), approved["organization"]["id"].asLong()))
+        assertEquals(listOf(role, approved["role"]["name"].asString()), listOf(approved["role"]["id"].asLong(), approved["roleName"].asString()))
         assertEquals(0, read(mvc.get("/v1/admin/histories?approval=pending") { asAdmin() })["items"].values().count { it["id"].asString() == history.toString() })
         // 쓰이는 역할은 지울 수 없다
         mvc.delete("/v1/admin/roles/$role") { asAdmin() }.andExpect { status { isBadRequest() } }
@@ -104,17 +109,37 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
     }
 
     @Test
-    fun `역할은 띄어쓰기만 다른 이름을 중복으로 보고, 고치고 지울 수 있다`() {
+    // admin-v1.md "이력 검토·역할": 역할은 단위 하나에 귀속되고 이름은 그 단위 안에서만 유일. 수집 역할을 고치면 curated
+    fun `역할은 귀속 단위 안에서 띄어쓰기만 다른 이름을 중복으로 보고, 고치고 순서를 정하고 지울 수 있다`() {
         val suffix = UUID.randomUUID().toString().take(8)
-        val role = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"name":"기획 팀장 $suffix","nameEn":"Planning Lead $suffix"}""") }.andExpect { status { isCreated() } })
-        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"name":"기획팀장 $suffix"}""") }.andExpect { status { isBadRequest() } }
-        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"name":"다른 역할 $suffix","nameEn":"PlanningLead $suffix"}""") }.andExpect { status { isBadRequest() } }
+        val organization = read(mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"역할 조직 $suffix"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        val other = read(mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"역할 조직2 $suffix"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        // 귀속 단위는 정확히 하나, 등록된 것이어야 한다
+        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"name":"기획 팀장 $suffix"}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$organization,"programId":1,"name":"기획 팀장 $suffix"}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":999999,"name":"기획 팀장 $suffix"}""") }.andExpect { status { isBadRequest() } }
+        val role = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$organization,"name":"기획 팀장 $suffix","nameEn":"Planning Lead $suffix"}""") }.andExpect { status { isCreated() } })
+        assertEquals(listOf("organization", organization, "역할 조직 $suffix", "curated"), listOf(role["owner"]["kind"].asString(), role["owner"]["id"].asLong(), role["owner"]["name"].asString(), role["source"].asString()))
+        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$organization,"name":"기획팀장 $suffix"}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$organization,"name":"다른 역할 $suffix","nameEn":"PlanningLead $suffix"}""") }.andExpect { status { isBadRequest() } }
+        // 다른 단위에서는 같은 이름을 쓸 수 있다
+        mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$other,"name":"기획팀장 $suffix"}""") }.andExpect { status { isCreated() } }
         val id = role["id"].asLong()
-        assertEquals(listOf(id), read(mvc.get("/v1/admin/roles?q=planning lead $suffix") { asAdmin() })["items"].values().map { it["id"].asLong() })
-        val updated = read(mvc.patch("/v1/admin/roles/$id") { asAdmin(); body("""{"name":"기획 리드 $suffix","nameEn":""}""") }.andExpect { status { isOk() } })
+        val second = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"organizationId":$organization,"name":"둘째 $suffix"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        mvc.get("/v1/admin/roles?q=planning lead $suffix") { asAdmin() }.andExpect { status { isBadRequest() } }
+        assertEquals(listOf(id), read(mvc.get("/v1/admin/roles?organizationId=$organization&q=planning lead $suffix") { asAdmin() })["items"].values().map { it["id"].asLong() })
+        assertEquals(listOf(id, second), read(mvc.get("/v1/admin/roles?organizationId=$organization") { asAdmin() })["items"].values().map { it["id"].asLong() })
+        val updated = read(mvc.patch("/v1/admin/roles/$id") { asAdmin(); body("""{"name":"기획 리드 $suffix","nameEn":"","position":5}""") }.andExpect { status { isOk() } })
         assertEquals(listOf("기획 리드 $suffix", true), listOf(updated["name"].asString(), updated["nameEn"].isNull))
+        assertEquals(listOf(second, id), read(mvc.get("/v1/admin/roles?organizationId=$organization") { asAdmin() })["items"].values().map { it["id"].asLong() })
         mvc.delete("/v1/admin/roles/$id") { asAdmin() }.andExpect { status { isNoContent() } }
         mvc.delete("/v1/admin/roles/$id") { asAdmin() }.andExpect { status { isNotFound() } }
+
+        // 수집이 만든 활동 역할(collected)은 운영자가 고치면 curated가 된다
+        val activity = jdbc.sql("select id from activities order by id limit 1").query(Long::class.java).single()
+        val collected = jdbc.sql("insert into roles (activity_id, name, source, position, created_at, updated_at) values (?, ?, 'COLLECTED', 0, now(), now()) returning id").params(activity, "수집 역할 $suffix").query(Long::class.java).single()
+        assertEquals("collected", read(mvc.get("/v1/admin/roles?activityId=$activity&q=수집 역할 $suffix") { asAdmin() })["items"].single()["source"].asString())
+        assertEquals("curated", read(mvc.patch("/v1/admin/roles/$collected") { asAdmin(); body("""{"name":"고친 역할 $suffix"}""") }.andExpect { status { isOk() } })["source"].asString())
     }
 
     // admin-v1.md "명함 신고 — 2026-10-22": 목록(열린 것 먼저, 같은 명함 신고 수), 상태 바꾸기, 명함 내리기(메모 필수, 열린 신고는 RESOLVED)
