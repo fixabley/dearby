@@ -10,7 +10,6 @@ import { Activities } from "./activities";
 import { Organizations } from "./organizations";
 import { Programs } from "./programs";
 import { Histories } from "./histories";
-import { Roles } from "./roles";
 import { Jobs } from "./jobs";
 import { Tags } from "./tags";
 import { Reports } from "./reports";
@@ -112,10 +111,6 @@ function Shell() {
             <AuditOutlined aria-hidden="true" />
             이력 검토
           </NavLink>
-          <NavLink to="/roles">
-            <TagsOutlined aria-hidden="true" />
-            역할
-          </NavLink>
           <NavLink to="/jobs">
             <IdcardOutlined aria-hidden="true" />
             직무
@@ -145,7 +140,6 @@ function Shell() {
           <Route path="/programs" element={<Programs />} />
           <Route path="/organizations" element={<Organizations />} />
           <Route path="/histories" element={<Histories />} />
-          <Route path="/roles" element={<Roles />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/tags" element={<Tags />} />
           <Route path="/reports" element={<Reports />} />

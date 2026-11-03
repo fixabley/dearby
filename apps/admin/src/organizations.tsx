@@ -6,6 +6,7 @@ import { api, useSingleFlight } from "./api";
 import { ActivityTextEditor, type ActivityText, type PublicationStatus, statusLabels } from "./activities";
 import { SearchSelect, allPages } from "./list";
 import { LogoField } from "./logo";
+import { RolesModal, type RoleOwner } from "./roles";
 
 type Organization = {
   id: number;
@@ -59,7 +60,8 @@ export function Organizations() {
   const [expanded, setExpanded] = useState<Key[]>([]),
     [matches, setMatches] = useState<Set<number>>(),
     [draft, setDraft] = useState<Draft>(),
-    [editingActivity, setEditingActivity] = useState<Activity>();
+    [editingActivity, setEditingActivity] = useState<Activity>(),
+    [rolesOf, setRolesOf] = useState<RoleOwner>();
   const roots = useQuery({
     queryKey: ["organizations", "tree", "roots"],
     queryFn: () => allPages<Organization>("organizations", { rootsOnly: "true" }),
@@ -238,7 +240,7 @@ export function Organizations() {
           loading={roots.isLoading}
           dataSource={tree}
           pagination={false}
-          scroll={{ x: 1290 }}
+          scroll={{ x: 1350 }}
           rowClassName={(row) => (row.kind === "organization" && matches?.has(row.record.id) ? "tree-match" : "")}
           expandable={{ expandedRowKeys: expanded, onExpandedRowsChange: (keys) => setExpanded([...keys]) }}
           locale={{ emptyText: "등록된 조직이 없어요." }}
@@ -357,7 +359,7 @@ export function Organizations() {
             },
             {
               title: "",
-              width: 300,
+              width: 360,
               className: "actions",
               render: (_, row) => {
                 if (row.kind === "note") return null;
@@ -433,6 +435,9 @@ export function Organizations() {
                         >
                           편집
                         </Button>
+                        <Button size="small" disabled={!!draft} onClick={() => setRolesOf({ kind: "program", id, name })}>
+                          역할
+                        </Button>
                         {deletion}
                       </Space>
                       {failed}
@@ -466,6 +471,9 @@ export function Organizations() {
                       <Button size="small" disabled={!!draft} onClick={() => start({ ...under, kind: "program" }, row.key)}>
                         프로그램 추가
                       </Button>
+                      <Button size="small" disabled={!!draft} onClick={() => setRolesOf({ kind: "organization", id, name })}>
+                        역할
+                      </Button>
                       {deletion}
                     </Space>
                     {failed}
@@ -477,6 +485,7 @@ export function Organizations() {
         />
       )}
       {editingActivity && <ActivityTextEditor activity={editingActivity} onClose={() => setEditingActivity(undefined)} />}
+      {rolesOf && <RolesModal owner={rolesOf} onClose={() => setRolesOf(undefined)} />}
     </>
   );
 }
