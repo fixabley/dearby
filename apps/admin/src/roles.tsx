@@ -63,6 +63,10 @@ export function RolesSection({ kind, id }: { kind: OwnerKind; id: number }) {
   const moveOnce = useSingleFlight();
   const busy = save.isPending || remove.isPending || move.isPending;
   const cancelOnEscape = (e: KeyboardEvent) => e.key === "Escape" && !save.isPending && setDraft(undefined);
+  const submitOnEnter = (e: KeyboardEvent) => {
+    e.preventDefault(); // Keeps the enclosing editor's form from submitting.
+    submit();
+  };
   const editor = (label: string) => (
     <Space wrap>
       <Input
@@ -72,10 +76,7 @@ export function RolesSection({ kind, id }: { kind: OwnerKind; id: number }) {
         value={draft!.name}
         disabled={save.isPending}
         onChange={(e) => setDraft({ ...draft!, name: e.target.value })}
-        onPressEnter={(e) => {
-          e.preventDefault(); // Keeps the enclosing editor's form from submitting.
-          submit();
-        }}
+        onPressEnter={submitOnEnter}
         onKeyDown={cancelOnEscape}
         style={{ width: 180 }}
       />
@@ -85,10 +86,7 @@ export function RolesSection({ kind, id }: { kind: OwnerKind; id: number }) {
         value={draft!.nameEn}
         disabled={save.isPending}
         onChange={(e) => setDraft({ ...draft!, nameEn: e.target.value })}
-        onPressEnter={(e) => {
-          e.preventDefault();
-          submit();
-        }}
+        onPressEnter={submitOnEnter}
         onKeyDown={cancelOnEscape}
         style={{ width: 160 }}
       />
@@ -198,7 +196,7 @@ export function RolesSection({ kind, id }: { kind: OwnerKind; id: number }) {
           ]}
         />
       )}
-      <div className="roles-add">
+      <div>
         {draft && draft.id === undefined ? (
           <>
             {editor("추가")}

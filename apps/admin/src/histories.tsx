@@ -33,7 +33,7 @@ export type HistoryForReview = {
 
 const month = (date: string) => date.slice(0, 7).replace("-", ".");
 const period = (h: HistoryForReview) => `${month(h.startDate)} – ${h.endDate ? month(h.endDate) : "진행 중"}`;
-const kindPaths: Record<OwnerKind, "organizations" | "programs" | "activities"> = { organization: "organizations", program: "programs", activity: "activities" };
+const kindPaths = { organization: "organizations", program: "programs", activity: "activities" } as const;
 
 /** `귀속 단위 이름 · 역할 이름` with the unit's kind; a typed (unregistered) unit or role gets a tag so the reviewer knows what to pick. */
 function Matched({ history }: { history: HistoryForReview }) {
