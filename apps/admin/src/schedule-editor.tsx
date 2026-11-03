@@ -122,7 +122,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
       </Space>
       <ScheduleCalendar activity={activity} onSelect={(selection) => setForm({ selection })} onPickSchedule={(schedule) => setForm({ schedule })} onSaved={refresh} />
       <UndatedSchedules schedules={undated} onEdit={(schedule) => setForm({ schedule })} onStatuses={setStatusesFor} activityId={activity.id} onDelete={(schedule) => remove.mutate(schedule.id)} />
-      {form && <ScheduleForm activityId={activity.id} schedule={form.schedule} selection={form.selection} onClose={() => setForm(null)} onSaved={refresh} onDelete={form.schedule ? async () => { await remove.mutateAsync(form.schedule!.id); setForm(null); } : undefined} />}
+      {form && <ScheduleForm activityId={activity.id} schedule={form.schedule} selection={form.selection} onClose={() => setForm(null)} onSaved={refresh} onDelete={form.schedule ? async () => { await remove.mutateAsync(form.schedule!.id); setForm(null); } : undefined} onStatuses={form.schedule ? () => { setForm(null); setStatusesFor(form.schedule!); } : undefined} />}
       {statusesFor && <ScheduleStatusesModal activityId={activity.id} schedule={statusesFor} onClose={() => setStatusesFor(null)} />}
     </Modal>
   );
@@ -152,6 +152,8 @@ function scheduleEvents(schedule: Schedule): EventInput[] {
     start: range.allDay ? start.format("YYYY-MM-DD") : start.toISOString(),
     end: range.allDay ? end.format("YYYY-MM-DD") : end.toISOString(),
     allDay: range.allDay,
+    // One schedule owns a recurrence rule; dragging one occurrence must not silently shift the entire series.
+    editable: !schedule.recurrence,
     classNames: [schedule.phase === "SELECTION" ? "schedule-event-selection" : "schedule-event-activity", overlapUnavailable(schedule) ? "schedule-event-no-overlap" : ""],
     extendedProps: { schedule } satisfies CalendarEventProps,
   });
@@ -222,7 +224,8 @@ function ScheduleCalendar({
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         initialDate={initial.format("YYYY-MM-DD")}
-        timeZone={SEOUL}
+        // FullCalendar needs a named-zone plugin for Asia/Seoul. Operators use Korea-local browsers, so local keeps Date drag values and ISO instants aligned.
+        timeZone="local"
         locale="ko"
         headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek" }}
         buttonText={{ today: "오늘", month: "월", week: "주" }}
@@ -275,6 +278,7 @@ function ScheduleForm({
   onClose,
   onSaved,
   onDelete,
+  onStatuses,
 }: {
   activityId: number;
   schedule?: Schedule;
@@ -282,6 +286,7 @@ function ScheduleForm({
   onClose: () => void;
   onSaved: () => Promise<unknown>;
   onDelete?: () => Promise<unknown>;
+  onStatuses?: () => void;
 }) {
   const [form] = Form.useForm();
   const { message } = App.useApp();
@@ -314,6 +319,8 @@ function ScheduleForm({
               <Button danger>삭제</Button>
             </Popconfirm>
           )}
+          {onStatuses && <Button onClick={onStatuses}>진행 상태</Button>}
+          {schedule && <TimetableButton activityId={activityId} schedule={schedule} />}
           <CancelBtn />
           <OkBtn />
         </Space>
