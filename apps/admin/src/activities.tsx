@@ -13,6 +13,7 @@ import { type Category, categoryLabel, categoryOptions, categoryOrder, UNCATEGOR
 import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
 import { PlaceField, type Place } from "./place-field";
 import { ScheduleEditorModal } from "./schedule-editor";
+import { RolesSection } from "./roles";
 import { type RecurrenceDraft, RecurrenceField, recurrenceDraft, recurrenceInput } from "./recurrence";
 
 dayjs.extend(utc);
@@ -922,6 +923,9 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
             ]}
           />
         </div>
+        <Form.Item label="역할" style={{ marginTop: 16 }}>
+          <RolesSection kind="activity" id={activity.id} />
+        </Form.Item>
       </Form>
     </Modal>
   );

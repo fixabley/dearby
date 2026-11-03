@@ -317,6 +317,15 @@ a:focus-visible {
 .modal-actions {
   margin-top: 8px;
 }
+/* 역할 절(조직·프로그램·활동 편집) */
+.roles-section {
+  display: grid;
+  gap: 8px;
+}
+.roles-section .ant-table-cell {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
 .schedule-block {
   padding: 12px 14px;
   margin-bottom: 14px;
