@@ -218,17 +218,18 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
 
-### 이력 (History) — 단계별 입력
+### 이력 (History) — 역할 매칭 (2026-11-03 밤 사용자 결정, 아래 "대체되는 결정" 참고)
 
-사용자는 토스 퍼널처럼 단계별로 고른다: **조직인지 활동인지 → 어떤 조직 → 어떤 프로그램 → (활동이면) 어떤 활동 → 역할 → 기간**. 조직·프로그램·활동·역할은 등록된 활동 정보에서 검색해 고르고, 없으면 직접 입력한다.
+**역할(Role)은 조직·프로그램·활동 중 하나에 귀속**되고(`디프만(조직) · 운영진`, `SSAFY(프로그램) · 교육생`, `디프만 19기(활동) · iOS 개발자`), **이력은 사용자가 역할 하나에 매칭된 것**이다. 사용자는 역할을 여러 개 가질 수 있다(이력 여러 건, 같은 단위 안에서 둘 이상도 가능). 조직·프로그램·활동은 역할이 이미 알고 있으므로 이력에 따로 넣지 않는다. "어떤 활동에 참여했는지"는 활동 역할에 매칭되면 그 활동이고, 조직·프로그램 역할이면 그 단위까지다(19기와 20기를 둘 다 남기려면 각 기수의 역할에 따로 매칭). 매칭은 사용자가 스스로 남기는 것이며 주최 측 확인이 아니다(인증자료·관리자 확인은 그대로).
 
-- History: `{id, kind: "organization"|"activity", organization: Ref|null, organizationName, program: Ref|null, programName, activity: Ref|null, activityName, role: Ref|null, roleName, startDate, endDate, description, approval, approvalReason, verification, evidence: Evidence[]}`
-  - Ref는 `{id(숫자), name}`. 등록된 활동 정보에서 고르면 Ref와 이름이 함께 오고, 직접 입력이면 Ref가 null이고 `*Name`만 있다. 요청에서는 `organizationId`·`programId`·`activityId`·`roleId`(숫자, 선택)와 `organizationName`·`programName`·`activityName`·`roleName`(직접 입력, 선택)을 보낸다. 둘 다 보내면 id를 쓴다.
-  - `kind=organization`은 조직(선택으로 프로그램)과 역할, `kind=activity`는 활동(소속 프로그램·조직 포함)과 역할. 조직 또는 조직 이름은 필수, 역할 또는 역할 이름은 필수. `startDate` 필수, `endDate`는 진행 중이면 null, 시작보다 앞설 수 없다.
-  - 2026-10-18 사용자 지시(입력 퍼널 분리): 조직 이력 퍼널은 조직 → 역할 → 기간 → 설명만 묻고 프로그램·활동은 묻지 않는다. 활동 이력 퍼널은 활동(전체 활동 검색, 소속 조직 표시) → 역할 → 기간 → 설명만 묻는다. 활동을 활동 정보에서 골랐으면 서버가 `activityId`로 소속 프로그램·조직을 채우므로 요청에 `organizationId`를 넣지 않아도 된다(넣으면 그 값이 활동의 소속과 달라도 거절하지 않고 활동의 소속으로 맞춘다). 활동을 직접 입력했을 때만 조직(필수)·프로그램(선택) 단계를 뒤에 묻는다. 활동 검색 응답(`GET /v1/activities` 선택 창)에는 `organization`과 `program` Ref를 함께 싣는다.
-  - `approval`: `approved` | `pending` | `rejected`. 직접 입력(`*Name`만 있는 값)이 하나라도 있으면 `pending`으로 저장되고 **관리자가 승인해야 명함에 넣을 수 있다**. 등록된 활동 정보 값만 쓰면 바로 `approved`. 승인된 뒤 직접 입력 값을 바꾸면 다시 `pending`. 거절되면 `approvalReason`에 사유가 온다.
-  - `verification`: `unverified` | `pending` | `verified` | `rejected`. 인증자료를 하나라도 올리면 `pending`, 관리자가 확인하면 `verified`. 앱은 `verified`가 아니면 **미확인 배지**를 붙인다. 미인증이어도 명함에 넣을 수 있다.
-- 검색(로그인, 앱 선택 창용): `GET /v1/organizations?q&parentId&rootsOnly&cursor&size`, `GET /v1/programs?q&organizationId&cursor&size`, `GET /v1/roles?q&cursor&size`, 활동은 기존 `GET /v1/activities`. 응답은 admin과 같은 keyset 페이지(`{items, nextCursor}`), 항목은 `{id, name, nameEn?}`(조직은 `parentOrganizationId`, 프로그램은 `organization` 포함).
+- Role: `{id, name, nameEn, owner: {kind: "organization"|"program"|"activity", id, name}, source: "curated"|"collected"}`. 이름은 **귀속 단위 안에서** 띄어쓰기를 뺀 값으로 유일(전역 유일 아님). 활동 역할은 수집기가 공고의 모집 역할 문구로 채우던 `activity_roles`를 옮긴 것이라 `source=collected`로 들어오고, 조직·프로그램 역할과 운영자가 고친 활동 역할은 `curated`.
+- History: `{id, role: Role|null, roleName, owner: {kind, id, name}, organization: Ref|null, program: Ref|null, activity: Ref|null, startDate, endDate, description, approval, approvalReason, verification, evidence: Evidence[]}`. `organization`·`program`·`activity`는 역할의 귀속에서 서버가 채우는 편의 값이다(활동 역할이면 셋 다, 프로그램 역할이면 조직·프로그램, 조직 역할이면 조직만). 요청은 `{roleId}` 또는 직접 입력 `{ownerKind, ownerId, roleName}`(귀속 단위는 등록된 것에서 고르고 역할 이름만 적는다) + `startDate`(필수)·`endDate`(진행 중이면 null, 시작보다 앞설 수 없음)·`description`. 둘 다 보내면 `roleId`를 쓴다.
+- 입력 퍼널(하나): **어디에서**(조직·프로그램·활동 통합 검색, 결과 행에 종류와 소속 표시) → **역할**(그 단위의 역할 목록, 없으면 직접 입력) → 기간 → 설명. 2026-10-18의 조직 이력·활동 이력 두 퍼널은 이것으로 대체된다. 상세·내 활동에서 들어오면 "어디에서"가 그 활동으로 채워진 채 역할부터 묻는다.
+- `approval`: `approved` | `pending` | `rejected`. 직접 입력(`roleName`)이면 `pending`으로 저장되고 **관리자가 승인해야 명함에 넣을 수 있다**. 등록된 역할(`roleId`)이면 바로 `approved`. 승인된 뒤 역할을 직접 입력 값으로 바꾸면 다시 `pending`. 거절되면 `approvalReason`.
+- `verification`: `unverified` | `pending` | `verified` | `rejected`. 인증자료를 하나라도 올리면 `pending`, 관리자가 확인하면 `verified`. 앱은 `verified`가 아니면 **미확인 배지**. 미인증이어도 명함에 넣을 수 있다.
+- 표시(프로필 활동 이력·명함): `디프만 19기 · iOS 개발자`, `디프만 · 운영진`, `SSAFY · 교육생`처럼 **귀속 단위 이름 · 역할 이름**. 활동 역할이면 활동 상세로, 프로그램·조직이면 그 화면으로 이어진다.
+- 검색(로그인, 앱 선택 창용): `GET /v1/organizations?q&parentId&rootsOnly&cursor&size`, `GET /v1/programs?q&organizationId&cursor&size`, 활동은 기존 `GET /v1/activities`, 역할은 `GET /v1/roles?organizationId|programId|activityId&q&cursor&size`(셋 중 하나 필수, 전역 목록 없음). 통합 검색은 `GET /v1/discovery/search?q=`(리뉴얼 계약)에 `kinds=organization,program,activity`를 더해 쓴다. 응답은 admin과 같은 keyset 페이지(`{items, nextCursor}`).
+- DB(다음 마이그레이션 번호, dev 기준 V40 다음): `roles`에 `organization_id | program_id | activity_id`(정확히 하나, check) + `source` + `position`, 유일 인덱스는 `(귀속 열, regexp_replace(name,'\s','','g'))`. `activity_roles` 행을 `roles(activity_id, source='collected', position)`로 옮기고 테이블을 지운다(수집기·큐레이션 저장은 이후 `roles`에 쓴다, `ActivityCuration.roles`는 그대로 문자열 목록). `profile_histories`는 `role_id`·`role_name`·`owner_kind`·`owner_id`만 남기고 `organization_*`·`program_*`·`activity_*` 열을 지운다(기존 행이 있으면 `kind=activity`는 `activity_id`, 아니면 `program_id`→`organization_id` 순으로 `owner`를 만들고 `role_id`가 전역 역할이면 그 단위 아래 같은 이름의 역할을 만들어 다시 가리킨다; 운영 데이터 유무는 배정 때 확인). 전역 `roles` 행 중 아무 이력도 가리키지 않는 것은 지운다.
 
 ### 인증자료 (Evidence)
 
