@@ -23,6 +23,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
@@ -174,6 +175,11 @@ val COLLECTION_WATCHLIST: CollectionWatchlist = CollectionWatchlist.COLLECTION_W
  * The table <code>public.contacts</code>.
  */
 val CONTACTS: Contacts = Contacts.CONTACTS
+
+/**
+ * The table <code>public.discovery_filter_config</code>.
+ */
+val DISCOVERY_FILTER_CONFIG: DiscoveryFilterConfig = DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG
 
 /**
  * The table <code>public.discovery_queue</code>.
