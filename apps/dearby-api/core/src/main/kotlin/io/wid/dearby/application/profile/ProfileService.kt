@@ -72,13 +72,15 @@ class ProfileService(
     fun restore(userId: UserId, version: Int): Profile {
         requireConsent(userId)
         val snapshot = version(userId, version).profile
+        // 스냅샷의 역할이 그새 지워졌으면(V67이 지운 전역 역할 등) 이름만 남겨 직접 입력으로 되돌린다(되돌리기가 막히지 않도록, 2026-10-20 결정과 같은 취지)
+        val liveRoles = roles.findAllById(snapshot.histories.mapNotNull { it.role?.id }).map { it.id }.toSet()
         val input = ProfileInput(
             name = snapshot.name,
             jobs = snapshot.jobs.map { JobInput(it.id, it.job?.id, it.jobName) },
             introLink = snapshot.introLink,
             contacts = snapshot.contacts.map { ContactInput(it.id, it.kind.name.lowercase(), it.label, it.value) },
             histories = snapshot.histories.map {
-                HistoryInput(it.id, it.role?.id, it.owner.kind.name.lowercase(), it.owner.id, it.owner.name, it.roleName, it.startDate, it.endDate, it.description)
+                HistoryInput(it.id, it.role?.id?.takeIf { id -> id in liveRoles }, it.owner.kind.name.lowercase(), it.owner.id, it.owner.name, it.roleName, it.startDate, it.endDate, it.description)
             },
         )
         return update(userId, input, null)
