@@ -45,7 +45,7 @@
 | 이벤트 | 매개변수 |
 |---|---|
 | `activity_view`(활동 상세 열림) | `activity_id`, `field`, `category`, `source` = `discovery`·`queue`·`favorites`·`link`·`push`·`inbox`(알림 목록 행)·`my_activity`(내 활동 목록) |
-| `favorite_add` · `favorite_remove` | `type` = `program`·`activity`·`session`(세션 찜, 2026-10-26 추가 — 아래 "비공개 테스트 성공 지표"; `id` = 세션 id, `activity_id` 함께), `id`, `field`, `category` |
+| `favorite_add` · `favorite_remove` | `type` = `program`·`activity`(2026-11-03부터 상세의 `찜`)·`organization`(조직 팔로우, 2026-11-03)·`session`(세션 찜, 2026-10-26 추가 — 아래 "비공개 테스트 성공 지표"; `id` = 세션 id, `activity_id` 함께), `id`, `field`, `category` |
 | `notify_level_set` | `type`, `level` = `all`·`application`·`none` |
 | `myactivity_add` | `activity_id`, `field`, `category`, `source`(오늘 행사 온보딩의 `참여해요`는 `today_onboarding`, 2026-10-27) |
 | `apply_click`(공식 신청 링크) | `activity_id`, `field`, `category`, `source` |
@@ -58,8 +58,11 @@
 ## 메뉴별 접근률 (2026-10-25 사용자 "각 메뉴별 접근률도")
 | 이벤트 | 시점 | 매개변수 |
 |---|---|---|
-| `tab_select` | 하단 탭을 누름(앱 시작 때 첫 탭은 보내지 않음) | `tab` = `discovery`·`my_activity`·`cards`·`profile` |
+| `tab_select` | 하단 탭을 누름(앱 시작 때 첫 탭은 보내지 않음) | `tab` = `home`·`discovery`·`cards`·`profile`(2026-11-03 홈 탭 추가·내 활동 탭 삭제, [native-v1.md](native-v1.md) "홈 탭·활동 상세·프로그램·조직·내 활동 리뉴얼"; 그 전 `my_activity`) |
 | `menu_open` | 탭 안의 주요 메뉴·행을 엶 | `menu` = `my_activity_list`·`favorites`·`queue`·`funnel`·`eligibility`·`interests`·`notifications`·`my_cards`·`received_cards`·`card_create`·`profile_edit`·`history`·`settings`·`notifications_inbox`(알림 목록, 종 버튼)(새 메뉴는 이 목록에 먼저 더한다) |
+| `calendar_feed_subscribe` | 내 활동 화면·상세의 캘린더 연동 시트에서 구독 주소를 엶(2026-11-03) | 없음 |
+| `calendar_activity_add` · `calendar_activity_remove` | 상세 `캘린더 연동`으로 캘린더 집합에 넣고 뺌(2026-11-03) | `activity_id` |
+| `live_guide_toggle` | 홈 `LIVE` 캡슐로 행사 안내를 켜고 끔(2026-11-03; 시작은 기존 `live_session_shown`도 보냄) | `activity_id`, `on`(`true`·`false`) |
 | `discovery_mode` | 발견 맨 위 `프로그램 \| 이벤트` 전환을 사용자가 바꿈(앱 시작 때 기억된 값은 보내지 않음, 2026-10-26) | `mode` = `program`·`event` |
 | `discovery_status_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `활동 상태` 묶음이 실제로 바뀜(기억된 값 복원·시트 안 체크만은 보내지 않음, 2026-10-26, [native-v1.md](native-v1.md) "활동 상태"·"필터 시트") | `groups` = 고른 묶음 id 쉼표 목록(`available`·`in_progress`·`past` 순, 예 `available,past`; `in_progress`는 2026-10-26 재정의 뒤 `진행·예정`) |
 | `discovery_category_filter` | 발견 필터 시트의 `적용`·칩 ×·빈 결과 버튼으로 `종류`가 실제로 바뀜(기억된 값 복원·`프로그램 \| 이벤트` 전환으로 바뀐 선택은 보내지 않음; 이벤트 모드에는 종류 필터가 없다, 2026-10-26, [native-v1.md](native-v1.md) "종류 필터"·"필터 시트") | `categories` = 고른 종류 코드 소문자 쉼표 목록(계약 순서, 예 `bootcamp,club`; 모두 지우면 빈 문자열) |
@@ -72,7 +75,7 @@
 
 ## 이탈률·참여
 
-GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을 그대로 쓴다. 화면 이름은 `screen_view`의 `screen_name`에 FSD 페이지 이름(예 `discovery`, `activity_detail`, `queue`, `favorites`, `my_activity`, `profile`)을 넣는다. 화면별 이탈은 GA 탐색 › 경로 탐색에서 본다.
+GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을 그대로 쓴다. 화면 이름은 `screen_view`의 `screen_name`에 FSD 페이지 이름(예 `home`, `discovery`, `activity_detail`, `program`, `organization`, `my_schedule`, `my_schedule_map`, `queue`, `profile`; 2026-11-03 리뉴얼로 `favorites`·`my_activity`는 없음)을 넣는다. 화면별 이탈은 GA 탐색 › 경로 탐색에서 본다.
 
 ## 구현 메모 (iOS 2026-10-25)
 - 개수·순서 매개변수(`index`, `total`, `position`, `size`, `seen`, `viewed`, `scenes`, `*_count`, `found`)는 숫자로 보낸다. `seen`은 오늘 카드 중 이미 하트를 누른 수(관심 없어요는 카드가 빠져 남지 않는다).
