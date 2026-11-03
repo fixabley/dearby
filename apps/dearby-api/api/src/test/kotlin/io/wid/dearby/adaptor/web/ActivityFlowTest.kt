@@ -1239,6 +1239,16 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             assertEquals("경기 외 2곳", json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"].asString())
             jdbc.sql("update activities set location = '미국 샌프란시스코 + 온라인' where id = ?").param(bundang).update()
             assertEquals("온라인·해외", json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"].asString())
+            // 낱말 경계: 인도네시아·일본어·파리바게뜨는 해외가 아니고, 조사가 붙은 미국에서·온라인으로는 맞는다. 온라인 + 여러 곳도 첫 곳 + 외 n곳
+            fun placeOf(location: String): String? {
+                jdbc.sql("update activities set location = ? where id = ?").params(location, bundang).update()
+                return json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"]?.takeUnless { it.isNull }?.asString()
+            }
+            assertEquals("서울 강남구", placeOf("일본어 스터디, 파리바게뜨 본사(서울 강남구)"))
+            assertEquals("해외", placeOf("인도네시아 자카르타"))
+            assertEquals("온라인·해외", placeOf("미국에서 온라인으로 진행"))
+            assertEquals("온라인·서울 외 1곳", placeOf("온라인 및 서울 강남구, 부산 해운대구"))
+            assertEquals("제주", placeOf("제주특별자치도 제주시 첨단로 242"))
             jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(bundang).update()
             fun summaries(query: String): JsonNode = body(mvc.get("/v1/discovery/programs?$query").andExpect { status { isOk() } })
             val summary = summaries("q=swift")["items"].single()
@@ -1276,6 +1286,20 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             val programs = body(mvc.get("/v1/discovery/search?q=swift"))["items"].toList().filter { it["type"].asString() == "program" }
             assertEquals(listOf(programId), programs.map { it["id"].asLong() })
             assertEquals(0, body(mvc.get("/v1/discovery/search?q=%20"))["items"].size())
+            // 칩 상한: 각각 50개까지
+            mvc.get("/v1/discovery/programs?programIds=" + (1..51).joinToString(",")).andExpect { status { isBadRequest() } }
+            mvc.get("/v1/discovery/programs?programIds=" + (1..50).joinToString(",")).andExpect { status { isOk() } }
+            // 저장된 구성의 종류 코드가 소문자여도 공개 조회는 200이고 코드는 대문자. 분야 항목이 모두 꺼져 있으면 섹션 숨김, 항목이 없으면 상위 분야 전부
+            jdbc.sql(
+                """insert into discovery_filter_config (id, config, updated_at) values (1, '{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"hackathon","enabled":true,"label":"해커톤","icon":"hackathon"}]},{"key":"field","enabled":true,"title":"분야","items":[{"code":"1","enabled":false,"label":"꺼짐","icon":"tag"}]}]}'::jsonb, now())"""
+            ).update()
+            try {
+                val stored = body(mvc.get("/v1/discovery/filters").andExpect { status { isOk() } })["sections"]
+                assertEquals(listOf("category"), stored.toList().map { it["key"].asString() })
+                assertEquals("HACKATHON", stored[0]["items"][0]["code"].asString())
+            } finally {
+                jdbc.sql("delete from discovery_filter_config").update()
+            }
 
             // 조직 화면: 인증 없이, 경로(최상위부터)·하위 조직·프로그램 묶음·개수·followed=false. 없으면 404
             val detail = mvc.get("/v1/organizations/$organizationId").andExpect { status { isOk() } }.andReturn().response
@@ -1304,6 +1328,15 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             assertEquals(true, body(mvc.get("/v1/organizations/$parentId") { asUser() })["followed"].asBoolean())
             assertEquals(false, body(mvc.get("/v1/organizations/$organizationId") { asUser() })["followed"].asBoolean())
             assertEquals(true, body(mvc.get("/v1/discovery/search?q=리뉴얼") { asUser() })["items"].toList().first()["followed"].asBoolean())
+            // 검색 상한(20)에 밀려도 팔로우한 것은 빠지지 않는다: 같은 이름의 조직 25개 중 마지막을 팔로우
+            val many = (1..25).map { n -> jdbc.sql("insert into organizations (name, created_at, updated_at) values (?, localtimestamp, localtimestamp) returning id").param("검색 상한 조직 $n").query(Long::class.java).single() }
+            mvc.put("/v1/me/favorites/organizations/${many.last()}") { asUser() }.andExpect { status { isNoContent() } }
+            try {
+                val capped = body(mvc.get("/v1/discovery/search?q=검색 상한 조직") { asUser() })["items"].toList()
+                assertEquals(listOf(many.last(), true, 20), listOf(capped.first()["id"].asLong(), capped.first()["followed"].asBoolean(), capped.size))
+            } finally {
+                jdbc.sql("delete from organizations where name like '검색 상한 조직 %'").update()
+            }
             jdbc.sql("update activities set published_at = now() + interval '1 second' where id = ?").param(placed).update()
             val fresh = favoriteRepository.newRecruitments(listOf(user), java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC))
             assertEquals(mapOf(programId to listOf(placed)), fresh[user])

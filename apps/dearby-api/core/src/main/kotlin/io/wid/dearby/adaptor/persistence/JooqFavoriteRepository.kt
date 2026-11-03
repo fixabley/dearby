@@ -58,13 +58,16 @@ class JooqFavoriteRepository(private val dsl: DSLContext) : FavoriteRepository {
             .leftJoin(OpenActivityConditions.act).on(OpenActivityConditions.actJoin)
             .where(fresh(FavoriteTarget.PROGRAM))
             .fetch()
-        // 조직 팔로우(native-v1.md "조직 화면·조직 팔로우"): 팔로우한 조직과 그 아래 모든 조직(tree.root_id → tree.id)의 프로그램 활동
+        // 조직 팔로우(native-v1.md "조직 화면·조직 팔로우"): 팔로우한 조직(앵커)과 그 아래 모든 조직(tree.root_id → tree.id)의 프로그램 활동.
+        // UNION이라 데이터가 순환이어도 같은 (root_id, id)를 다시 넣지 않고 멈춘다
         val tree = DSL.name("tree")
         val rootId = DSL.field(DSL.name("tree", "root_id"), Long::class.java)
         val treeId = DSL.field(DSL.name("tree", "id"), Long::class.java)
+        val followedOrganizations = DSL.select(USER_FAVORITES.TARGET_ID).from(USER_FAVORITES)
+            .where(USER_FAVORITES.USER_ID.`in`(userIds), USER_FAVORITES.TARGET_TYPE.eq(FavoriteTarget.ORGANIZATION.name))
         val subtree = tree.fields("root_id", "id").`as`(
-            DSL.select(ORGANIZATIONS.ID, ORGANIZATIONS.ID).from(ORGANIZATIONS)
-                .unionAll(DSL.select(rootId, ORGANIZATIONS.ID).from(ORGANIZATIONS).join(DSL.table(tree)).on(ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(treeId))),
+            DSL.select(ORGANIZATIONS.ID, ORGANIZATIONS.ID).from(ORGANIZATIONS).where(ORGANIZATIONS.ID.`in`(followedOrganizations))
+                .union(DSL.select(rootId, ORGANIZATIONS.ID).from(ORGANIZATIONS).join(DSL.table(tree)).on(ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(treeId))),
         )
         val byOrganization = dsl.withRecursive(subtree)
             .select(USER_FAVORITES.USER_ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.ID)

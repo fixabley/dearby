@@ -58,7 +58,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService, p
             q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), kind = DiscoveryKind.parse(kind), openOnly = openOnly,
             tagIds = TagIds.parse(tagIds), statuses = ActivityStatus.parseList(status), scope = summaries.expand(scope(organizationIds, programIds)),
         )
-        if (countOnly) return ResponseEntity.ok().varyBy(HttpHeaders.AUTHORIZATION).body(ProgramCountResponse(summaries.count(condition)))
+        if (countOnly) return ResponseEntity.ok().body(ProgramCountResponse(summaries.count(condition)))
         val page = summaries.search(condition)
         val mine = jwt?.let { favorites.ids(UUID.fromString(it.subject)) } ?: FavoriteIds.NONE
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
@@ -66,10 +66,13 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService, p
     }
 
     companion object {
-        // organizationIds·programIds 쉼표 목록 → 범위. 둘 다 비면 null(범위 없음). 숫자가 아니면 400
+        const val MAX_SCOPE_IDS = 50 // 조직·프로그램 칩 각각의 상한
+
+        // organizationIds·programIds 쉼표 목록 → 범위. 둘 다 비면 null(범위 없음). 숫자가 아니거나 각각 50개를 넘으면 400
         fun scope(organizationIds: String?, programIds: String?): ProgramScope? {
             fun ids(value: String?, name: String): Set<Long> = value?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
                 ?.map { it.toLongOrNull() ?: throw InvalidInputException("${name}는 id 쉼표 목록입니다") }?.toSet().orEmpty()
+                .also { if (it.size > MAX_SCOPE_IDS) throw InvalidInputException("${name}는 ${MAX_SCOPE_IDS}개까지입니다") }
             return ProgramScope(ids(programIds, "programIds"), ids(organizationIds, "organizationIds")).takeUnless { it.isEmpty }
         }
     }

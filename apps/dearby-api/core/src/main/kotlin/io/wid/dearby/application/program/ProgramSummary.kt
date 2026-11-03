@@ -4,6 +4,7 @@ import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.OrganizationRef
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.Tag
 import io.wid.dearby.domain.eligibility.EligibilityFilter
@@ -34,7 +35,7 @@ data class ProgramSummary(
     val statusCounts: Map<ActivityStatus, Int> = emptyMap(), // 조회 범위 안 게시 활동의 상태별 수(0인 상태는 빠진다)(native-v1.md "활동 상태")
     val logoUrl: String? = null, // 보일 로고 공개 경로: 프로그램 로고, 없으면 가장 가까운 조직 로고(native-v1.md "조직 로고와 로고 계승"), 없으면 null
     val placeShort: String? = null, // 조회 범위 안 활동 장소의 짧은 꼴(native-v1.md "행 컴포넌트" placeShort, PlaceShort). 못 뽑으면 null
-    val organizationAncestors: List<Pair<Id, String>> = emptyList(), // 조직의 상위 경로(최상위부터, native-v1.md "조직 화면" 드롭다운). 최상위 조직은 빈 목록
+    val organizationAncestors: List<OrganizationRef> = emptyList(), // 조직의 상위 경로(최상위부터, native-v1.md "조직 화면" 드롭다운). 최상위 조직은 빈 목록
 )
 
 // 발견 필터 시트의 조직·프로그램 칩(native-v1.md "발견 필터 시트 표현"): 고른 프로그램이거나 고른 조직(하위 조직 포함, 서비스가 펼친다)의 프로그램

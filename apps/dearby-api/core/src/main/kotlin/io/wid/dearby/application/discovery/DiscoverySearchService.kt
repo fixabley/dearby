@@ -9,6 +9,7 @@ import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.UserId
+import io.wid.dearby.domain.favorite.FavoriteIds
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -32,15 +33,19 @@ class DiscoverySearchService(
         val query = q.trim()
         if (query.length > MAX_QUERY_LENGTH) throw InvalidInputException("검색어는 ${MAX_QUERY_LENGTH}자까지입니다")
         if (query.isEmpty()) return emptyList()
-        val mine = userId?.let { favorites.ids(it) }
-        val foundOrganizations = organizations.search(query, null, rootsOnly = false, after = null, size = MAX_ITEMS)
-        val foundPrograms = programs.search(query, null, after = null, size = MAX_ITEMS)
+        val mine = userId?.let { favorites.ids(it) } ?: FavoriteIds.NONE
+        fun matches(name: String, nameEn: String?) = name.contains(query, ignoreCase = true) || nameEn?.contains(query, ignoreCase = true) == true
+        // 팔로우한 것 중 검색어에 맞는 것을 먼저 모은다(검색 상한에 밀려 빠지지 않게). 그 뒤 나머지 검색 결과로 20까지 채운다
+        val followedOrganizations = organizations.findAllById(mine.organizations).filter { matches(it.name, it.nameEn) }
+        val followedPrograms = programs.findAllById(mine.programs).filter { matches(it.name, it.nameEn) }
+        val foundOrganizations = followedOrganizations + organizations.search(query, null, rootsOnly = false, after = null, size = MAX_ITEMS).filter { it.id !in mine.organizations }
+        val foundPrograms = followedPrograms + programs.search(query, null, after = null, size = MAX_ITEMS).filter { it.id !in mine.programs }
         val orgLogo = organizationLogos.of(foundOrganizations.map { it.id })
         val programLogo = programLogos.of(foundPrograms.associate { it.id to it.organizationId })
         val items = foundOrganizations.map {
-            Item(Type.ORGANIZATION, it.id, it.name, it.nameEn, orgLogo[it.id]?.url, null, mine?.organizations?.contains(it.id) == true)
+            Item(Type.ORGANIZATION, it.id, it.name, it.nameEn, orgLogo[it.id]?.url, null, it.id in mine.organizations)
         } + foundPrograms.map {
-            Item(Type.PROGRAM, it.id, it.name, it.nameEn, programLogo[it.id]?.url, it.category, mine?.programs?.contains(it.id) == true)
+            Item(Type.PROGRAM, it.id, it.name, it.nameEn, programLogo[it.id]?.url, it.category, it.id in mine.programs)
         }
         // 팔로우한 것 먼저, 그 뒤 이름 앞부분 일치 → 이름 순
         return items.sortedWith(compareByDescending<Item> { it.followed }.thenByDescending { it.name.startsWith(query, ignoreCase = true) || it.nameEn?.startsWith(query, ignoreCase = true) == true }.thenBy { it.name }).take(MAX_ITEMS)

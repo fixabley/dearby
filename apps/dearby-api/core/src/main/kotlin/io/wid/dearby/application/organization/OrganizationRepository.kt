@@ -2,6 +2,7 @@ package io.wid.dearby.application.organization
 
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.Organization
+import io.wid.dearby.domain.OrganizationRef
 
 // 저장소 포트. 구현은 adaptor/persistence
 interface OrganizationRepository {
@@ -27,7 +28,7 @@ interface OrganizationRepository {
     fun ancestorIds(id: Id): List<Id>
 
     // 조직별 상위 경로(최상위부터 바로 위 조직까지, 이름 포함). 최상위 조직은 빈 목록
-    fun ancestors(ids: Collection<Id>): Map<Id, List<Pair<Id, String>>>
+    fun ancestors(ids: Collection<Id>): Map<Id, List<OrganizationRef>>
 
     // 이 조직들과 그 아래 모든 하위 조직 id(자기 자신 포함). 조직 팔로우 알림·발견 organizationIds 필터가 쓴다
     fun subtreeIds(ids: Collection<Id>): Set<Id>

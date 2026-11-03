@@ -20,8 +20,11 @@ object PlaceShort {
     private val SIDO_PATTERN = Regex("(?<![가-힣])(" + (SIDO.keys + SIDO.values).sortedByDescending { it.length }.distinct().joinToString("|") + ")(?![가-힣])")
     private val DISTRICT = Regex("^[가-힣]{1,5}[시군구]$") // 시·군·구 한 토큰
     private val SEPARATORS = Regex("[\\s,·/()\\[\\]]+")
-    private val ONLINE = Regex("온라인|비대면|online|zoom|웨비나|webinar|메타버스|유튜브|youtube|discord|디스코드", RegexOption.IGNORE_CASE)
-    private val ABROAD = Regex("해외|미국|일본|중국|싱가포르|베트남|독일|영국|프랑스|캐나다|호주|대만|홍콩|태국|인도네시아|인도|유럽|실리콘밸리|샌프란시스코|뉴욕|도쿄|상하이|베를린|런던|파리|싱가폴", RegexOption.IGNORE_CASE)
+    // 낱말 경계: 앞뒤에 글자가 붙지 않거나(인도네시아·일본어·파리바게뜨는 아님) 뒤에 조사만 붙는다(미국에서·온라인으로)
+    private const val BEFORE = "(?<![가-힣A-Za-z])"
+    private const val AFTER = "(?:(?![가-힣A-Za-z])|(?=(?:에서|에|의|과|와|으로|로|은|는|이|가|도|을|를|및)(?![가-힣])))"
+    private val ONLINE = Regex(BEFORE + "(?:온라인|비대면|online|zoom|웨비나|webinar|메타버스|유튜브|youtube|discord|디스코드)" + AFTER, RegexOption.IGNORE_CASE)
+    private val ABROAD = Regex(BEFORE + "(?:해외|미국|일본|중국|싱가포르|싱가폴|베트남|독일|영국|프랑스|캐나다|호주|대만|홍콩|태국|인도네시아|인도|유럽|실리콘밸리|샌프란시스코|뉴욕|도쿄|상하이|베를린|런던|파리)" + AFTER, RegexOption.IGNORE_CASE)
 
     private data class Region(val sido: String, val district: String?)
     private class Parsed(val regions: List<Region>, val online: Boolean, val abroad: Boolean) {
@@ -40,11 +43,15 @@ object PlaceShort {
         val online = parsed.any { it.online }
         val abroad = parsed.any { it.abroad }
         val places = sidos + if (abroad) listOf("해외") else emptyList()
-        return when {
-            places.isEmpty() -> if (online) "온라인" else null
-            online -> "온라인·${places.first()}"
+        // 여러 곳(한 문구 안이든 여러 활동에 걸쳐서든)은 첫 곳 + 외 n곳. 온라인이 섞이면 앞에 온라인·(시·도까지만, 구·군은 뺀다)
+        val head = when {
+            places.isEmpty() -> null
             places.size > 1 -> "${places.first()} 외 ${places.size - 1}곳"
-            abroad -> "해외"
+            else -> places.single()
+        }
+        return when {
+            online -> head?.let { "온라인·$it" } ?: "온라인"
+            places.size != 1 || abroad -> head
             else -> {
                 val districts = regions.filter { it.sido == sidos.single() }.mapNotNull { it.district }.distinct()
                 if (districts.size == 1) "${sidos.single()} ${districts.single()}" else sidos.single()
@@ -63,6 +70,10 @@ object PlaceShort {
         val tokens = rest.trimStart().split(SEPARATORS).filter { it.isNotEmpty() }.takeWhile { DISTRICT.matches(it) }.take(2)
         val first = tokens.getOrNull(0) ?: return Region(sido, null)
         val second = tokens.getOrNull(1)
-        return if (first.endsWith("시") && second != null && second.endsWith("구")) Region(first.dropLast(1), second) else Region(sido, first)
+        return when {
+            first == "${sido}시" -> Region(sido, second?.takeIf { it.endsWith("구") }) // "제주시"·"세종시"처럼 시·도와 같은 이름의 시는 접는다
+            first.endsWith("시") && second != null && second.endsWith("구") -> Region(first.dropLast(1), second)
+            else -> Region(sido, first)
+        }
     }
 }

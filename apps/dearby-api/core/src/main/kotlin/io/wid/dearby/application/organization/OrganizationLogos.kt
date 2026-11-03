@@ -13,7 +13,7 @@ class OrganizationLogos(private val organizations: OrganizationRepository, priva
     fun of(ids: Collection<Id>): Map<Id, Found> {
         if (ids.isEmpty()) return emptyMap()
         val ancestors = organizations.ancestors(ids.toSet())
-        val chains = ids.associateWith { id -> (listOf(id) + ancestors[id].orEmpty().reversed().map { it.first }).take(MAX_CHAIN) }
+        val chains = ids.associateWith { id -> (listOf(id) + ancestors[id].orEmpty().reversed().map { it.id }).take(MAX_CHAIN) }
         val updatedAt = logos.updatedAtByOrganization(chains.values.flatten().toSet())
         val colors = logos.brandColors(updatedAt.keys)
         return chains.mapNotNull { (id, chain) ->

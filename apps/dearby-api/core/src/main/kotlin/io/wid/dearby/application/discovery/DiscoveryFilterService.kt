@@ -38,9 +38,14 @@ class DiscoveryFilterService(
     @Transactional(readOnly = true)
     fun config(): DiscoveryFilterConfig = configs.find() ?: DiscoveryFilterConfig.DEFAULT
 
-    // 모르는 섹션 키·종류 코드·아이콘 키·없는 분야 태그 id는 400. 섹션 키는 한 번씩만
+    // 모르는 섹션 키·종류 코드·아이콘 키·없는 분야 태그 id는 400. 섹션 키는 한 번씩만. 종류 코드는 대문자로 정규화해 저장한다
     @Transactional
-    fun save(config: DiscoveryFilterConfig): DiscoveryFilterConfig {
+    fun save(request: DiscoveryFilterConfig): DiscoveryFilterConfig {
+        val config = request.copy(
+            sections = request.sections.map { section ->
+                if (section.key == CATEGORY) section.copy(items = section.items?.map { it.copy(code = ActivityCategory.parse(it.code).name) }) else section
+            },
+        )
         val keys = config.sections.map { it.key }
         keys.firstOrNull { it !in DiscoveryFilterConfig.SECTION_KEYS }?.let { throw InvalidInputException("모르는 필터 섹션입니다: $it") }
         if (keys.size != keys.distinct().size) throw InvalidInputException("필터 섹션이 겹칩니다")
@@ -62,9 +67,10 @@ class DiscoveryFilterService(
         return config
     }
 
-    // 켜진 섹션만, 구성 순서대로. 항목은 켜진 것만. 분야 항목이 비어 있으면 상위 분야 전부(사전 순)
+    // 켜진 섹션만, 구성 순서대로. 항목은 켜진 것만. 분야 항목이 비어 있으면 상위 분야 전부(사전 순), 항목이 있는데 모두 꺼져 있으면 섹션을 숨긴다
     @Transactional(readOnly = true)
     fun sections(q: String?, kind: DiscoveryKind?, scope: ProgramScope?): List<Section> {
+        if ((q?.length ?: 0) > ProgramSummaryService.MAX_QUERY_LENGTH) throw InvalidInputException("검색어는 ${ProgramSummaryService.MAX_QUERY_LENGTH}자까지입니다")
         val facets = summaries.facets(ProgramSummarySearch(q, null, 0, 1, kind = kind, scope = summaries.expand(scope)))
         val fieldTags = tags.findAll().filter { it.kind == TagKind.FIELD }
         val childrenOf = fieldTags.filter { it.parentId != null }.groupBy({ it.parentId!! }, { it.id })
@@ -77,16 +83,17 @@ class DiscoveryFilterService(
             val ids = setOf(tagId) + childrenOf[tagId].orEmpty()
             return open.filter { facet -> facet.tagIds.any { it in ids } }.distinctBy { it.programId }.size
         }
-        return config().sections.filter { it.enabled }.map { section ->
+        return config().sections.filter { it.enabled }.mapNotNull { section ->
+            val enabled = section.items.orEmpty().filter { it.enabled }
             val items = when (section.key) {
-                STATUS -> section.items.orEmpty().filter { it.enabled }.map { Item(it.code, it.label, it.icon, byStatusGroup[it.code] ?: 0) }
-                CATEGORY -> section.items.orEmpty().filter { it.enabled }.map { Item(it.code, it.label, it.icon, byCategory[ActivityCategory.valueOf(it.code)] ?: 0) }
-                FIELD -> {
-                    val chosen = section.items.orEmpty().filter { it.enabled }
-                    if (chosen.isEmpty()) fieldTags.filter { it.parentId == null }.map { Item(it.id.toString(), it.name, Icons.ofTag(it.nameEn), fieldCount(it.id)) }
-                    else chosen.map { Item(it.code, it.label, it.icon, fieldCount(it.code.toLong())) }
+                STATUS -> enabled.map { Item(it.code, it.label, it.icon, byStatusGroup[it.code] ?: 0) }
+                CATEGORY -> enabled.map { item -> ActivityCategory.parse(item.code).let { Item(it.name, item.label, item.icon, byCategory[it] ?: 0) } }
+                FIELD -> when {
+                    section.items.isNullOrEmpty() -> fieldTags.filter { it.parentId == null }.map { Item(it.id.toString(), it.name, Icons.ofTag(it.nameEn), fieldCount(it.id)) }
+                    enabled.isEmpty() -> return@mapNotNull null
+                    else -> enabled.map { Item(it.code, it.label, it.icon, fieldCount(it.code.toLong())) }
                 }
-                else -> section.items.orEmpty().filter { it.enabled }.map { Item(it.code, it.label, it.icon, null) }
+                else -> enabled.map { Item(it.code, it.label, it.icon, null) }
             }
             Section(section.key, section.title, section.subtitle, multiple = section.key != ELIGIBILITY, items = items)
         }

@@ -1127,6 +1127,9 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(saved.toString(), read(mvc.get("/v1/admin/discovery-filters") { asAdmin() }).toString())
         assertEquals(1, jdbc.sql("select count(*) from discovery_filter_config where id = 1").query(Int::class.java).single())
         put("""{"sections":[{"key":"colors","enabled":true,"title":"색"}]}""").andExpect { status { isBadRequest() } }
+        // 종류 코드는 대문자로 정규화해 저장한다(소문자로 저장되면 공개 필터가 깨지던 결함)
+        assertEquals("CLUB", read(put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"club","enabled":true,"label":"동아리","icon":"club"}]}]}""").andExpect { status { isOk() } })["sections"][0]["items"][0]["code"].asString())
+        assertEquals("CLUB", read(mvc.get("/v1/admin/discovery-filters") { asAdmin() })["sections"][0]["items"][0]["code"].asString())
         put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"PARTY","enabled":true,"label":"파티","icon":"bootcamp"}]}]}""").andExpect { status { isBadRequest() } }
         put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"CLUB","enabled":true,"label":"동아리","icon":"rainbow"}]}]}""").andExpect { status { isBadRequest() } }
         put("""{"sections":[{"key":"field","enabled":true,"title":"분야","items":[{"code":"999999","enabled":true,"label":"없음","icon":"tag"}]}]}""").andExpect { status { isBadRequest() } }

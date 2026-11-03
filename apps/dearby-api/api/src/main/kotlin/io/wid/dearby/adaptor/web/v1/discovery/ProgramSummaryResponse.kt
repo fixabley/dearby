@@ -39,7 +39,7 @@ data class ProgramSummaryResponse(
             nameEn = summary.nameEn,
             organization = OrganizationReferenceResponse(
                 summary.organizationId, language.pick(summary.organizationName, summary.organizationNameEn),
-                summary.organizationAncestors.map { (id, name) -> ReferenceResponse(id, name) },
+                summary.organizationAncestors.map { ReferenceResponse(it.id, language.pick(it.name, it.nameEn)) },
             ),
             openActivityCount = summary.openActivityCount,
             nearestRecruitmentEndAt = summary.nearestRecruitmentEndAt,

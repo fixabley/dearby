@@ -29,16 +29,19 @@ class OrganizationController(private val organizations: OrganizationService, pri
         @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<OrganizationResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        val userId = jwt?.let { UUID.fromString(it.subject) }
-        val detail = organizations.detail(id, userId)
-        val mine = userId?.let { favorites.ids(it) } ?: FavoriteIds.NONE
+        val mine = jwt?.let { favorites.ids(UUID.fromString(it.subject)) } ?: FavoriteIds.NONE
+        val detail = organizations.detail(id, mine)
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(OrganizationResponse.from(detail, language, mine))
     }
 
     // 조직 경로: 최상위부터 바로 위 조직까지(응답 `ancestors`와 같다). 최상위 조직은 빈 목록, 없는 조직은 404
     @GetMapping("/ancestors")
-    fun ancestors(@PathVariable id: Long) = OrganizationAncestorsResponse(organizations.ancestors(id).map { (ancestorId, name) -> ReferenceResponse(ancestorId, name) })
+    fun ancestors(@PathVariable id: Long, @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?): ResponseEntity<OrganizationAncestorsResponse> {
+        val language = ResponseLanguage.from(acceptLanguage)
+        return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
+            .body(OrganizationAncestorsResponse(organizations.ancestors(id).map { ReferenceResponse(it.id, language.pick(it.name, it.nameEn)) }))
+    }
 }
 
 data class OrganizationResponse(
@@ -60,7 +63,7 @@ data class OrganizationResponse(
             nameEn = detail.organization.nameEn,
             logoUrl = detail.logoUrl,
             brandColor = detail.brandColor,
-            ancestors = detail.ancestors.map { (id, name) -> ReferenceResponse(id, name) },
+            ancestors = detail.ancestors.map { ReferenceResponse(it.id, language.pick(it.name, it.nameEn)) },
             children = detail.children.map { OrganizationChildResponse(it.organization.id, language.pick(it.organization.name, it.organization.nameEn), it.logoUrl) },
             programs = detail.programs.map { ProgramSummaryResponse.from(it, language, favorites) },
             counts = OrganizationCountsResponse(detail.counts.programs, detail.counts.recruiting, detail.counts.past),

@@ -65,12 +65,12 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
 
     override fun ancestorIds(id: Id): List<Id> = walkUp(id, parents())
 
-    override fun ancestors(ids: Collection<Id>): Map<Id, List<Pair<Id, String>>> {
+    override fun ancestors(ids: Collection<Id>): Map<Id, List<OrganizationRef>> {
         if (ids.isEmpty()) return emptyMap()
-        val rows = dsl.select(ORGANIZATIONS.ID, ORGANIZATIONS.PARENT_ORGANIZATION_ID, ORGANIZATIONS.NAME).from(ORGANIZATIONS).fetch()
+        val rows = dsl.select(ORGANIZATIONS.ID, ORGANIZATIONS.PARENT_ORGANIZATION_ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN).from(ORGANIZATIONS).fetch()
         val parents = rows.associate { it.value1()!! to it.value2() }
-        val names = rows.associate { it.value1()!! to it.value3()!! }
-        return ids.associateWith { id -> walkUp(id, parents).reversed().map { it to names.getValue(it) } }
+        val refs = rows.associate { it.value1()!! to OrganizationRef(it.value1()!!, it.value3()!!, it.value4()) }
+        return ids.associateWith { id -> walkUp(id, parents).reversed().map(refs::getValue) }
     }
 
     override fun subtreeIds(ids: Collection<Id>): Set<Id> {
