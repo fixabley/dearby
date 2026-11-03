@@ -1811,7 +1811,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - 프로그램 화면의 조직 줄에서 연다. 머리는 프로그램 화면과 같은 틀(배너는 브랜드 색만, 로고, `팔로우`, 이름), 그 아래 **조직 경로 줄** `삼성 › 삼성전자`(최상위부터 현재까지, 상위는 청록 글자로 누르면 그 조직 화면, 현재는 굵은 검정), 개수 줄(`n 프로그램 · n 모집 중 · n 지난 활동`), 카드 `프로그램`(행 컴포넌트: 썸네일·조직 줄·이름·종류 줄·`최근 활동 yyyy년 M월`, 모집 중이면 개수 배지)과 `하위 조직`(같은 행, 없으면 `하위 조직이 없어요`).
 - **새 공개 API**: `GET /v1/organizations/{id}` → `{id, name, nameEn, logoUrl, brandColor, ancestors: [{id, name}](최상위부터), children: [{id, name, logoUrl}], programs: [ProgramSummary], counts: {programs, recruiting, past}, followed}`(없으면 404, `Vary: Authorization`). `ProgramSummary.organization`에 `ancestors: [{id, name}]`를 더한다(드롭다운용). 로고 공개 주소는 기존 `/v1/organizations/{id}/logo`.
-- **조직 팔로우**: `user_favorites.target_type`에 `ORGANIZATION`(V65). `PUT/DELETE /v1/me/favorites/organizations/{id}`(멱등, `notifyLevel?` 프로그램과 같음), `GET /v1/me/favorites`에 `organizations: [{organization: {id, name, logoUrl}, favoritedAt, notifyLevel}]`. 새 모집 알림은 그 조직과 하위 조직의 프로그램에 새 활동이 열릴 때(프로그램 팔로우 규칙과 같이 활동마다 한 번, 프로그램 팔로우와 겹치면 한 번), 조직 친화도에는 프로그램 하트와 같은 +0.6(반감기 같음). `favorite_add`·`favorite_remove`의 `type`에 `organization`.
+- **조직 팔로우**: `user_favorites.target_type`에 `ORGANIZATION`(다음 마이그레이션, dev 기준 V40 다음). `PUT/DELETE /v1/me/favorites/organizations/{id}`(멱등, `notifyLevel?` 프로그램과 같음), `GET /v1/me/favorites`에 `organizations: [{organization: {id, name, logoUrl}, favoritedAt, notifyLevel}]`. 새 모집 알림은 그 조직과 하위 조직의 프로그램에 새 활동이 열릴 때(프로그램 팔로우 규칙과 같이 활동마다 한 번, 프로그램 팔로우와 겹치면 한 번), 조직 친화도에는 프로그램 하트와 같은 +0.6(반감기 같음). `favorite_add`·`favorite_remove`의 `type`에 `organization`.
 - 팔로우 목록(프로그램·조직)은 내 프로필의 `팔로우` 행에서 본다(옛 즐겨찾기 캘린더의 `날짜 없는 즐겨찾기` 묶음 대체).
 
 ### 내 활동 화면 (홈의 `내 활동 ›`)
@@ -1836,7 +1836,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 ### 캘린더 피드 (API 담당) — 한 피드 방식
 
 - 기기 캘린더에 구독하는 주소는 사용자당 **하나**: `webcal://api.dearby.wid.io.kr/v1/me/calendar/{token}.ics`(토큰이 인증, 무작위 32바이트 URL-safe, `calendar_feed_tokens(user_id pk, token unique, created_at, rotated_at)`; `GET /v1/me/calendar/token` → `{url}`(없으면 만듦), `POST /v1/me/calendar/token/rotate` → 새 주소; 계정 삭제 때 지움). 응답은 요청 때 DB에서 만든다(파일 저장 없음): `text/calendar`, `VCALENDAR` 안에 지원함·찜·캘린더 집합 활동의 날짜 있는 일정(모집 마감·면접·발표·행사·활동 기간·교육 시작; 시각 일정은 시각, 날짜 일정은 종일; 반복 일정은 `RRULE`)을 `VEVENT`로, `UID` = `schedule-{id}@dearby.wid.io.kr`(모집 기간은 `application-{activityId}@…`), `SUMMARY` = `활동명 · 일정 제목`, `LOCATION` = 장소, `URL` = 활동 Dearby 링크, `SEQUENCE`·`LAST-MODIFIED`는 일정 `updated_at`에서. `ETag`·`Cache-Control: private, max-age=300`. 지워진 일정은 빠진다.
-- **캘린더 집합**: `user_calendar_activities(user_id, activity_id, created_at)`(V65). `PUT/DELETE /v1/me/calendar/activities/{id}` → 204(게시되지 않은 활동 404; 내 활동·찜에 있는 활동은 이미 피드에 있어 PUT은 204로 무시하고 DELETE는 400 `IN_MY_ACTIVITIES`). `Activity.inCalendar: boolean`(로그인 응답, 지원함·찜·집합 중 하나면 true).
+- **캘린더 집합**: `user_calendar_activities(user_id, activity_id, created_at)`(다음 마이그레이션, dev 기준 V40 다음). `PUT/DELETE /v1/me/calendar/activities/{id}` → 204(게시되지 않은 활동 404; 내 활동·찜에 있는 활동은 이미 피드에 있어 PUT은 204로 무시하고 DELETE는 400 `IN_MY_ACTIVITIES`). `Activity.inCalendar: boolean`(로그인 응답, 지원함·찜·집합 중 하나면 true).
 - **앱**: 내 활동 화면 플로팅 버튼 → 시트(설명 한 줄 + `기기 캘린더에 추가` = webcal 주소 열기). 한 번 추가한 뒤에는 기기 `UserDefaults`/`DataStore`에 `calendarFeedSubscribed`를 두고 버튼은 `연동됨 · 다시 연동`. 활동 상세의 `캘린더 연동`은 그 활동을 집합에 넣고(아직 구독 전이면 그때 한 번 시트), 이미 구독했으면 시트 없이 `캘린더 연동됨`. `inCalendar`면 처음부터 `연동됨`. 기기 캘린더의 구독 삭제는 서버가 모르므로 `다시 연동`으로 복구. 일정 하나만 넣는 `캘린더에 추가`(시스템 일정 추가 화면)는 상세 일정 행 길게 누르기와 내 활동 행 밀기에 남는다.
 - 개인정보처리방침: "구독 캘린더 주소는 비밀 주소이며 공유하면 다른 사람이 내 일정을 볼 수 있다" 한 줄, 토큰은 계정 삭제 때 삭제. 사용 통계 `calendar_feed_subscribe`(시트에서 주소를 연 때), `calendar_activity_add`·`calendar_activity_remove`(`activity_id`).
 
@@ -1892,7 +1892,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 ### 담당 나누기
 
-- **API·배치**(조율 세션 검토): V65(`ORGANIZATION` 즐겨찾기, `user_calendar_activities`, `calendar_feed_tokens`, `live_activity_tokens`), `GET /v1/organizations/{id}`, `ancestors`, 조직 팔로우, 캘린더 피드·집합, 라이브 액티비티 토큰·푸시, `Activity.inCalendar`, 조직 팔로우 알림·친화도, `placeShort`(활동·프로그램 요약·내 활동·지도 행).
+- **API·배치**(조율 세션 검토): 다음 마이그레이션(`ORGANIZATION` 즐겨찾기, `user_calendar_activities`, `calendar_feed_tokens`, `live_activity_tokens`), `GET /v1/organizations/{id}`, `ancestors`, 조직 팔로우, 캘린더 피드·집합, 라이브 액티비티 토큰·푸시, `Activity.inCalendar`, 조직 팔로우 알림·친화도, `placeShort`(활동·프로그램 요약·내 활동·지도 행).
 - **UI 담당**: 행 컴포넌트·배지·글자·여백 체계, 발견 행 통일, 상세·프로그램·조직 화면의 시각, 내 활동 화면 머리(주 한 줄·달력), LIVE 캡슐.
 - **플로우 담당**: 탭 구성, 홈, 내 활동 화면 목록·필터·지도·커서 연동, 상세 드롭다운·캘린더 연동 시트, 공유 요소 전환, 퍼널 트리거 이동, 옛 경로 정리.
 - **큰 화면(2단계, 폰 뒤)**: UI 담당이 두 칸 레이아웃·레일·위 탭 막대·커버 배너·Flip 위젯 시각, 플로우 담당이 `NavigationSplitView`/`ListDetailPaneScaffold` 선택 상태·접었다 펼칠 때의 연속성·내 활동 오른쪽 칸 규칙·폰 세로 잠금·플렉스 모드 분할. 1단계에서 지킬 것은 "너비 고정 금지"뿐.
