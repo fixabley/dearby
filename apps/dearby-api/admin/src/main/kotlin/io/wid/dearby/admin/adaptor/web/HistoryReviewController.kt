@@ -35,7 +35,7 @@ class HistoryReviewController(private val review: HistoryReviewService) {
             "reject" -> false
             else -> throw InvalidInputException("decision은 approve 또는 reject입니다")
         }
-        return HistoryReviewResponse.from(review.decideApproval(id, approve, request.organizationId, request.programId, request.activityId, request.roleId, request.reason))
+        return HistoryReviewResponse.from(review.decideApproval(id, approve, request.ownerKind, request.ownerId, request.roleId, request.reason))
     }
 
     @PostMapping("/{id}/verification")

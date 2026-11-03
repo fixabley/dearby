@@ -112,7 +112,7 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
 | GET /v1/admin/histories | `approval?`(pending·approved·rejected), `verification?`(unverified·pending·verified·rejected), `cursor?`(이력 id), `size?` | 200 `{items: HistoryForReview[], nextCursor}` |
-| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", roleId?, reason?}` | 200 HistoryForReview. `roleId`는 그 이력의 귀속 단위(`owner`)에 속한 역할이어야 하며 아니면 400, 거절에 사유 없으면 400 |
+| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", ownerKind?, ownerId?, roleId?, reason?}` | 200 HistoryForReview. `roleId`는 그 이력의 귀속 단위(`owner`)에 속한 역할이어야 하며 아니면 400, 거절에 사유 없으면 400. 단위 이름만 직접 적은 이력(`owner.id`가 null)은 `ownerKind`·`ownerId`로 등록된 단위를 골라 줘야 승인되고 없으면 400(2026-11-03 밤 조율 결정, 직접 입력 이력 보존). 승인 뒤에는 역할이 등록된 것이어야 하므로 `roleId`도 없고 이력의 역할도 직접 입력이면 400 |
 | POST /v1/admin/histories/:id/verification | `{decision: "verify"\|"reject"}` | 200 HistoryForReview |
 | GET /v1/admin/histories/:id/evidence/:eid | — | 200 파일(inline) |
 | GET /v1/admin/roles | `organizationId?`·`programId?`·`activityId?`(셋 중 하나 필수), `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}`. 전역 목록 없음 |
