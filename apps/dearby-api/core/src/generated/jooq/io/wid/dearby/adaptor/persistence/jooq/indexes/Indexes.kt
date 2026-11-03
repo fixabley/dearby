@@ -86,6 +86,7 @@ val ORGANIZATION_MEMBERS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.n
 val ORGANIZATION_MEMBERS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("organization_members_user_id_idx"), OrganizationMembers.ORGANIZATION_MEMBERS, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.USER_ID), false)
 val ORGANIZATIONS_PARENT_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organizations_parent_organization_id_idx"), Organizations.ORGANIZATIONS, arrayOf(Organizations.ORGANIZATIONS.PARENT_ORGANIZATION_ID), false)
 val PROFILE_HISTORIES_REVIEW_IDX: Index = Internal.createIndex(DSL.name("profile_histories_review_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.APPROVAL_STATUS, ProfileHistories.PROFILE_HISTORIES.VERIFICATION_STATUS), false)
+val PROFILE_HISTORIES_ROLE_ID_IDX: Index = Internal.createIndex(DSL.name("profile_histories_role_id_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.ROLE_ID), false)
 val PROFILE_HISTORIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_histories_user_id_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.USER_ID), false)
 val PROFILE_JOBS_APPROVAL_IDX: Index = Internal.createIndex(DSL.name("profile_jobs_approval_idx"), ProfileJobs.PROFILE_JOBS, arrayOf(ProfileJobs.PROFILE_JOBS.APPROVAL_STATUS), false)
 val PROFILE_JOBS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_jobs_user_id_idx"), ProfileJobs.PROFILE_JOBS, arrayOf(ProfileJobs.PROFILE_JOBS.USER_ID), false)

@@ -6,6 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.PROFILE_HISTORIES_REVIEW_IDX
+import io.wid.dearby.adaptor.persistence.jooq.indexes.PROFILE_HISTORIES_ROLE_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.PROFILE_HISTORIES_USER_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.HISTORY_EVIDENCE__HISTORY_EVIDENCE_HISTORY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES_PKEY
@@ -94,41 +95,6 @@ open class ProfileHistories(
     val USER_ID: TableField<ProfileHistoriesRecord, UUID?> = createField(DSL.name("user_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.profile_histories.kind</code>.
-     */
-    val KIND: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("kind"), SQLDataType.VARCHAR(20).nullable(false), this, "")
-
-    /**
-     * The column <code>public.profile_histories.organization_id</code>.
-     */
-    val ORGANIZATION_ID: TableField<ProfileHistoriesRecord, Long?> = createField(DSL.name("organization_id"), SQLDataType.BIGINT, this, "")
-
-    /**
-     * The column <code>public.profile_histories.organization_name</code>.
-     */
-    val ORGANIZATION_NAME: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("organization_name"), SQLDataType.VARCHAR(200), this, "")
-
-    /**
-     * The column <code>public.profile_histories.program_id</code>.
-     */
-    val PROGRAM_ID: TableField<ProfileHistoriesRecord, Long?> = createField(DSL.name("program_id"), SQLDataType.BIGINT, this, "")
-
-    /**
-     * The column <code>public.profile_histories.program_name</code>.
-     */
-    val PROGRAM_NAME: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("program_name"), SQLDataType.VARCHAR(200), this, "")
-
-    /**
-     * The column <code>public.profile_histories.activity_id</code>.
-     */
-    val ACTIVITY_ID: TableField<ProfileHistoriesRecord, Long?> = createField(DSL.name("activity_id"), SQLDataType.BIGINT, this, "")
-
-    /**
-     * The column <code>public.profile_histories.activity_name</code>.
-     */
-    val ACTIVITY_NAME: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("activity_name"), SQLDataType.VARCHAR(200), this, "")
-
-    /**
      * The column <code>public.profile_histories.role_id</code>.
      */
     val ROLE_ID: TableField<ProfileHistoriesRecord, Long?> = createField(DSL.name("role_id"), SQLDataType.BIGINT, this, "")
@@ -183,6 +149,21 @@ open class ProfileHistories(
      */
     val UPDATED_AT: TableField<ProfileHistoriesRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.profile_histories.owner_kind</code>.
+     */
+    val OWNER_KIND: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("owner_kind"), SQLDataType.VARCHAR(20).nullable(false), this, "")
+
+    /**
+     * The column <code>public.profile_histories.owner_id</code>.
+     */
+    val OWNER_ID: TableField<ProfileHistoriesRecord, Long?> = createField(DSL.name("owner_id"), SQLDataType.BIGINT, this, "")
+
+    /**
+     * The column <code>public.profile_histories.owner_name</code>.
+     */
+    val OWNER_NAME: TableField<ProfileHistoriesRecord, String?> = createField(DSL.name("owner_name"), SQLDataType.VARCHAR(200), this, "")
+
     private constructor(alias: Name, aliased: Table<ProfileHistoriesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProfileHistoriesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ProfileHistoriesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -215,7 +196,7 @@ open class ProfileHistories(
         override fun `as`(alias: Table<*>): ProfileHistoriesPath = ProfileHistoriesPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(PROFILE_HISTORIES_REVIEW_IDX, PROFILE_HISTORIES_USER_ID_IDX)
+    override fun getIndexes(): List<Index> = listOf(PROFILE_HISTORIES_REVIEW_IDX, PROFILE_HISTORIES_ROLE_ID_IDX, PROFILE_HISTORIES_USER_ID_IDX)
     override fun getPrimaryKey(): UniqueKey<ProfileHistoriesRecord> = PROFILE_HISTORIES_PKEY
     override fun getReferences(): List<ForeignKey<ProfileHistoriesRecord, *>> = listOf(PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY)
 
@@ -242,7 +223,8 @@ open class ProfileHistories(
         get(): HistoryEvidencePath = historyEvidence()
     override fun getChecks(): List<Check<ProfileHistoriesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("profile_histories_approval_status_check"), "(((approval_status)::text = ANY ((ARRAY['APPROVED'::character varying, 'PENDING'::character varying, 'REJECTED'::character varying])::text[])))", true),
-        Internal.createCheck(this, DSL.name("profile_histories_kind_check"), "(((kind)::text = ANY ((ARRAY['ORGANIZATION'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
+        Internal.createCheck(this, DSL.name("profile_histories_approved_check"), "((((approval_status)::text <> 'APPROVED'::text) OR ((owner_id IS NOT NULL) AND (role_id IS NOT NULL))))", true),
+        Internal.createCheck(this, DSL.name("profile_histories_owner_kind_check"), "(((owner_kind)::text = ANY ((ARRAY['ORGANIZATION'::character varying, 'PROGRAM'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("profile_histories_verification_status_check"), "(((verification_status)::text = ANY ((ARRAY['UNVERIFIED'::character varying, 'PENDING'::character varying, 'VERIFIED'::character varying, 'REJECTED'::character varying])::text[])))", true)
     )
     override fun `as`(alias: String): ProfileHistories = ProfileHistories(DSL.name(alias), this)

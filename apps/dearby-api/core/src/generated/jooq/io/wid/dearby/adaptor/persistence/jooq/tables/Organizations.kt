@@ -10,9 +10,11 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_CONTACTS__ORGANIZATION_CONTACTS_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_LOGOS__ORGANIZATION_LOGOS_ORGANIZATION_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ORG_AFFINITY__USER_ORG_AFFINITY_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts.OrganizationContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos.OrganizationLogosPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Roles.RolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity.UserOrgAffinityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users.UsersPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationsRecord
@@ -209,6 +211,21 @@ open class Organizations(
 
     val organizationLogos: OrganizationLogosPath
         get(): OrganizationLogosPath = organizationLogos()
+
+    private lateinit var _roles: RolesPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.roles</code> table
+     */
+    fun roles(): RolesPath {
+        if (!this::_roles.isInitialized)
+            _roles = RolesPath(this, null, ROLES__ROLES_ORGANIZATION_ID_FKEY.inverseKey)
+
+        return _roles;
+    }
+
+    val roles: RolesPath
+        get(): RolesPath = roles()
 
     private lateinit var _userOrgAffinity: UserOrgAffinityPath
 

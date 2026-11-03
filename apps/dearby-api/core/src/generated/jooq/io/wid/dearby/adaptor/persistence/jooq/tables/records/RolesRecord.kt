@@ -38,6 +38,26 @@ open class RolesRecord() : UpdatableRecordImpl<RolesRecord>(Roles.ROLES) {
         set(value): Unit = set(4, value)
         get(): OffsetDateTime? = get(4) as OffsetDateTime?
 
+    open var organizationId: Long?
+        set(value): Unit = set(5, value)
+        get(): Long? = get(5) as Long?
+
+    open var programId: Long?
+        set(value): Unit = set(6, value)
+        get(): Long? = get(6) as Long?
+
+    open var activityId: Long?
+        set(value): Unit = set(7, value)
+        get(): Long? = get(7) as Long?
+
+    open var source: String?
+        set(value): Unit = set(8, value)
+        get(): String? = get(8) as String?
+
+    open var position: Int?
+        set(value): Unit = set(9, value)
+        get(): Int? = get(9) as Int?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -47,12 +67,17 @@ open class RolesRecord() : UpdatableRecordImpl<RolesRecord>(Roles.ROLES) {
     /**
      * Create a detached, initialised RolesRecord
      */
-    constructor(id: Long? = null, name: String? = null, nameEn: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: Long? = null, name: String? = null, nameEn: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, organizationId: Long? = null, programId: Long? = null, activityId: Long? = null, source: String? = null, position: Int? = null): this() {
         this.id = id
         this.name = name
         this.nameEn = nameEn
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.organizationId = organizationId
+        this.programId = programId
+        this.activityId = activityId
+        this.source = source
+        this.position = position
         resetTouchedOnNotNull()
     }
 }

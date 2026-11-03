@@ -14,12 +14,14 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_CONTACTS__PROGRAM_CON
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_COVERS__PROGRAM_COVERS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_LOGOS__PROGRAM_LOGOS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback.CollectionFeedbackPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts.ProgramContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCovers.ProgramCoversPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos.ProgramLogosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Roles.RolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramsRecord
 
@@ -274,6 +276,21 @@ open class Programs(
 
     val programTags: ProgramTagsPath
         get(): ProgramTagsPath = programTags()
+
+    private lateinit var _roles: RolesPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.roles</code> table
+     */
+    fun roles(): RolesPath {
+        if (!this::_roles.isInitialized)
+            _roles = RolesPath(this, null, ROLES__ROLES_PROGRAM_ID_FKEY.inverseKey)
+
+        return _roles;
+    }
+
+    val roles: RolesPath
+        get(): RolesPath = roles()
 
     /**
      * Get the implicit many-to-many join path to the <code>public.tags</code>
