@@ -4,6 +4,7 @@ import {
   activityId,
   activitySchema,
   cardSchema,
+  discoverySearchSchema,
   guestListSchema,
   activityPageSchema,
   programPageSchema,
@@ -99,6 +100,12 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
     query.set("participationType", participationType);
   return query;
 }
+/** `GET discovery/search?q=` (contract "발견 필터 시트 표현"; 이력의 "어디에서"): `q` alone, 1~100 characters without control characters. */
+function unitSearchQuery(url: URL): URLSearchParams | undefined {
+  const q = url.searchParams.get("q")?.trim();
+  if ([...url.searchParams.keys()].some((key) => key !== "q") || !q || q.length > 100 || /[\u0000-\u001f]/.test(q)) return;
+  return new URLSearchParams({ q });
+}
 /** `GET programs/:id/logo?v=<epoch seconds>` (contract "프로그램 로고"): only `v` is forwarded; anything else is rejected. */
 function logoQuery(url: URL): URLSearchParams | undefined {
   const keys = [...url.searchParams.keys()];
@@ -148,10 +155,11 @@ export async function proxy(
   // Public program logo images (contract "프로그램 로고"): binary passthrough, cached like the API says.
   const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
   const programs = path === "discovery/programs";
+  const unitSearch = path === "discovery/search";
   const cardRoute = segments.length === 2 && segments[0] === "cards";
   const reportRoute = segments.length === 3 && segments[0] === "cards" && segments[2] === "reports";
   const blockRoute = path === "guest/blocks";
-  const search = path === "activities" || programs;
+  const search = path === "activities" || programs || unitSearch;
   const method = request.method;
   const allowed =
     (search && method === "GET") ||
@@ -172,9 +180,11 @@ export async function proxy(
   // A card view takes the QR code from the `X-Card-Code` header (never the query) and sends it upstream as `?code=`.
   const cardCode = cardRoute ? request.headers.get("x-card-code") : null;
   if (cardCode !== null && !TOKEN.test(cardCode)) return failure(422, "INVALID_INPUT");
-  const query = search
-    ? searchQuery(new URL(request.url), programs)
-    : logoRoute
+  const query = unitSearch
+    ? unitSearchQuery(new URL(request.url))
+    : search
+      ? searchQuery(new URL(request.url), programs)
+      : logoRoute
       ? logoQuery(new URL(request.url))
       : cardCode
         ? new URLSearchParams({ code: cardCode })
@@ -317,6 +327,8 @@ export async function proxy(
         ? activityPageSchema.parse(json)
         : programs
           ? programPageSchema.parse(json)
+          : unitSearch
+          ? discoverySearchSchema.parse(json)
           : activityRoute
           ? activitySchema.parse(json)
           : timetableRoute

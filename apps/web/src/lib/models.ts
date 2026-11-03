@@ -15,19 +15,22 @@ export const contactSchema = z.object({
 });
 export type Contact = z.infer<typeof contactSchema>;
 const contact = contactSchema;
-// 카탈로그 참조(id는 숫자) 또는 직접 입력한 이름. 명함에는 승인된 이력만 실리고 evidence는 없다.
+// 이력 = 역할 하나에 매칭 (contract "이력 (History) — 역할 매칭", 2026-11-03): 역할은 조직·프로그램·활동 중 하나(`owner`)에 귀속된다.
+// `role`은 등록된 역할(없으면 직접 입력, 이름은 `roleName`에 늘 있다); `owner.id`가 null이면 이름만 직접 적은 단위(승인 대기).
+// `organization`·`program`·`activity`는 귀속에서 서버가 채우는 편의 값. 명함에는 승인된 이력만 실리고 evidence는 없다.
+// 옛 호환 필드(kind·organizationName·programName·activityName)는 읽지 않는다.
 const activityInfoRef = z.object({ id: z.number().int(), name: text }).nullable();
+export const ROLE_OWNER_KINDS = ["organization", "program", "activity"] as const;
+export type RoleOwnerKind = (typeof ROLE_OWNER_KINDS)[number];
+export const roleOwnerSchema = z.object({ kind: z.enum(ROLE_OWNER_KINDS), id: z.number().int().nullable(), name: text });
 export const historySchema = z.object({
   id: uuid,
-  kind: z.enum(["organization", "activity"]),
-  organization: activityInfoRef,
-  organizationName: text.nullable(),
-  program: activityInfoRef,
-  programName: text.nullable(),
-  activity: activityInfoRef,
-  activityName: text.nullable(),
   role: activityInfoRef,
-  roleName: text.nullable(),
+  roleName: text,
+  owner: roleOwnerSchema,
+  organization: activityInfoRef,
+  program: activityInfoRef,
+  activity: activityInfoRef,
   startDate: text,
   endDate: text.nullable(),
   description: text,
@@ -37,6 +40,10 @@ export const historySchema = z.object({
 });
 const history = historySchema;
 export type History = z.infer<typeof historySchema>;
+/** 이력 표시 `귀속 단위 이름 · 역할 이름` (contract "이력" › 표시), e.g. `디프만 19기 · iOS 개발자`. */
+export function historyTitle(history: Pick<History, "owner" | "role" | "roleName">): string {
+  return `${history.owner.name} · ${history.role?.name ?? history.roleName}`;
+}
 // Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introLink` is the 소개 링크 next to the name
 // (contract "소개 링크·소개 글 폐지"); the old `introduction` body is no longer shown.
 export const cardSchema = z.object({
@@ -175,6 +182,11 @@ const scheduleSchema = z.object({
 });
 export type Schedule = z.infer<typeof scheduleSchema>;
 const named = z.object({ id: z.number().int(), name: text });
+// 조직·프로그램 통합 검색 `GET /v1/discovery/search?q=` (contract "발견 필터 시트 표현"; 이력 입력의 "어디에서"도 쓴다). 활동은 `GET /v1/activities`로 따로 찾는다.
+export const discoverySearchSchema = z.object({
+  items: z.array(z.object({ type: z.enum(ROLE_OWNER_KINDS), id: z.number().int(), name: text })),
+});
+export type DiscoverySearch = z.infer<typeof discoverySearchSchema>;
 // Eligibility (contract "대상자 조건 — 2026-10-18"): nested all/any groups of conditions with Korean
 // vocabulary plus English twins (`fieldEn`, `valuesEn`, `noteEn`); ranges are `from`/`to`. JSON keys are camelCase; snake_case lives only in the DB.
 const eligibilityConditionSchema = z.object({
