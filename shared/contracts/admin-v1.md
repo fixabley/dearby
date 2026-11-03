@@ -331,3 +331,12 @@ native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정
 - **ICS 가져오기**: `POST /v1/admin/activities/:id/schedules/import-ics`(본문 `{ics: string, apply?: boolean}`, 파일 올리기도 같은 경로로 텍스트를 보냄). `apply`가 없으면 미리 보기 응답 `{items: [{title, kind, phase, startAt|startDate, endAt|endDate, timeZone, matches: scheduleId|null}]}`(같은 제목·시각의 기존 일정이 있으면 `matches`), `apply: true`면 새 일정은 만들고 `matches`는 덮어쓰며 모두 `curated`로 보호. `VEVENT`의 `SUMMARY`·`DTSTART`·`DTEND`·`RRULE`(반복 일정은 기존 "반복 일정" 규칙으로)·`LOCATION`(메모)만 읽고 그 밖은 버린다. 읽을 수 없는 ICS는 400.
 - **내보내기**: `GET /v1/admin/activities/:id/schedules.ics`(검수용, 공개 피드와 같은 변환).
 - 공개 사용자 피드(`/v1/me/calendar/{token}.ics`)와 집합 API는 native-v1.md에 있다.
+
+## 발견 필터 구성 — 2026-11-03
+
+사용자: "필터에 들어가는 항목들 어드민에서 관리할 수 있게" → "아이콘 종류도 선택할 수 있게". 앱 필터 시트의 섹션과 항목을 어드민이 정하고 공개 `GET /v1/discovery/filters`(native-v1.md "발견 필터 시트 표현")가 그대로 내려 준다.
+
+- **페이지** `필터 구성`: 섹션 목록(`활동 상태`·`종류`·`분야`·`대상`)을 끌어 순서를 바꾸고 켜고 끈다. `활동 상태`는 세 묶음의 표시 이름만(묶음 규칙은 코드). `종류`는 종류 코드 열 개(BOOTCAMP·CLUB·CONTEST·HACKATHON·CONFERENCE·STUDY·WORKSHOP·LECTURE·MEETUP·OTHER)마다 노출·순서·표시 이름·**아이콘**. `분야`는 태그 사전의 분야 태그 중 보일 것과 순서·아이콘(비우면 상위 분야 전부, 사전 순). `대상`은 켜기와 표시 이름·보조 문구.
+- **아이콘 선택기**: 앱에 내장된 "아이콘 통일" 표의 키 목록(`GET /v1/admin/icons` → `[{key, label, ios, android}]`, 서버 상수)을 격자로 보여 고른다. 미리 보기는 어드민의 같은 이름 인라인 SVG. 표에 없는 아이콘은 고를 수 없다(새 아이콘은 코드 변경).
+- **저장**: `GET/PUT /v1/admin/discovery-filters` → `{sections: [{key, enabled, title, subtitle?, items?: [{code, enabled, label, icon}]}]}`(한 행 `discovery_filter_config(id=1, config jsonb, updated_at)`, V65). 모르는 섹션 키·종류 코드·아이콘 키·없는 태그 id는 400. 저장 즉시 공개 응답에 반영(캐시 5분).
+- 기본값(행이 없을 때): 상태 세 묶음, 종류 여섯(부트캠프·연합동아리·대회·해커톤·컨퍼런스·스터디, 현재 앱 순서·아이콘), 분야 상위 전부, 대상 켬.
