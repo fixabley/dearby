@@ -28,6 +28,10 @@ alter table profile_histories
     add column owner_id   bigint,       -- 논리키 organizations·programs·activities. 이름만 직접 적은 단위면 null(승인 대기)
     add column owner_name varchar(200); -- 직접 적은 귀속 단위 이름(owner_id가 null일 때만)
 update profile_histories set owner_kind = 'ACTIVITY', owner_id = activity_id where kind = 'ACTIVITY' and activity_id is not null;
+-- 활동 이름만 직접 적은 활동 이력은 그 이름을 지키려고 단위 없는 활동 귀속(승인 대기)으로 옮긴다. 조직·프로그램 id는 승인 때 관리자가 활동을 고르면서 다시 채워지므로 버린다
+update profile_histories
+set owner_kind = 'ACTIVITY', owner_name = activity_name, approval_status = 'PENDING'
+where owner_kind is null and kind = 'ACTIVITY' and activity_name is not null;
 update profile_histories set owner_kind = 'PROGRAM', owner_id = program_id where owner_kind is null and program_id is not null;
 update profile_histories set owner_kind = 'ORGANIZATION', owner_id = organization_id where owner_kind is null and organization_id is not null;
 -- 등록된 단위가 하나도 없는 직접 입력 이력은 지우지 않고 조직 이름만 남겨 승인 대기로 둔다(2026-11-03 밤 조율 결정: 사용자 데이터·인증자료 보존)
