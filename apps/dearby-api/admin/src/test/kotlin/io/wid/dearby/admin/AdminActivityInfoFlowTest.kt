@@ -1101,4 +1101,37 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(0, jdbc.sql("select count(*) from user_session_favorites where user_id = ?").param(user).query(Int::class.java).single())
         jdbc.sql("delete from users where id = ?").param(user).update()
     }
+
+    // admin-v1.md "발견 필터 구성": 구성 GET(기본)·PUT(검증)·아이콘 목록
+    @Test
+    fun `발견 필터 구성은 기본값을 주고 저장하며 모르는 섹션·종류·아이콘·분야 태그는 400이고 아이콘 목록은 서버 상수다`() {
+        mvc.get("/v1/admin/discovery-filters").andExpect { status { isUnauthorized() } }
+        val defaults = read(mvc.get("/v1/admin/discovery-filters") { asAdmin() }.andExpect { status { isOk() } })
+        assertEquals(listOf("status", "category", "field", "eligibility"), defaults["sections"].toList().map { it["key"].asString() })
+        assertEquals(6, defaults["sections"][1]["items"].size())
+        assertEquals(0, defaults["sections"][2]["items"].size())
+        val icons = read(mvc.get("/v1/admin/icons") { asAdmin() }.andExpect { status { isOk() } })["items"]
+        assertEquals(listOf("bootcamp", "부트캠프", "graduationcap", "School"), icons[0].let { listOf(it["key"].asString(), it["label"].asString(), it["ios"].asString(), it["android"].asString()) })
+        assertEquals(true, icons.toList().any { it["key"].asString() == "dataAi" })
+
+        val field = read(mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"필터 분야 ${java.util.UUID.randomUUID()}","nameEn":"filterField","kind":"FIELD"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        fun put(content: String) = mvc.put("/v1/admin/discovery-filters") { asAdmin(); body(content) }
+        val config = """{"sections":[
+            {"key":"category","enabled":true,"title":"종류","items":[{"code":"HACKATHON","enabled":true,"label":"해커톤","icon":"hackathon"},{"code":"BOOTCAMP","enabled":false,"label":"부트캠프","icon":"bootcamp"}]},
+            {"key":"status","enabled":true,"title":"상태","subtitle":"여러 개","items":[{"code":"available","enabled":true,"label":"지원 가능","icon":"send"}]},
+            {"key":"field","enabled":true,"title":"분야","items":[{"code":"$field","enabled":true,"label":"분야 하나","icon":"dataAi"}]},
+            {"key":"eligibility","enabled":false,"title":"대상","items":[{"code":"mine","enabled":true,"label":"내 조건만","icon":"profile"}]}
+        ]}"""
+        val saved = read(put(config).andExpect { status { isOk() } })
+        assertEquals(listOf("category", "status", "field", "eligibility"), saved["sections"].toList().map { it["key"].asString() })
+        assertEquals(saved.toString(), read(mvc.get("/v1/admin/discovery-filters") { asAdmin() }).toString())
+        assertEquals(1, jdbc.sql("select count(*) from discovery_filter_config where id = 1").query(Int::class.java).single())
+        put("""{"sections":[{"key":"colors","enabled":true,"title":"색"}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"PARTY","enabled":true,"label":"파티","icon":"bootcamp"}]}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"CLUB","enabled":true,"label":"동아리","icon":"rainbow"}]}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"field","enabled":true,"title":"분야","items":[{"code":"999999","enabled":true,"label":"없음","icon":"tag"}]}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"status","enabled":true,"title":"a"},{"key":"status","enabled":true,"title":"b"}]}""").andExpect { status { isBadRequest() } }
+        jdbc.sql("delete from discovery_filter_config").update()
+        mvc.delete("/v1/admin/tags/$field") { asAdmin() }.andExpect { status { isNoContent() } }
+    }
 }
