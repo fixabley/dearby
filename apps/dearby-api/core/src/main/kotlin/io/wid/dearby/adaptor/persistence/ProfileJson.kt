@@ -43,17 +43,18 @@ object ProfileJson {
 
     data class EvidenceJson(val id: UUID, val fileName: String, val contentType: String, val size: Int, val uploadedAt: OffsetDateTime)
 
+    data class OwnerJson(val kind: String, val id: Long?, val name: String)
+
+    // V67(역할 귀속) 전 스냅샷에는 owner가 없고 kind·organizationName·programName·activityName이 있다. 읽을 때 활동 → 프로그램 → 조직 순으로 귀속을 만들고,
+    // 등록된 것이 없으면 직접 적은 이름만 남긴다(id 없음). 쓸 때는 새 모양만 쓴다
     data class HistoryJson(
         val id: UUID,
-        val kind: String,
-        val organization: RefJson?,
-        val organizationName: String?,
-        val program: RefJson?,
-        val programName: String?,
-        val activity: RefJson?,
-        val activityName: String?,
         val role: RefJson?,
         val roleName: String?,
+        val owner: OwnerJson? = null,
+        val organization: RefJson?,
+        val program: RefJson?,
+        val activity: RefJson?,
         val startDate: LocalDate,
         val endDate: LocalDate?,
         val description: String,
@@ -61,25 +62,38 @@ object ProfileJson {
         val approvalReason: String?,
         val verification: String,
         val evidence: List<EvidenceJson> = emptyList(),
+        val kind: String? = null,
+        val organizationName: String? = null,
+        val programName: String? = null,
+        val activityName: String? = null,
     ) {
-        fun toHistory() = History(
-            id, HistoryKind.valueOf(kind),
-            organization?.let { ActivityInfoRef(it.id, it.name) }, organizationName,
-            program?.let { ActivityInfoRef(it.id, it.name) }, programName,
-            activity?.let { ActivityInfoRef(it.id, it.name) }, activityName,
-            role?.let { ActivityInfoRef(it.id, it.name) }, roleName,
-            startDate, endDate, description,
-            ApprovalStatus.valueOf(approval), approvalReason, VerificationStatus.valueOf(verification),
-            evidence.map { EvidenceMeta(it.id, it.fileName, it.contentType, it.size, it.uploadedAt) },
-        )
+        fun toHistory(): History {
+            val owner = owner?.let { RoleOwner(RoleOwnerKind.valueOf(it.kind), it.id, it.name) } ?: when {
+                activity != null -> RoleOwner(RoleOwnerKind.ACTIVITY, activity.id, activity.name)
+                program != null -> RoleOwner(RoleOwnerKind.PROGRAM, program.id, program.name)
+                organization != null -> RoleOwner(RoleOwnerKind.ORGANIZATION, organization.id, organization.name)
+                kind == "ACTIVITY" -> RoleOwner(RoleOwnerKind.ACTIVITY, null, activityName ?: organizationName ?: "")
+                else -> RoleOwner(RoleOwnerKind.ORGANIZATION, null, organizationName ?: "")
+            }
+            return History(
+                id, role?.let { ActivityInfoRef(it.id, it.name) }, roleName ?: role?.name ?: "", owner,
+                organization?.let { ActivityInfoRef(it.id, it.name) },
+                program?.let { ActivityInfoRef(it.id, it.name) },
+                activity?.let { ActivityInfoRef(it.id, it.name) },
+                startDate, endDate, description,
+                ApprovalStatus.valueOf(approval), approvalReason, VerificationStatus.valueOf(verification),
+                evidence.map { EvidenceMeta(it.id, it.fileName, it.contentType, it.size, it.uploadedAt) },
+            )
+        }
 
         companion object {
             fun from(h: History) = HistoryJson(
-                h.id, h.kind.name,
-                h.organization?.let { RefJson(it.id, it.name) }, h.organizationName,
-                h.program?.let { RefJson(it.id, it.name) }, h.programName,
-                h.activity?.let { RefJson(it.id, it.name) }, h.activityName,
+                h.id,
                 h.role?.let { RefJson(it.id, it.name) }, h.roleName,
+                OwnerJson(h.owner.kind.name, h.owner.id, h.owner.name),
+                h.organization?.let { RefJson(it.id, it.name) },
+                h.program?.let { RefJson(it.id, it.name) },
+                h.activity?.let { RefJson(it.id, it.name) },
                 h.startDate, h.endDate, h.description,
                 h.approval.name, h.approvalReason, h.verification.name,
                 h.evidence.map { EvidenceJson(it.id, it.fileName, it.contentType, it.size, it.uploadedAt) },

@@ -6,10 +6,10 @@ import io.wid.dearby.application.profile.HistoryForReview
 import io.wid.dearby.application.profile.HistoryReviewRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.profile.ApprovalStatus
+import io.wid.dearby.domain.profile.RoleOwnerKind
 import io.wid.dearby.domain.profile.VerificationStatus
 import org.jooq.Condition
 import org.jooq.DSLContext
-import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -32,15 +32,13 @@ class JooqHistoryReviewRepository(private val dsl: DSLContext) : HistoryReviewRe
     override fun find(historyId: UUID): HistoryForReview? =
         load(dsl.selectFrom(PROFILE_HISTORIES).where(PROFILE_HISTORIES.ID.eq(historyId)).fetch()).singleOrNull()
 
-    // 준 id는 직접 입력 값을 대신한다(이름은 지운다)
-    override fun updateApproval(historyId: UUID, status: ApprovalStatus, reason: String?, organizationId: Id?, programId: Id?, activityId: Id?, roleId: Id?): Boolean {
+    // 준 값은 직접 입력 값을 대신한다(이름은 지운다)
+    override fun updateApproval(historyId: UUID, status: ApprovalStatus, reason: String?, owner: Pair<RoleOwnerKind, Id>?, roleId: Id?): Boolean {
         var update = dsl.update(PROFILE_HISTORIES)
             .set(PROFILE_HISTORIES.APPROVAL_STATUS, status.name)
             .set(PROFILE_HISTORIES.APPROVAL_REASON, reason)
             .set(PROFILE_HISTORIES.UPDATED_AT, OffsetDateTime.now(ZoneOffset.UTC))
-        organizationId?.let { update = update.set(PROFILE_HISTORIES.ORGANIZATION_ID, it).setNull(PROFILE_HISTORIES.ORGANIZATION_NAME) }
-        programId?.let { update = update.set(PROFILE_HISTORIES.PROGRAM_ID, it).setNull(PROFILE_HISTORIES.PROGRAM_NAME) }
-        activityId?.let { update = update.set(PROFILE_HISTORIES.ACTIVITY_ID, it).setNull(PROFILE_HISTORIES.ACTIVITY_NAME) }
+        owner?.let { (kind, id) -> update = update.set(PROFILE_HISTORIES.OWNER_KIND, kind.name).set(PROFILE_HISTORIES.OWNER_ID, id).setNull(PROFILE_HISTORIES.OWNER_NAME) }
         roleId?.let { update = update.set(PROFILE_HISTORIES.ROLE_ID, it).setNull(PROFILE_HISTORIES.ROLE_NAME) }
         return update.where(PROFILE_HISTORIES.ID.eq(historyId)).execute() > 0
     }

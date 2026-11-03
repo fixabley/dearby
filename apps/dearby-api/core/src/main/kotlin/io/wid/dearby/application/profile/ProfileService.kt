@@ -78,10 +78,7 @@ class ProfileService(
             introLink = snapshot.introLink,
             contacts = snapshot.contacts.map { ContactInput(it.id, it.kind.name.lowercase(), it.label, it.value) },
             histories = snapshot.histories.map {
-                HistoryInput(
-                    it.id, it.kind.name.lowercase(), it.organization?.id, it.organizationName, it.program?.id, it.programName,
-                    it.activity?.id, it.activityName, it.role?.id, it.roleName, it.startDate, it.endDate, it.description,
-                )
+                HistoryInput(it.id, it.role?.id, it.owner.kind.name.lowercase(), it.owner.id, it.owner.name, it.roleName, it.startDate, it.endDate, it.description)
             },
         )
         return update(userId, input, null)
@@ -292,45 +289,34 @@ class ProfileService(
         return url
     }
 
-    // 활동 정보 id가 있으면 이름을 활동 정보에서 가져오고 직접 입력 이름은 버린다. 상태는 기존 이력과 비교해 정한다
+    // 역할 매칭(native-v1.md "이력 (History) — 역할 매칭"): roleId가 있으면 그 역할과 귀속 단위를 쓰고 직접 입력 값은 버린다.
+    // 없으면 직접 입력(승인 대기): 등록된 단위(ownerKind·ownerId) 또는 단위 이름(ownerKind·ownerName) + 역할 이름. 상태는 기존 이력과 비교해 정한다
     private fun history(input: HistoryInput, existing: History?): History {
-        val kind = HistoryKind.entries.firstOrNull { it.name.equals(input.kind, ignoreCase = true) }
-            ?: throw InvalidInputException("이력 종류는 organization 또는 activity입니다")
-        val pickedActivity = input.activityId?.let { id ->
-            activities.findById(id, PublicationStatus.PUBLISHED) ?: throw InvalidInputException("활동을 찾을 수 없습니다", "Activity not found: $id")
+        val role = input.roleId?.let { id -> roles.findAllById(listOf(id)).singleOrNull() ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $id") }
+        val units = if (role != null) {
+            units(role.owner.kind, role.owner.id!!, publishedOnly = false) ?: throw InvalidInputException("역할의 귀속 단위를 찾을 수 없습니다", "Role owner not found: ${role.id}")
+        } else {
+            val kind = RoleOwnerKind.entries.firstOrNull { it.name.equals(input.ownerKind, ignoreCase = true) }
+                ?: throw InvalidInputException("ownerKind는 organization·program·activity 중 하나입니다")
+            if (input.ownerId != null) {
+                units(kind, input.ownerId, publishedOnly = true) ?: throw InvalidInputException("${UNIT_LABELS.getValue(kind)}을(를) 찾을 수 없습니다", "${kind.name} not found: ${input.ownerId}")
+            } else {
+                val name = optional(input.ownerName, "${UNIT_LABELS.getValue(kind)} 이름", MAX_ACTIVITY_INFO_NAME) ?: throw InvalidInputException("조직·프로그램·활동을 고르거나 적어 주세요")
+                Units(RoleOwner(kind, null, name), null, null, null)
+            }
         }
+        val roleName = role?.name ?: optional(input.roleName, "역할 이름", MAX_NAME) ?: throw InvalidInputException("역할을 고르거나 적어 주세요")
         // 7일 미만 행사는 이력이 아니다(native-v1.md "활동 이력에서 단기 행사 제외"). 직접 입력한 활동 이름은 제한하지 않고,
         // 이미 같은 활동으로 저장된 이력은 다시 검사하지 않는다(기존 이력·버전 되돌리기가 막히지 않도록, 2026-10-20 조율 결정)
-        if (pickedActivity != null && existing?.activity?.id != pickedActivity.id && !activities.isHistoryEligible(pickedActivity.id)) {
-            throw InvalidInputException("일주일 미만 행사는 활동 이력에 넣을 수 없어요", "Activity too short for history: ${pickedActivity.id}", code = HISTORY_ACTIVITY_TOO_SHORT)
+        val activityId = units.activity?.id
+        if (activityId != null && existing?.activity?.id != activityId && !activities.isHistoryEligible(activityId)) {
+            throw InvalidInputException("일주일 미만 행사는 활동 이력에 넣을 수 없어요", "Activity too short for history: $activityId", code = HISTORY_ACTIVITY_TOO_SHORT)
         }
-        val activity = pickedActivity?.let { ActivityInfoRef(it.id, it.name) }
-        // 활동 정보에서 고른 활동은 소속 프로그램·조직을 서버가 채운다(2026-10-18 퍼널 분리). 요청의 조직·프로그램 id와 달라도 활동의 소속을 쓴다
-        val pickedProgram = pickedActivity?.let { programs.findAllById(listOf(it.programId)).singleOrNull() }
-        val program = pickedProgram?.let { ActivityInfoRef(it.id, it.name) } ?: input.programId?.let { id ->
-            programs.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: $id")
-        }
-        val organization = pickedProgram?.let { organizations.findAllById(listOf(it.organizationId)).singleOrNull()?.let { o -> ActivityInfoRef(o.id, o.name) } }
-            ?: input.organizationId?.let { id ->
-                organizations.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
-            }
-        val role = input.roleId?.let { id ->
-            roles.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $id")
-        }
-        val organizationName = if (organization == null) optional(input.organizationName, "조직 이름", MAX_ACTIVITY_INFO_NAME) else null
-        val programName = if (program == null) optional(input.programName, "프로그램 이름", MAX_ACTIVITY_INFO_NAME) else null
-        val activityName = if (activity == null) optional(input.activityName, "활동 이름", MAX_ACTIVITY_INFO_NAME) else null
-        val roleName = if (role == null) optional(input.roleName, "역할 이름", MAX_NAME) else null
-        if (organization == null && organizationName == null) throw InvalidInputException("조직을 고르거나 적어 주세요")
-        if (role == null && roleName == null) throw InvalidInputException("역할을 고르거나 적어 주세요")
-        if (kind == HistoryKind.ACTIVITY && activity == null && activityName == null) throw InvalidInputException("활동을 고르거나 적어 주세요")
         if (input.endDate != null && input.endDate.isBefore(input.startDate)) throw InvalidInputException("종료일은 시작일보다 앞설 수 없습니다")
         val draft = History(
-            id = input.id, kind = kind,
-            organization = organization, organizationName = organizationName ?: organization?.name,
-            program = program, programName = programName ?: program?.name,
-            activity = activity, activityName = activityName ?: activity?.name,
-            role = role, roleName = roleName ?: role?.name,
+            id = input.id,
+            role = role?.let { ActivityInfoRef(it.id, it.name) }, roleName = roleName,
+            owner = units.owner, organization = units.organization, program = units.program, activity = units.activity,
             startDate = input.startDate, endDate = input.endDate,
             description = multiline(input.description, "설명", MAX_DESCRIPTION),
             approval = ApprovalStatus.APPROVED, approvalReason = null,
@@ -345,6 +331,24 @@ class ProfileService(
             draft.copy(approval = ApprovalStatus.PENDING)
         }
     }
+
+    // 귀속 단위와 상위 단위(활동 → 프로그램 → 조직). 사용자가 직접 고르는 활동은 게시된 것만, 역할에서 따라오는 활동은 게시 상태와 무관(이미 저장된 이력이 막히지 않도록)
+    private fun units(kind: RoleOwnerKind, id: Id, publishedOnly: Boolean): Units? = when (kind) {
+        RoleOwnerKind.ACTIVITY -> activities.findById(id, PublicationStatus.PUBLISHED.takeIf { publishedOnly })?.let { a ->
+            val program = programs.findAllById(listOf(a.programId)).singleOrNull()
+            val organization = program?.let { organizations.findAllById(listOf(it.organizationId)).singleOrNull() }
+            Units(RoleOwner(kind, a.id, a.name), organization?.let { ActivityInfoRef(it.id, it.name) }, program?.let { ActivityInfoRef(it.id, it.name) }, ActivityInfoRef(a.id, a.name))
+        }
+        RoleOwnerKind.PROGRAM -> programs.findAllById(listOf(id)).singleOrNull()?.let { p ->
+            val organization = organizations.findAllById(listOf(p.organizationId)).singleOrNull()
+            Units(RoleOwner(kind, p.id, p.name), organization?.let { ActivityInfoRef(it.id, it.name) }, ActivityInfoRef(p.id, p.name), null)
+        }
+        RoleOwnerKind.ORGANIZATION -> organizations.findAllById(listOf(id)).singleOrNull()?.let { o ->
+            Units(RoleOwner(kind, o.id, o.name), ActivityInfoRef(o.id, o.name), null, null)
+        }
+    }
+
+    private class Units(val owner: RoleOwner, val organization: ActivityInfoRef?, val program: ActivityInfoRef?, val activity: ActivityInfoRef?)
 
     // 내용만 비교한다(버전·시각·인증자료 목록 제외)
     private fun same(a: Profile, b: Profile): Boolean {
@@ -386,6 +390,7 @@ class ProfileService(
         private const val MAX_ACTIVITY_INFO_NAME = 200
         private const val MAX_INTRO_LINK = 500
         private const val MAX_DESCRIPTION = 10_000
+        private val UNIT_LABELS = mapOf(RoleOwnerKind.ORGANIZATION to "조직", RoleOwnerKind.PROGRAM to "프로그램", RoleOwnerKind.ACTIVITY to "활동")
         private val PHONE = Regex("^[0-9+\\- ]+$")
         val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
         // 앱(iOS ContactModel.usernameRules, Android ContactRules)과 같은 표. 길이는 GitHub 39·Instagram 30(각 서비스 규칙), Behance 64·카카오톡 20은 확인 못 해 넉넉히
