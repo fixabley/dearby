@@ -322,3 +322,12 @@ native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정
   - 세부 일정 블록(2026-10-26, 수집된 조각 일정을 "큰 블록 + 시간표"로 정리): `activities[].schedules: [{id, delete: true} | {id, title?, kind?, status?, phase?(null은 자동 판정으로), startAt?, endAt?, startDate?, endDate?, timeZone?, dateLabel?, note?} | {ref, title, kind?(기본 EVENT), phase?, startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}]`(`phase`는 2026-10-26 아래 "선발 과정·활동 일정(phase)"). 위 "세부 일정 편집기"의 DELETE·PATCH·POST와 같은 검증·의미다: 지우면 `curated_deleted`(재수집이 되살리지 않고, 붙은 세션은 블록과 함께 숨는다), 고치거나 만든 블록은 `curated`. 모집·활동 기간 행·없는 일정·바뀔 것이 없는 고치기는 건너뛴다. 같은 제목·시각의 보이는 세부 일정이 이미 있으면 만들지 않고 그 블록을 `ref`로 쓴다(다시 실행해도 같다). 순서는 지우기 → 고치기 → 만들기 → `timetables`이고, `timetables[].scheduleRef`로 같은 항목에서 만든 블록을 가리킨다(dry run은 새 블록 시각으로 시간표를 검증). 한 동작이라도 검증에 걸리면 그 활동 항목 전체를 건너뛴다. 게시 여부와 상관없이 적용된다(재수집은 게시 활동 일정을 덮어쓰지 않으므로 게시 활동 정리는 이 경로나 어드민으로 한다). 시간표 세션 제목만 고치는 별도 동작은 없다: 그 블록 시간표 전체를 `overwrite: true`로 다시 보낸다(세션 id가 바뀌어 그 블록의 세션 찜이 지워진다).
   - dry run에서는 새 조직·프로그램이 없으므로 그 아래 항목은 계획만 보인다. `--apply`가 끝나면 로그 `New program ids: …`.
 - 특정 프로그램만 수집: `--collect-now=<programId,…>`(비우면 전부). 주기·하루 한 번 규칙은 그대로다.
+
+## 일정 캘린더 편집기·ICS 가져오기 — 2026-11-03
+
+사용자: "ics 편집기 같은게 있으면 어드민에서 관리가 편할 것 같아서" → 저장은 DB 그대로 두고 활동의 세부 일정 편집을 캘린더 UI로 바꾼다([native-v1.md](native-v1.md) "홈 탭·활동 상세·프로그램·조직·내 활동 리뉴얼 — 2026-11-03"의 어드민 항목). 파일 저장 단계는 없다.
+
+- **편집기**: 활동 편집의 세부 일정 행 목록 폼을 FullCalendar(월·주 보기)로 바꾼다. 빈 날을 끌어 일정 만들기(POST), 블록 끌어 날짜·시각 옮기기(PATCH), 블록 눌러 종류·phase·상태 선택지·메모·겹침 확인 시간 고치기, 지우기(DELETE) — 모두 기존 `…/schedules` API. 모집 기간·활동 기간은 달력 위 띠(슬롯은 기존 PATCH 활동으로만 고침), 선발 과정은 청록, 활동 일정은 민트로 색을 나눠 phase 오류가 보이게. 주 보기에서 하루를 열면 트랙·세션 시간표를 같은 식으로 편집(기존 시간표 PUT). 날짜 없이 `dateLabel`만 있는 일정은 달력 아래 `날짜 미정` 목록.
+- **ICS 가져오기**: `POST /v1/admin/activities/:id/schedules/import-ics`(본문 `{ics: string, apply?: boolean}`, 파일 올리기도 같은 경로로 텍스트를 보냄). `apply`가 없으면 미리 보기 응답 `{items: [{title, kind, phase, startAt|startDate, endAt|endDate, timeZone, matches: scheduleId|null}]}`(같은 제목·시각의 기존 일정이 있으면 `matches`), `apply: true`면 새 일정은 만들고 `matches`는 덮어쓰며 모두 `curated`로 보호. `VEVENT`의 `SUMMARY`·`DTSTART`·`DTEND`·`RRULE`(반복 일정은 기존 "반복 일정" 규칙으로)·`LOCATION`(메모)만 읽고 그 밖은 버린다. 읽을 수 없는 ICS는 400.
+- **내보내기**: `GET /v1/admin/activities/:id/schedules.ics`(검수용, 공개 피드와 같은 변환).
+- 공개 사용자 피드(`/v1/me/calendar/{token}.ics`)와 집합 API는 native-v1.md에 있다.
