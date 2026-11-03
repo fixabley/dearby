@@ -60,21 +60,15 @@ object PlaceShort {
 
     private fun parse(text: String?): Parsed {
         if (text.isNullOrBlank()) return Parsed(emptyList(), online = false, abroad = false)
-        val regions = SIDO_PATTERN.findAll(text).map { match ->
-            val sido = SIDO.getValue(match.groupValues[1])
-            Region(sido, district(sido, text.substring(match.range.last + 1)))
-        }.distinctBy { it.sido }.toList()
+        val regions = SIDO_PATTERN.findAll(text).map { match -> region(SIDO.getValue(match.groupValues[1]), text.substring(match.range.last + 1)) }.distinctBy { it.sido }.toList()
         return Parsed(regions, online = ONLINE.containsMatchIn(text), abroad = ABROAD.containsMatchIn(text))
     }
 
-    // 시·도 바로 뒤의 시·군·구: "강남구" → 강남구, "성남시 분당구" → 분당구를 앞세운 "성남 분당구", "파주시" → 파주시, "세종" 아래는 없음
-    private fun district(sido: String, rest: String): String? {
+    // 시·도 바로 뒤의 시·군·구: "서울 강남구" → 서울 강남구, "경기 파주시" → 경기 파주시, 도 아래 "성남시 분당구"처럼 시에 구가 있으면 도 대신 시 이름 + 구("성남 분당구"), "세종" 아래는 없음
+    private fun region(sido: String, rest: String): Region {
         val tokens = rest.trimStart().split(SEPARATORS).filter { it.isNotEmpty() }.takeWhile { DISTRICT.matches(it) }.take(2)
-        val first = tokens.getOrNull(0) ?: return null
+        val first = tokens.getOrNull(0) ?: return Region(sido, null)
         val second = tokens.getOrNull(1)
-        return when {
-            first.endsWith("시") && second != null && second.endsWith("구") -> "${first.dropLast(1)} $second"
-            else -> first
-        }
+        return if (first.endsWith("시") && second != null && second.endsWith("구")) Region(first.dropLast(1), second) else Region(sido, first)
     }
 }
