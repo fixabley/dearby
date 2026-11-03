@@ -75,6 +75,12 @@ function occurrences(draft: RecurrenceDraft, start: Dayjs, until: Dayjs | null):
   return days;
 }
 
+/** Calendar views use the same capped expansion as the form preview. */
+export function recurrenceDays(rule: string | null | undefined, start: Dayjs, end: Dayjs | null): Dayjs[] {
+  const draft = recurrenceDraft(rule);
+  return draft.freq === "NONE" ? [] : occurrences(draft, start, untilDay(draft, [start, end]));
+}
+
 function dayText(draft: RecurrenceDraft) {
   const every = draft.interval > 1 ? `${draft.interval}${draft.freq === "DAILY" ? "일" : "주"}마다 ` : "";
   if (draft.freq === "DAILY") return every ? `${every}매일` : "매일";

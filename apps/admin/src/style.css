@@ -406,60 +406,20 @@ a:focus-visible {
 .tag-chips { display: inline-flex; flex-wrap: wrap; gap: 2px 0; margin-left: 6px; vertical-align: middle; }
 .tag-chips .ant-tag { margin-inline-end: 4px; }
 
-/* 세부 일정 편집기(달력 보기): 모집·활동 기간 띠와 일정 칩 */
-.schedule-cell {
-  min-height: 84px;
-  margin: 2px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.schedule-cell:hover,
-.schedule-cell:focus-visible {
-  outline: 1px solid var(--teal, #007f80);
-}
-.schedule-cell.application {
-  background: rgba(0, 127, 128, 0.08);
-}
-.schedule-cell.activity {
-  background: rgba(114, 46, 209, 0.08);
-}
-.schedule-cell.application.activity {
-  background: linear-gradient(180deg, rgba(0, 127, 128, 0.08) 0 50%, rgba(114, 46, 209, 0.08) 50% 100%);
-}
-.schedule-cell.today .schedule-cell-day {
-  color: var(--teal, #007f80);
-  font-weight: 700;
-}
-.schedule-cell-day {
-  font-size: 12px;
-  color: #657078;
-}
-.schedule-chip {
-  border: 0;
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 11px;
-  line-height: 18px;
-  text-align: left;
-  color: #fff;
-  cursor: pointer;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.schedule-chip.kind-deadline { background: #cf1322; }
-.schedule-chip.kind-announcement { background: #722ed1; }
-.schedule-chip.kind-interview { background: #d48806; }
-.schedule-chip.kind-event { background: #007f80; }
-.schedule-more { font-size: 11px; }
-/* 겹침 확인 불가: neither a time nor a 겹침 확인 시간 (the tooltip says so). */
-.schedule-chip.no-overlap { outline: 1px dashed #fff; outline-offset: -2px; }
+/* 세부 일정 편집기(FullCalendar): 기간은 읽기 전용 배경 띠, 일정은 phase 색으로 구분한다. */
+.schedule-fullcalendar .fc { --fc-border-color: #e3e8ea; --fc-today-bg-color: rgba(0, 127, 128, 0.05); }
+.schedule-fullcalendar .fc .fc-button { background: #007f80; border-color: #007f80; box-shadow: none; }
+.schedule-fullcalendar .fc .fc-button:hover,
+.schedule-fullcalendar .fc .fc-button-active { background: #00696a; border-color: #00696a; }
+.schedule-fullcalendar .fc .fc-toolbar-title { font-size: 18px; }
+.schedule-fullcalendar .fc-event { border: 0; padding: 1px 4px; cursor: pointer; }
+.schedule-fullcalendar .fc-event.schedule-event-selection { background: #007f80; color: #fff; }
+.schedule-fullcalendar .fc-event.schedule-event-activity { background: #61c5b4; color: #123d37; }
+.schedule-fullcalendar .fc-event.schedule-event-no-overlap { outline: 1px dashed currentColor; outline-offset: -2px; }
+.schedule-fullcalendar .fc-bg-event.schedule-band-application { background: rgba(0, 127, 128, 0.16); opacity: 1; }
+.schedule-fullcalendar .fc-bg-event.schedule-band-activity { background: rgba(97, 197, 180, 0.22); opacity: 1; }
+.undated-schedules { margin-top: 20px; }
+.undated-schedules h3 { margin: 0 0 8px; font-size: 15px; }
 .schedule-band-swatch {
   display: inline-block;
   width: 12px;

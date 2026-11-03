@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Calendar, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Spin, Table, Tag, Tooltip } from "antd";
+import { Alert, App, Button, Form, Input, Modal, Popconfirm, Select, Space, Spin, Table, Tag } from "antd";
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import type { DateSelectArg, EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core";
 import { api, useSingleFlight } from "./api";
-import { type RecurrenceDraft, recurrenceDraft, recurrenceInput } from "./recurrence";
+import { type RecurrenceDraft, recurrenceDays, recurrenceDraft, recurrenceInput } from "./recurrence";
 import {
   CuratedTag,
   type OverlapCheck,
@@ -12,7 +17,6 @@ import {
   overlapDraft,
   overlapInput,
   overlapUnavailable,
-  OverlapUnavailableTag,
   rangeDraft,
   type RangeDraft,
   type Schedule,
@@ -84,19 +88,6 @@ function startDay(schedule: Schedule): Dayjs | null {
   if (schedule.startDate) return dayjs.tz(schedule.startDate, SEOUL);
   return null;
 }
-/** Last Seoul day a schedule covers (inclusive). */
-function lastDay(schedule: Schedule): Dayjs | null {
-  if (schedule.endAt) return dayjs(schedule.endAt).tz(SEOUL).startOf("day");
-  if (schedule.endDateExclusive) return dayjs.tz(schedule.endDateExclusive, SEOUL).subtract(1, "day");
-  return startDay(schedule);
-}
-function covers(schedule: Schedule | null, day: Dayjs): boolean {
-  if (!schedule) return false;
-  const first = startDay(schedule);
-  const last = lastDay(schedule);
-  if (!first && !last) return false;
-  return !(first && day.isBefore(first, "day")) && !(last && day.isAfter(last, "day"));
-}
 function byTime(a: Schedule, b: Schedule): number {
   const first = startDay(a)?.valueOf() ?? Number.MAX_SAFE_INTEGER;
   const second = startDay(b)?.valueOf() ?? Number.MAX_SAFE_INTEGER;
@@ -104,8 +95,7 @@ function byTime(a: Schedule, b: Schedule): number {
 }
 
 export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleEditorActivity; onClose: () => void }) {
-  const [view, setView] = useState<"calendar" | "list">("calendar");
-  const [form, setForm] = useState<{ schedule?: Schedule; day?: Dayjs } | null>(null);
+  const [form, setForm] = useState<{ schedule?: Schedule; selection?: CalendarSelection } | null>(null);
   const [statusesFor, setStatusesFor] = useState<Schedule | null>(null);
   const { message } = App.useApp();
   const client = useQueryClient();
@@ -118,137 +108,162 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
     },
     onError: (error: Error) => message.error(error.message),
   });
-  const sorted = useMemo(() => [...activity.schedules].sort(byTime), [activity.schedules]);
+  const undated = useMemo(() => activity.schedules.filter((schedule) => !startDay(schedule) && schedule.dateLabel).sort(byTime), [activity.schedules]);
   return (
-    <Modal open title={`일정 · ${activity.name}`} onCancel={onClose} footer={null} width={960} destroyOnClose>
+    <Modal open title={`일정 · ${activity.name}`} onCancel={onClose} footer={null} width={1100} destroyOnClose>
       <Space style={{ marginBottom: 12 }} wrap>
-        <Segmented
-          value={view}
-          onChange={(value) => setView(value as "calendar" | "list")}
-          options={[
-            { label: "달력 보기", value: "calendar" },
-            { label: "목록 보기", value: "list" },
-          ]}
-        />
-        <Button type="primary" onClick={() => setForm({})}>
-          일정 추가
-        </Button>
         <span className="muted">
           활동 기간 {scheduleText(activity.activitySchedule)} <PhaseTag phase="ACTIVITY" fixed />
         </span>
         <TimetableButton activityId={activity.id} schedule={activity.activitySchedule} />
         <span className="muted">
-          <span className="schedule-band-swatch application" /> 모집 기간 <span className="schedule-band-swatch activity" /> 활동 기간 · 날짜 칸을 누르면 그 날짜로 일정을 추가해요.
+          <span className="schedule-band-swatch application" /> 모집 기간 <span className="schedule-band-swatch activity" /> 활동 기간 · 빈 날이나 시간을 끌어 일정을 만들어요.
         </span>
       </Space>
-      {view === "calendar" ? (
-        <ScheduleCalendar activity={activity} onPickDay={(day) => setForm({ day })} onPickSchedule={(schedule) => setForm({ schedule })} />
-      ) : (
-        <Table<Schedule>
-          size="small"
-          rowKey="id"
-          pagination={false}
-          dataSource={sorted}
-          locale={{ emptyText: "세부 일정이 없어요. 일정 추가로 만들거나 수집을 기다려요." }}
-          columns={[
-            { title: "제목", dataIndex: "title", render: (title: string, schedule) => <>{title}{schedule.curated && <CuratedTag />}</> },
-            { title: "종류", dataIndex: "kind", render: (kind: string) => <Tag color={kindColors[kindOf(kind)]}>{kindLabels[kindOf(kind)]}</Tag> },
-            { title: "상태", dataIndex: "status", render: (status: string) => statusLabels[statusOf(status)] },
-            { title: "구분", dataIndex: "phase", render: (phase: SchedulePhase | undefined, schedule) => <PhaseTag phase={phase} stored={schedule.phaseSource === "STORED"} /> },
-            { title: "기간", render: (_, schedule) => <>{scheduleText(schedule)}{overlapUnavailable(schedule) && <OverlapUnavailableTag />}</> },
-            { title: "원문", dataIndex: "dateLabel", render: (label: string) => label || <span className="muted">없음</span> },
-            { title: "사유", dataIndex: "curatedNote", render: (note: string | null | undefined) => note || <span className="muted">없음</span> },
-            {
-              title: "",
-              render: (_, schedule) => (
-                <Space>
-                  <Button size="small" onClick={() => setForm({ schedule })}>
-                    편집
-                  </Button>
-                  <Button size="small" onClick={() => setStatusesFor(schedule)}>
-                    진행 상태
-                  </Button>
-                  <TimetableButton activityId={activity.id} schedule={schedule} />
-                  <Popconfirm title="이 일정을 지울까요?" description="수집이 같은 일정을 다시 넣지 않아요." okText="지우기" okButtonProps={{ danger: true }} onConfirm={() => remove.mutate(schedule.id)}>
-                    <Button size="small" danger>
-                      삭제
-                    </Button>
-                  </Popconfirm>
-                </Space>
-              ),
-            },
-          ]}
-        />
-      )}
-      {form && <ScheduleForm activityId={activity.id} schedule={form.schedule} day={form.day} onClose={() => setForm(null)} onSaved={refresh} />}
+      <ScheduleCalendar activity={activity} onSelect={(selection) => setForm({ selection })} onPickSchedule={(schedule) => setForm({ schedule })} onSaved={refresh} />
+      <UndatedSchedules schedules={undated} onEdit={(schedule) => setForm({ schedule })} onStatuses={setStatusesFor} activityId={activity.id} onDelete={(schedule) => remove.mutate(schedule.id)} />
+      {form && <ScheduleForm activityId={activity.id} schedule={form.schedule} selection={form.selection} onClose={() => setForm(null)} onSaved={refresh} onDelete={form.schedule ? async () => { await remove.mutateAsync(form.schedule!.id); setForm(null); } : undefined} />}
       {statusesFor && <ScheduleStatusesModal activityId={activity.id} schedule={statusesFor} onClose={() => setStatusesFor(null)} />}
     </Modal>
   );
 }
 
-/** Month calendar: 모집·활동 기간 as background bands, detail schedules as chips (first 3 + `+n`), whole cell click → add on that day. */
+type CalendarSelection = { range: [Dayjs, Dayjs]; timed: boolean };
+type CalendarEventProps = { schedule?: Schedule; band?: boolean };
+
+function dateRange(schedule: Schedule): { start: Dayjs; end: Dayjs; allDay: boolean } | null {
+  if (schedule.startAt || schedule.endAt) {
+    const start = dayjs(schedule.startAt ?? schedule.endAt).tz(SEOUL);
+    return { start, end: dayjs(schedule.endAt ?? schedule.startAt).tz(SEOUL), allDay: false };
+  }
+  if (schedule.startDate) {
+    const start = dayjs.tz(schedule.startDate, SEOUL);
+    return { start, end: schedule.endDateExclusive ? dayjs.tz(schedule.endDateExclusive, SEOUL) : start.add(1, "day"), allDay: true };
+  }
+  return null;
+}
+
+function scheduleEvents(schedule: Schedule): EventInput[] {
+  const range = dateRange(schedule);
+  if (!range) return [];
+  const event = (start: Dayjs, end: Dayjs, suffix = "") => ({
+    id: `schedule-${schedule.id}${suffix}`,
+    title: schedule.title,
+    start: range.allDay ? start.format("YYYY-MM-DD") : start.toISOString(),
+    end: range.allDay ? end.format("YYYY-MM-DD") : end.toISOString(),
+    allDay: range.allDay,
+    classNames: [schedule.phase === "SELECTION" ? "schedule-event-selection" : "schedule-event-activity", overlapUnavailable(schedule) ? "schedule-event-no-overlap" : ""],
+    extendedProps: { schedule } satisfies CalendarEventProps,
+  });
+  if (!schedule.recurrence) return [event(range.start, range.end)];
+  const baseDay = range.start.startOf("day");
+  return recurrenceDays(schedule.recurrence, baseDay, range.end.startOf("day")).map((day) => {
+    const shift = day.diff(baseDay, "day");
+    return event(range.start.add(shift, "day"), range.end.add(shift, "day"), `-${day.format("YYYYMMDD")}`);
+  });
+}
+
+function selectionFor({ start, end, allDay }: DateSelectArg): CalendarSelection {
+  const first = dayjs(start).tz(SEOUL);
+  const last = dayjs(end).tz(SEOUL);
+  return { range: allDay ? [first, last.subtract(1, "day")] : [first, last], timed: !allDay };
+}
+
+/** FullCalendar month/week editor. Slot periods are background-only events; detail schedules carry their resolved phase color. */
 function ScheduleCalendar({
   activity,
-  onPickDay,
+  onSelect,
   onPickSchedule,
+  onSaved,
 }: {
   activity: ScheduleEditorActivity;
-  onPickDay: (day: Dayjs) => void;
+  onSelect: (selection: CalendarSelection) => void;
   onPickSchedule: (schedule: Schedule) => void;
+  onSaved: () => Promise<unknown>;
 }) {
-  const byDay = useMemo(() => {
-    const map = new Map<string, Schedule[]>();
-    for (const schedule of activity.schedules) {
-      const first = startDay(schedule);
-      const last = lastDay(schedule) ?? first;
-      if (!first || !last) continue;
-      for (let day = first; !day.isAfter(last, "day") && map.size < 10_000; day = day.add(1, "day")) {
-        const key = day.format("YYYY-MM-DD");
-        map.set(key, [...(map.get(key) ?? []), schedule]);
-      }
-    }
-    return map;
-  }, [activity.schedules]);
+  const { message } = App.useApp();
+  const events = useMemo<EventInput[]>(() => {
+    const bands = [
+      [activity.application, "application"],
+      [activity.activitySchedule, "activity"],
+    ] as const;
+    return [
+      ...activity.schedules.flatMap(scheduleEvents),
+      ...bands.flatMap(([schedule, band]) => {
+        const range = schedule && dateRange(schedule);
+        return range
+          ? [{ id: `band-${band}`, title: band === "application" ? "모집 기간" : "활동 기간", start: range.allDay ? range.start.format("YYYY-MM-DD") : range.start.toISOString(), end: range.allDay ? range.end.format("YYYY-MM-DD") : range.end.toISOString(), allDay: range.allDay, display: "background" as const, classNames: [`schedule-band-${band}`], extendedProps: { band: true } satisfies CalendarEventProps }]
+          : [];
+      }),
+    ];
+  }, [activity]);
+  const move = useMutation({
+    mutationFn: ({ schedule, start, end, allDay }: { schedule: Schedule; start: Date; end: Date | null; allDay: boolean }) => {
+      const first = dayjs(start).tz(SEOUL);
+      const last = dayjs(end ?? start).tz(SEOUL);
+      const period = scheduleInput({ range: allDay ? [first, last.subtract(1, "day")] : [first, last], timed: !allDay });
+      return api<Schedule>(`activities/${activity.id}/schedules/${schedule.id}`, "PATCH", period ?? {});
+    },
+    onSuccess: async () => {
+      message.success("일정을 옮겼어요.");
+      await onSaved();
+    },
+    onError: (error: Error) => message.error(error.message),
+  });
+  const updatePosition = (arg: Pick<EventDropArg, "event" | "revert">) => {
+    const schedule = arg.event.extendedProps.schedule as Schedule | undefined;
+    if (!schedule || !arg.event.start) return;
+    move.mutate({ schedule, start: arg.event.start, end: arg.event.end, allDay: arg.event.allDay }, { onError: () => arg.revert() });
+  };
   const initial = startDay(activity.activitySchedule) ?? startDay(activity.application ?? activity.activitySchedule) ?? dayjs().tz(SEOUL);
   return (
-    <Calendar
-      defaultValue={initial}
-      fullCellRender={(date, info) => {
-        if (info.type !== "date") return info.originNode;
-        const day = date.tz(SEOUL, true);
-        const items = byDay.get(day.format("YYYY-MM-DD")) ?? [];
-        const bands = [covers(activity.application, day) && "application", covers(activity.activitySchedule, day) && "activity"].filter(Boolean).join(" ");
-        return (
-          <div
-            className={`schedule-cell ${bands} ${day.isSame(dayjs(), "day") ? "today" : ""}`}
-            role="button"
-            tabIndex={0}
-            aria-label={`${day.format("M월 D일")} 일정 추가`}
-            onClick={() => onPickDay(day)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") onPickDay(day);
-            }}
-          >
-            <div className="schedule-cell-day">{day.date()}</div>
-            {items.slice(0, 3).map((schedule) => (
-              <Tooltip key={schedule.id} title={`${schedule.title} · ${scheduleText(schedule)}${overlapUnavailable(schedule) ? " · 겹침 확인 불가" : ""}`}>
-                <button
-                  type="button"
-                  className={`schedule-chip kind-${kindOf(schedule.kind).toLowerCase()}${overlapUnavailable(schedule) ? " no-overlap" : ""}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onPickSchedule(schedule);
-                  }}
-                >
-                  {schedule.title}
-                </button>
-              </Tooltip>
-            ))}
-            {items.length > 3 && <span className="muted schedule-more">+{items.length - 3}</span>}
-          </div>
-        );
-      }}
-    />
+    <div className="schedule-fullcalendar">
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="dayGridMonth"
+        initialDate={initial.format("YYYY-MM-DD")}
+        timeZone={SEOUL}
+        locale="ko"
+        headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek" }}
+        buttonText={{ today: "오늘", month: "월", week: "주" }}
+        height="auto"
+        selectable
+        selectMirror
+        editable
+        eventStartEditable
+        eventDurationEditable
+        events={events}
+        select={(arg) => onSelect(selectionFor(arg))}
+        eventClick={(arg: EventClickArg) => {
+          const props = arg.event.extendedProps as CalendarEventProps;
+          if (props.schedule) onPickSchedule(props.schedule);
+        }}
+        eventDrop={updatePosition}
+        eventResize={updatePosition}
+      />
+    </div>
+  );
+}
+
+function UndatedSchedules({ schedules, onEdit, onStatuses, activityId, onDelete }: { schedules: Schedule[]; onEdit: (schedule: Schedule) => void; onStatuses: (schedule: Schedule) => void; activityId: number; onDelete: (schedule: Schedule) => void }) {
+  if (!schedules.length) return null;
+  return (
+    <section className="undated-schedules">
+      <h3>날짜 미정</h3>
+      <Table<Schedule>
+        size="small"
+        rowKey="id"
+        pagination={false}
+        dataSource={schedules}
+        columns={[
+          { title: "제목", dataIndex: "title", render: (title: string, schedule) => <>{title}{schedule.curated && <CuratedTag />}</> },
+          { title: "원문 문구", dataIndex: "dateLabel" },
+          { title: "종류", dataIndex: "kind", render: (kind: string) => <Tag color={kindColors[kindOf(kind)]}>{kindLabels[kindOf(kind)]}</Tag> },
+          { title: "구분", dataIndex: "phase", render: (phase: SchedulePhase | undefined, schedule) => <PhaseTag phase={phase} stored={schedule.phaseSource === "STORED"} /> },
+          { title: "", render: (_, schedule) => <Space><Button size="small" onClick={() => onEdit(schedule)}>편집</Button><Button size="small" onClick={() => onStatuses(schedule)}>진행 상태</Button><TimetableButton activityId={activityId} schedule={schedule} /><Popconfirm title="이 일정을 지울까요?" description="수집이 같은 일정을 다시 넣지 않아요." okText="지우기" okButtonProps={{ danger: true }} onConfirm={() => onDelete(schedule)}><Button size="small" danger>삭제</Button></Popconfirm></Space> },
+        ]}
+      />
+    </section>
   );
 }
 
@@ -256,21 +271,23 @@ function ScheduleCalendar({
 function ScheduleForm({
   activityId,
   schedule,
-  day,
+  selection,
   onClose,
   onSaved,
+  onDelete,
 }: {
   activityId: number;
   schedule?: Schedule;
-  day?: Dayjs;
+  selection?: CalendarSelection;
   onClose: () => void;
   onSaved: () => Promise<unknown>;
+  onDelete?: () => Promise<unknown>;
 }) {
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const saveOnce = useSingleFlight();
   const timed: boolean = Form.useWatch("timed", form) ?? false;
-  const initial: RangeDraft = schedule ? rangeDraft(schedule) : { range: day ? [day, day] : null, timed: false };
+  const initial: RangeDraft = schedule ? rangeDraft(schedule) : { range: selection?.range ?? null, timed: selection?.timed ?? false };
   const stored = schedule?.phaseSource === "STORED";
   const save = useMutation({
     mutationFn: (body: ScheduleItemInput) =>
@@ -282,7 +299,27 @@ function ScheduleForm({
     },
   });
   return (
-    <Modal open title={schedule ? `일정 편집 · ${schedule.title}` : "일정 추가"} onCancel={onClose} okText="저장" onOk={() => form.submit()} okButtonProps={{ loading: save.isPending }} destroyOnClose>
+    <Modal
+      open
+      title={schedule ? `일정 편집 · ${schedule.title}` : "일정 추가"}
+      onCancel={onClose}
+      okText="저장"
+      onOk={() => form.submit()}
+      okButtonProps={{ loading: save.isPending }}
+      cancelText="취소"
+      footer={(_, { OkBtn, CancelBtn }) => (
+        <Space>
+          {onDelete && (
+            <Popconfirm title="이 일정을 지울까요?" description="수집이 같은 일정을 다시 넣지 않아요." okText="지우기" okButtonProps={{ danger: true }} onConfirm={onDelete}>
+              <Button danger>삭제</Button>
+            </Popconfirm>
+          )}
+          <CancelBtn />
+          <OkBtn />
+        </Space>
+      )}
+      destroyOnClose
+    >
       <Form
         form={form}
         layout="vertical"
