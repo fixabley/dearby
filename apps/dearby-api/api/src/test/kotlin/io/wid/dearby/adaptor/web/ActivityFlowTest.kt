@@ -26,7 +26,7 @@ import kotlin.test.assertNull
 // V5가 넣은 Let'Swift 활동과 테스트가 만든 활동으로 공개 조회·검색·페이지를 확인한다
 @SpringBootTest
 @AutoConfigureMockMvc
-class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient) {
+class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val favoriteRepository: io.wid.dearby.application.favorite.FavoriteRepository) {
 
     private val json = JsonMapper.builder().build()
 
@@ -69,7 +69,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "favorited", "status", "hasTimetable"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "placeShort", "favorited", "status", "hasTimetable"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -1006,7 +1006,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             assertEquals(1, likes(activity))
             assertEquals(0, jdbc.sql("select count(*) from recommendation_signals where user_id = ? and kind = 'DISMISS'").param(user).query(Int::class.java).single())
             put("activities/-1").andExpect { status { isNotFound() } }
-            put("organizations/$programId").andExpect { status { isNotFound() } }
+            put("sessions/$programId").andExpect { status { isNotFound() } }
             put("programs/$programId", """{"notifyLevel":"LOUD"}""").andExpect { status { isBadRequest() } }
 
             // favorited: 로그인 응답에만, 캐시는 Authorization으로 나뉜다
@@ -1049,7 +1049,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             mvc.delete("/v1/me/favorites/activities/$activity") { asUser() }.andExpect { status { isNoContent() } }
             assertEquals(0, likes(activity))
             mvc.delete("/v1/me/favorites/programs/$programId") { asUser() }.andExpect { status { isNoContent() } }
-            assertEquals("""{"programs":[],"activities":[]}""", favorites().toString())
+            assertEquals("""{"programs":[],"activities":[],"organizations":[]}""", favorites().toString())
 
             // 알림 전체 스위치(기본 켜짐)와 기기 토큰(시간대 IANA)
             assertEquals("""{"newRecruitment":true}""", body(mvc.get("/v1/me/notification-settings") { asUser() }).toString())
@@ -1200,6 +1200,155 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         } finally {
             jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
             jdbc.sql("delete from users where id = ?").param(user).update()
+        }
+    }
+
+    // native-v1.md "조직 화면·조직 팔로우", "발견 필터 시트 표현", "행 컴포넌트" placeShort(2026-11-03 리뉴얼 1차 서버)
+    @Test
+    fun `조직 화면은 경로·프로그램·개수를 주고 팔로우는 로그인만 하며 필터 구성·검색·placeShort·countOnly를 받는다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val organizationId = jdbc.sql("select organization_id from programs where id = ?").param(programId).query(Long::class.java).single()
+        val originalParent = jdbc.sql("select parent_organization_id from organizations where id = ?").param(organizationId).query { rs, _ -> rs.getObject(1) as Long? }.list().single()
+        val parentId = jdbc.sql("insert into organizations (name, name_en, created_at, updated_at) values ('리뉴얼 상위 조직', 'Renewal Group', localtimestamp, localtimestamp) returning id").query(Long::class.java).single()
+        val childId = jdbc.sql("insert into organizations (name, parent_organization_id, created_at, updated_at) values ('리뉴얼 하위 조직', ?, localtimestamp, localtimestamp) returning id").param(organizationId).query(Long::class.java).single()
+        jdbc.sql("update organizations set parent_organization_id = ? where id = ?").params(parentId, organizationId).update()
+        val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+        fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+        // 열린 활동 하나(장소 좌표 있음)와 장소 문구만 있는 활동 하나
+        val placed = createActivity("리뉴얼 좌표 활동")
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '5 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(placed).update()
+        jdbc.sql("update schedules set address_line1 = 'KAIST 문지캠퍼스', address_line2 = '대전광역시 유성구 문지로 193', lat = 36.39, lng = 127.40 where activity_id = ? and slot = 'ACTIVITY'").param(placed).update()
+        val textOnly = createActivity("리뉴얼 문구 활동")
+        jdbc.sql("update activities set location = '온라인 및 서울 강남구 코엑스' where id = ?").param(textOnly).update()
+        try {
+            // placeShort: 주소에서 시·도 짧은 이름 + 구, 문구에서는 온라인·지역, 없으면 null. 묶음은 조회 범위 안 활동을 합친다
+            assertEquals("대전 유성구", json.readTree(mvc.get("/v1/activities/$placed").andReturn().response.contentAsString)["placeShort"].asString())
+            assertEquals("온라인·서울", json.readTree(mvc.get("/v1/activities/$textOnly").andReturn().response.contentAsString)["placeShort"].asString())
+            assertTrue(json.readTree(mvc.get("/v1/activities/${createActivity("리뉴얼 장소 없는 활동")}").andReturn().response.contentAsString)["placeShort"].isNull)
+            // 도 아래 시에 구가 있으면 시 이름 + 구(성남 분당구), 시·도만 있으면 그대로(경기 파주시)
+            val bundang = createActivity("리뉴얼 분당 활동")
+            jdbc.sql("update activities set location = '경기도 성남시 분당구 판교역로 166' where id = ?").param(bundang).update()
+            assertEquals("성남 분당구", json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"].asString())
+            jdbc.sql("update activities set location = '경기 파주시 어딘가, 서울시 관악구 어딘가, 부산 해운대구' where id = ?").param(bundang).update()
+            assertEquals("경기 외 2곳", json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"].asString())
+            jdbc.sql("update activities set location = '미국 샌프란시스코 + 온라인' where id = ?").param(bundang).update()
+            assertEquals("온라인·해외", json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"].asString())
+            // 낱말 경계: 인도네시아·일본어·파리바게뜨는 해외가 아니고, 조사가 붙은 미국에서·온라인으로는 맞는다. 온라인 + 여러 곳도 첫 곳 + 외 n곳
+            fun placeOf(location: String): String? {
+                jdbc.sql("update activities set location = ? where id = ?").params(location, bundang).update()
+                return json.readTree(mvc.get("/v1/activities/$bundang").andReturn().response.contentAsString)["placeShort"]?.takeUnless { it.isNull }?.asString()
+            }
+            assertEquals("서울 강남구", placeOf("일본어 스터디, 파리바게뜨 본사(서울 강남구)"))
+            assertEquals("해외", placeOf("인도네시아 자카르타"))
+            assertEquals("온라인·해외", placeOf("미국에서 온라인으로 진행"))
+            assertEquals("온라인·서울 외 1곳", placeOf("온라인 및 서울 강남구, 부산 해운대구"))
+            assertEquals("제주", placeOf("제주특별자치도 제주시 첨단로 242"))
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(bundang).update()
+            fun summaries(query: String): JsonNode = body(mvc.get("/v1/discovery/programs?$query").andExpect { status { isOk() } })
+            val summary = summaries("q=swift")["items"].single()
+            assertEquals("대전 유성구", summary["placeShort"].asString()) // 열린 활동은 좌표 활동 하나
+            assertEquals(listOf("리뉴얼 상위 조직"), summary["organization"]["ancestors"].toList().map { it["name"].asString() })
+            // 모집 중·예정 활동이 없는 범위(status=ENDED)면 그 상태의 활동 장소: 씨앗 활동의 장소 문구에서 시·도 + 구
+            assertEquals("서울 강남구", summaries("q=swift&status=ENDED")["items"].single()["placeShort"].asString())
+
+            // 조직·프로그램 칩: 조직은 하위 조직 포함(상위 조직 id로 이 프로그램이 나온다), 없는 조직은 빈 목록, 숫자가 아니면 400. countOnly는 {total}
+            assertEquals(listOf(programId), summaries("organizationIds=$parentId")["items"].toList().map { it["id"].asLong() })
+            assertEquals(listOf(programId), summaries("programIds=$programId")["items"].toList().map { it["id"].asLong() })
+            assertEquals(0, summaries("organizationIds=$childId")["items"].size())
+            mvc.get("/v1/discovery/programs?organizationIds=abc").andExpect { status { isBadRequest() } }
+            assertEquals("""{"total":1}""", body(mvc.get("/v1/discovery/programs?organizationIds=$parentId&countOnly=true").andExpect { status { isOk() } }).toString())
+            assertEquals(0, body(mvc.get("/v1/discovery/programs?organizationIds=$childId&countOnly=true"))["total"].asInt())
+
+            // 필터 구성(기본): 섹션 네 개 순서·세 묶음·종류 여섯·분야 상위 전부·대상. 개수는 kind·검색어·칩 기준, 공개 캐시 5분
+            val filters = mvc.get("/v1/discovery/filters?q=swift").andExpect { status { isOk() } }.andReturn().response
+            assertEquals("max-age=300, public", filters.getHeader(HttpHeaders.CACHE_CONTROL))
+            val sections = json.readTree(filters.contentAsString)["sections"]
+            assertEquals(listOf("status", "category", "field", "eligibility"), sections.toList().map { it["key"].asString() })
+            val status = sections[0]
+            assertEquals(listOf("활동 상태", "여러 개 고를 수 있어요", "true"), listOf(status["title"].asString(), status["subtitle"].asString(), status["multiple"].asString()))
+            assertEquals(listOf("available:send:1", "in_progress:calendar:1", "past:history:1"), status["items"].toList().map { "${it["code"].asString()}:${it["icon"].asString()}:${it["count"].asInt()}" })
+            assertEquals(listOf("BOOTCAMP", "CLUB", "CONTEST", "HACKATHON", "CONFERENCE", "STUDY"), sections[1]["items"].toList().map { it["code"].asString() })
+            assertEquals("bootcamp", sections[1]["items"][0]["icon"].asString())
+            assertEquals(listOf("mine"), sections[3]["items"].toList().map { it["code"].asString() })
+            assertTrue(sections[3]["items"][0]["count"].isNull && sections[3]["multiple"].asBoolean() == false)
+            assertEquals(0, body(mvc.get("/v1/discovery/filters?q=swift&organizationIds=$childId"))["sections"][0]["items"][0]["count"].asInt())
+
+            // 조직·프로그램 검색: 이름·영문 이름 부분 일치, type·로고·종류, 빈 검색어는 빈 목록
+            val found = body(mvc.get("/v1/discovery/search?q=renewal").andExpect { status { isOk() } })["items"].toList()
+            assertEquals(listOf("organization:$parentId:리뉴얼 상위 조직"), found.map { "${it["type"].asString()}:${it["id"].asLong()}:${it["name"].asString()}" })
+            assertEquals(setOf("type", "id", "name", "logoUrl", "category", "followed"), found.single().propertyNames().toSet())
+            val programs = body(mvc.get("/v1/discovery/search?q=swift"))["items"].toList().filter { it["type"].asString() == "program" }
+            assertEquals(listOf(programId), programs.map { it["id"].asLong() })
+            assertEquals(0, body(mvc.get("/v1/discovery/search?q=%20"))["items"].size())
+            // 칩 상한: 각각 50개까지
+            mvc.get("/v1/discovery/programs?programIds=" + (1..51).joinToString(",")).andExpect { status { isBadRequest() } }
+            mvc.get("/v1/discovery/programs?programIds=" + (1..50).joinToString(",")).andExpect { status { isOk() } }
+            // 저장된 구성의 종류 코드가 소문자여도 공개 조회는 200이고 코드는 대문자. 분야 항목이 모두 꺼져 있으면 섹션 숨김, 항목이 없으면 상위 분야 전부
+            jdbc.sql(
+                """insert into discovery_filter_config (id, config, updated_at) values (1, '{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"hackathon","enabled":true,"label":"해커톤","icon":"hackathon"}]},{"key":"field","enabled":true,"title":"분야","items":[{"code":"1","enabled":false,"label":"꺼짐","icon":"tag"}]}]}'::jsonb, now())"""
+            ).update()
+            try {
+                val stored = body(mvc.get("/v1/discovery/filters").andExpect { status { isOk() } })["sections"]
+                assertEquals(listOf("category"), stored.toList().map { it["key"].asString() })
+                assertEquals("HACKATHON", stored[0]["items"][0]["code"].asString())
+            } finally {
+                jdbc.sql("delete from discovery_filter_config").update()
+            }
+
+            // 조직 화면: 인증 없이, 경로(최상위부터)·하위 조직·프로그램 묶음·개수·followed=false. 없으면 404
+            val detail = mvc.get("/v1/organizations/$organizationId").andExpect { status { isOk() } }.andReturn().response
+            assertTrue(detail.getHeaders("Vary").joinToString().contains("Authorization"))
+            val organization = json.readTree(detail.contentAsString)
+            assertEquals(setOf("id", "name", "nameEn", "logoUrl", "brandColor", "ancestors", "children", "programs", "counts", "followed"), organization.propertyNames().toSet())
+            assertEquals(listOf(parentId), organization["ancestors"].toList().map { it["id"].asLong() })
+            assertEquals(listOf("리뉴얼 하위 조직"), organization["children"].toList().map { it["name"].asString() })
+            assertEquals(listOf(programId), organization["programs"].toList().map { it["id"].asLong() })
+            assertEquals(listOf(1, true, true), listOf(organization["counts"]["programs"].asInt(), organization["counts"]["recruiting"].asInt() >= 1, organization["counts"]["past"].asInt() >= 1))
+            assertEquals(false, organization["followed"].asBoolean())
+            assertEquals(listOf(parentId), body(mvc.get("/v1/organizations/$organizationId/ancestors").andExpect { status { isOk() } })["items"].toList().map { it["id"].asLong() })
+            assertEquals(0, body(mvc.get("/v1/organizations/$parentId/ancestors"))["items"].size())
+            mvc.get("/v1/organizations/999999").andExpect { status { isNotFound() } }
+            mvc.get("/v1/organizations/999999/ancestors").andExpect { status { isNotFound() } }
+
+            // 조직 팔로우: 로그인만, 멱등, 없는 조직 404, 목록 organizations, followed·검색의 followed 먼저, 새 모집은 하위 조직 프로그램까지
+            mvc.put("/v1/me/favorites/organizations/$parentId").andExpect { status { isUnauthorized() } }
+            mvc.put("/v1/me/favorites/organizations/999999") { asUser() }.andExpect { status { isNotFound() } }
+            mvc.put("/v1/me/favorites/organizations/$parentId") { asUser(); contentType = MediaType.APPLICATION_JSON; content = """{"notifyLevel":"ALL"}""" }.andExpect { status { isNoContent() } }
+            mvc.put("/v1/me/favorites/organizations/$parentId") { asUser() }.andExpect { status { isNoContent() } }
+            val mine = body(mvc.get("/v1/me/favorites") { asUser() }.andExpect { status { isOk() } })
+            val followed = mine["organizations"].toList().single()
+            assertEquals(listOf("$parentId", "리뉴얼 상위 조직", "ALL"), listOf(followed["organization"]["id"].asString(), followed["organization"]["name"].asString(), followed["notifyLevel"].asString()))
+            assertTrue(followed["organization"]["logoUrl"].isNull && followed["favoritedAt"].isString)
+            assertEquals(true, body(mvc.get("/v1/organizations/$parentId") { asUser() })["followed"].asBoolean())
+            assertEquals(false, body(mvc.get("/v1/organizations/$organizationId") { asUser() })["followed"].asBoolean())
+            assertEquals(true, body(mvc.get("/v1/discovery/search?q=리뉴얼") { asUser() })["items"].toList().first()["followed"].asBoolean())
+            // 검색 상한(20)에 밀려도 팔로우한 것은 빠지지 않는다: 같은 이름의 조직 25개 중 마지막을 팔로우
+            val many = (1..25).map { n -> jdbc.sql("insert into organizations (name, created_at, updated_at) values (?, localtimestamp, localtimestamp) returning id").param("검색 상한 조직 $n").query(Long::class.java).single() }
+            mvc.put("/v1/me/favorites/organizations/${many.last()}") { asUser() }.andExpect { status { isNoContent() } }
+            try {
+                val capped = body(mvc.get("/v1/discovery/search?q=검색 상한 조직") { asUser() })["items"].toList()
+                assertEquals(listOf(many.last(), true, 20), listOf(capped.first()["id"].asLong(), capped.first()["followed"].asBoolean(), capped.size))
+            } finally {
+                jdbc.sql("delete from organizations where name like '검색 상한 조직 %'").update()
+            }
+            jdbc.sql("update activities set published_at = now() + interval '1 second' where id = ?").param(placed).update()
+            val fresh = favoriteRepository.newRecruitments(listOf(user), java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC))
+            assertEquals(mapOf(programId to listOf(placed)), fresh[user])
+            jdbc.sql("update activities set published_at = now() where id = ?").param(placed).update()
+            mvc.delete("/v1/me/favorites/organizations/$parentId") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.delete("/v1/me/favorites/organizations/$parentId") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(0, body(mvc.get("/v1/me/favorites") { asUser() })["organizations"].size())
+        } finally {
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id in (select id from activities where name like '리뉴얼 %')").update()
+            jdbc.sql("delete from users where id = ?").param(user).update()
+            jdbc.sql("update organizations set parent_organization_id = :parent where id = :id").param("parent", originalParent, java.sql.Types.BIGINT).param("id", organizationId).update()
+            jdbc.sql("delete from organizations where id in (?, ?)").params(childId, parentId).update()
         }
     }
 }

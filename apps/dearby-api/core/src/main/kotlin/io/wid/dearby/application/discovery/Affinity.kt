@@ -38,14 +38,15 @@ class Affinity private constructor(
         private const val REASON_MIN = 0.3
 
         // weights: 활동 → 감쇠한 신호 가중치 합, refs: 그 활동들의 소속, engaged: 프로그램 → 내 활동 가중치,
-        // programSignals: 프로그램 → (조직, 감쇠한 프로그램 하트 +0.6, native-v1.md "추천과 하나로")
+        // programSignals: 프로그램 → (조직, 감쇠한 프로그램 하트 +0.6, native-v1.md "추천과 하나로"), organizationSignals: 조직 → 감쇠한 조직 팔로우 +0.6(native-v1.md "조직 화면·조직 팔로우")
         fun of(
             weights: Map<Id, Double>, refs: Map<Id, ActivityRef>, engaged: Map<Id, Double>, organizations: OrganizationRepository,
-            programSignals: Map<Id, Pair<Id, Double>> = emptyMap(),
+            programSignals: Map<Id, Pair<Id, Double>> = emptyMap(), organizationSignals: Map<Id, Double> = emptyMap(),
         ): Affinity {
             val sums = mutableMapOf<Id, Double>() // 조직별 S
             weights.forEach { (activityId, w) -> refs[activityId]?.let { sums.merge(it.organizationId, w, Double::plus) } }
             programSignals.values.forEach { (organizationId, w) -> sums.merge(organizationId, w, Double::plus) }
+            organizationSignals.forEach { (organizationId, w) -> sums.merge(organizationId, w, Double::plus) }
             val orgs = organizations.findAllById(sums.keys)
             val parents = orgs.mapNotNull { o -> o.parentOrganizationId?.let { o.id to it } }.toMap()
             val wide = organizations.childCounts(parents.values.toSet()).filterValues { it > MAX_CHILDREN }.keys

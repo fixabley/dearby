@@ -4,7 +4,10 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.application.favorite.FavoriteRepository
 import io.wid.dearby.application.notification.NotificationRepository
+import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.push.PushRepository
+import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.ScheduleStatus
@@ -37,6 +40,8 @@ class FavoritePushService(
     private val favorites: FavoriteRepository,
     private val notifications: NotificationRepository,
     private val activities: ActivityService,
+    private val organizations: OrganizationRepository,
+    private val programs: ProgramRepository,
     private val sender: PushSender,
     private val properties: PushProperties,
 ) {
@@ -52,6 +57,7 @@ class FavoritePushService(
         val devicesByUser = push.devices().groupBy { it.userId }
         val disabled = push.disabledUsers(users)
         val fresh = favorites.newRecruitments(users, now)
+        val subtrees = Subtrees()
         val problems = mutableMapOf<PushPlatform, String?>()
         var dueDevices = 0
         var sent = 0
@@ -60,7 +66,7 @@ class FavoritePushService(
                 val devices = devicesByUser[userId].orEmpty()
                 val zones = (listOf(devices.firstOrNull()?.let(::zoneOf) ?: SEOUL) + devices.map(::zoneOf)).distinct().filter(::due)
                 if (zones.isEmpty()) return@forEach
-                val inputs = load(userId, fresh[userId].orEmpty().values.flatten().toSet())
+                val inputs = load(userId, fresh[userId].orEmpty().values.flatten().toSet(), subtrees, now)
                 zones.forEach { zone -> notifications.saveAll(userId, drafts(inputs, zone, today(now, zone)), now) }
                 if (userId in disabled) return@forEach
                 devices.filter { due(zoneOf(it)) }.forEach { device ->
@@ -77,14 +83,34 @@ class FavoritePushService(
         return Report(dueDevices, sent)
     }
 
-    // 사용자의 즐겨찾기 수준과 대상 활동(즐겨찾기 활동 + 즐겨찾기 프로그램의 게시 활동)
+    // 사용자의 즐겨찾기 수준과 대상 활동(즐겨찾기 활동 + 즐겨찾기 프로그램·팔로우한 조직(하위 조직 포함)의 프로그램의 게시 활동).
+    // programLevels에는 조직 팔로우로 들어온 프로그램도 그 조직의 수준으로 들어간다(프로그램 하트가 있으면 그것이 앞선다)
     private class Inputs(val listings: Map<Id, ActivityListing>, val activityLevels: Map<Id, NotifyLevel>, val programLevels: Map<Id, NotifyLevel>, val fresh: Set<Id>)
 
-    private fun load(userId: UserId, fresh: Set<Id>): Inputs {
+    // 조직별 하위 트리(자기 포함)와 그 안의 프로그램. 한 번의 send 안에서 조직마다 한 번만 읽는다
+    private inner class Subtrees {
+        private val ids = mutableMapOf<Id, Set<Id>>()
+        private val programIds = mutableMapOf<Id, List<Pair<Id, Id>>>() // 조직 → (프로그램 id, 그 프로그램의 조직 id)
+        fun of(organizationId: Id): Set<Id> = ids.getOrPut(organizationId) { organizations.subtreeIds(listOf(organizationId)) }
+        fun programsOf(organizationId: Id): List<Pair<Id, Id>> = programIds.getOrPut(organizationId) { programs.findByOrganizationIds(of(organizationId)).map { it.id to it.organizationId } }
+    }
+
+    private fun load(userId: UserId, fresh: Set<Id>, subtrees: Subtrees, now: OffsetDateTime): Inputs {
         val all = favorites.findAll(userId)
-        val programLevels = all.filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to it.notifyLevel }
+        val organizationLevels = all.filter { it.target == FavoriteTarget.ORGANIZATION }.associate { it.targetId to it.notifyLevel }
+        // 하위 조직의 프로그램은 가장 가까운 팔로우한 상위 조직의 수준: 상위 조직의 트리가 하위 조직의 트리를 포함하므로 작은 트리(가까운 조직)부터 넣고 덮어쓰지 않는다
+        val viaOrganization = mutableMapOf<Id, NotifyLevel>()
+        organizationLevels.keys.sortedBy { subtrees.of(it).size }.forEach { organizationId ->
+            subtrees.programsOf(organizationId).forEach { (programId, _) -> viaOrganization.putIfAbsent(programId, organizationLevels.getValue(organizationId)) }
+        }
+        val heartLevels = all.filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to it.notifyLevel }
+        val programLevels = viaOrganization + heartLevels
         val activityLevels = all.filter { it.target == FavoriteTarget.ACTIVITY }.associate { it.targetId to it.notifyLevel }
-        val listings = (activities.publishedListings(ids = activityLevels.keys) + activities.publishedListings(programIds = programLevels.keys))
+        // 조직 팔로우로만 들어온 프로그램은 모집 중·예정 활동만(종료된 활동까지 다 싣지 않는다)
+        val viaOrganizationOnly = activities.publishedListings(programIds = viaOrganization.keys - heartLevels.keys).filter {
+            ActivityStatus.of(it.activity.application?.time, it.activity.activitySchedule.time, now) in OPEN_STATUSES
+        }
+        val listings = (activities.publishedListings(ids = activityLevels.keys) + activities.publishedListings(programIds = heartLevels.keys) + viaOrganizationOnly)
             .associateBy { it.activity.id }
         return Inputs(listings, activityLevels, programLevels, fresh)
     }
@@ -202,6 +228,7 @@ class FavoritePushService(
         const val MAX_SEPARATE = 3
         const val KEEP_DAYS = 90L
         const val FAVORITES_CALENDAR = "dearby://favorites?view=calendar"
+        private val OPEN_STATUSES = setOf(ActivityStatus.RECRUITING, ActivityStatus.RECRUITING_UPCOMING)
         private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
     }
 }

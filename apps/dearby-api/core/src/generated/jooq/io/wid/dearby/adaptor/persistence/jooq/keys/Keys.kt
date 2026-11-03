@@ -22,6 +22,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
@@ -98,6 +99,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionFeedbackR
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionWatchlistRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ContactsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.DiscoveryFilterConfigRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.DiscoveryQueueRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.DismissedActivitySourcesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.EmailContactChallengesRecord
@@ -192,6 +194,7 @@ val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_KEY: UniqueKey<CollectionRunsRecord> = I
 val COLLECTION_WATCHLIST_PKEY: UniqueKey<CollectionWatchlistRecord> = Internal.createUniqueKey(CollectionWatchlist.COLLECTION_WATCHLIST, DSL.name("collection_watchlist_pkey"), arrayOf(CollectionWatchlist.COLLECTION_WATCHLIST.ID), true)
 val COLLECTION_WATCHLIST_PROGRAM_ID_NORMALIZED_NAME_KEY: UniqueKey<CollectionWatchlistRecord> = Internal.createUniqueKey(CollectionWatchlist.COLLECTION_WATCHLIST, DSL.name("collection_watchlist_program_id_normalized_name_key"), arrayOf(CollectionWatchlist.COLLECTION_WATCHLIST.PROGRAM_ID, CollectionWatchlist.COLLECTION_WATCHLIST.NORMALIZED_NAME), true)
 val CONTACTS_PKEY: UniqueKey<ContactsRecord> = Internal.createUniqueKey(Contacts.CONTACTS, DSL.name("contacts_pkey"), arrayOf(Contacts.CONTACTS.ID), true)
+val DISCOVERY_FILTER_CONFIG_PKEY: UniqueKey<DiscoveryFilterConfigRecord> = Internal.createUniqueKey(DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG, DSL.name("discovery_filter_config_pkey"), arrayOf(DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG.ID), true)
 val DISCOVERY_QUEUE_PKEY: UniqueKey<DiscoveryQueueRecord> = Internal.createUniqueKey(DiscoveryQueue.DISCOVERY_QUEUE, DSL.name("discovery_queue_pkey"), arrayOf(DiscoveryQueue.DISCOVERY_QUEUE.USER_ID, DiscoveryQueue.DISCOVERY_QUEUE.QUEUE_DATE, DiscoveryQueue.DISCOVERY_QUEUE.POSITION), true)
 val DISMISSED_ACTIVITY_SOURCES_PKEY: UniqueKey<DismissedActivitySourcesRecord> = Internal.createUniqueKey(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES, DSL.name("dismissed_activity_sources_pkey"), arrayOf(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES.SOURCE_ID), true)
 val EMAIL_CONTACT_CHALLENGES_PKEY: UniqueKey<EmailContactChallengesRecord> = Internal.createUniqueKey(EmailContactChallenges.EMAIL_CONTACT_CHALLENGES, DSL.name("email_contact_challenges_pkey"), arrayOf(EmailContactChallenges.EMAIL_CONTACT_CHALLENGES.ID), true)

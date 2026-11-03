@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
         "io.wid.dearby.batch", "io.wid.dearby.adaptor.persistence", "io.wid.dearby.application.catalog", "io.wid.dearby.application.activity",
         "io.wid.dearby.application.program", "io.wid.dearby.application.recommendation", "io.wid.dearby.application.discovery",
         "io.wid.dearby.application.timetable", // 운영 데이터 가져오기의 시간표(admin-v1.md "트랙·세션 시간표")
+        "io.wid.dearby.application.organization", "io.wid.dearby.application.favorite", // 조직 로고·팔로우(native-v1.md "조직 화면·조직 팔로우"): discovery의 검색·필터 서비스가 쓴다
     ]
 )
 @ConfigurationPropertiesScan

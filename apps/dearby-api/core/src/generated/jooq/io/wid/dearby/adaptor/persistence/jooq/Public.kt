@@ -21,6 +21,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
@@ -186,6 +187,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.contacts</code>.
      */
     val CONTACTS: Contacts get() = Contacts.CONTACTS
+
+    /**
+     * The table <code>public.discovery_filter_config</code>.
+     */
+    val DISCOVERY_FILTER_CONFIG: DiscoveryFilterConfig get() = DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG
 
     /**
      * The table <code>public.discovery_queue</code>.
@@ -502,6 +508,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         CollectionRuns.COLLECTION_RUNS,
         CollectionWatchlist.COLLECTION_WATCHLIST,
         Contacts.CONTACTS,
+        DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG,
         DiscoveryQueue.DISCOVERY_QUEUE,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
         EmailContactChallenges.EMAIL_CONTACT_CHALLENGES,
