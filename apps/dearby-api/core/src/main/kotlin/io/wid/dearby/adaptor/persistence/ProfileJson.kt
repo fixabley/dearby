@@ -45,8 +45,8 @@ object ProfileJson {
 
     data class OwnerJson(val kind: String, val id: Long?, val name: String)
 
-    // V67(역할 귀속) 전 스냅샷에는 owner가 없고 kind·organizationName·programName·activityName이 있다. 읽을 때 활동 → 프로그램 → 조직 순으로 귀속을 만들고,
-    // 등록된 것이 없으면 직접 적은 이름만 남긴다(id 없음). 쓸 때는 새 모양만 쓴다
+    // V67(역할 귀속) 전 스냅샷에는 owner가 없고 kind·organizationName·programName·activityName이 있다. 읽을 때 V67 이관과 같은 규칙으로 귀속을 만든다:
+    // 직접 적은 이름이 있으면 그 이름(활동 → 프로그램), 없으면 등록된 가장 구체적인 단위(활동 → 프로그램 → 조직), 그것도 없으면 조직 이름. 쓸 때는 새 모양만 쓴다
     data class HistoryJson(
         val id: UUID,
         val role: RefJson?,
@@ -69,10 +69,11 @@ object ProfileJson {
     ) {
         fun toHistory(): History {
             val owner = owner?.let { RoleOwner(RoleOwnerKind.valueOf(it.kind), it.id, it.name) } ?: when {
+                activity == null && activityName != null -> RoleOwner(RoleOwnerKind.ACTIVITY, null, activityName)
+                program == null && programName != null -> RoleOwner(RoleOwnerKind.PROGRAM, null, programName)
                 activity != null -> RoleOwner(RoleOwnerKind.ACTIVITY, activity.id, activity.name)
                 program != null -> RoleOwner(RoleOwnerKind.PROGRAM, program.id, program.name)
                 organization != null -> RoleOwner(RoleOwnerKind.ORGANIZATION, organization.id, organization.name)
-                kind == "ACTIVITY" -> RoleOwner(RoleOwnerKind.ACTIVITY, null, activityName ?: organizationName ?: "")
                 else -> RoleOwner(RoleOwnerKind.ORGANIZATION, null, organizationName ?: "")
             }
             return History(

@@ -34,7 +34,11 @@ class JooqRoleRepository(private val dsl: DSLContext) : RoleRepository {
         val conditions = buildList<Condition> {
             add(owner(kind, ownerId))
             q?.takeIf { it.isNotBlank() }?.trim()?.let { add(ROLES.NAME.containsIgnoreCase(it).or(ROLES.NAME_EN.containsIgnoreCase(it))) }
-            after?.let { add(DSL.row(ROLES.POSITION, ROLES.ID).gt(dsl.select(ROLES.POSITION, ROLES.ID).from(ROLES).where(ROLES.ID.eq(it)))) }
+            // 커서 행의 position·id 뒤부터. 커서 행이 그새 지워졌으면 id 비교로 잇는다
+            after?.let {
+                val cursor = dsl.select(ROLES.POSITION, ROLES.ID).from(ROLES).where(ROLES.ID.eq(it))
+                add(DSL.row(ROLES.POSITION, ROLES.ID).gt(cursor).or(DSL.notExists(cursor).and(ROLES.ID.gt(it))))
+            }
         }
         return select().where(conditions).orderBy(ROLES.POSITION, ROLES.ID).limit(size).fetch().map(::toRole)
     }

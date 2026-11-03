@@ -11,8 +11,10 @@ import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PublicationStatus
+import io.wid.dearby.domain.profile.ActivityInfoRef
 import io.wid.dearby.domain.profile.ApprovalStatus
 import io.wid.dearby.domain.profile.Evidence
+import io.wid.dearby.domain.profile.RoleOwner
 import io.wid.dearby.domain.profile.RoleOwnerKind
 import io.wid.dearby.domain.profile.VerificationStatus
 import org.springframework.stereotype.Service
@@ -43,15 +45,19 @@ class HistoryReviewService(
     fun decideApproval(historyId: UUID, approve: Boolean, ownerKind: String?, ownerId: Id?, roleId: Id?, reason: String?): HistoryForReview {
         val history = require(historyId).history
         if (approve) {
+            // 승인 시점에는 등록된 단위와 등록된 역할이어야 한다(DB 제약이 아니라 여기서 검사)
             val owner = owner(ownerKind, ownerId)
-            val (kind, id) = owner ?: (history.owner.id?.let { history.owner.kind to it } ?: throw InvalidInputException("직접 적은 단위입니다. ownerKind·ownerId로 등록된 조직·프로그램·활동을 골라 주세요"))
-            if (roleId != null) {
+            val (kind, id) = owner?.let { it.kind to it.id!! } ?: (history.owner.id?.let { history.owner.kind to it } ?: throw InvalidInputException("직접 적은 단위입니다. ownerKind·ownerId로 등록된 조직·프로그램·활동을 골라 주세요"))
+            val role = if (roleId != null) {
                 val role = roles.findAllById(listOf(roleId)).singleOrNull() ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $roleId")
                 if (role.owner.kind != kind || role.owner.id != id) throw InvalidInputException("이력의 귀속 단위에 속한 역할이 아닙니다", "Role $roleId owner ${role.owner.kind}/${role.owner.id} != $kind/$id")
+                ActivityInfoRef(role.id, role.name)
             } else if (history.role == null || owner != null) {
                 throw InvalidInputException("직접 적은 역할입니다. 그 단위의 역할을 만들어 roleId로 주세요")
+            } else {
+                null
             }
-            histories.updateApproval(historyId, ApprovalStatus.APPROVED, null, owner, roleId)
+            histories.updateApproval(historyId, ApprovalStatus.APPROVED, null, owner, role)
         } else {
             val why = reason?.trim()?.ifEmpty { null } ?: throw InvalidInputException("거절 사유를 적어 주세요")
             if (why.length > MAX_REASON) throw InvalidInputException("거절 사유는 ${MAX_REASON}자까지입니다")
@@ -73,18 +79,17 @@ class HistoryReviewService(
         return evidence.find(historyId, evidenceId) ?: throw NotFoundException("인증자료를 찾을 수 없습니다", "Evidence not found: $evidenceId")
     }
 
-    // ownerKind·ownerId는 함께 와야 하고 등록된 단위여야 한다(활동은 게시된 것만)
-    private fun owner(ownerKind: String?, ownerId: Id?): Pair<RoleOwnerKind, Id>? {
+    // ownerKind·ownerId는 함께 와야 하고 등록된 단위여야 한다(활동은 게시된 것만). 이름은 이력 행에 복사해 둔다
+    private fun owner(ownerKind: String?, ownerId: Id?): RoleOwner? {
         if (ownerKind == null && ownerId == null) return null
         val kind = RoleOwnerKind.entries.firstOrNull { it.name.equals(ownerKind, ignoreCase = true) } ?: throw InvalidInputException("ownerKind는 organization·program·activity 중 하나입니다")
         val id = ownerId ?: throw InvalidInputException("ownerId를 주세요")
-        val found = when (kind) {
-            RoleOwnerKind.ORGANIZATION -> organizations.findAllById(listOf(id)).isNotEmpty()
-            RoleOwnerKind.PROGRAM -> programs.findAllById(listOf(id)).isNotEmpty()
-            RoleOwnerKind.ACTIVITY -> activities.findById(id, PublicationStatus.PUBLISHED) != null
-        }
-        if (!found) throw InvalidInputException("귀속 단위를 찾을 수 없습니다", "${kind.name} not found: $id")
-        return kind to id
+        val name = when (kind) {
+            RoleOwnerKind.ORGANIZATION -> organizations.findAllById(listOf(id)).singleOrNull()?.name
+            RoleOwnerKind.PROGRAM -> programs.findAllById(listOf(id)).singleOrNull()?.name
+            RoleOwnerKind.ACTIVITY -> activities.findById(id, PublicationStatus.PUBLISHED)?.name
+        } ?: throw InvalidInputException("귀속 단위를 찾을 수 없습니다", "${kind.name} not found: $id")
+        return RoleOwner(kind, id, name)
     }
 
     private fun require(historyId: UUID): HistoryForReview =

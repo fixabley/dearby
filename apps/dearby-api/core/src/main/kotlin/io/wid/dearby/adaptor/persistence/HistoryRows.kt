@@ -7,7 +7,7 @@ import io.wid.dearby.domain.profile.*
 import org.jooq.DSLContext
 
 // profile_histories 행 → History. 역할 이름과 귀속 단위(조직·프로그램·활동, 상위 단위까지)와 인증자료 목록은 한 번에 모아 읽는다.
-// 프로필·관리자 검토 저장소가 함께 쓴다
+// 역할·단위가 지워졌으면(role_id는 FK set null, owner_id는 논리키) 행에 복사해 둔 role_name·owner_name으로 표시한다. 프로필·관리자 검토 저장소가 함께 쓴다
 class HistoryRows(private val dsl: DSLContext) {
 
     fun load(rows: List<ProfileHistoriesRecord>): List<History> {
@@ -31,14 +31,13 @@ class HistoryRows(private val dsl: DSLContext) {
             val program = programId?.let { id -> programs[id]?.let { (name, _) -> ActivityInfoRef(id, name) } }
             val organizationId = if (kind == RoleOwnerKind.ORGANIZATION) it.ownerId else program?.let { p -> programs.getValue(p.id).second }
             val organization = organizationId?.let { id -> organizations[id]?.let { name -> ActivityInfoRef(id, name) } }
-            // 활동 정보 행이 지워졌으면(논리키) 이름 없이 id만 남는다
-            val ownerName = it.ownerName ?: when (kind) { RoleOwnerKind.ACTIVITY -> activity; RoleOwnerKind.PROGRAM -> program; RoleOwnerKind.ORGANIZATION -> organization }?.name ?: ""
+            val liveOwner = when (kind) { RoleOwnerKind.ACTIVITY -> activity; RoleOwnerKind.PROGRAM -> program; RoleOwnerKind.ORGANIZATION -> organization }
             val role = it.roleId?.let { id -> roles[id]?.let { name -> ActivityInfoRef(id, name) } }
             History(
                 id = it.id!!,
                 role = role,
-                roleName = it.roleName ?: role?.name ?: "",
-                owner = RoleOwner(kind, it.ownerId, ownerName),
+                roleName = role?.name ?: it.roleName ?: "",
+                owner = RoleOwner(kind, it.ownerId, liveOwner?.name ?: it.ownerName ?: ""),
                 organization = organization,
                 program = program,
                 activity = activity,

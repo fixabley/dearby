@@ -294,20 +294,24 @@ class ProfileService(
     // 역할 매칭(native-v1.md "이력 (History) — 역할 매칭"): roleId가 있으면 그 역할과 귀속 단위를 쓰고 직접 입력 값은 버린다.
     // 없으면 직접 입력(승인 대기): 등록된 단위(ownerKind·ownerId) 또는 단위 이름(ownerKind·ownerName) + 역할 이름. 상태는 기존 이력과 비교해 정한다
     private fun history(input: HistoryInput, existing: History?): History {
-        val role = input.roleId?.let { id -> roles.findAllById(listOf(id)).singleOrNull() ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $id") }
+        val role = input.roleId?.let { id -> roles.findAllById(listOf(id)).singleOrNull() }
+        // roleId가 더는 없는 역할(V67이 지운 전역 역할 등)이면 이름이 있을 때 직접 입력으로 받는다(옛 앱 호환). 이름도 없으면 400
+        val typedRoleName = optional(input.roleName, "역할 이름", MAX_ROLE_NAME) ?: existing?.roleName?.takeIf { input.roleId != null && role == null }
+        if (input.roleId != null && role == null && typedRoleName == null) throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: ${input.roleId}")
         val units = if (role != null) {
-            units(role.owner.kind, role.owner.id!!, publishedOnly = false) ?: throw InvalidInputException("역할의 귀속 단위를 찾을 수 없습니다", "Role owner not found: ${role.id}")
+            // 역할의 활동이 초안이면 고를 수 없다. 이미 그 활동으로 저장된 이력은 예외(짧은 행사 검사와 같은 규칙)
+            units(role.owner.kind, role.owner.id!!, publishedOnly = existing?.activity?.id != role.owner.id) ?: throw InvalidInputException("역할의 귀속 단위를 찾을 수 없습니다", "Role owner not found: ${role.id}")
         } else {
             val kind = RoleOwnerKind.entries.firstOrNull { it.name.equals(input.ownerKind, ignoreCase = true) }
                 ?: throw InvalidInputException("ownerKind는 organization·program·activity 중 하나입니다")
             if (input.ownerId != null) {
-                units(kind, input.ownerId, publishedOnly = true) ?: throw InvalidInputException("${UNIT_LABELS.getValue(kind)}을(를) 찾을 수 없습니다", "${kind.name} not found: ${input.ownerId}")
+                units(kind, input.ownerId, publishedOnly = existing?.activity?.id != input.ownerId) ?: throw InvalidInputException("${UNIT_LABELS.getValue(kind)}을(를) 찾을 수 없습니다", "${kind.name} not found: ${input.ownerId}")
             } else {
                 val name = optional(input.ownerName, "${UNIT_LABELS.getValue(kind)} 이름", MAX_ACTIVITY_INFO_NAME) ?: throw InvalidInputException("조직·프로그램·활동을 고르거나 적어 주세요")
                 Units(RoleOwner(kind, null, name), null, null, null)
             }
         }
-        val roleName = role?.name ?: optional(input.roleName, "역할 이름", MAX_NAME) ?: throw InvalidInputException("역할을 고르거나 적어 주세요")
+        val roleName = role?.name ?: typedRoleName ?: throw InvalidInputException("역할을 고르거나 적어 주세요")
         // 7일 미만 행사는 이력이 아니다(native-v1.md "활동 이력에서 단기 행사 제외"). 직접 입력한 활동 이름은 제한하지 않고,
         // 이미 같은 활동으로 저장된 이력은 다시 검사하지 않는다(기존 이력·버전 되돌리기가 막히지 않도록, 2026-10-20 조율 결정)
         val activityId = units.activity?.id
@@ -390,6 +394,7 @@ class ProfileService(
         private const val MAX_NAME = 100
         private const val MAX_VALUE = 500
         private const val MAX_ACTIVITY_INFO_NAME = 200
+        private const val MAX_ROLE_NAME = 200 // roles.name과 같다
         private const val MAX_INTRO_LINK = 500
         private const val MAX_DESCRIPTION = 10_000
         private val UNIT_LABELS = mapOf(RoleOwnerKind.ORGANIZATION to "조직", RoleOwnerKind.PROGRAM to "프로그램", RoleOwnerKind.ACTIVITY to "활동")

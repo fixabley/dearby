@@ -167,7 +167,35 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"organization","ownerId":$organization,"roleName":"r","startDate":"2026-01-01","endDate":"2025-12-31"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"organization","ownerId":999999,"roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","roleId":999999,"startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","organizationId":$organization,"roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+
+        // 옛 요청 모양(앱 갱신 전 호환): 이관과 같은 규칙(더 구체적인 직접 입력 이름 → 가장 구체적인 등록 단위 → 조직 이름). 더는 없는 roleId는 roleName이 있으면 직접 입력
+        val legacyPicked = UUID.randomUUID()
+        val legacyNamed = UUID.randomUUID()
+        val legacyMixed = UUID.randomUUID()
+        val legacy = read(put(user, """{"name":"옛 앱","contacts":${contacts()},"histories":[
+            {"id":"$legacyPicked","kind":"activity","organizationId":$organization,"programId":$program,"activityId":$activity,"roleId":$activityRole,"startDate":"2026-01-01","description":""},
+            {"id":"$legacyNamed","kind":"activity","organizationName":"직접 조직","activityName":"직접 활동","roleId":999999,"roleName":"운영진","startDate":"2026-01-01","description":""},
+            {"id":"$legacyMixed","kind":"organization","organizationId":$organization,"programName":"직접 프로그램","roleName":"기획","startDate":"2026-01-01","description":""}
+        ]}""").andExpect { status { isOk() } })["histories"].values().associateBy { it["id"].asString() }
+        assertEquals(listOf("program", true, "직접 프로그램", "직접 프로그램"), listOf(legacy.getValue(legacyMixed.toString())["owner"]["kind"].asString(), legacy.getValue(legacyMixed.toString())["owner"]["id"].isNull, legacy.getValue(legacyMixed.toString())["owner"]["name"].asString(), legacy.getValue(legacyMixed.toString())["programName"].asString()))
+        assertEquals(listOf("activity", activity, activityRole, "approved"), listOf(legacy.getValue(legacyPicked.toString())["owner"]["kind"].asString(), legacy.getValue(legacyPicked.toString())["owner"]["id"].asLong(), legacy.getValue(legacyPicked.toString())["role"]["id"].asLong(), legacy.getValue(legacyPicked.toString())["approval"].asString()))
+        assertEquals(listOf("activity", true, "직접 활동", "운영진", "pending", "직접 활동"), listOf(legacy.getValue(legacyNamed.toString())["owner"]["kind"].asString(), legacy.getValue(legacyNamed.toString())["owner"]["id"].isNull, legacy.getValue(legacyNamed.toString())["owner"]["name"].asString(), legacy.getValue(legacyNamed.toString())["roleName"].asString(), legacy.getValue(legacyNamed.toString())["approval"].asString(), legacy.getValue(legacyNamed.toString())["activityName"].asString()))
+
+        // 역할이 지워져도(FK set null) 이력에는 역할·단위 이름 복사본이 남는다
+        jdbc.sql("delete from roles where id = ?").param(activityRole).update()
+        val afterDelete = read(mvc.get("/v1/profile") { asUser(user) })["histories"].values().single { it["id"].asString() == legacyPicked.toString() }
+        assertEquals(listOf(true, "iOS 개발자 ", activity), listOf(afterDelete["role"].isNull, afterDelete["roleName"].asString().take(8), afterDelete["owner"]["id"].asLong()))
+
+        // 초안 활동의 역할은 새 이력으로 고를 수 없다(이미 그 활동으로 저장된 이력은 그대로 저장된다)
+        val draftRole = role("activity", activity, "초안 역할 ${UUID.randomUUID()}")
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
+        try {
+            put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","roleId":$draftRole,"startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+            put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"$legacyPicked","roleId":$draftRole,"startDate":"2026-01-01"}]}""").andExpect { status { isOk() } }
+            assertEquals(0, read(mvc.get("/v1/roles?activityId=$activity") { asUser(user) })["items"].size())
+        } finally {
+            jdbc.sql("update activities set publication_status = 'PUBLISHED' where id = ?").param(activity).update()
+        }
     }
 
     // 활동 이력에서 단기 행사 제외(native-v1.md, 2026-10-20): 활동 기간이 7일 미만인 활동은 이력에 못 넣는다. 직접 입력 이름은 제한 없음
@@ -302,8 +330,8 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val suffix = UUID.randomUUID().toString().take(8)
         val (organization, program) = letswift()
         val id = role("program", program, "검색 역할 $suffix")
-        // 역할은 귀속 단위(조직·프로그램·활동) 하나가 필수이고 전역 목록은 없다
-        mvc.get("/v1/roles?q=검색 역할 $suffix") { asUser(user) }.andExpect { status { isBadRequest() } }
+        // 역할은 귀속 단위(조직·프로그램·활동) 하나에 속하고 전역 목록은 없다: 귀속이 없으면 빈 페이지(옛 앱 호환), 둘 이상이면 400
+        assertEquals(0, read(mvc.get("/v1/roles?q=검색 역할 $suffix") { asUser(user) }.andExpect { status { isOk() } })["items"].size())
         mvc.get("/v1/roles?programId=$program&organizationId=$organization") { asUser(user) }.andExpect { status { isBadRequest() } }
         val roles = read(mvc.get("/v1/roles?programId=$program&q=검색 역할 $suffix") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf(id, "program", program, "curated"), listOf(roles["items"].single()["id"].asLong(), roles["items"][0]["owner"]["kind"].asString(), roles["items"][0]["owner"]["id"].asLong(), roles["items"][0]["source"].asString()))

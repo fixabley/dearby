@@ -102,9 +102,9 @@ class JooqProfileRepository(private val dsl: DSLContext) : ProfileRepository {
             .set(PROFILE_HISTORIES.USER_ID, userId)
             .set(PROFILE_HISTORIES.OWNER_KIND, h.owner.kind.name)
             .set(PROFILE_HISTORIES.OWNER_ID, h.owner.id)
-            .set(PROFILE_HISTORIES.OWNER_NAME, h.owner.name.takeIf { h.owner.id == null })
+            .set(PROFILE_HISTORIES.OWNER_NAME, h.owner.name) // 단위·역할 이름 복사본: 지워져도 표시용
             .set(PROFILE_HISTORIES.ROLE_ID, h.role?.id)
-            .set(PROFILE_HISTORIES.ROLE_NAME, h.roleName.takeIf { h.role == null })
+            .set(PROFILE_HISTORIES.ROLE_NAME, h.roleName)
             .set(PROFILE_HISTORIES.START_DATE, h.startDate)
             .set(PROFILE_HISTORIES.END_DATE, h.endDate)
             .set(PROFILE_HISTORIES.DESCRIPTION, h.description)
@@ -117,9 +117,9 @@ class JooqProfileRepository(private val dsl: DSLContext) : ProfileRepository {
             .onConflict(PROFILE_HISTORIES.ID).doUpdate()
             .set(PROFILE_HISTORIES.OWNER_KIND, h.owner.kind.name)
             .set(PROFILE_HISTORIES.OWNER_ID, h.owner.id)
-            .set(PROFILE_HISTORIES.OWNER_NAME, h.owner.name.takeIf { h.owner.id == null })
+            .set(PROFILE_HISTORIES.OWNER_NAME, h.owner.name) // 단위·역할 이름 복사본: 지워져도 표시용
             .set(PROFILE_HISTORIES.ROLE_ID, h.role?.id)
-            .set(PROFILE_HISTORIES.ROLE_NAME, h.roleName.takeIf { h.role == null })
+            .set(PROFILE_HISTORIES.ROLE_NAME, h.roleName)
             .set(PROFILE_HISTORIES.START_DATE, h.startDate)
             .set(PROFILE_HISTORIES.END_DATE, h.endDate)
             .set(PROFILE_HISTORIES.DESCRIPTION, h.description)
