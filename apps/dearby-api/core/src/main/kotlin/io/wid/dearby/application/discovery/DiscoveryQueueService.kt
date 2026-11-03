@@ -242,10 +242,12 @@ class DiscoveryQueueService(
         }
         val lessField = signals.filter { it.kind == SignalKind.LESS_FIELD && it.tagId != null }.groupBy { it.tagId!! }.mapValues { (_, list) -> list.sumOf { decay(it.at) } }
         val engaged = implicit.groupBy { it.programId }.mapValues { (_, list) -> list.maxOf { it.strength.weight } }
-        // 프로그램 하트: 프로그램 신호 +0.6(같은 반감기)
-        val programHearts = favorites.findAll(userId).filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to PROGRAM_FAVORITE_WEIGHT * decay(it.createdAt) }
+        // 프로그램 하트: 프로그램 신호 +0.6(같은 반감기). 조직 팔로우: 그 조직에 +0.6(같은 반감기, native-v1.md "조직 화면·조직 팔로우")
+        val hearts = favorites.findAll(userId)
+        val programHearts = hearts.filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to PROGRAM_FAVORITE_WEIGHT * decay(it.createdAt) }
         val programSignals = programs.findAllById(programHearts.keys).associate { it.id to (it.organizationId to programHearts.getValue(it.id)) }
-        val affinity = Affinity.of(weights, refs, engaged, organizations, programSignals)
+        val organizationSignals = hearts.filter { it.target == FavoriteTarget.ORGANIZATION }.associate { it.targetId to PROGRAM_FAVORITE_WEIGHT * decay(it.createdAt) }
+        val affinity = Affinity.of(weights, refs, engaged, organizations, programSignals, organizationSignals)
         val likes = signals.filter { it.kind == SignalKind.LIKE }.mapNotNull { s -> vectors[s.activityId]?.let { v -> refs[s.activityId]?.let { it to v } } }
         return UserInputs(userId, preferences, eligibility, candidates, signals, taste, affinity, lessField, likes)
     }

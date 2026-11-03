@@ -73,6 +73,18 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
         return ids.associateWith { id -> walkUp(id, parents).reversed().map { it to names.getValue(it) } }
     }
 
+    override fun subtreeIds(ids: Collection<Id>): Set<Id> {
+        if (ids.isEmpty()) return emptySet()
+        val children = parents().entries.filter { it.value != null }.groupBy({ it.value!! }, { it.key })
+        val result = linkedSetOf<Id>()
+        val queue = ArrayDeque(ids)
+        while (queue.isNotEmpty()) {
+            val id = queue.removeFirst()
+            if (result.add(id)) children[id]?.let(queue::addAll)
+        }
+        return result
+    }
+
     // 조직 수가 적어 전체 (id, 상위 id)를 한 번 읽어 따라 올라간다
     private fun parents(): Map<Id, Id?> =
         dsl.select(ORGANIZATIONS.ID, ORGANIZATIONS.PARENT_ORGANIZATION_ID).from(ORGANIZATIONS).fetch().associate { it.value1()!! to it.value2() }

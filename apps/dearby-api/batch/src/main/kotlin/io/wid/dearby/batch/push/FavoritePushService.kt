@@ -4,6 +4,8 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.application.favorite.FavoriteRepository
 import io.wid.dearby.application.notification.NotificationRepository
+import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.push.PushRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.ScheduleKind
@@ -37,6 +39,8 @@ class FavoritePushService(
     private val favorites: FavoriteRepository,
     private val notifications: NotificationRepository,
     private val activities: ActivityService,
+    private val organizations: OrganizationRepository,
+    private val programs: ProgramRepository,
     private val sender: PushSender,
     private val properties: PushProperties,
 ) {
@@ -77,12 +81,26 @@ class FavoritePushService(
         return Report(dueDevices, sent)
     }
 
-    // 사용자의 즐겨찾기 수준과 대상 활동(즐겨찾기 활동 + 즐겨찾기 프로그램의 게시 활동)
+    // 사용자의 즐겨찾기 수준과 대상 활동(즐겨찾기 활동 + 즐겨찾기 프로그램·팔로우한 조직(하위 조직 포함)의 프로그램의 게시 활동).
+    // programLevels에는 조직 팔로우로 들어온 프로그램도 그 조직의 수준으로 들어간다(프로그램 하트가 있으면 그것이 앞선다)
     private class Inputs(val listings: Map<Id, ActivityListing>, val activityLevels: Map<Id, NotifyLevel>, val programLevels: Map<Id, NotifyLevel>, val fresh: Set<Id>)
 
     private fun load(userId: UserId, fresh: Set<Id>): Inputs {
         val all = favorites.findAll(userId)
-        val programLevels = all.filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to it.notifyLevel }
+        val organizationLevels = all.filter { it.target == FavoriteTarget.ORGANIZATION }.associate { it.targetId to it.notifyLevel }
+        val subtree = organizations.subtreeIds(organizationLevels.keys)
+        val organizationOf = organizations.findAllById(subtree).associate { it.id to it.parentOrganizationId }
+        // 하위 조직의 프로그램은 가장 가까운 팔로우한 상위 조직의 수준
+        fun levelOf(organizationId: Id): NotifyLevel? {
+            var current: Id? = organizationId
+            while (current != null) {
+                organizationLevels[current]?.let { return it }
+                current = organizationOf[current]
+            }
+            return null
+        }
+        val viaOrganization = programs.findByOrganizationIds(subtree).mapNotNull { program -> levelOf(program.organizationId)?.let { program.id to it } }.toMap()
+        val programLevels = viaOrganization + all.filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to it.notifyLevel }
         val activityLevels = all.filter { it.target == FavoriteTarget.ACTIVITY }.associate { it.targetId to it.notifyLevel }
         val listings = (activities.publishedListings(ids = activityLevels.keys) + activities.publishedListings(programIds = programLevels.keys))
             .associateBy { it.activity.id }

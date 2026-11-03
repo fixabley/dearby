@@ -1,6 +1,8 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATIONS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_FAVORITES
 import io.wid.dearby.application.favorite.FavoriteRepository
 import io.wid.dearby.domain.Id
@@ -46,18 +48,38 @@ class JooqFavoriteRepository(private val dsl: DSLContext) : FavoriteRepository {
     override fun newRecruitments(userIds: Collection<UserId>, now: OffsetDateTime): Map<UserId, Map<Id, List<Id>>> {
         if (userIds.isEmpty()) return emptyMap()
         val since = DSL.greatest(USER_FAVORITES.CREATED_AT, DSL.coalesce(USER_FAVORITES.SEEN_AT, USER_FAVORITES.CREATED_AT))
-        return dsl.select(USER_FAVORITES.USER_ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.ID)
+        fun fresh(target: FavoriteTarget) = listOf(
+            USER_FAVORITES.USER_ID.`in`(userIds), USER_FAVORITES.TARGET_TYPE.eq(target.name), ACTIVITIES.PUBLISHED_AT.gt(since), OpenActivityConditions.open(now),
+        )
+        val byProgram = dsl.select(USER_FAVORITES.USER_ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.ID)
             .from(USER_FAVORITES)
             .join(ACTIVITIES).on(ACTIVITIES.PROGRAM_ID.eq(USER_FAVORITES.TARGET_ID))
             .leftJoin(OpenActivityConditions.app).on(OpenActivityConditions.appJoin)
             .leftJoin(OpenActivityConditions.act).on(OpenActivityConditions.actJoin)
-            .where(
-                USER_FAVORITES.USER_ID.`in`(userIds), USER_FAVORITES.TARGET_TYPE.eq(FavoriteTarget.PROGRAM.name),
-                ACTIVITIES.PUBLISHED_AT.gt(since), OpenActivityConditions.open(now),
-            )
-            .orderBy(ACTIVITIES.ID)
+            .where(fresh(FavoriteTarget.PROGRAM))
             .fetch()
-            .groupBy({ it.value1()!! }, { it.value2()!! to it.value3()!! })
+        // 조직 팔로우(native-v1.md "조직 화면·조직 팔로우"): 팔로우한 조직과 그 아래 모든 조직(tree.root_id → tree.id)의 프로그램 활동
+        val tree = DSL.name("tree")
+        val rootId = DSL.field(DSL.name("tree", "root_id"), Long::class.java)
+        val treeId = DSL.field(DSL.name("tree", "id"), Long::class.java)
+        val subtree = tree.fields("root_id", "id").`as`(
+            DSL.select(ORGANIZATIONS.ID, ORGANIZATIONS.ID).from(ORGANIZATIONS)
+                .unionAll(DSL.select(rootId, ORGANIZATIONS.ID).from(ORGANIZATIONS).join(DSL.table(tree)).on(ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(treeId))),
+        )
+        val byOrganization = dsl.withRecursive(subtree)
+            .select(USER_FAVORITES.USER_ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.ID)
+            .from(USER_FAVORITES)
+            .join(DSL.table(tree)).on(rootId.eq(USER_FAVORITES.TARGET_ID))
+            .join(PROGRAMS).on(PROGRAMS.ORGANIZATION_ID.eq(treeId))
+            .join(ACTIVITIES).on(ACTIVITIES.PROGRAM_ID.eq(PROGRAMS.ID))
+            .leftJoin(OpenActivityConditions.app).on(OpenActivityConditions.appJoin)
+            .leftJoin(OpenActivityConditions.act).on(OpenActivityConditions.actJoin)
+            .where(fresh(FavoriteTarget.ORGANIZATION))
+            .fetch()
+        // 프로그램 하트와 조직 팔로우가 겹쳐도 활동은 한 번
+        return (byProgram + byOrganization)
+            .map { Triple(it.value1()!!, it.value2()!!, it.value3()!!) }.distinct().sortedBy { it.third }
+            .groupBy({ it.first }, { it.second to it.third })
             .mapValues { (_, pairs) -> pairs.groupBy({ it.first }, { it.second }) }
     }
 

@@ -29,6 +29,9 @@ interface OrganizationRepository {
     // 조직별 상위 경로(최상위부터 바로 위 조직까지, 이름 포함). 최상위 조직은 빈 목록
     fun ancestors(ids: Collection<Id>): Map<Id, List<Pair<Id, String>>>
 
+    // 이 조직들과 그 아래 모든 하위 조직 id(자기 자신 포함). 조직 팔로우 알림·발견 organizationIds 필터가 쓴다
+    fun subtreeIds(ids: Collection<Id>): Set<Id>
+
     // 조직별 하위 조직 수·프로그램 수(0이면 빠진다)
     fun childCounts(ids: Collection<Id>): Map<Id, Int>
 
