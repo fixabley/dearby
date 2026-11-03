@@ -17,6 +17,7 @@ interface FavoriteRepository {
     fun findAll(userId: UserId): List<Favorite>
     fun userIds(): List<UserId> // 즐겨찾기가 하나라도 있는 사용자(알림 목록을 만들 대상)
 
-    // 새 모집: 즐겨찾기한 프로그램에 즐겨찾기(또는 마지막으로 연 시각) 뒤 게시된 활동 중 지금 열린 것. 사용자 → (프로그램 → 활동 id들)
+    // 새 모집: 즐겨찾기한 프로그램 또는 팔로우한 조직(하위 조직 포함)의 프로그램에 즐겨찾기(또는 마지막으로 연 시각) 뒤 게시된 활동 중 지금 열린 것.
+    // 사용자 → (프로그램 → 활동 id들). 프로그램 하트와 조직 팔로우가 겹쳐도 활동은 한 번
     fun newRecruitments(userIds: Collection<UserId>, now: OffsetDateTime): Map<UserId, Map<Id, List<Id>>>
 }

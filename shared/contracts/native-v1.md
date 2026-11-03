@@ -1821,7 +1821,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - 프로그램 화면의 조직 줄에서 연다. 머리는 프로그램 화면과 같은 틀(배너는 브랜드 색만, 로고, `팔로우`, 이름), 그 아래 **조직 경로 줄** `삼성 › 삼성전자`(최상위부터 현재까지, 상위는 청록 글자로 누르면 그 조직 화면, 현재는 굵은 검정), 개수 줄(`n 프로그램 · n 모집 중 · n 지난 활동`), 카드 `프로그램`(행 컴포넌트: 썸네일·조직 줄·이름·종류 줄·`최근 활동 yyyy년 M월`, 모집 중이면 개수 배지)과 `하위 조직`(같은 행, 없으면 `하위 조직이 없어요`).
 - **새 공개 API**: `GET /v1/organizations/{id}` → `{id, name, nameEn, logoUrl, brandColor, ancestors: [{id, name}](최상위부터), children: [{id, name, logoUrl}], programs: [ProgramSummary], counts: {programs, recruiting, past}, followed}`(없으면 404, `Vary: Authorization`). `ProgramSummary.organization`에 `ancestors: [{id, name}]`를 더한다(드롭다운용). 로고 공개 주소는 기존 `/v1/organizations/{id}/logo`.
-- **조직 팔로우**: `user_favorites.target_type`에 `ORGANIZATION`(V66). `PUT/DELETE /v1/me/favorites/organizations/{id}`(멱등, `notifyLevel?` 프로그램과 같음), `GET /v1/me/favorites`에 `organizations: [{organization: {id, name, logoUrl}, favoritedAt, notifyLevel}]`. 새 모집 알림은 그 조직과 하위 조직의 프로그램에 새 활동이 열릴 때(프로그램 팔로우 규칙과 같이 활동마다 한 번, 프로그램 팔로우와 겹치면 한 번), 조직 친화도에는 프로그램 하트와 같은 +0.6(반감기 같음). `favorite_add`·`favorite_remove`의 `type`에 `organization`.
+- **조직 팔로우**: `user_favorites.target_type`에 `ORGANIZATION`(V66). `PUT/DELETE /v1/me/favorites/organizations/{id}`(멱등, `notifyLevel?` 프로그램과 같음), `GET /v1/me/favorites`에 `organizations: [{organization: {id, name, logoUrl}, favoritedAt, notifyLevel}]`. 새 모집 알림은 그 조직과 하위 조직의 프로그램에 새 활동이 열릴 때(프로그램 팔로우 규칙과 같이 활동마다 한 번, 프로그램 팔로우와 겹치면 한 번), 조직 친화도에는 프로그램 하트와 같은 +0.6(반감기 같음, 알림과 같은 규칙으로 그 조직과 하위 조직 트리 전체에). `favorite_add`·`favorite_remove`의 `type`에 `organization`.
 - 팔로우 목록(프로그램·조직)은 내 프로필의 `팔로우` 행에서 본다(옛 즐겨찾기 캘린더의 `날짜 없는 즐겨찾기` 묶음 대체).
 
 ### 내 활동 화면 (홈의 `내 활동 ›`)

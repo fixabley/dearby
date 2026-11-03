@@ -242,10 +242,17 @@ class DiscoveryQueueService(
         }
         val lessField = signals.filter { it.kind == SignalKind.LESS_FIELD && it.tagId != null }.groupBy { it.tagId!! }.mapValues { (_, list) -> list.sumOf { decay(it.at) } }
         val engaged = implicit.groupBy { it.programId }.mapValues { (_, list) -> list.maxOf { it.strength.weight } }
-        // 프로그램 하트: 프로그램 신호 +0.6(같은 반감기)
-        val programHearts = favorites.findAll(userId).filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to PROGRAM_FAVORITE_WEIGHT * decay(it.createdAt) }
+        // 프로그램 하트: 프로그램 신호 +0.6(같은 반감기). 조직 팔로우: 그 조직과 하위 조직 트리 전체에 +0.6(같은 반감기, 알림과 같은 규칙, native-v1.md "조직 화면·조직 팔로우").
+        // 상위·하위를 함께 팔로우했으면 겹치는 조직은 큰 값 하나
+        val hearts = favorites.findAll(userId)
+        val programHearts = hearts.filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to PROGRAM_FAVORITE_WEIGHT * decay(it.createdAt) }
         val programSignals = programs.findAllById(programHearts.keys).associate { it.id to (it.organizationId to programHearts.getValue(it.id)) }
-        val affinity = Affinity.of(weights, refs, engaged, organizations, programSignals)
+        val organizationSignals = mutableMapOf<Id, Double>()
+        hearts.filter { it.target == FavoriteTarget.ORGANIZATION }.forEach { follow ->
+            val weight = PROGRAM_FAVORITE_WEIGHT * decay(follow.createdAt)
+            organizations.subtreeIds(listOf(follow.targetId)).forEach { organizationSignals.merge(it, weight, ::maxOf) }
+        }
+        val affinity = Affinity.of(weights, refs, engaged, organizations, programSignals, organizationSignals)
         val likes = signals.filter { it.kind == SignalKind.LIKE }.mapNotNull { s -> vectors[s.activityId]?.let { v -> refs[s.activityId]?.let { it to v } } }
         return UserInputs(userId, preferences, eligibility, candidates, signals, taste, affinity, lessField, likes)
     }
