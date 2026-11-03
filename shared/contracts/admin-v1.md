@@ -105,24 +105,25 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - `officialSource`: 출처가 프로그램의 공식 도메인인지. false면 웹 전체 검색에서 나온 것이라 출처를 확인하고 게시해야 한다
 - `applicationUrl`, `location`, `cost`, `audience`, `sourceCheckedAt`: 수집이 원문에서 확인한 값(없으면 null)
 
-## 이력 검토·역할 — 2026-10-16 사용자 결정
+## 이력 검토·역할 — 2026-10-16 사용자 결정, 2026-11-03 밤 역할 귀속으로 개정
 
-사용자가 프로필 이력을 단계별로 입력할 때 등록된 활동 정보에 없는 조직·프로그램·활동·역할을 직접 적으면 관리자 승인 전까지 명함에 넣을 수 없다. 인증자료를 올리면 관리자가 확인한다(`native-v1.md` "프로필·명함 v2" → "관리자"). 화면에는 작성자의 프로필 이름만 보여 주고 계정 id는 싣지 않는다.
+사용자가 프로필 이력(역할 매칭, `native-v1.md` "이력 (History) — 역할 매칭")에서 등록된 역할 대신 역할 이름을 직접 적으면 관리자 승인 전까지 명함에 넣을 수 없다. 인증자료를 올리면 관리자가 확인한다(`native-v1.md` "프로필·명함 v2" → "관리자"). 화면에는 작성자의 프로필 이름만 보여 주고 계정 id는 싣지 않는다.
 
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
 | GET /v1/admin/histories | `approval?`(pending·approved·rejected), `verification?`(unverified·pending·verified·rejected), `cursor?`(이력 id), `size?` | 200 `{items: HistoryForReview[], nextCursor}` |
-| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", organizationId?, programId?, activityId?, roleId?, reason?}` | 200 HistoryForReview. 없는 활동 정보 id 400, 거절에 사유 없으면 400 |
+| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", roleId?, reason?}` | 200 HistoryForReview. `roleId`는 그 이력의 귀속 단위(`owner`)에 속한 역할이어야 하며 아니면 400, 거절에 사유 없으면 400 |
 | POST /v1/admin/histories/:id/verification | `{decision: "verify"\|"reject"}` | 200 HistoryForReview |
 | GET /v1/admin/histories/:id/evidence/:eid | — | 200 파일(inline) |
-| GET /v1/admin/roles | `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}` |
-| POST /v1/admin/roles | `{name, nameEn?}` | 201 Role. 띄어쓰기만 다른 이름도 중복 400 |
-| PATCH /v1/admin/roles/:id | `{name?, nameEn?}` | 200 Role |
+| GET /v1/admin/roles | `organizationId?`·`programId?`·`activityId?`(셋 중 하나 필수), `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}`. 전역 목록 없음 |
+| POST /v1/admin/roles | `{organizationId\|programId\|activityId(하나), name, nameEn?}` | 201 Role. 같은 단위 안에서 띄어쓰기만 다른 이름도 중복 400 |
+| PATCH /v1/admin/roles/:id | `{name?, nameEn?, position?}` | 200 Role. 귀속은 바꾸지 않는다 |
 | DELETE /v1/admin/roles/:id | — | 204. 이력이 쓰면 400 |
 
+- Role: `{id, name, nameEn, owner: {kind, id, name}, source: "curated"\|"collected"}`. 활동 역할은 수집이 공고의 모집 역할 문구로 만든 것(`collected`)이 있고, 운영자가 고치면 `curated`가 되어 다음 수집이 바꾸지 않는다(활동 편집의 `roles` 문자열 목록은 이 역할 행들이다).
 - HistoryForReview: `native-v1.md`의 History에 `profileName`을 더한 것.
-- 승인 때 id를 주면 직접 입력 값을 그 활동 정보 항목으로 바꾼다. 없는 조직·프로그램·역할은 기존 admin API로 먼저 만든다. 활동은 여기서 만들지 않으며, 직접 입력한 활동 이름을 그대로 승인할 수 있다.
-- Role: `{id, name, nameEn}`.
+- 승인 때 `roleId`를 주면 직접 입력 역할 이름을 그 역할로 바꾼다. 없으면 그 귀속 단위 아래에 역할을 먼저 만든다(`POST /v1/admin/roles`). 귀속 단위(조직·프로그램·활동) 자체는 사용자가 등록된 것에서 골랐으므로 여기서 만들지 않는다.
+- 역할 관리 화면: 전역 "역할" 메뉴(`roles.tsx`)를 없애고 조직·프로그램·활동 편집 화면 안의 "역할" 절에서 그 단위의 역할을 만들고 고치고 순서를 정한다.
 
 ## 직무 — 2026-10-17 사용자 결정
 
