@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/admin")
 class AdminDiscoveryFilterController(private val filters: DiscoveryFilterService) {
 
-    // 저장된 구성, 없으면 기본 구성
+    // 저장된 구성, 없으면 기본 구성. 응답은 요청과 같은 모양 {sections: [{key, enabled, title, subtitle?, items?: [{code, enabled, label, icon}]}]}
     @GetMapping("/discovery-filters")
-    fun get() = DiscoveryFilterConfigResponse.from(filters.config())
+    fun get(): DiscoveryFilterConfig = filters.config()
 
     // 모르는 섹션 키·종류 코드·아이콘 키·없는 분야 태그 id는 400
     @PutMapping("/discovery-filters")
-    fun put(@RequestBody request: DiscoveryFilterConfigRequest) = DiscoveryFilterConfigResponse.from(filters.save(request.toConfig()))
+    fun put(@RequestBody request: DiscoveryFilterConfigRequest): DiscoveryFilterConfig = filters.save(request.toConfig())
 
     // 앱에 내장된 "아이콘 통일" 표의 키 목록(아이콘 선택기). 서버 상수
     @GetMapping("/icons")
@@ -53,19 +53,6 @@ data class DiscoveryFilterConfigRequest(val sections: List<SectionRequest>? = nu
 data class SectionRequest(val key: String? = null, val enabled: Boolean? = null, val title: String? = null, val subtitle: String? = null, val items: List<ItemRequest>? = null)
 
 data class ItemRequest(val code: String? = null, val enabled: Boolean? = null, val label: String? = null, val icon: String? = null)
-
-// 요청과 같은 모양: {sections: [{key, enabled, title, subtitle?, items?: [{code, enabled, label, icon}]}]}
-data class DiscoveryFilterConfigResponse(val sections: List<SectionResponse>) {
-    companion object {
-        fun from(config: DiscoveryFilterConfig) = DiscoveryFilterConfigResponse(
-            config.sections.map { SectionResponse(it.key, it.enabled, it.title, it.subtitle, it.items?.map { item -> ItemResponse(item.code, item.enabled, item.label, item.icon) }) },
-        )
-    }
-}
-
-data class SectionResponse(val key: String, val enabled: Boolean, val title: String, val subtitle: String?, val items: List<ItemResponse>?)
-
-data class ItemResponse(val code: String, val enabled: Boolean, val label: String, val icon: String)
 
 data class IconListResponse(val items: List<IconResponse>)
 

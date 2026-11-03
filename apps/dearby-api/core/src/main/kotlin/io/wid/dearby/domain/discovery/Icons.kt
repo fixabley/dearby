@@ -103,8 +103,8 @@ object Icons {
 
     fun has(key: String): Boolean = key in byKey
 
-    // 활동 종류의 기본 아이콘 키
-    fun ofCategory(category: ActivityCategory): String = category.name.lowercase().takeIf(::has) ?: DEFAULT_CATEGORY
+    // 활동 종류의 기본 아이콘 키(종류 코드 소문자, 모두 표에 있다)
+    fun ofCategory(category: ActivityCategory): String = category.name.lowercase()
 
     // 분야 태그의 기본 아이콘 키(nameEn이 표에 있으면 그것, 없으면 tag)
     fun ofTag(nameEn: String?): String = nameEn?.takeIf(::has) ?: DEFAULT_TAG

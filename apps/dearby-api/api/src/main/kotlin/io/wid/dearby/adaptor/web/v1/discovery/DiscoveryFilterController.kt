@@ -25,14 +25,10 @@ class DiscoveryFilterController(private val filters: DiscoveryFilterService) {
     ): ResponseEntity<DiscoveryFiltersResponse> {
         val sections = filters.sections(q, DiscoveryKind.parse(kind), DiscoveryProgramController.scope(organizationIds, programIds))
         return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePublic())
-            .body(DiscoveryFiltersResponse(sections.map { section -> FilterSectionResponse(section.key, section.title, section.subtitle, section.multiple, section.items.map { FilterItemResponse(it.code, it.label, it.icon, it.count) }) }))
+            .body(DiscoveryFiltersResponse(sections))
     }
 }
 
-// key: status|category|field|eligibility. status의 code는 세 묶음 id(available·in_progress·past), category는 종류 코드, field는 분야 태그 id, eligibility는 mine 하나
-data class DiscoveryFiltersResponse(val sections: List<FilterSectionResponse>)
-
-data class FilterSectionResponse(val key: String, val title: String, val subtitle: String?, val multiple: Boolean, val items: List<FilterItemResponse>)
-
-// icon: "아이콘 통일" 표의 키(앱이 모르는 키는 기본 아이콘). count: 그 조건의 프로그램 수(eligibility는 사용자별이라 null)
-data class FilterItemResponse(val code: String, val label: String, val icon: String, val count: Int?)
+// sections[].key: status|category|field|eligibility. status의 code는 세 묶음 id(available·in_progress·past), category는 종류 코드, field는 분야 태그 id, eligibility는 mine 하나.
+// items[].icon: "아이콘 통일" 표의 키(앱이 모르는 키는 기본 아이콘), count: 그 조건의 프로그램 수(eligibility는 사용자별이라 null)
+data class DiscoveryFiltersResponse(val sections: List<DiscoveryFilterService.Section>)
