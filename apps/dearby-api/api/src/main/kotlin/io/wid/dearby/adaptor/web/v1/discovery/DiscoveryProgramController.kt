@@ -8,6 +8,7 @@ import io.wid.dearby.domain.favorite.FavoriteIds
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import java.util.UUID
+import io.wid.dearby.application.program.ProgramScope
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ActivityStatus
@@ -39,20 +40,37 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService, p
         @RequestParam(required = false) tagIds: String?, // 태그 id 쉼표 목록, 모두 가진 활동만(native-v1.md "태그")
         @RequestParam(defaultValue = "true") openOnly: Boolean, // false면 최근 3년 안에 활동이 있었던 프로그램까지(native-v1.md "모집 중인 프로그램만 보기")
         @RequestParam(required = false) status: String?, // 활동 상태 쉼표 목록(native-v1.md "활동 상태"). 있으면 openOnly 대신 쓴다
+        @RequestParam(required = false) organizationIds: String?, // 필터 시트의 조직 칩, 쉼표 목록(하위 조직 포함)(native-v1.md "발견 필터 시트 표현")
+        @RequestParam(required = false) programIds: String?, // 필터 시트의 프로그램 칩, 쉼표 목록. 조직 칩과 합집합
+        @RequestParam(defaultValue = "false") countOnly: Boolean, // true면 같은 조건의 총수 `{total}`만
         @RequestParam(defaultValue = "0") cursor: Int,
         @RequestParam(defaultValue = ProgramSummaryService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
         @AuthenticationPrincipal jwt: Jwt?, // 로그인 응답에만 favorited가 켜진다
-    ): ResponseEntity<ProgramSummaryPageResponse> {
+    ): ResponseEntity<Any> {
         val language = ResponseLanguage.from(acceptLanguage)
         val type = participationType?.let { value ->
             ParticipationType.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
                 ?: throw InvalidInputException("participationType은 REGISTRATION 또는 SELECTION입니다")
         }
-        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), kind = DiscoveryKind.parse(kind), openOnly = openOnly, tagIds = TagIds.parse(tagIds), statuses = ActivityStatus.parseList(status)))
+        val condition = ProgramSummarySearch(
+            q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), kind = DiscoveryKind.parse(kind), openOnly = openOnly,
+            tagIds = TagIds.parse(tagIds), statuses = ActivityStatus.parseList(status), scope = summaries.expand(scope(organizationIds, programIds)),
+        )
+        if (countOnly) return ResponseEntity.ok().varyBy(HttpHeaders.AUTHORIZATION).body(ProgramCountResponse(summaries.count(condition)))
+        val page = summaries.search(condition)
         val mine = jwt?.let { favorites.ids(UUID.fromString(it.subject)) } ?: FavoriteIds.NONE
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(ProgramSummaryPageResponse(page.items.map { ProgramSummaryResponse.from(it, language, mine) }, page.nextCursor))
+    }
+
+    companion object {
+        // organizationIds·programIds 쉼표 목록 → 범위. 둘 다 비면 null(범위 없음). 숫자가 아니면 400
+        fun scope(organizationIds: String?, programIds: String?): ProgramScope? {
+            fun ids(value: String?, name: String): Set<Long> = value?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
+                ?.map { it.toLongOrNull() ?: throw InvalidInputException("${name}는 id 쉼표 목록입니다") }?.toSet().orEmpty()
+            return ProgramScope(ids(programIds, "programIds"), ids(organizationIds, "organizationIds")).takeUnless { it.isEmpty }
+        }
     }
 }

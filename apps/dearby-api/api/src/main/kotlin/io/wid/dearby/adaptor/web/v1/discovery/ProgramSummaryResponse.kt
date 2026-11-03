@@ -12,7 +12,7 @@ data class ProgramSummaryResponse(
     val id: Long,
     val name: String,
     val nameEn: String?,
-    val organization: ReferenceResponse,
+    val organization: OrganizationReferenceResponse, // 조직과 상위 경로(native-v1.md "조직 화면" 드롭다운)
     val openActivityCount: Int,
     val nearestRecruitmentEndAt: OffsetDateTime?,
     val nearestIsActivityStart: Boolean, // 폐지 예정, 항상 false(2026-10-26: nearestRecruitmentEndAt은 모집 마감만). 옛 앱 호환으로 남긴다
@@ -30,13 +30,17 @@ data class ProgramSummaryResponse(
     val statusCounts: Map<String, Int>, // 조회 범위 안 게시 활동의 상태별 수(0인 상태는 빠진다)(native-v1.md "활동 상태")
     val hasTimetable: Boolean, // 모집 중·모집 예정 활동(필터 반영) 중 하나라도 시간표가 있으면 true(접힌 카드 "시간표" 배지, native-v1.md "트랙·세션 시간표")
     val favorited: Boolean, // 로그인 사용자가 즐겨찾기했는지(native-v1.md "즐겨찾기(하트)"). 비로그인은 false
+    val placeShort: String?, // 조회 범위 안 활동 장소의 짧은 꼴(native-v1.md "행 컴포넌트" placeShort). 못 뽑으면 null
 ) {
     companion object {
         fun from(summary: ProgramSummary, language: ResponseLanguage, favorites: FavoriteIds = FavoriteIds.NONE) = ProgramSummaryResponse(
             id = summary.id,
             name = language.pick(summary.name, summary.nameEn),
             nameEn = summary.nameEn,
-            organization = ReferenceResponse(summary.organizationId, language.pick(summary.organizationName, summary.organizationNameEn)),
+            organization = OrganizationReferenceResponse(
+                summary.organizationId, language.pick(summary.organizationName, summary.organizationNameEn),
+                summary.organizationAncestors.map { (id, name) -> ReferenceResponse(id, name) },
+            ),
             openActivityCount = summary.openActivityCount,
             nearestRecruitmentEndAt = summary.nearestRecruitmentEndAt,
             nearestIsActivityStart = false,
@@ -54,9 +58,16 @@ data class ProgramSummaryResponse(
             statusCounts = summary.statusCounts.mapKeys { it.key.name },
             hasTimetable = summary.hasTimetable,
             favorited = summary.id in favorites.programs,
+            placeShort = summary.placeShort,
         )
     }
 }
 
+// 조직 참조: ancestors는 최상위부터 바로 위 조직까지(최상위 조직은 []). 프로그램 화면 조직 줄의 드롭다운(native-v1.md "프로그램 화면")
+data class OrganizationReferenceResponse(val id: Long, val name: String, val ancestors: List<ReferenceResponse>)
+
 // nextCursor를 다음 요청의 cursor로 보낸다. null이면 마지막 페이지
 data class ProgramSummaryPageResponse(val items: List<ProgramSummaryResponse>, val nextCursor: Int?)
+
+// countOnly=true의 응답(native-v1.md "발견 필터 시트 표현" `프로그램 n개 보기`)
+data class ProgramCountResponse(val total: Int)
