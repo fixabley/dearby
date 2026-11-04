@@ -265,7 +265,7 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         ).params(listOf<Any?>(activity, slot, title, from, to)).query(Long::class.java).single()
         block("활동 기간", "ACTIVITY", "-3 hours", "+5 hours")
         val afternoon = block("오후 세션", null, "-1 hours", "+2 hours")
-        val track = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 A', '201호', 0) returning id").param(afternoon).query(Long::class.java).single()
+        val track = jdbc.sql("with r as (insert into schedule_rooms (schedule_id, name, position) values (?, '201호', 0) returning id) insert into schedule_tracks (schedule_id, name, room_id, position) select ?, '트랙 A', r.id, 0 from r returning id").params(afternoon, afternoon).query(Long::class.java).single()
         jdbc.sql("insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', '세션', now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb)").params(afternoon, track).update()
 
         val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId), activity) }.andExpect { status { isCreated() } })["guestToken"].asString()

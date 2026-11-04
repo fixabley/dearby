@@ -18,7 +18,6 @@ import io.wid.dearby.domain.timetable.SessionKind
 import io.wid.dearby.domain.timetable.Speaker
 import io.wid.dearby.domain.timetable.TimetableInput
 import io.wid.dearby.domain.timetable.TimetableRules
-import io.wid.dearby.domain.timetable.TrackInput
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.OffsetDateTime
@@ -137,7 +136,7 @@ object ActivityVerifier {
                 tagIds = emptyList(),
             )
         }
-        val input = TimetableInput(extracted.tracks.map { TrackInput(null, it.name, it.room) }, sessions)
+        val input = TimetableInput.withRoomNames(extracted.tracks.map { it.name to it.room }, sessions)
         val validated = runCatching { TimetableRules.validate(input, TimetableRules.window(time, recurring)) }.getOrNull() ?: return null
         return CollectedTimetable(validated, extracted.sessions.map { s -> s.tags.map { it.trim() }.filter { it.isNotEmpty() } })
     }
