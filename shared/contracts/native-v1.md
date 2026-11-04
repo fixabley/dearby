@@ -1789,6 +1789,22 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 설정 › 알림 `행사 진행 중 표시` 스위치(기본 켬, `DevicePreferences.liveSessionEnabled`); 켜면 알림 권한을 한 번 묻는 기존 규칙.
 - 사용 통계 `live_session_shown`(하루 1회, 매개변수 없음): 위 "사용 통계·개인정보".
 
+## 워치 화면 — 2026-11-04(1단계)
+
+사용자 요청: Galaxy Watch·Apple Watch용 디자인. **1단계 = 앱을 따로 만들지 않고 폰 기능에서 거의 그대로 이어지는 표면만**: 라이브 액티비티·진행 알림·위젯/타일·컴플리케이션. 데이터는 폰 앱이 공급한다(iOS WidgetKit 컴플리케이션·ActivityKit 라이브 액티비티의 watchOS 자동 미러링, Android Wear 데이터 레이어 + Tiles API + `OngoingActivity`). **워치 독립 앱은 범위 밖**이다. 시안 "워치" 섹션 ㉔-a~㉔-f.
+
+- **화면 기준**: Apple Watch 45mm 둥근 사각 198×242pt, Galaxy Watch 원형 지름 450px(약 225dp, 가장자리 안전 영역 안쪽에만 내용). 시안 글꼴은 Pretendard로 대신 그렸고 실제는 Apple Watch SF Compact, Galaxy Watch 시스템 글꼴이다.
+- **색·글자**: 검정 바탕 + 청록 강조(글자 #5FD4D2, 링 #2BB5B5). 워치용 축소 체계: 큰 숫자 32/800, 제목 15/600, 보조 12.
+- **날짜 규칙**: 위 "홈 화면 위젯"과 같다. D-day를 보이는 곳은 날짜를 쓰지 않고, 24시간 이하는 `4시간 19분 후`. 위계도 같다(큰 D-day → 활동명 → 일정 이름).
+- **Apple Watch**
+  - 스마트 스택 LIVE(㉔-a): 폰 라이브 액티비티가 watchOS 스마트 스택에 자동으로 표시되는 모양(행사명, 지금 세션 제목, 진행 링 `8분 남음`, 다음 세션 한 줄). 별도 워치 코드 없이 `supplementalActivityFamilies([.small])`로 작은 레이아웃을 공급한다.
+  - 컴플리케이션 셋(㉔-b, WidgetKit): `accessoryCircular` = 가장 가까운 D-day 숫자 + 짧은 라벨 `마감`, `accessoryRectangular` = `FLY AI Challenger 10기` / `모집 마감 · D-5`, `accessoryCorner` = 진행 링 + `D-5`. 진행 링은 모집 기간(열린 시각 → 마감) 가운데 지난 비율.
+- **Galaxy Watch(Wear OS)**
+  - 진행 중 활동(㉔-c·㉔-d): 폰의 라이브 업데이트 알림(위 "Android — 진행 중 알림·라이브 업데이트")을 `OngoingActivity`로 이어 워치 화면 아래 칩(로고 · 세션 · 남은 시간)으로 보이고, 누르면 펼친 카드(링·세션 제목·다음 세션, `폰에서 시간표 열기`).
+  - 타일 하나(㉔-e, Tiles API): 맨 위 가장 가까운 일정 큰 D-day → 활동명 → 일정 이름, 아래 다가오는 일정 셋(이름 · D-day). 누르면 폰 앱의 그 활동.
+  - 컴플리케이션(㉔-f): `SHORT_TEXT` = `D-5` + `마감`, `RANGED_VALUE` = 진행 링 + `D-5`.
+- **확인 항목**: iOS 담당은 실기기 Apple Watch에서 라이브 액티비티 미러링 모양, Android 담당은 실기기 Galaxy Watch에서 진행 중 활동 칩·타일 갱신 주기를 확인하고 결과를 이 절에 남긴다.
+
 ## 오늘 행사 온보딩 — 2026-10-27 사용자 결정
 
 사용자: "온보딩을 추가하고 싶어. 오늘 진행 중인 행사 중 참여 중인 게 있는지 물어보는 온보딩." 행사 당일 앱을 연 사람에게 오늘 열리는 행사에 참여하는지 한 번 묻고, 고른 행사를 내 활동에 넣은 뒤 그 날 시간표로 보낸다. 서버 변경은 없다. 이 절은 iOS·웹(feat/today-onboarding-ios-web)이 쓰고 Android(feat/today-onboarding-android)가 같은 규칙을 따른다.
