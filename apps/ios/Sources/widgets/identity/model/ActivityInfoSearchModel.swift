@@ -1,20 +1,19 @@
 import Foundation
 import Observation
 
-/// Search for one picker step (organizations, programs, activities or roles), debounced; `parentID` narrows
-/// programs to an organization and activities to a program.
+/// Search for one picker step (units, roles or jobs), debounced; `owner` is the unit whose roles are listed (a blank query lists them all).
 @MainActor @Observable final class ActivityInfoSearchModel {
     let kind: AccountClient.ActivityInfoKind
-    let parentID: Int?
+    let owner: HistoryOwner?
     var query = "" { didSet { schedule() } }
     private(set) var items: [ActivityInfoItem] = []
     private(set) var loading = false
     private(set) var failed = false
     private let account: AccountViewModel
     private var task: Task<Void, Never>?
-    init(kind: AccountClient.ActivityInfoKind, parentID: Int?, account: AccountViewModel) {
+    init(kind: AccountClient.ActivityInfoKind, owner: HistoryOwner? = nil, account: AccountViewModel) {
         self.kind = kind
-        self.parentID = parentID
+        self.owner = owner
         self.account = account
         schedule(delay: 0)
     }
@@ -31,8 +30,8 @@ import Observation
         loading = true
         failed = false
         do {
-            let page = try await account.authorized { [account, kind, parentID] session in
-                try await account.client.searchActivityInfo(kind, query: text, parentID: parentID, session)
+            let page = try await account.authorized { [account, kind, owner] session in
+                try await account.client.searchActivityInfo(kind, query: text, owner: owner, session)
             }
             if !Task.isCancelled { items = page.items }
         } catch {
