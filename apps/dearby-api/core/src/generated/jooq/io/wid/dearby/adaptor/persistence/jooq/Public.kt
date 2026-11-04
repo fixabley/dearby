@@ -59,6 +59,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
@@ -379,6 +380,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val ROLES: Roles get() = Roles.ROLES
 
     /**
+     * The table <code>public.schedule_rooms</code>.
+     */
+    val SCHEDULE_ROOMS: ScheduleRooms get() = ScheduleRooms.SCHEDULE_ROOMS
+
+    /**
      * The table <code>public.schedule_session_tags</code>.
      */
     val SCHEDULE_SESSION_TAGS: ScheduleSessionTags get() = ScheduleSessionTags.SCHEDULE_SESSION_TAGS
@@ -546,6 +552,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         RecommendationSignals.RECOMMENDATION_SIGNALS,
         RefreshTokens.REFRESH_TOKENS,
         Roles.ROLES,
+        ScheduleRooms.SCHEDULE_ROOMS,
         ScheduleSessionTags.SCHEDULE_SESSION_TAGS,
         ScheduleSessions.SCHEDULE_SESSIONS,
         ScheduleStatuses.SCHEDULE_STATUSES,
