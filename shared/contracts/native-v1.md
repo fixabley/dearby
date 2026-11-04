@@ -2129,6 +2129,18 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 **대화방은 디스코드 서버 연결(봇 자동 초대)만**(2026-11-05 사용자 "discord만 지원하고 자동초대식으로"). **대체 기록**: 같은 날 앞선 안의 모임 링크 입력 칸(카카오톡 오픈채팅 `open.kakao.com`·디스코드 초대 `discord.gg`·`discord.com/invite` 주소 받기와 종류 판정)은 없앤다. 초대·오픈채팅 주소는 받지도 저장하지도 않는다.
 
+### 직접 개설 프로그램 = 프로그램 화면 + 회차(활동) 여러 개 — 2026-11-05
+
+사용자 결정(2026-11-05): 직접 개설 상세는 프로그램 화면(⑤)의 요소를 모두 포함한다. **대체 기록**: 같은 날 앞선 "직접 개설 하나 = 상세 한 장"(프로그램도 단일 상세)과 저장 제안 `hosted.activity_id`(하나)는 아래로 대체한다. 직접 개설 **이벤트**는 지금처럼 단일 활동 상세다.
+
+- **프로그램 화면**(㉙-p): 배너(커버) → 로고 자리 = **개설자 사진 원**(사진 없으면 이니셜; 개설 폼에서 `모임 로고`를 올리면 그 로고, 조율 판단: 선택 항목으로 두고 기본은 개설자 사진) + `팔로우`(프로그램 팔로우와 같은 규칙·알림 수준) → 이름 → 조직 줄 자리 = **개설자 줄**(`이름 · @핸들 ›`, 누르면 개설자 기본 프로필) + `직접 개설` 캡슐 → 종류 줄 → 태그 칩(개설 폼 `태그`, 기존 분야 태그에서 고름) → 개수 줄 `n 모집 중 · n 모집 예정 · n 지난 활동` → 카드 `모집 중`·`모집 예정`·`지난 활동`(행 컴포넌트, 회차마다 한 행) → 개설자 링크(개설 폼 `링크`, 선택; 없으면 줄 생략. 모임 대화방 링크는 받지 않는 규칙 그대로라 `discord.gg`·`open.kakao.com` 주소는 400).
+- **개설자 보기**(㉙-p2): `팔로우` 자리에 `새 회차 열기`, 오른쪽 위 `⋯`(프로그램 고치기·닫기).
+- **회차 = 활동**: 각 회차는 활동 상세(③)와 같은 구성(㉙-d: 위에 `개설자 · 프로그램` 줄, 누르면 프로그램 화면) + 참여 조건·참여 흐름·디스코드·참여 폼·참여 방식·정원·제출 명함. 위 절들의 참여 규칙은 **회차 단위**다(조건·폼·정원·디스코드 역할은 회차마다).
+- **새 회차 열기**(㉙-p3): 시트 `복제할 회차`(기본 가장 최근) + `가져올 것` 체크(일정·참여 조건·참여 폼·제출 명함 필수 항목·디스코드 서버·역할, 기본 모두) → `복제해서 열기`(CTA 시트 한 줄 `일정은 같은 간격으로 다음 날짜로 옮겨 와요`) → 개설 폼(㉙-c)이 채워진 채 열리고 개설자가 고쳐 `열기`. 일정 옮기기 = 원 회차의 첫 일정부터 마지막 일정까지 길이만큼 뒤로(원 회차가 끝난 다음 날 시작, 요일 맞춤; 조율 판단, 확인 필요). 회차 이름은 `<프로그램 이름> n회차`가 기본(고칠 수 있음).
+- **발견**: 승인된 직접 개설 프로그램은 발견 프로그램 행(㉙-a)으로 보이고 `활동 n개`는 열린 회차 수. 승인은 프로그램 단위이고, 새 회차는 프로그램이 승인돼 있으면 다시 승인받지 않는다(조율 판단, 확인 필요).
+- **저장**(API 담당, 제안): 공식과 같은 `programs`·`activities`를 재사용한다. `programs.owner_user_id bigint null`(직접 개설이면 개설자, 공식이면 null; 조직 `organization_id`는 null), `programs.hosted_meta jsonb`(공개 범위·승인 상태·로고·링크), 회차는 `activities`(그 프로그램 소속) + `hosted_rounds(activity_id pk, conditions jsonb, form jsonb, join_mode, capacity, required_card_fields, discord_guild_id, discord_role_id, discord_status)`. 이벤트도 같은 구조에 활동 하나. 위 제안의 `hosted`·`hosted_conditions`·`hosted_discord` 표는 이 둘로 합친다(`hosted_members`·`hosted_answers`·`hosted_submitted_cards`는 `activity_id` 기준).
+- **API**(제안): 위 표의 `/v1/hosted/:id`는 **회차(활동) id**로 읽는다(참여·멤버·폼·디스코드). 프로그램 수준은 `POST /v1/hosted/programs {type, name, kind, description?, tags[], logo?, link?, visibility, firstRound: Round}` → 201 `{program: ProgramSummary, round: Hosted}`, `PATCH /v1/hosted/programs/:programId`, `POST /v1/hosted/programs/:programId/rounds {copyFrom?: activityId, include?: [SCHEDULES, CONDITIONS, FORM, REQUIRED_CARD, DISCORD], round: Round}` → 201 Hosted(복제는 서버가 `include` 항목을 원 회차에서 가져오고 `round`의 값으로 덮어씀; 일정 옮기기 기본값은 앱이 미리 계산해 보냄). 조회는 공식과 같은 `GET /v1/programs/:id`(`ProgramSummary.hosted.host` 포함)·`GET /v1/activities/:id`(직접 개설 회차면 `hosted` 블록 포함)를 그대로 쓴다.
+
 ### 무엇을 여나
 
 - **개설자**: 로그인한 사용자(조직이 아님). 비로그인이면 로그인 시트.
@@ -2245,7 +2257,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **저장**: `schedules.recurrence`(RFC 5545 RRULE 본문, 접두사 없이, 기존 컬럼) + 새 `schedules.exdates date[] null`(건너뛸 날, 회차의 시작 날짜, 일정 시간대 기준).
 - **지원 범위**: `FREQ=DAILY|WEEKLY|MONTHLY|YEARLY`, `INTERVAL`(1~99), `BYDAY`(요일 목록, MONTHLY·YEARLY에서는 서수 하나 붙은 요일 `3SA`·`-1FR`), `BYMONTHDAY`(1~31 하나), `BYMONTH`(1~12 목록), `UNTIL` 또는 `COUNT`(1~400) 중 하나 또는 둘 다 없음(종료 없음). **미지원**: `BYSETPOS`, `HOURLY`·`MINUTELY`·`SECONDLY`, `BYHOUR`·`BYMINUTE`·`BYWEEKNO`·`BYYEARDAY`, `WKST` 변경. 그 밖은 400 `RECURRENCE_UNSUPPORTED`. 31일처럼 없는 날은 RFC 5545대로 그 달을 건너뛴다(시트의 날짜 고르기에서 29~31일을 고르면 경고 줄 없이 그대로 저장, 조율 판단).
 - **서버가 회차를 펼친다**: 활동·일정 조회 응답에서 반복 일정은 원래 `Schedule`(`recurrence`·`exdates`·`recurrenceSummary` 포함, 카드 한 점 표시용) 하나와 함께, 조회 창(오늘 − 1일 ~ + 400일, 최대 400회) 안 회차를 `Schedule.occurrences: [{startAt, endAt} | {startDate, endDateExclusive}]`로 내려 준다. `recurrenceSummary`는 서버가 만든 표시 문자열(`매주 월·목`, `매월 셋째 주 토요일`). 겹침 확인·홈 다음 일정·위젯·알림·선발 결과 묻기·LIVE 판정은 **펼친 회차**를 읽는다(**대체 기록**: 10-22 "앱이 규칙을 풀어 회차 창을 만든다"는 서버 회차 읽기로 대체, 옛 응답에 `occurrences`가 없으면 앱 풀이를 대체 경로로 남긴다).
-- **기기 캘린더로 갈 때는 규칙 그대로**: 캘린더 피드 ICS(`/v1/me/calendar/{token}.ics`)의 `VEVENT`에 `RRULE`·`EXDATE`를 그대로 싣는다(회차를 펼쳐 여러 VEVENT로 만들지 않음; `DTSTART`는 첫 회차, 시각 일정은 `TZID`, 하루 종일은 `VALUE=DATE`). 일정 하나만 넣는 `캘린더에 추가`는 iOS `EKRecurrenceRule`(빈도·간격·요일·`daysOfTheMonth`·`monthsOfTheYear`·`setPositions` 없이 서수 요일은 `EKRecurrenceDayOfWeek(dayOfTheWeek:weekNumber:)`·종료 `EKRecurrenceEnd`), 건너뛸 날은 저장 뒤 해당 회차를 지워 반영(EventKit에 EXDATE 직접 지정이 없음, 조율 판단, 확인 필요). Android `ACTION_INSERT`에 `CalendarContract.Events.RRULE`·`EXDATE`.
+- **기기 캘린더로 갈 때는 규칙 그대로**: 캘린더 피드 ICS(`/v1/me/calendar/{token}.ics`)의 `VEVENT`에 `RRULE`·`EXDATE`를 그대로 싣는다(회차를 펼쳐 여러 VEVENT로 만들지 않음; `DTSTART`는 첫 회차, 시각 일정은 `TZID`, 하루 종일은 `VALUE=DATE`). 일정 하나만 넣는 `캘린더에 추가`는 iOS `EKRecurrenceRule`(빈도·간격·요일·`daysOfTheMonth`·`monthsOfTheYear`·`setPositions` 없이 서수 요일은 `EKRecurrenceDayOfWeek(dayOfTheWeek:weekNumber:)`·종료 `EKRecurrenceEnd`), **건너뛸 날이 있는 반복 일정은 iOS에서 하나씩 추가하지 않고 캘린더 구독으로 안내한다**(2026-11-05 사용자 결정; **대체 기록**: 같은 날 앞선 "저장 뒤 해당 회차를 지워 반영"은 대체. EventKit에 EXDATE 직접 지정이 없고 쓰기 전용 일정 추가 화면으로는 회차를 지울 수 없어서). 그 일정의 `캘린더에 추가`를 누르면 시트(㉙-q, CTA 시트 한 줄 `건너뛸 날까지 맞추려면 캘린더 구독으로 넣어요`): `캘린더 구독하기`(CTA, 내 활동 `캘린더 연동`과 같은 흐름 → 피드 ICS에 EXDATE 포함) / `건너뛸 날 없이 추가`(보조 글자 버튼, `EKRecurrenceRule`만). 건너뛸 날이 없는 반복 일정은 지금처럼 바로 시스템 일정 추가 화면. Android `ACTION_INSERT`에 `CalendarContract.Events.RRULE`·`EXDATE`.
 
 ### API(API 담당, 이름은 제안)
 
