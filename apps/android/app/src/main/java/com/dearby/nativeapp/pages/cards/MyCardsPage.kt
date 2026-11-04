@@ -46,6 +46,8 @@ data class MyCardsState(
 @Composable fun MyCardsPage(
     state: MyCardsState, create: () -> Unit, select: (String) -> Unit, showQr: (String) -> Unit, edit: (String) -> Unit, delete: (String) -> Unit,
     contact: (ContactState) -> Unit, retry: () -> Unit,
+    /** An activity-role history row on the card opens that activity's detail (contract "표시(프로필 활동 이력·명함)"). */
+    openActivity: ((String) -> Unit)? = null,
 ) {
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     confirmDelete?.let { id ->
@@ -71,7 +73,7 @@ data class MyCardsState(
                 item { NewCardTile(create) }
                 items(state.cards, key = { it.id }) { CardTile(it, it.id == state.selectedId) { select(it.id) } }
                 state.selected?.let { card ->
-                    item(span = { GridItemSpan(maxLineSpan) }) { CardContent(card, Modifier.padding(top = 10.dp), onContact = contact) }
+                    item(span = { GridItemSpan(maxLineSpan) }) { CardContent(card, Modifier.padding(top = 10.dp), onContact = contact, onActivity = openActivity) }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyButton({ showQr(card.id) }, Modifier.fillMaxWidth()) { Text("QR 보이기") } }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyOutlineButton({ edit(card.id) }, Modifier.fillMaxWidth()) { Text("이 명함 고치기") } }
                     item(span = { GridItemSpan(maxLineSpan) }) { Text("고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }

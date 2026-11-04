@@ -240,7 +240,7 @@ struct ProfilePage: View {
             }
             ProfileContactFields(form: form, state: state, focus: $field, tried: tried)
             Section {
-                if form.wrappedValue.histories.isEmpty { Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.").foregroundStyle(.secondary) }
+                if form.wrappedValue.histories.isEmpty { Text("아직 이력이 없어요. 어디에서 활동했는지부터 골라 단계별로 적어요.").foregroundStyle(.secondary) }
                 ForEach(form.wrappedValue.histories) { history in
                     HistoryRowView(history: history, saved: saved.histories.contains { $0.id == history.id }) {
                         funnel = HistoryFunnelTarget(draft: HistoryDraft(history: history), saved: saved.histories.contains { $0.id == history.id })
@@ -344,7 +344,7 @@ struct HistoryFunnelTarget: Identifiable {
     var id: String { draft.id }
 }
 
-/// One history row in the profile form: 조직 · 프로그램 · 활동, role, period, and the approval / verification state.
+/// One history row in the profile form: `귀속 단위 · 역할`, the units above it with the period, and the approval / verification state.
 /// Tapping opens the funnel; swiping left deletes.
 struct HistoryRowView: View {
     let history: AccountHistory
@@ -354,8 +354,8 @@ struct HistoryRowView: View {
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(history.chain.joined(separator: " · ")).fontWeight(.semibold).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.leading)
-                Text([history.roleTitle, ContactRules.period(start: history.startDate, end: history.endDate)].filter { !$0.isEmpty }.joined(separator: " · "))
+                Text(history.title).fontWeight(.semibold).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.leading)
+                Text((history.affiliation + [ContactRules.period(start: history.startDate, end: history.endDate)]).filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(.dearby(.footnote)).foregroundStyle(.secondary)
                 HStack(spacing: 6) {
                     tag(history.isVerified ? "확인됨" : "미확인", strong: history.isVerified)

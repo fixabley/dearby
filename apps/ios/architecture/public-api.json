@@ -13,6 +13,7 @@
     "GoogleNativeSignIn",
     "ContactRules",
     "EvidenceMeta",
+    "HistoryOwner",
     "Passkey",
     "ProfileVersionDetail",
     "ProfileVersionList",
@@ -122,6 +123,7 @@
     "DearbyQuestionPage",
     "InboxRoute",
     "InboxEntry",
+    "ActivityOpener",
     "PromptLayers",
     "PromptHost",
     "StageSegment"

@@ -76,20 +76,34 @@ struct EvidenceMeta: Codable, Equatable, Identifiable, Sendable {
     let size: Int
     let uploadedAt: String
 }
-/// A step-by-step history (contract "이력"): each of organization/program/activity/role is a activity ref or a
-/// free-typed name. Free-typed values wait for admin approval (`approval`); evidence drives `verification`.
-/// Encoding produces the `PUT /v1/profile` shape (`organizationId` + `organizationName`, …), never the refs.
+/// The unit a role belongs to (contract "이력 (History) — 역할 매칭" 2026-11-03): an organization, program or activity. `id` is nil when
+/// the person typed the unit's name (waits for admin approval, who picks the registered unit).
+struct HistoryOwner: Codable, Equatable, Hashable, Sendable {
+    var kind: String
+    var id: Int?
+    var name: String
+    /// The kind's name (조직·프로그램·활동), shown next to a unit in search rows and the funnel.
+    var kindName: String { Self.kindName(kind) }
+    static func kindName(_ kind: String) -> String {
+        switch kind {
+        case "activity": "활동"
+        case "program": "프로그램"
+        default: "조직"
+        }
+    }
+}
+/// A history is the person matched to one role (contract "이력 (History) — 역할 매칭"): a registered role (`role`, approved at once) or a
+/// typed role name on a registered or typed unit (`owner`, waits for admin approval). `organization`·`program`·`activity` are the
+/// server's convenience refs derived from the role's unit (read only). Encoding produces the `PUT /v1/profile` shape, `{roleId}` or
+/// `{ownerKind, ownerId | ownerName, roleName}`, never the refs. Evidence drives `verification`.
 struct AccountHistory: Codable, Equatable, Identifiable, Sendable {
     let id: String
-    var kind: String
-    var organization: ActivityInfoRef?
-    var organizationName: String?
-    var program: ActivityInfoRef?
-    var programName: String?
-    var activity: ActivityInfoRef?
-    var activityName: String?
     var role: ActivityInfoRef?
-    var roleName: String?
+    var roleName: String
+    var owner: HistoryOwner
+    var organization: ActivityInfoRef?
+    var program: ActivityInfoRef?
+    var activity: ActivityInfoRef?
     var startDate: String
     var endDate: String?
     var description: String
@@ -98,33 +112,29 @@ struct AccountHistory: Codable, Equatable, Identifiable, Sendable {
     var verification = "unverified"
     var evidence: [EvidenceMeta] = []
 
-    init(id: String, kind: String, organization: ActivityInfoRef? = nil, organizationName: String? = nil, program: ActivityInfoRef? = nil,
-         programName: String? = nil, activity: ActivityInfoRef? = nil, activityName: String? = nil, role: ActivityInfoRef? = nil,
-         roleName: String? = nil, startDate: String, endDate: String? = nil, description: String = "", approval: String = "approved",
-         approvalReason: String? = nil, verification: String = "unverified", evidence: [EvidenceMeta] = []) {
-        self.id = id; self.kind = kind; self.organization = organization; self.organizationName = organizationName
-        self.program = program; self.programName = programName; self.activity = activity; self.activityName = activityName
-        self.role = role; self.roleName = roleName; self.startDate = startDate; self.endDate = endDate
+    init(id: String, role: ActivityInfoRef? = nil, roleName: String = "", owner: HistoryOwner, organization: ActivityInfoRef? = nil,
+         program: ActivityInfoRef? = nil, activity: ActivityInfoRef? = nil, startDate: String, endDate: String? = nil, description: String = "",
+         approval: String = "approved", approvalReason: String? = nil, verification: String = "unverified", evidence: [EvidenceMeta] = []) {
+        self.id = id; self.role = role; self.roleName = roleName; self.owner = owner
+        self.organization = organization; self.program = program; self.activity = activity
+        self.startDate = startDate; self.endDate = endDate
         self.description = description; self.approval = approval; self.approvalReason = approvalReason
         self.verification = verification; self.evidence = evidence
     }
     private enum CodingKeys: String, CodingKey {
-        case id, kind, organization, organizationName, program, programName, activity, activityName, role, roleName
+        case id, role, roleName, owner, organization, program, activity
         case startDate, endDate, description, approval, approvalReason, verification, evidence
-        case organizationId, programId, activityId, roleId
+        case roleId, ownerKind, ownerId, ownerName
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
-        kind = try c.decode(String.self, forKey: .kind)
-        organization = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .organization)
-        organizationName = try c.decodeIfPresent(String.self, forKey: .organizationName)
-        program = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .program)
-        programName = try c.decodeIfPresent(String.self, forKey: .programName)
-        activity = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .activity)
-        activityName = try c.decodeIfPresent(String.self, forKey: .activityName)
         role = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .role)
-        roleName = try c.decodeIfPresent(String.self, forKey: .roleName)
+        roleName = try c.decodeIfPresent(String.self, forKey: .roleName) ?? ""
+        owner = try c.decode(HistoryOwner.self, forKey: .owner)
+        organization = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .organization)
+        program = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .program)
+        activity = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .activity)
         startDate = try c.decode(String.self, forKey: .startDate)
         endDate = try c.decodeIfPresent(String.self, forKey: .endDate)
         description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
@@ -136,29 +146,34 @@ struct AccountHistory: Codable, Equatable, Identifiable, Sendable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(kind, forKey: .kind)
-        try c.encodeIfPresent(organization?.id, forKey: .organizationId)
-        try c.encodeIfPresent(organization == nil ? organizationName : nil, forKey: .organizationName)
-        try c.encodeIfPresent(program?.id, forKey: .programId)
-        try c.encodeIfPresent(program == nil ? programName : nil, forKey: .programName)
-        try c.encodeIfPresent(activity?.id, forKey: .activityId)
-        try c.encodeIfPresent(activity == nil ? activityName : nil, forKey: .activityName)
-        try c.encodeIfPresent(role?.id, forKey: .roleId)
-        try c.encodeIfPresent(role == nil ? roleName : nil, forKey: .roleName)
+        if let role {
+            try c.encode(role.id, forKey: .roleId)
+        } else {
+            try c.encode(owner.kind, forKey: .ownerKind)
+            if let ownerID = owner.id { try c.encode(ownerID, forKey: .ownerId) } else { try c.encode(owner.name, forKey: .ownerName) }
+            try c.encode(roleName, forKey: .roleName)
+        }
         try c.encode(startDate, forKey: .startDate)
         try c.encode(endDate, forKey: .endDate) // null when ongoing
         try c.encode(description, forKey: .description)
     }
-    /// 조직 → 프로그램 → 활동 names, activity or typed.
-    var chain: [String] { [organization?.name ?? organizationName, program?.name ?? programName, activity?.name ?? activityName].compactMap { $0 } }
-    var roleTitle: String { role?.name ?? roleName ?? "" }
+    var roleTitle: String { role?.name ?? roleName }
+    /// `귀속 단위 이름 · 역할 이름` (contract "이력" › 표시): `디프만 19기 · iOS 개발자`.
+    var title: String { [owner.name, roleTitle].filter { !$0.isEmpty }.joined(separator: " · ") }
+    /// The units above the owner from the server's convenience refs: an activity's 조직 · 프로그램, a program's 조직, nothing for an organization.
+    var affiliation: [String] {
+        switch owner.kind {
+        case "activity": [organization?.name, program?.name].compactMap { $0 }
+        case "program": [organization?.name].compactMap { $0 }
+        default: []
+        }
+    }
+    /// The organization this history is in: the ref, or the typed name when the unit itself is an organization.
+    var organizationName: String? { organization?.name ?? (owner.kind == "organization" ? owner.name : nil) }
     var isApproved: Bool { approval == "approved" }
     var isVerified: Bool { verification == "verified" }
-    /// True when any part is free-typed (waits for, or was refused by, admin approval).
-    var hasCustomEntry: Bool {
-        (organization == nil && organizationName != nil) || (program == nil && programName != nil)
-            || (activity == nil && activityName != nil) || (role == nil && roleName != nil)
-    }
+    /// True when the role or its unit is free-typed (waits for, or was refused by, admin approval).
+    var hasCustomEntry: Bool { role == nil || owner.id == nil }
 }
 /// A 직무 tag (contract "직무"): picked from the job tree (`job`) or free-typed (`jobName` only), which waits for admin
 /// approval before it reaches a card. Encodes as the PUT shape `{id, jobId?, jobName?}`.
@@ -255,10 +270,12 @@ struct ProfileVersionDetail: Decodable, Equatable, Sendable {
     let createdAt: String
     let profile: AccountProfile
 }
-/// A activity search hit for the history pickers (`GET /v1/organizations|programs|roles|activities`).
+/// A activity search hit for the history pickers (`GET /v1/organizations|programs|roles|activities|jobs`, `GET /v1/discovery/search`).
 struct ActivityInfoItem: Decodable, Equatable, Identifiable, Sendable {
     let id: Int
     let name: String
+    /// 어디에서 search (`.units`): the unit's kind `organization`·`program`·`activity` (the discovery search's `type`); nil for other kinds.
+    var type: String? = nil
     var nameEn: String? = nil
     var parentOrganizationId: Int? = nil
     var organization: ActivityInfoRef? = nil
@@ -338,8 +355,8 @@ extension AccountProfile {
         name: "이름", job: "직무",
         contacts: [AccountContact(id: "p", kind: "phone", label: "", value: "010-0000-0000"),
                    AccountContact(id: "e", kind: "email", label: "", value: "name@example.com")],
-        histories: [AccountHistory(id: "h1", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2026-01-01"),
-                    AccountHistory(id: "h2", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2025-03-01",
+        histories: [AccountHistory(id: "h1", roleName: "역할 이름", owner: HistoryOwner(kind: "organization", id: nil, name: "조직 이름"), startDate: "2026-01-01"),
+                    AccountHistory(id: "h2", roleName: "역할 이름", owner: HistoryOwner(kind: "organization", id: nil, name: "조직 이름"), startDate: "2025-03-01",
                                    endDate: "2025-12-31")])
 }
 extension TokenPair {
