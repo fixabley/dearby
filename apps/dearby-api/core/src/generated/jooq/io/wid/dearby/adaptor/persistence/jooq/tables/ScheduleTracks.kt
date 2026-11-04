@@ -5,10 +5,13 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.SCHEDULE_TRACKS_ROOM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.SCHEDULE_TRACKS_SCHEDULE_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_TRACK_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS__SCHEDULE_TRACKS_ROOM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms.ScheduleRoomsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ScheduleTracksRecord
@@ -94,14 +97,20 @@ open class ScheduleTracks(
     val NAME: TableField<ScheduleTracksRecord, String?> = createField(DSL.name("name"), SQLDataType.VARCHAR(50).nullable(false), this, "")
 
     /**
-     * The column <code>public.schedule_tracks.room</code>.
+     * The column <code>public.schedule_tracks.room</code>. V68 이후 쓰지
+     * 않음(schedule_rooms로 이관). 다음 정리에서 삭제
      */
-    val ROOM: TableField<ScheduleTracksRecord, String?> = createField(DSL.name("room"), SQLDataType.VARCHAR(100), this, "")
+    val ROOM: TableField<ScheduleTracksRecord, String?> = createField(DSL.name("room"), SQLDataType.VARCHAR(100), this, "V68 이후 쓰지 않음(schedule_rooms로 이관). 다음 정리에서 삭제")
 
     /**
      * The column <code>public.schedule_tracks.position</code>.
      */
     val POSITION: TableField<ScheduleTracksRecord, Int?> = createField(DSL.name("position"), SQLDataType.INTEGER.nullable(false), this, "")
+
+    /**
+     * The column <code>public.schedule_tracks.room_id</code>.
+     */
+    val ROOM_ID: TableField<ScheduleTracksRecord, Long?> = createField(DSL.name("room_id"), SQLDataType.BIGINT, this, "")
 
     private constructor(alias: Name, aliased: Table<ScheduleTracksRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ScheduleTracksRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -135,10 +144,17 @@ open class ScheduleTracks(
         override fun `as`(alias: Table<*>): ScheduleTracksPath = ScheduleTracksPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(SCHEDULE_TRACKS_SCHEDULE_IDX)
+    override fun getIndexes(): List<Index> = listOf(SCHEDULE_TRACKS_ROOM_IDX, SCHEDULE_TRACKS_SCHEDULE_IDX)
     override fun getIdentity(): Identity<ScheduleTracksRecord, Long?> = super.getIdentity() as Identity<ScheduleTracksRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ScheduleTracksRecord> = SCHEDULE_TRACKS_PKEY
-    override fun getReferences(): List<ForeignKey<ScheduleTracksRecord, *>> = listOf(SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<ScheduleTracksRecord, *>> = listOf(SCHEDULE_TRACKS__SCHEDULE_TRACKS_ROOM_ID_FKEY, SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY)
+
+    /**
+     * Get the implicit join path to the <code>public.schedule_rooms</code>
+     * table.
+     */
+    fun scheduleRooms(): ScheduleRoomsPath = scheduleRooms
+    val scheduleRooms: ScheduleRoomsPath by lazy { ScheduleRoomsPath(this, SCHEDULE_TRACKS__SCHEDULE_TRACKS_ROOM_ID_FKEY, null) }
 
     /**
      * Get the implicit join path to the <code>public.schedules</code> table.

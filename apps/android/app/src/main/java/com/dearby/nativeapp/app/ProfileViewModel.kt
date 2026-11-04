@@ -273,7 +273,7 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
     fun openHistory(id: String?) {
         val history = id?.let { hid -> mutable.value.form?.histories?.firstOrNull { it.id == hid } }
         val saved = history != null && mutable.value.profile?.histories?.any { it.id == history.id } == true
-        funnelState.value = FunnelState(history?.let(HistoryDraft::from) ?: HistoryDraft(), saved, if (saved) HistoryDraft.Step.SUMMARY else HistoryDraft.Step.KIND)
+        funnelState.value = FunnelState(history?.let(HistoryDraft::from) ?: HistoryDraft(), saved, if (saved) HistoryDraft.Step.SUMMARY else HistoryDraft.Step.UNIT)
     }
     fun closeFunnel() { searchJob?.cancel(); funnelState.value = null }
     fun changeDraft(draft: HistoryDraft) = funnelState.update { it?.copy(draft = draft) }
@@ -292,23 +292,23 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
             goTo(steps[steps.indexOf(current.step) + 1])
         }
     }
-    /** Picker search for the current step, debounced; programs narrow to the chosen organization, activities search the whole catalogue. */
+    /**
+     * Picker search for the current step, debounced: 어디에서 is the 조직·프로그램·활동 통합 검색 (`searchUnits`); 역할 lists the picked unit's roles
+     * (`GET /v1/roles?<kind>Id=`, blank query = all of them) and asks nothing for a typed unit, which has no roles to list.
+     */
     fun search(query: String) {
         funnelState.update { it?.copy(search = it.search.copy(query = query, loading = true, failed = false)) }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(300)
             val current = funnelState.value ?: return@launch
-            val (kind, parent) = when (current.step) {
-                HistoryDraft.Step.ORGANIZATION -> AccountClient.ActivityInfoKind.ORGANIZATIONS to null
-                HistoryDraft.Step.PROGRAM -> AccountClient.ActivityInfoKind.PROGRAMS to current.draft.organization?.id
-                HistoryDraft.Step.ACTIVITY -> AccountClient.ActivityInfoKind.ACTIVITIES to null
-                HistoryDraft.Step.ROLE -> AccountClient.ActivityInfoKind.ROLES to null
-                else -> return@launch
-            }
             try {
-                val page = account.authorized { account.client.searchActivityInfo(kind, query, parent, it) }
-                funnelState.update { it?.copy(search = it.search.copy(items = page.items, loading = false)) }
+                val items = when (current.step) {
+                    HistoryDraft.Step.UNIT -> account.authorized { account.client.searchUnits(query, it) }
+                    HistoryDraft.Step.ROLE -> current.draft.owner?.let { owner -> account.authorized { account.client.searchRoles(current.draft.ownerKind, owner.id, query, it) }.items }.orEmpty()
+                    else -> return@launch
+                }
+                funnelState.update { it?.copy(search = it.search.copy(items = items, loading = false)) }
             } catch (e: AccountException) {
                 funnelState.update { it?.copy(search = it.search.copy(loading = false, failed = true)) }
             }
@@ -420,5 +420,5 @@ class ProfileViewModel(private val account: AccountViewModel, private val saved:
         /** 다시 받기 sleeps this long after a mail (the server allows one a minute). */
         const val RESEND_AFTER = 60_000L
     }
-    private val HistoryDraft.Step.isPicker get() = this in setOf(HistoryDraft.Step.ORGANIZATION, HistoryDraft.Step.PROGRAM, HistoryDraft.Step.ACTIVITY, HistoryDraft.Step.ROLE)
+    private val HistoryDraft.Step.isPicker get() = this == HistoryDraft.Step.UNIT || this == HistoryDraft.Step.ROLE
 }

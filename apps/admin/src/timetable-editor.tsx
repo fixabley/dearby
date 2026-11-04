@@ -12,28 +12,35 @@ import { resolveTagIds, type TagItem, TagSelect, type TagValue, useTags } from "
 type SessionKind = "TALK" | "KEYNOTE" | "BREAK" | "MEAL" | "OTHER";
 const sessionKindLabels: Record<SessionKind, string> = { TALK: "일반", KEYNOTE: "키노트", BREAK: "쉬는시간", MEAL: "점심", OTHER: "기타" };
 type Speaker = { name: string; affiliation: string | null };
+/** `room` on tracks and sessions in the PUT is an index into `rooms`. A session's `roomId` is its own room only (null = follows its track). */
 type TimetableResponse = {
   scheduleId: number;
-  tracks: { id: number; name: string; room: string | null; position: number }[];
-  sessions: { id: number; trackId: number | null; kind: SessionKind; title: string; description: string | null; startAt: string; endAt: string; speakers: Speaker[]; tags: TagItem[] }[];
+  rooms: { id: number; name: string; position: number }[];
+  tracks: { id: number; name: string; roomId: number | null; position: number }[];
+  sessions: { id: number; trackId: number | null; roomId: number | null; kind: SessionKind; title: string; description: string | null; startAt: string; endAt: string; speakers: Speaker[]; tags: TagItem[] }[];
 };
 type TimetableInput = {
-  tracks: { id?: number; name: string; room?: string }[];
-  sessions: { id?: number; track?: number; kind: SessionKind; title: string; description?: string; startAt: string; endAt: string; speakers: Speaker[]; tagIds: number[] }[];
+  rooms: { id?: number; name: string }[];
+  tracks: { id?: number; name: string; room?: number }[];
+  sessions: { id?: number; track?: number; room?: number; kind: SessionKind; title: string; description?: string; startAt: string; endAt: string; speakers: Speaker[]; tagIds: number[] }[];
 };
 
 /** Local rows carry a `key` so inputs keep identity while moved; `id` is kept for stored rows so the save keeps their 세션 찜. */
-type DraftTrack = { key: string; id?: number; name: string; room: string };
-/** `trackKey` null = 전체 트랙(전폭). Times are epoch ms. */
-type DraftSession = { key: string; id?: number; trackKey: string | null; kind: SessionKind; title: string; description: string; start: number; end: number; speakers: Speaker[]; tags: TagValue[] };
-type Draft = { tracks: DraftTrack[]; sessions: DraftSession[] };
+type DraftRoom = { key: string; id?: number; name: string };
+/** `roomKey` null = 방 없음. */
+type DraftTrack = { key: string; id?: number; name: string; roomKey: string | null };
+/** `trackKey` null = 전체 트랙(전폭). `roomKey` null = the track's room (none for 전폭). Times are epoch ms. */
+type DraftSession = { key: string; id?: number; trackKey: string | null; roomKey: string | null; kind: SessionKind; title: string; description: string; start: number; end: number; speakers: Speaker[]; tags: TagValue[] };
+type Draft = { rooms: DraftRoom[]; tracks: DraftTrack[]; sessions: DraftSession[] };
 
 // Server limits (TimetableRules).
+const MAX_ROOMS = 30;
 const MAX_TRACKS = 20;
 const MAX_SESSIONS = 300;
 const MAX_SPEAKERS = 10;
 const MAX_TAGS = 5;
 const ALL_TRACKS = "all";
+const TRACK_ROOM = "track";
 
 type BlockRange = { from: number; to: number };
 /** The block's time window, or why a timetable cannot hang on it (same cases as the server's 400). 모집 기간 is never offered. */
@@ -74,13 +81,17 @@ function windowDays({ from, to }: BlockRange): string[] {
   return days;
 }
 
+const roomKeyOf = (roomId: number | null) => (roomId == null ? null : `room-${roomId}`);
+
 function fromResponse(data: TimetableResponse | undefined): Draft {
   return {
-    tracks: [...(data?.tracks ?? [])].sort((a, b) => a.position - b.position).map((track) => ({ key: `track-${track.id}`, id: track.id, name: track.name, room: track.room ?? "" })),
+    rooms: [...(data?.rooms ?? [])].sort((a, b) => a.position - b.position).map((room) => ({ key: `room-${room.id}`, id: room.id, name: room.name })),
+    tracks: [...(data?.tracks ?? [])].sort((a, b) => a.position - b.position).map((track) => ({ key: `track-${track.id}`, id: track.id, name: track.name, roomKey: roomKeyOf(track.roomId) })),
     sessions: (data?.sessions ?? []).map((session) => ({
       key: `session-${session.id}`,
       id: session.id,
       trackKey: session.trackId == null ? null : `track-${session.trackId}`,
+      roomKey: roomKeyOf(session.roomId),
       kind: session.kind,
       title: session.title,
       description: session.description ?? "",
@@ -95,8 +106,11 @@ function fromResponse(data: TimetableResponse | undefined): Draft {
 const byStart = (a: DraftSession, b: DraftSession) => a.start - b.start || a.end - b.end;
 
 /** Client copy of the server rules (TimetableRules.validate), so most 400s show before saving. `tableBroken`: the preview cannot be drawn. */
-function problemsOf({ tracks, sessions }: Draft, { from, to }: BlockRange): { problems: string[]; tableBroken: boolean } {
+function problemsOf({ rooms, tracks, sessions }: Draft, { from, to }: BlockRange): { problems: string[]; tableBroken: boolean } {
   const problems: string[] = [];
+  const roomNames = rooms.map((room) => room.name.trim());
+  if (roomNames.some((name) => !name)) problems.push("방 이름을 모두 입력해 주세요.");
+  if (new Set(roomNames.filter(Boolean)).size !== roomNames.filter(Boolean).length) problems.push("같은 이름의 방이 있어요.");
   const names = tracks.map((track) => track.name.trim());
   if (names.some((name) => !name)) problems.push("트랙 이름을 모두 입력해 주세요.");
   if (new Set(names.filter(Boolean)).size !== names.filter(Boolean).length) problems.push("같은 이름의 트랙이 있어요.");
@@ -135,15 +149,22 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
   const draft = edited ?? fromResponse(loaded.data);
   const save = useMutation({
     mutationFn: async (next: Draft) => {
+      const roomIndex = (key: string | null) => next.rooms.findIndex((room) => room.key === key);
       const body: TimetableInput = {
-        tracks: next.tracks.map((track) => ({ ...(track.id != null && { id: track.id }), name: track.name.trim(), ...(track.room.trim() && { room: track.room.trim() }) })),
+        rooms: next.rooms.map((room) => ({ ...(room.id != null && { id: room.id }), name: room.name.trim() })),
+        tracks: next.tracks.map((track) => {
+          const room = roomIndex(track.roomKey);
+          return { ...(track.id != null && { id: track.id }), name: track.name.trim(), ...(room >= 0 && { room }) };
+        }),
         sessions: [],
       };
       for (const session of [...next.sessions].sort(byStart)) {
         const track = next.tracks.findIndex((item) => item.key === session.trackKey);
+        const room = roomIndex(session.roomKey);
         body.sessions.push({
           ...(session.id != null && { id: session.id }),
           ...(track >= 0 && { track }),
+          ...(room >= 0 && { room }),
           kind: session.kind,
           title: session.title.trim(),
           ...(session.description.trim() && { description: session.description.trim() }),
@@ -156,7 +177,7 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
       return api<TimetableResponse>(path, "PUT", body);
     },
     onSuccess: async (_, next) => {
-      message.success(next.sessions.length || next.tracks.length ? "시간표를 저장했어요." : "시간표를 지웠어요.");
+      message.success(next.sessions.length || next.tracks.length || next.rooms.length ? "시간표를 저장했어요." : "시간표를 지웠어요.");
       // Activity responses carry `hasTimetable` and the block's 운영자 지정 mark.
       await Promise.all([client.invalidateQueries({ queryKey }), client.invalidateQueries({ queryKey: ["activities"] })]);
       onClose();
@@ -166,13 +187,13 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
   const dropped = (next: Draft) => storedSessions.filter((stored) => !next.sessions.some((kept) => kept.id === stored.id));
   const submit = (next: Draft) => {
     const removed = dropped(next);
-    const deleting = !next.sessions.length && !next.tracks.length;
+    const deleting = !next.sessions.length && !next.tracks.length && !next.rooms.length;
     if (!removed.length && !deleting) return saveOnce(() => save.mutateAsync(next));
     modal.confirm({
       title: deleting ? "시간표를 지울까요?" : "시간표를 저장할까요?",
       content: removed.length
         ? `세션 ${removed.length}개(${removed.map((session) => session.title).slice(0, 3).join(", ")}${removed.length > 3 ? " 등" : ""})와 그 세션의 찜이 함께 지워져요.`
-        : "트랙이 모두 지워져요.",
+        : "트랙과 방이 모두 지워져요.",
       okText: deleting ? "지우기" : "저장",
       okButtonProps: { danger: true },
       cancelText: "취소",
@@ -183,6 +204,9 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
   const days = windowDays(block);
   const tagName = (value: TagValue) => (typeof value === "string" ? value : (tags.data?.find((tag) => tag.id === value)?.name ?? `#${value}`));
   const trackName = (key: string | null) => (key === null ? "전체 트랙" : (draft.tracks.find((track) => track.key === key)?.name || "이름 없는 트랙"));
+  const roomName = (key: string | null) => (key === null ? null : draft.rooms.find((room) => room.key === key)?.name.trim() || "이름 없는 방");
+  /** The room a session happens in: its own, else its track's (the apps judge 같은 방 the same way, by id). */
+  const sessionRoom = (session: DraftSession) => session.roomKey ?? draft.tracks.find((track) => track.key === session.trackKey)?.roomKey ?? null;
   const sessionTime = (session: DraftSession) => `${days.length > 1 ? `${seoul(session.start).format("M/D")} ` : ""}${clock(session.start)}–${clock(session.end)}`;
 
   const updateTrack = (index: number, change: Partial<DraftTrack>) => setEdited({ ...draft, tracks: draft.tracks.map((track, at) => (at === index ? { ...track, ...change } : track)) });
@@ -191,8 +215,22 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
     [tracks[index], tracks[index + by]] = [tracks[index + by], tracks[index]];
     setEdited({ ...draft, tracks });
   };
-  const removeTrack = (key: string) => setEdited({ tracks: draft.tracks.filter((track) => track.key !== key), sessions: draft.sessions.filter((session) => session.trackKey !== key) });
-  const isEmpty = !loaded.data?.tracks.length && !storedSessions.length;
+  const removeTrack = (key: string) => setEdited({ ...draft, tracks: draft.tracks.filter((track) => track.key !== key), sessions: draft.sessions.filter((session) => session.trackKey !== key) });
+  const updateRoom = (index: number, name: string) => setEdited({ ...draft, rooms: draft.rooms.map((room, at) => (at === index ? { ...room, name } : room)) });
+  const moveRoom = (index: number, by: number) => {
+    const rooms = [...draft.rooms];
+    [rooms[index], rooms[index + by]] = [rooms[index + by], rooms[index]];
+    setEdited({ ...draft, rooms });
+  };
+  // Tracks and sessions that pointed at the room are left without one (the server does the same: on delete set null).
+  const removeRoom = (key: string) =>
+    setEdited({
+      rooms: draft.rooms.filter((room) => room.key !== key),
+      tracks: draft.tracks.map((track) => (track.roomKey === key ? { ...track, roomKey: null } : track)),
+      sessions: draft.sessions.map((session) => (session.roomKey === key ? { ...session, roomKey: null } : session)),
+    });
+  const roomOptions = draft.rooms.map((room) => ({ value: room.key, label: room.name.trim() || "이름 없는 방" }));
+  const isEmpty = !loaded.data?.tracks.length && !loaded.data?.rooms.length && !storedSessions.length;
 
   return (
     <Modal
@@ -203,7 +241,7 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
       destroyOnClose
       footer={
         <Space>
-          <Button danger disabled={isEmpty || loaded.isPending} onClick={() => submit({ tracks: [], sessions: [] })}>
+          <Button danger disabled={isEmpty || loaded.isPending} onClick={() => submit({ rooms: [], tracks: [], sessions: [] })}>
             시간표 삭제
           </Button>
           <Button onClick={onClose}>취소</Button>
@@ -244,6 +282,13 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
                     columns={[
                       { title: "시간", render: (_, session) => <span className="timetable-time">{sessionTime(session)}</span> },
                       { title: "트랙", render: (_, session) => trackName(session.trackKey) },
+                      {
+                        title: "방",
+                        render: (_, session) => {
+                          const name = roomName(sessionRoom(session));
+                          return name && (session.roomKey ? name : <span className="muted">{name} (트랙)</span>);
+                        },
+                      },
                       { title: "종류", dataIndex: "kind", render: (kind: SessionKind) => sessionKindLabels[kind] },
                       { title: "제목", dataIndex: "title" },
                       { title: "연사", render: (_, session) => session.speakers.map((speaker) => (speaker.affiliation ? `${speaker.name}(${speaker.affiliation})` : speaker.name)).join(", ") },
@@ -286,7 +331,15 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
                           status={!name || draft.tracks.findIndex((other) => other.name.trim() === name) !== index ? "error" : undefined}
                           onChange={(event) => updateTrack(index, { name: event.target.value })}
                         />
-                        <Input aria-label={`${index + 1}번째 트랙 방`} placeholder="방(선택, 예: 그랜드볼룸)" style={{ width: 260 }} maxLength={100} value={track.room} onChange={(event) => updateTrack(index, { room: event.target.value })} />
+                        <Select
+                          aria-label={`${index + 1}번째 트랙 방`}
+                          placeholder={draft.rooms.length ? "방 없음" : "방 탭에서 방을 먼저 추가해요"}
+                          style={{ width: 260 }}
+                          allowClear
+                          value={track.roomKey ?? undefined}
+                          options={roomOptions}
+                          onChange={(value?: string) => updateTrack(index, { roomKey: value ?? null })}
+                        />
                         <Button aria-label="위로" icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => moveTrack(index, -1)} />
                         <Button aria-label="아래로" icon={<ArrowDownOutlined />} disabled={index === draft.tracks.length - 1} onClick={() => moveTrack(index, 1)} />
                         {count ? (
@@ -304,11 +357,58 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
                     <Button
                       icon={<PlusOutlined />}
                       disabled={draft.tracks.length >= MAX_TRACKS}
-                      onClick={() => setEdited({ ...draft, tracks: [...draft.tracks, { key: crypto.randomUUID(), name: `트랙 ${String.fromCharCode(65 + (draft.tracks.length % 26))}`, room: "" }] })}
+                      onClick={() => setEdited({ ...draft, tracks: [...draft.tracks, { key: crypto.randomUUID(), name: `트랙 ${String.fromCharCode(65 + (draft.tracks.length % 26))}`, roomKey: null }] })}
                     >
                       트랙 추가
                     </Button>
                     <span className="muted">0~{MAX_TRACKS}개. 0개면 단일 진행이에요.</span>
+                  </Space>
+                </Space>
+              ),
+            },
+            {
+              key: "rooms",
+              label: `방 ${draft.rooms.length}`,
+              children: (
+                <Space direction="vertical" style={{ width: "100%" }}>
+                  <p className="field-note">
+                    이 블록의 방 목록이에요. 트랙과 전체 트랙 세션은 여기서 방을 골라요. 앱은 다음 세션이 같은 방(목록의 같은 항목)이면 &ldquo;그 자리에서 대기&rdquo;로 안내하고, 이름이 비슷해도 다른 항목이면 다른 방으로 봐요. 옛 방 이름에서 옮겨 온 방은 띄어쓰기만 다른 같은 방이 따로 있을 수 있으니 확인해 주세요.
+                  </p>
+                  {draft.rooms.map((room, index) => {
+                    const tracksUsing = draft.tracks.filter((track) => track.roomKey === room.key).length;
+                    const sessionsUsing = draft.sessions.filter((session) => session.roomKey === room.key).length;
+                    const name = room.name.trim();
+                    return (
+                      <Space key={room.key} wrap>
+                        <Input
+                          aria-label={`${index + 1}번째 방 이름`}
+                          placeholder="방 이름 (예: 그랜드볼룸 B)"
+                          style={{ width: 260 }}
+                          maxLength={100}
+                          value={room.name}
+                          status={!name || draft.rooms.findIndex((other) => other.name.trim() === name) !== index ? "error" : undefined}
+                          onChange={(event) => updateRoom(index, event.target.value)}
+                        />
+                        <Button aria-label="위로" icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => moveRoom(index, -1)} />
+                        <Button aria-label="아래로" icon={<ArrowDownOutlined />} disabled={index === draft.rooms.length - 1} onClick={() => moveRoom(index, 1)} />
+                        {tracksUsing || sessionsUsing ? (
+                          <Popconfirm title="이 방을 지울까요?" description={`트랙 ${tracksUsing}개·세션 ${sessionsUsing}개에서 방이 빠져요.`} okText="지우기" okButtonProps={{ danger: true }} onConfirm={() => removeRoom(room.key)}>
+                            <Button aria-label="지우기" danger icon={<DeleteOutlined />} />
+                          </Popconfirm>
+                        ) : (
+                          <Button aria-label="지우기" danger icon={<DeleteOutlined />} onClick={() => removeRoom(room.key)} />
+                        )}
+                        <span className="muted">
+                          트랙 {tracksUsing}개 · 세션 {sessionsUsing}개
+                        </span>
+                      </Space>
+                    );
+                  })}
+                  <Space>
+                    <Button icon={<PlusOutlined />} disabled={draft.rooms.length >= MAX_ROOMS} onClick={() => setEdited({ ...draft, rooms: [...draft.rooms, { key: crypto.randomUUID(), name: "" }] })}>
+                      방 추가
+                    </Button>
+                    <span className="muted">0~{MAX_ROOMS}개. 방을 정하지 않으면 앱은 같은 방 안내를 하지 않아요.</span>
                   </Space>
                 </Space>
               ),
@@ -329,6 +429,7 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
         <SessionForm
           session={form.session}
           tracks={draft.tracks}
+          roomOptions={roomOptions}
           block={block}
           days={days}
           after={draft.sessions.length ? Math.max(...draft.sessions.map((session) => session.end)) : block.from}
@@ -346,6 +447,7 @@ function TimetableModal({ activityId, schedule, block, onClose }: { activityId: 
 type SessionValues = {
   kind: SessionKind;
   track: string;
+  room: string;
   day: string;
   time: [Dayjs, Dayjs] | null;
   title: string;
@@ -365,6 +467,7 @@ const minuteOf = (value: Dayjs) => value.hour() * 60 + value.minute();
 function SessionForm({
   session,
   tracks,
+  roomOptions,
   block,
   days,
   after,
@@ -373,6 +476,7 @@ function SessionForm({
 }: {
   session?: DraftSession;
   tracks: DraftTrack[];
+  roomOptions: { value: string; label: string }[];
   block: BlockRange;
   days: string[];
   /** Default start for a new session: the latest end so far, inside the block. */
@@ -382,6 +486,7 @@ function SessionForm({
 }) {
   const [form] = Form.useForm<SessionValues>();
   const day: string = Form.useWatch("day", form) ?? days[0];
+  const wide = (Form.useWatch("track", form) ?? session?.trackKey ?? ALL_TRACKS) === ALL_TRACKS;
   const [earliest, latest] = dayLimits(day, block);
   const start = session?.start ?? Math.max(block.from, Math.min(after, block.to - 30 * 60_000));
   const end = session?.end ?? Math.min(start + 30 * 60_000, block.to);
@@ -395,6 +500,7 @@ function SessionForm({
         initialValues={{
           kind: session?.kind ?? "TALK",
           track: session?.trackKey ?? (session || !tracks.length ? ALL_TRACKS : tracks[0].key),
+          room: session?.roomKey ?? TRACK_ROOM,
           day: days.includes(seoul(start).format("YYYY-MM-DD")) ? seoul(start).format("YYYY-MM-DD") : days[0],
           time: [pickerTime(start), pickerTime(end)],
           title: session?.title ?? "",
@@ -412,6 +518,7 @@ function SessionForm({
             key: session?.key ?? crypto.randomUUID(),
             ...(session?.id != null && { id: session.id }),
             trackKey: values.track === ALL_TRACKS ? null : values.track,
+            roomKey: values.room === TRACK_ROOM ? null : values.room,
             kind: values.kind,
             title: values.title.trim(),
             description: values.description.trim(),
@@ -428,6 +535,9 @@ function SessionForm({
           </Form.Item>
           <Form.Item name="track" label="트랙">
             <Select style={{ width: 200 }} options={[{ value: ALL_TRACKS, label: "전체 트랙" }, ...tracks.map((track) => ({ value: track.key, label: track.name.trim() || "이름 없는 트랙" }))]} />
+          </Form.Item>
+          <Form.Item name="room" label="방">
+            <Select style={{ width: 200 }} options={[{ value: TRACK_ROOM, label: wide ? "방 없음" : "트랙의 방" }, ...roomOptions]} />
           </Form.Item>
           {days.length > 1 && (
             <Form.Item name="day" label="날짜">
@@ -517,7 +627,8 @@ function SessionForm({
  * nothing at that time keeps an empty cell. No tracks = one column.
  */
 function TimetablePreview({ draft, multiDay, tagName }: { draft: Draft; multiDay: boolean; tagName: (value: TagValue) => string }) {
-  const { tracks, sessions } = draft;
+  const { rooms, tracks, sessions } = draft;
+  const roomName = (key: string | null) => rooms.find((room) => room.key === key)?.name.trim();
   if (!sessions.length) return <p className="muted">세션을 추가하면 앱에 보일 표를 여기서 미리 볼 수 있어요.</p>;
   const bounds = [...new Set(sessions.flatMap((session) => [session.start, session.end]))].sort((a, b) => a - b);
   const rows = bounds
@@ -535,6 +646,7 @@ function TimetablePreview({ draft, multiDay, tagName }: { draft: Draft; multiDay
         </Tag>
       ))}
       <div className="timetable-title">{session.title}</div>
+      {roomName(session.roomKey) && <div className="muted">{roomName(session.roomKey)}</div>}
       {session.speakers.map((speaker, index) => (
         <div key={index} className="muted">
           {speaker.name}
@@ -554,7 +666,7 @@ function TimetablePreview({ draft, multiDay, tagName }: { draft: Draft; multiDay
               {tracks.map((track) => (
                 <th key={track.key}>
                   {track.name.trim() || "이름 없는 트랙"}
-                  {track.room.trim() && <div className="muted">{track.room.trim()}</div>}
+                  {roomName(track.roomKey) && <div className="muted">{roomName(track.roomKey)}</div>}
                 </th>
               ))}
             </tr>

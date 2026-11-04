@@ -28,7 +28,7 @@ class EffectiveLogos(
         val names = organizations.findAllById(orgIds).associate { it.id to it.name }
         val ancestors = organizations.ancestors(orgIds)
         // 조직별 사슬: 자기 자신부터 가까운 상위 순, 최대 5개
-        val chains = orgIds.associateWith { id -> (listOf(id to names[id]) + ancestors[id].orEmpty().reversed()).take(MAX_CHAIN) }
+        val chains = orgIds.associateWith { id -> (listOf(id to names[id]) + ancestors[id].orEmpty().reversed().map { it.id to it.name }).take(MAX_CHAIN) }
         val orgLogos = organizationLogos.updatedAtByOrganization(chains.values.flatten().map { it.first }.toSet())
         val orgColors = organizationLogos.brandColors(orgLogos.keys)
         return organizationIdByProgram.mapNotNull { (programId, organizationId) ->

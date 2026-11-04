@@ -33,7 +33,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
  * `<프로그램> <활동>에서 받은 명함` above it when the link names an activity, and `받은 명함에 저장` ([save]) below — or the own-card notice instead.
  * A failed read shows the same wording as the save notices. The overflow menu holds 신고하기 ([report]) like the received detail.
  */
-@Composable fun SharedCardPage(shared: SharedCard, close: () -> Unit, contact: (ContactState) -> Unit, report: (String, String?) -> Unit, save: () -> Unit) {
+@Composable fun SharedCardPage(shared: SharedCard, close: () -> Unit, contact: (ContactState) -> Unit, report: (String, String?) -> Unit, save: () -> Unit, openActivity: ((String) -> Unit)? = null) {
     var menu by remember { mutableStateOf(false) }
     var reporting by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
@@ -47,7 +47,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
         when {
             card != null -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 shared.origin?.let { Text("${it}에서 받은 명함", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-                CardContent(card, onContact = contact)
+                CardContent(card, onContact = contact, onActivity = openActivity)
                 if (shared.own) Text("내 명함이에요.", Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
                 else DearbyButton(save, Modifier.fillMaxWidth()) { Text("받은 명함에 저장") }
             }

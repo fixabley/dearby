@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.time.OffsetDateTime
 import java.util.UUID
 
-// native-v1.md "즐겨찾기(하트)·새 모집 푸시 알림": 활동·프로그램 하트(로그인만). 활동 하트는 맞춤 대기열 LIKE를 함께 남기고 지운다
+// native-v1.md "즐겨찾기(하트)·새 모집 푸시 알림", "조직 화면·조직 팔로우": 활동·프로그램 하트와 조직 팔로우(로그인만). 활동 하트는 맞춤 대기열 LIKE를 함께 남기고 지운다
 @RestController
 @RequestMapping("/v1/me/favorites")
 class FavoriteController(private val favorites: FavoriteService) {
@@ -41,6 +41,9 @@ class FavoriteController(private val favorites: FavoriteService) {
             programs = page.programs.map { FavoriteProgramResponse(ProgramSummaryResponse.from(it.program, language, mine), it.favoritedAt, it.newRecruitment, it.notifyLevel.name) },
             activities = page.activities.map {
                 FavoriteActivityResponse(ActivityResponse.from(it.listing, language, mine), ProgramSummaryResponse.from(it.program, language, mine), it.favoritedAt, it.notifyLevel.name)
+            },
+            organizations = page.organizations.map {
+                FavoriteOrganizationResponse(FavoriteOrganizationRef(it.organization.id, language.pick(it.organization.name, it.organization.nameEn), it.logoUrl), it.favoritedAt, it.notifyLevel.name)
             },
         )
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_LANGUAGE, language.tag).body(body)
@@ -69,6 +72,7 @@ class FavoriteController(private val favorites: FavoriteService) {
     private fun target(kind: String) = when (kind) {
         "activities" -> FavoriteTarget.ACTIVITY
         "programs" -> FavoriteTarget.PROGRAM
+        "organizations" -> FavoriteTarget.ORGANIZATION
         else -> throw NotFoundException("경로를 찾을 수 없습니다", "Unknown favorite kind: $kind")
     }
 }
@@ -79,5 +83,10 @@ data class FavoriteProgramResponse(val program: ProgramSummaryResponse, val favo
 
 data class FavoriteActivityResponse(val activity: ActivityResponse, val program: ProgramSummaryResponse, val favoritedAt: OffsetDateTime, val notifyLevel: String)
 
-// 프로그램은 즐겨찾기한 최근 순, 활동은 마감 임박 순(지난 활동은 뒤)
-data class FavoritesResponse(val programs: List<FavoriteProgramResponse>, val activities: List<FavoriteActivityResponse>)
+// 조직 팔로우(native-v1.md "조직 화면·조직 팔로우"): 로고는 자기 로고, 없으면 상위 조직 로고
+data class FavoriteOrganizationRef(val id: Long, val name: String, val logoUrl: String?)
+
+data class FavoriteOrganizationResponse(val organization: FavoriteOrganizationRef, val favoritedAt: OffsetDateTime, val notifyLevel: String)
+
+// 프로그램은 즐겨찾기한 최근 순, 활동은 마감 임박 순(지난 활동은 뒤), 조직은 팔로우한 최근 순
+data class FavoritesResponse(val programs: List<FavoriteProgramResponse>, val activities: List<FavoriteActivityResponse>, val organizations: List<FavoriteOrganizationResponse>)

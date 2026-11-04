@@ -33,6 +33,11 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
         return load(dsl.selectFrom(PROGRAMS).where(conditions).orderBy(PROGRAMS.ID).limit(size).fetch())
     }
 
+    override fun findByOrganizationIds(organizationIds: Collection<Id>): List<Program> {
+        if (organizationIds.isEmpty()) return emptyList()
+        return load(dsl.selectFrom(PROGRAMS).where(PROGRAMS.ORGANIZATION_ID.`in`(organizationIds)).orderBy(PROGRAMS.ID).fetch())
+    }
+
     override fun create(organizationId: Id, name: String, nameEn: String?): Id {
         val now = LocalDateTime.now()
         return dsl.insertInto(PROGRAMS)

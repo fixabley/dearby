@@ -47,10 +47,14 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         jdbc.sql("insert into users (id) values (?)").param(user).update()
         val phone = Contact(UUID.randomUUID(), ContactKind.PHONE, "휴대폰", "010-1111-2222")
         val email = Contact(UUID.randomUUID(), ContactKind.EMAIL, "메일", "$name@example.com")
-        fun history(approval: ApprovalStatus) = History(
-            UUID.randomUUID(), HistoryKind.ORGANIZATION, null, "직접 적은 조직", null, null, null, null, null, "운영진",
-            LocalDate.of(2026, 1, 1), null, "", approval, null, VerificationStatus.UNVERIFIED, emptyList(),
-        )
+        // 승인된 이력은 등록된 단위의 등록된 역할에 매칭돼 있고(V67 check), 승인 대기는 단위 이름만 직접 적은 것
+        val organization = jdbc.sql("select id from organizations order by id limit 1").query(Long::class.java).single()
+        val role = jdbc.sql("insert into roles (organization_id, name, source, position, created_at, updated_at) values (?, ?, 'CURATED', 0, now(), now()) returning id").params(organization, "운영진 $user").query(Long::class.java).single()
+        fun history(approval: ApprovalStatus) = if (approval == ApprovalStatus.APPROVED) {
+            History(UUID.randomUUID(), ActivityInfoRef(role, "운영진"), "운영진", RoleOwner(RoleOwnerKind.ORGANIZATION, organization, "조직"), ActivityInfoRef(organization, "조직"), null, null, LocalDate.of(2026, 1, 1), null, "", approval, null, VerificationStatus.UNVERIFIED, emptyList())
+        } else {
+            History(UUID.randomUUID(), null, "운영진", RoleOwner(RoleOwnerKind.ORGANIZATION, null, "직접 적은 조직"), null, null, null, LocalDate.of(2026, 1, 1), null, "", approval, null, VerificationStatus.UNVERIFIED, emptyList())
+        }
         // 승인된 직무만 명함의 job에 들어간다
         val jobs = listOf(ProfileJob(UUID.randomUUID(), null, "개발자", ApprovalStatus.APPROVED, null), ProfileJob(UUID.randomUUID(), null, "디자이너", ApprovalStatus.PENDING, null))
         val profile = Profile(user, name, jobs, "https://notion.so/me", listOf(phone, email), listOf(history(ApprovalStatus.APPROVED), history(ApprovalStatus.PENDING)), 1, OffsetDateTime.now())
@@ -416,7 +420,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val conference = activityWithPeriod("맥락 컨퍼런스", "-3 hours", "+5 hours")
         block(conference, "오전 세션", "-3 hours", "-1 hours")
         val afternoon = block(conference, "오후 세션", "-1 hours", "+2 hours")
-        val trackB = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 B', '그랜드볼룸 B', 1) returning id").param(afternoon).query(Long::class.java).single()
+        val trackB = jdbc.sql("with r as (insert into schedule_rooms (schedule_id, name, position) values (?, '그랜드볼룸 B', 0) returning id) insert into schedule_tracks (schedule_id, name, room_id, position) select ?, '트랙 B', r.id, 1 from r returning id").params(afternoon, afternoon).query(Long::class.java).single()
         fun session(track: Long?, title: String) = jdbc.sql(
             "insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', ?, now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb) returning id"
         ).params(listOf<Any?>(afternoon, track, title)).query(Long::class.java).single()

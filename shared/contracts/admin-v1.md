@@ -105,24 +105,50 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - `officialSource`: 출처가 프로그램의 공식 도메인인지. false면 웹 전체 검색에서 나온 것이라 출처를 확인하고 게시해야 한다
 - `applicationUrl`, `location`, `cost`, `audience`, `sourceCheckedAt`: 수집이 원문에서 확인한 값(없으면 null)
 
-## 이력 검토·역할 — 2026-10-16 사용자 결정
+### 활동 트랙 묶음(trackGroups) 편집 — 2026-11-04 사용자 결정
 
-사용자가 프로필 이력을 단계별로 입력할 때 등록된 활동 정보에 없는 조직·프로그램·활동·역할을 직접 적으면 관리자 승인 전까지 명함에 넣을 수 없다. 인증자료를 올리면 관리자가 확인한다(`native-v1.md` "프로필·명함 v2" → "관리자"). 화면에는 작성자의 프로필 이름만 보여 주고 계정 id는 싣지 않는다.
+native-v1.md "활동 트랙(tracks)"의 어드민 쪽. 모집 기간이 같은 지원 분야·직군·지역(풀스택·AI·클라우드, 디자이너·개발자·PM, 서울·대전)은 활동 하나의 트랙 묶음(`trackGroups`, 화면 `구분`)이다. SSAFY처럼 지역과 분야로 나뉘면 묶음 둘. 항목마다 다른 장소·세부 일정·조건·참여비·혜택·활동 기간은 **활동 기본값 + 항목별 덮어쓰기**(native-v1.md "기본값과 덮어쓰기", 2026-11-04 정정 4)다: 활동 편집 폼은 기본값이고, 항목의 `overrides`가 그 항목에서만 다른 필드를 담는다. 시간표의 트랙(아래 "트랙·세션 시간표")과는 다른 개념이다. `trackGroups`는 `PATCH /v1/admin/activities/:id`의 필드가 아니다(세부 일정과 같이 따로 둔다).
+
+- `GET /v1/admin/activities/:id/track-groups` → `{trackGroups: [{id, name, nameEn, icon, position, tracks: [{id, name, description, capacity, position, participantCount, overrides}]}]}`(`participantCount`는 그 트랙을 고른 참여 기록 수. 삭제 확인 모달이 이 값을 쓴다).
+- `PUT` 같은 경로 `{trackGroups: [{id?, name, nameEn?, icon, tracks: [{id?, name, description?, capacity?, overrides?}]}]}` → 같은 응답. `overrides`는 `overrides?: {place?, activitySchedule?, schedules?: {add: Schedule[], replace: [{scheduleId, ...Schedule}]}, eligibility?, cost?, highlights?}`(공개 모양과 같음; `schedules.add[]`는 ScheduleItemInput, `replace[]`는 기본 일정 `scheduleId` + ScheduleItemInput 부분; 키를 생략하면 그 필드는 기본값을 따른다). `place`·`eligibility`·`cost`·`highlights`·`activitySchedule`의 검증은 활동 PATCH와 같고, 모집 기간은 덮어쓸 수 없다(보내면 400). 항목이 `add`한 일정은 그 항목 전용이며 활동 `schedules[]`(기본)에는 없다. 시간표 PUT과 같이 **통째로 바꾼다**: 묶음·트랙 모두 `id`가 있으면 고치고(참여 기록의 `trackIds` 유지), 없으면 새로 만들고, 빠진 것은 지운다. 순서는 배열 순서(`position`). 빈 배열이면 트랙 없음.
+- **묶음 이름·아이콘**(2026-11-04 사용자 결정, 같은 날의 `label` 열거형·`customLabel`을 대체): `name` 필수(1~20자, 입력 자동 완성으로 `트랙`·`분야`·`직군`·`지역`·`캠퍼스`·`과정` 추천), `nameEn` 선택, `icon`은 아이콘 선택기(`GET /v1/admin/icons` 키, 아래 "아이콘 선택기")에서 고르고 이름을 추천 목록에서 고르면 추천 아이콘(`route`·`layers`·`briefcase`·`pin`·`school`·`book`)을 자동 제안한다. 앱은 이름·아이콘을 그대로 쓴다. **기본값은 필수가 아니다**: 활동 기본값을 필드별로 비워 둘 수 있고, 기본값도 없고 어떤 항목도 덮어쓰지 않은 필드는 저장 때 경고한다.
+- **충돌 경고**: 저장 때 서로 다른 묶음의 항목이 같은 필드(또는 같은 기본 일정의 `replace`)를 덮어쓰면 400이 아니라 응답에 `warnings: [{field, trackIds}]`를 붙이고, 화면은 `서울과 피지컬 AI가 모두 장소를 덮어써요. 둘 다 고르면 뒤 묶음(트랙)의 값이 보여요`로 알린다(해석 규칙은 native-v1.md).
+- 삭제 규칙: 지운 묶음·트랙을 고른 참여 기록은 그 트랙 id만 뺀다(지원함 기록 자체는 남는다). 그 항목의 `overrides`(전용 일정 포함)도 함께 지워지고 그 일정의 일정 상태·세션 찜도 지워진다(확인 모달에 수를 보인다). 어드민 화면은 저장 전에 확인 모달에 `참여 기록 n건에서 {라벨} {트랙 이름}이 빠져요`(묶음을 지우면 그 묶음의 트랙 전부)를 보인다.
+- 400: 묶음 이름 비움·21자 이상, 모르는 `icon` 키, 묶음 안 트랙 이름 비움·중복(띄어쓰기 무시), `capacity`가 0 이하, 트랙 없는 묶음, 한도(묶음 5, 묶음당 트랙 20), 다른 활동의 `id`. 404: 없는 활동.
+- `AdminActivity.trackGroups`는 공개 `Activity`와 같은 모양(`overrides` 포함). `ActivityCreateInput`·운영 데이터 가져오기 `activities[]`에 `trackGroups?: [{name, nameEn?, icon?, tracks: [{name, description?, capacity?, overrides?}]}]`. 공개 `Activity.cost`를 새로 내보낸다(기본값은 `AdminActivity.cost`, 제안). 수집기 제출(`submit_candidate`)도 같은 모양이며, 운영자가 고친 묶음은 `curated_fields`의 `trackGroups`로 남아 재수집이 덮어쓰지 않는다.
+- **어드민 화면**: 활동 편집기 `트랙` 탭. 묶음 카드 목록(끌어서 묶음 순서 바꾸기, `묶음 추가`, 묶음 삭제는 위 모달). 묶음 카드 맨 위에 **라벨 선택 세그먼트** `트랙 | 분야 | 직군 | 지역 | 직접 입력`(기본 트랙; 직접 입력이면 이름 입력 칸), 아래 트랙 목록(이름·한 줄 설명·정원, 끌어서 순서 바꾸기, 삭제는 위 모달). 묶음 카드 제목은 고른 라벨을 따른다. **이 항목만 다르게**: 트랙 행마다 펼침을 열면 덮어쓸 필드를 골라(장소·활동 기간·세부 일정·조건·참여비·혜택 체크) 그 필드만 편집하고, 고르지 않은 필드는 `기본값 따름`으로 잠긴다. 활동 편집 폼(기본값)의 해당 필드 옆에는 덮어쓴 항목을 배지로 보인다(`서울 · 피지컬 AI에서 다름`, 누르면 그 항목 펼침). 일정 편집기(FullCalendar, 아래 "일정 캘린더 편집기")는 상단에 보기 전환 `기본 · 서울 · 대전 · …`(묶음 순서, 항목마다 하나): 항목 보기에서 만든 일정은 그 항목 전용(`add`), 항목 보기에서 기본 일정을 고치면 `replace`(기본 일정은 흐리게 깔려 보이고 고치는 순간 그 항목의 행으로 복제), 기본 보기는 지금과 같다. 저장 때 위 충돌 경고.
+
+### 활동 합치기 — 2026-11-04 사용자 결정
+
+같은 프로그램·같은 모집 기간의 활동 둘 이상(트랙별로 쪼개져 있던 활동)을 하나로 합친다(2026-11-04 정정 4로 선발 일정 같음 조건은 뺐다: 다른 일정·장소 등은 그 항목의 `overrides`가 된다). 첫 대상은 카카오테크 부트캠프 5기 풀스택·AI·클라우드(native-v1.md "활동 트랙(tracks)" 이관). 데이터 마이그레이션 스크립트로 하지 않는다.
+
+- `POST /v1/admin/activities/merge` 본문 `{keepActivityId, mergeActivityIds: number[], groupName?: {name, icon?}, trackNames?: {[activityId]: string}, apply?: boolean}`. ICS 가져오기와 같은 미리 보기 방식: `apply`가 없으면 아무것도 바꾸지 않고 영향 요약을, `apply: true`면 실행 뒤 같은 요약과 합쳐진 `AdminActivity`를 돌려준다.
+- 규칙(묶음 단위): 남길 활동 하나를 고르고, 나머지 활동은 **각각 트랙이 되어 남길 활동의 새 묶음 하나에 들어간다**. 새 묶음의 이름 기본값은 `트랙`(아이콘 `route`)이고 `groupName`으로 바꾼다(합친 뒤 트랙 묶음 편집에서도 바꿀 수 있다). 트랙 이름 기본값은 원래 활동명에서 프로그램명·기수를 뺀 나머지(`카카오테크 부트캠프 5기 풀스택` → `풀스택`), `trackNames`로 고칠 수 있다. 남길 활동에 이미 묶음이 있으면 새 묶음은 그 뒤에 붙는다. 남길 활동 자신도 트랙이 필요하면(`카카오테크 부트캠프 5기 풀스택`을 남기는 경우) `trackNames[keepActivityId]`로 이름을 주어 같은 묶음에 트랙을 만들고, 그 활동의 참여 기록에 그 트랙을 더한다. 합쳐지는 활동이 이미 자기 묶음을 가지고 있으면 미리 보기에서 경고하고 `apply`는 400(먼저 묶음을 정리; 제안). 새 묶음 안 이름이 겹치면 400.
+- 이관: 합쳐지는 활동의 참여 기록(`user_activities`·일정 상태)은 남길 활동으로 옮기고 `trackIds`에 그 트랙을 더한다. 찜(`user_favorites ACTIVITY`)은 트랙 없이 옮긴다. **일정·장소·조건·참여비·혜택·활동 기간은 남길 활동의 것이 기본값**이고, 합쳐지는 활동의 값이 남길 활동과 다르면 버리지 않고 **그 항목의 `overrides`로 옮긴다**(세부 일정은 같은 제목·같은 시각의 기본 일정이 있으면 그것으로 보고 일정 상태를 옮기며, 없으면 그 항목의 `add` 일정으로 옮기고 시간표·세션 찜도 그 일정에 딸려 간다; 장소·조건·참여비·혜택·활동 기간은 값이 다를 때만 `overrides`). 미리 보기 요약에 항목마다 어떤 필드가 덮어쓰기로 옮겨지는지 보인다. **같은 사용자의 중복 기록**은 하나로: 남길 활동의 기록이 있으면 그것을 남기고(새 묶음에 고른 트랙이 없고 합쳐지는 기록이 있으면 그 트랙을 물려받는다), 없으면 가장 먼저 만든 기록을 남기며 나머지 기록의 일정 상태는 버린다. 찜·알림 목록 행·`published_at`도 같은 식으로 남길 활동 기준(제안: 서버 담당 확인).
+- 합쳐진 활동 행은 이관 뒤 지운다(`DELETE`와 같이 일정·역할·연락처 정리). 대신 `activity_merges(merged_activity_id pk, kept_activity_id, merged_at)` 를 남겨 공개 `GET /v1/activities/{id}`·웹 `/activities/:id`가 합쳐진 id로 오면 남긴 활동으로 **301**(`Location`)을 돌려준다(`dearby://activities/…` 딥링크는 앱이 같은 API를 읽으므로 따라간다). 그 밖의 경로(`PUT /v1/me/activities/{id}`, 즐겨찾기, 시간표)는 합쳐진 id에 404. 합쳐진 활동의 수집 출처(`source_id`·roundKey)는 남길 활동에 매여 다음 수집이 같은 트랙을 새 초안으로 다시 만들지 않는다(구현 방식은 서버 담당).
+- 되돌리기 없음. 확인 모달에 미리 보기의 영향 요약: `참여 기록 n건, 찜 n건, 일정 n개(세션 찜 n건)를 옮기고 활동 n개를 지워요. 항목별로 다른 값 n개는 덮어쓰기로 남아요. 되돌릴 수 없어요.` 그리고 묶음 라벨 선택·트랙 이름 편집 칸.
+- 400: 같은 프로그램이 아님, 모집 기간이 다름, 게시 상태가 서로 다름(초안과 게시 활동을 섞지 않는다, 제안), `keepActivityId`가 `mergeActivityIds`에 포함, 활동 하나뿐. 404: 없는 활동.
+- **어드민 화면**: 활동 목록에서 같은 프로그램 활동을 여러 개 고르면 `합치기` 행동 → 남길 활동 선택 → 묶음 라벨·트랙 이름 편집 → 미리 보기 요약 → 확인.
+
+## 이력 검토·역할 — 2026-10-16 사용자 결정, 2026-11-03 밤 역할 귀속으로 개정
+
+사용자가 프로필 이력(역할 매칭, `native-v1.md` "이력 (History) — 역할 매칭")에서 등록된 역할 대신 역할 이름을 직접 적으면 관리자 승인 전까지 명함에 넣을 수 없다. 인증자료를 올리면 관리자가 확인한다(`native-v1.md` "프로필·명함 v2" → "관리자"). 화면에는 작성자의 프로필 이름만 보여 주고 계정 id는 싣지 않는다.
 
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
 | GET /v1/admin/histories | `approval?`(pending·approved·rejected), `verification?`(unverified·pending·verified·rejected), `cursor?`(이력 id), `size?` | 200 `{items: HistoryForReview[], nextCursor}` |
-| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", organizationId?, programId?, activityId?, roleId?, reason?}` | 200 HistoryForReview. 없는 활동 정보 id 400, 거절에 사유 없으면 400 |
+| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", ownerKind?, ownerId?, roleId?, reason?}` | 200 HistoryForReview. `roleId`는 그 이력의 귀속 단위(`owner`)에 속한 역할이어야 하며 아니면 400, 거절에 사유 없으면 400. 단위 이름만 직접 적은 이력(`owner.id`가 null)은 `ownerKind`·`ownerId`로 등록된 단위를 골라 줘야 승인되고 없으면 400(2026-11-03 밤 조율 결정, 직접 입력 이력 보존). 승인 뒤에는 역할이 등록된 것이어야 하므로 `roleId`도 없고 이력의 역할도 직접 입력이면 400 |
 | POST /v1/admin/histories/:id/verification | `{decision: "verify"\|"reject"}` | 200 HistoryForReview |
 | GET /v1/admin/histories/:id/evidence/:eid | — | 200 파일(inline) |
-| GET /v1/admin/roles | `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}` |
-| POST /v1/admin/roles | `{name, nameEn?}` | 201 Role. 띄어쓰기만 다른 이름도 중복 400 |
-| PATCH /v1/admin/roles/:id | `{name?, nameEn?}` | 200 Role |
+| GET /v1/admin/roles | `organizationId?`·`programId?`·`activityId?`(셋 중 하나 필수), `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}`. 전역 목록 없음 |
+| POST /v1/admin/roles | `{organizationId\|programId\|activityId(하나), name, nameEn?}` | 201 Role. 같은 단위 안에서 띄어쓰기만 다른 이름도 중복 400 |
+| PATCH /v1/admin/roles/:id | `{name?, nameEn?, position?}` | 200 Role. 귀속은 바꾸지 않는다 |
 | DELETE /v1/admin/roles/:id | — | 204. 이력이 쓰면 400 |
 
-- HistoryForReview: `native-v1.md`의 History에 `profileName`을 더한 것.
-- 승인 때 id를 주면 직접 입력 값을 그 활동 정보 항목으로 바꾼다. 없는 조직·프로그램·역할은 기존 admin API로 먼저 만든다. 활동은 여기서 만들지 않으며, 직접 입력한 활동 이름을 그대로 승인할 수 있다.
-- Role: `{id, name, nameEn}`.
+- Role: `{id, name, nameEn, owner: {kind, id, name}, source: "curated"\|"collected"}`. 활동 역할은 수집이 공고의 모집 역할 문구로 만든 것(`collected`)이 있고, 운영자가 고치면 `curated`가 되어 다음 수집이 바꾸지 않는다(활동 편집의 `roles` 문자열 목록은 이 역할 행들이다).
+- HistoryForReview: `native-v1.md`의 History에 `profileName`을 더한 것. 공개 History의 호환 필드(`kind`·`organizationName`·`programName`·`activityName`)는 앱·웹용이라 여기에는 싣지 않는다. 호환 필드는 앱(iOS·Android)·웹 모델이 새 모양으로 갱신·배포된 뒤 제거(2026-11-03 밤 조율 결정).
+- 승인 때 `roleId`를 주면 직접 입력 역할 이름을 그 역할로 바꾼다. 없으면 그 귀속 단위 아래에 역할을 먼저 만든다(`POST /v1/admin/roles`). 귀속 단위(조직·프로그램·활동) 자체는 사용자가 등록된 것에서 골랐으므로 여기서 만들지 않는다.
+- 역할 관리 화면: 전역 "역할" 메뉴(`roles.tsx`)를 없애고 조직·프로그램·활동 편집 화면 안의 "역할" 절에서 그 단위의 역할을 만들고 고치고 순서를 정한다.
 
 ## 직무 — 2026-10-17 사용자 결정
 
@@ -299,13 +325,13 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
 
 native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정 블록(활동 기간 또는 세부 일정, 모집 기간 제외) 하나에 딸린다.
 
-- `GET /v1/admin/activities/:id/schedules/:scheduleId/timetable` → `{scheduleId, tracks: [{id, name, room, position}], sessions: [{id, trackId, track, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[]}]}`(없으면 빈 목록, `track`은 tracks 순번). 게시 전 활동도 된다.
-- `PUT` 같은 경로 `{tracks: [{id?, name, room?}], sessions: [{id?, track?, kind, title, description?, startAt, endAt, speakers?: [{name, affiliation?}], tagIds?}]}` → 같은 응답. **통째로 바꾼다**: `id`가 있으면 그 트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다(그 세션의 찜도 지워짐). `track`은 요청 `tracks` 순번(0부터), 없으면 전폭 세션. 트랙 0개면 단일 진행. 빈 목록 둘이면 시간표를 지운다.
-- 400: 모집 기간·반복·날짜 미정 블록, 블록 시간 밖 세션, 끝 ≤ 시작, 같은 트랙(또는 전폭) 세션 시간 겹침, 트랙 이름 중복, 순번 밖 `track`, 다른 블록의 id, 없는 태그, 개수·길이 한도(트랙 20, 세션 300, 연사 10, 태그 5). 404: 없거나 지운 블록.
+- `GET /v1/admin/activities/:id/schedules/:scheduleId/timetable` → `{scheduleId, rooms: [{id, name, position}], tracks: [{id, name, roomId, room, position}], sessions: [{id, trackId, track, roomId, room, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[]}]}`(없으면 빈 목록, `track`은 tracks 순번, `room`은 rooms 순번). 세션의 `roomId`·`room`은 세션 자체 값이다(트랙의 방을 채우지 않는다). 게시 전 활동도 된다. (2026-11-05 방: `rooms`를 더하고 트랙 `room`이 방 이름 문자열에서 rooms 순번으로 바뀌었다.)
+- `PUT` 같은 경로 `{rooms: [{id?, name}], tracks: [{id?, name, room?}], sessions: [{id?, track?, room?, kind, title, description?, startAt, endAt, speakers?: [{name, affiliation?}], tagIds?}]}` → 같은 응답. **통째로 바꾼다**: `id`가 있으면 그 방·트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다(그 세션의 찜도 지워짐; 빠진 방을 가리키던 트랙·세션은 방 없음). `track`은 요청 `tracks` 순번(0부터), 없으면 전폭 세션. 트랙·세션의 `room`은 요청 `rooms` 순번(0부터), 없으면 방 없음(세션은 트랙의 방을 따름). 방 순서는 배열 순서. 트랙 0개면 단일 진행. 빈 목록 셋이면 시간표를 지운다.
+- 400: 모집 기간·반복·날짜 미정 블록, 블록 시간 밖 세션, 끝 ≤ 시작, 같은 트랙(또는 전폭) 세션 시간 겹침, 트랙 이름 중복, 방 이름 중복(앞뒤 공백 정리 뒤)·빈 방 이름, 순번 밖 `track`·`room`, 다른 블록의 id, 없는 태그, 개수·길이 한도(방 30·이름 100자, 트랙 20, 세션 300, 연사 10, 태그 5). 404: 없거나 지운 블록.
 - 세부 일정 블록에 시간표를 붙이면 그 블록은 `curated = true`가 된다(재수집이 지우지 않게, 세션 id 유지).
 - 일정 응답(`application`·`activitySchedule`·`schedules[]`)에 `hasTimetable`.
-- 화면(다음 단계): 일정 탭의 블록 행마다 `시간표` 버튼 → 트랙 목록(이름·방·순서)과 세션 표(시작·끝·트랙·종류·제목·연사·태그) 편집.
-- 가져오기(아래 "운영 데이터 가져오기"): `activities[].timetables: [{scheduleId|scheduleRef, overwrite?, tracks: [{name, room?}], sessions: [{track?, kind, title, startAt, endAt, speakers?, tagNames?, description?}]}]`. 세션이 이미 있으면 `overwrite`일 때만 바꾼다(이때 기존 세션 id가 바뀌어 찜이 지워진다). 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 검증은 위 PUT과 같다.
+- 화면: 일정 탭의 블록 행마다 `시간표` 버튼 → 세션 표(시작·끝·트랙·방·종류·제목·연사·태그), 트랙 목록(이름·방 선택·순서), **방 목록**(2026-11-05: 이름·순서·추가·지우기, 쓰는 트랙·세션 수) 편집. 트랙과 세션(전폭 세션 포함)은 방을 목록에서 고른다. 세션의 방은 비우면 트랙의 방을 따른다. V68 이관으로 생긴 방은 띄어쓰기만 다른 같은 방이 따로 있을 수 있어 어드민이 확인한다.
+- 가져오기(아래 "운영 데이터 가져오기"): `activities[].timetables: [{scheduleId|scheduleRef, overwrite?, tracks: [{name, room?}](room은 방 이름 문자열; 같은 이름은 한 방으로 묶어 방 목록을 만든다, 2026-11-05), sessions: [{track?, kind, title, startAt, endAt, speakers?, tagNames?, description?}]}]`. 세션이 이미 있으면 `overwrite`일 때만 바꾼다(이때 기존 세션 id가 바뀌어 찜이 지워진다). 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 검증은 위 PUT과 같다.
 
 ## 운영 데이터 가져오기 — 2026-10-22
 
@@ -322,3 +348,22 @@ native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정
   - 세부 일정 블록(2026-10-26, 수집된 조각 일정을 "큰 블록 + 시간표"로 정리): `activities[].schedules: [{id, delete: true} | {id, title?, kind?, status?, phase?(null은 자동 판정으로), startAt?, endAt?, startDate?, endDate?, timeZone?, dateLabel?, note?} | {ref, title, kind?(기본 EVENT), phase?, startAt?, endAt?, startDate?, endDate?, dateLabel?, note?}]`(`phase`는 2026-10-26 아래 "선발 과정·활동 일정(phase)"). 위 "세부 일정 편집기"의 DELETE·PATCH·POST와 같은 검증·의미다: 지우면 `curated_deleted`(재수집이 되살리지 않고, 붙은 세션은 블록과 함께 숨는다), 고치거나 만든 블록은 `curated`. 모집·활동 기간 행·없는 일정·바뀔 것이 없는 고치기는 건너뛴다. 같은 제목·시각의 보이는 세부 일정이 이미 있으면 만들지 않고 그 블록을 `ref`로 쓴다(다시 실행해도 같다). 순서는 지우기 → 고치기 → 만들기 → `timetables`이고, `timetables[].scheduleRef`로 같은 항목에서 만든 블록을 가리킨다(dry run은 새 블록 시각으로 시간표를 검증). 한 동작이라도 검증에 걸리면 그 활동 항목 전체를 건너뛴다. 게시 여부와 상관없이 적용된다(재수집은 게시 활동 일정을 덮어쓰지 않으므로 게시 활동 정리는 이 경로나 어드민으로 한다). 시간표 세션 제목만 고치는 별도 동작은 없다: 그 블록 시간표 전체를 `overwrite: true`로 다시 보낸다(세션 id가 바뀌어 그 블록의 세션 찜이 지워진다).
   - dry run에서는 새 조직·프로그램이 없으므로 그 아래 항목은 계획만 보인다. `--apply`가 끝나면 로그 `New program ids: …`.
 - 특정 프로그램만 수집: `--collect-now=<programId,…>`(비우면 전부). 주기·하루 한 번 규칙은 그대로다.
+
+## 일정 캘린더 편집기·ICS 가져오기 — 2026-11-03
+
+사용자: "ics 편집기 같은게 있으면 어드민에서 관리가 편할 것 같아서" → 저장은 DB 그대로 두고 활동의 세부 일정 편집을 캘린더 UI로 바꾼다([native-v1.md](native-v1.md) "홈 탭·활동 상세·프로그램·조직·내 활동 리뉴얼 — 2026-11-03"의 어드민 항목). 파일 저장 단계는 없다.
+
+- **편집기**: 활동 편집의 세부 일정 행 목록 폼을 FullCalendar(월·주 보기)로 바꾼다. 빈 날을 끌어 일정 만들기(POST), 블록 끌어 날짜·시각 옮기기(PATCH), 블록 눌러 종류·phase·상태 선택지·메모·겹침 확인 시간 고치기, 지우기(DELETE) — 모두 기존 `…/schedules` API. 모집 기간·활동 기간은 달력 위 띠(슬롯은 기존 PATCH 활동으로만 고침), 선발 과정은 청록, 활동 일정은 민트로 색을 나눠 phase 오류가 보이게. 주 보기에서 하루를 열면 트랙·세션 시간표를 같은 식으로 편집(기존 시간표 PUT). 날짜 없이 `dateLabel`만 있는 일정은 달력 아래 `날짜 미정` 목록.
+- **ICS 가져오기**: `POST /v1/admin/activities/:id/schedules/import-ics`(본문 `{ics: string, apply?: boolean}`, 파일 올리기도 같은 경로로 텍스트를 보냄). `apply`가 없으면 미리 보기 응답 `{items: [{title, kind, phase, startAt|startDate, endAt|endDate, timeZone, matches: scheduleId|null}]}`(같은 제목·시각의 기존 일정이 있으면 `matches`), `apply: true`면 새 일정은 만들고 `matches`는 덮어쓰며 모두 `curated`로 보호. `VEVENT`의 `SUMMARY`·`DTSTART`·`DTEND`·`RRULE`(반복 일정은 기존 "반복 일정" 규칙으로)·`LOCATION`(메모)만 읽고 그 밖은 버린다. 읽을 수 없는 ICS는 400.
+- **내보내기**: `GET /v1/admin/activities/:id/schedules.ics`(검수용, 공개 피드와 같은 변환).
+- 공개 사용자 피드(`/v1/me/calendar/{token}.ics`)와 집합 API는 native-v1.md에 있다.
+
+## 발견 필터 구성 — 2026-11-03
+
+사용자: "필터에 들어가는 항목들 어드민에서 관리할 수 있게" → "아이콘 종류도 선택할 수 있게". 앱 필터 시트의 섹션과 항목을 어드민이 정하고 공개 `GET /v1/discovery/filters`(native-v1.md "발견 필터 시트 표현")가 그대로 내려 준다.
+
+- **페이지** `필터 구성`: 섹션 목록(`활동 상태`·`종류`·`분야`·`자격`; 2026-11-04 화면 라벨 통일, 옛 `대상`)을 끌어 순서를 바꾸고 켜고 끈다. `활동 상태`는 세 묶음의 표시 이름만(묶음 규칙은 코드). `종류`는 **모드별 두 목록**(2026-11-03 밤): `kinds.program`은 프로그램 종류(BOOTCAMP·CLUB·CONTEST·HACKATHON·STUDY·OTHER), `kinds.event`는 이벤트 종류(CONFERENCE·MEETUP·LECTURE·WORKSHOP), 각 목록의 코드마다 노출·순서·표시 이름·**아이콘**. 공개 `GET /v1/discovery/filters`는 `kind` 질의(program|event)에 맞는 목록을 `종류` 섹션으로 준다. `분야`는 태그 사전의 분야 태그 중 보일 것과 순서·아이콘(비우면 상위 분야 전부, 사전 순). `대상`은 켜기와 표시 이름·보조 문구.
+- **아이콘 선택기**: 앱에 내장된 "아이콘 통일" 표의 키 목록(`GET /v1/admin/icons` → `[{key, label, ios, android}]`, 서버 상수)을 격자로 보여 고른다. 미리 보기는 어드민의 같은 이름 인라인 SVG. 표에 없는 아이콘은 고를 수 없다(새 아이콘은 코드 변경).
+- **분야 아이콘은 겹치지 않게**(2026-11-05 사용자 결정, 분야 팔로우 화면의 분야 로고가 이 아이콘이라): `분야` 섹션에서 같은 아이콘을 두 분야에 고를 수 없다. 선택기에서 다른 분야가 이미 쓴 아이콘은 흐리게 보이고 고를 수 없으며, 저장할 때 겹치면 `400 DUPLICATE_FIELD_ICON`(겹친 `code` 둘을 함께 돌려줌; 오류 이름·응답 모양은 2026-11-05 사용자 확정). 분야별 색은 두지 않는다(앱은 민트 원 + 청록 글리프로 통일).
+- **저장**: `GET/PUT /v1/admin/discovery-filters` → `{sections: [{key, enabled, title, subtitle?, items?: [{code, enabled, label, icon}], kinds?: {program: [...], event: [...]}}]}`(`종류` 섹션은 `items` 대신 `kinds` 두 목록)(한 행 `discovery_filter_config(id=1, config jsonb, updated_at)`, V65). 모르는 섹션 키·종류 코드·아이콘 키·없는 태그 id는 400. 저장 즉시 공개 응답에 반영(캐시 5분).
+- 기본값(행이 없을 때): 상태 세 묶음, 종류는 프로그램 모드 여섯(부트캠프·동아리·공모전·해커톤·스터디·기타)과 이벤트 모드 넷(컨퍼런스·밋업·강연·워크숍), 분야 상위 전부, 대상 켬.

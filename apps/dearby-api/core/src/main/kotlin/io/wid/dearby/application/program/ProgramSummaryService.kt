@@ -3,6 +3,7 @@ package io.wid.dearby.application.program
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.PlaceShort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -33,6 +34,21 @@ class ProgramSummaryService(
         return ProgramSummaryPage(decorate(found.take(condition.size)), if (found.size > condition.size) condition.cursor + condition.size else null)
     }
 
+    // countOnly=true(native-v1.md "발견 필터 시트 표현" `프로그램 n개 보기`): 같은 조건으로 묶이는 프로그램 총수
+    @Transactional(readOnly = true)
+    fun count(condition: ProgramSummarySearch): Int {
+        if ((condition.q?.length ?: 0) > MAX_QUERY_LENGTH) throw InvalidInputException("검색어는 ${MAX_QUERY_LENGTH}자까지입니다")
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        return if (condition.eligibility == null) summaries.count(condition, now) else filteredSummaries(condition, now).size
+    }
+
+    // 필터 시트 칩 개수 재료(GET /v1/discovery/filters). 조직 칩은 서비스가 하위 조직까지 펼친 뒤 넘긴다
+    @Transactional(readOnly = true)
+    fun facets(condition: ProgramSummarySearch): List<ActivityFacet> = summaries.facets(condition, OffsetDateTime.now(ZoneOffset.UTC))
+
+    // 조직 칩의 하위 조직 펼치기(native-v1.md "발견 필터 시트 표현": 조직은 하위 조직 포함)
+    fun expand(scope: ProgramScope?): ProgramScope? = scope?.takeUnless { it.isEmpty }?.let { it.copy(organizationIds = organizations.subtreeIds(it.organizationIds)) }
+
     // 즐겨찾기한 프로그램의 묶음 머리(게시 활동이 하나도 없는 프로그램은 빠진다)
     @Transactional(readOnly = true)
     fun byIds(ids: Collection<io.wid.dearby.domain.Id>): Map<io.wid.dearby.domain.Id, ProgramSummary> {
@@ -48,11 +64,13 @@ class ProgramSummaryService(
         val tags = summaries.tagsByProgram(page.map { it.id }, OffsetDateTime.now(ZoneOffset.UTC))
         val logo = logos.of(page.associate { it.id to it.organizationId })
         val cover = covers.infoByProgram(page.map { it.id }).filterValues { it.enabled }
+        val ancestors = organizations.ancestors(page.map { it.organizationId }.toSet())
         return page.map { summary ->
             val found = tags[summary.id]
             summary.copy(
                 tags = found?.tags.orEmpty(), fieldTags = found?.fieldTags.orEmpty().take(MAX_FIELD_TAGS), traitTags = found?.traitTags.orEmpty(),
                 logoUrl = logo[summary.id]?.url, brandColor = logo[summary.id]?.brandColor, coverUrl = cover[summary.id]?.url,
+                organizationAncestors = ancestors[summary.organizationId].orEmpty(),
             )
         }
     }
@@ -89,6 +107,7 @@ class ProgramSummaryService(
                 matchedActivityIds = matchedIds,
                 category = program.category,
                 hasTimetable = activities.any { it.hasTimetable },
+                placeShort = PlaceShort.ofAll(activities.map { PlaceShort.Source(it.address, it.location) }),
             )
         }.sortedWith(compareBy<ProgramSummary, OffsetDateTime?>(nullsLast()) { summary -> byProgram.getValue(summary.id).filter { it.status == ActivityStatus.RECRUITING }.mapNotNull { it.sortKey }.minOrNull() }.thenBy { it.name }.thenBy { it.id })
     }

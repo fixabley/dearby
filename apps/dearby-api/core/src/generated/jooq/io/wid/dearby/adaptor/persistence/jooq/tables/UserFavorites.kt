@@ -87,7 +87,7 @@ open class UserFavorites(
     /**
      * The column <code>public.user_favorites.target_type</code>.
      */
-    val TARGET_TYPE: TableField<UserFavoritesRecord, String?> = createField(DSL.name("target_type"), SQLDataType.VARCHAR(10).nullable(false), this, "")
+    val TARGET_TYPE: TableField<UserFavoritesRecord, String?> = createField(DSL.name("target_type"), SQLDataType.VARCHAR(20).nullable(false), this, "")
 
     /**
      * The column <code>public.user_favorites.target_id</code>.
@@ -152,7 +152,7 @@ open class UserFavorites(
     val users: UsersPath by lazy { UsersPath(this, USER_FAVORITES__USER_FAVORITES_USER_ID_FKEY, null) }
     override fun getChecks(): List<Check<UserFavoritesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("user_favorites_notify_level_check"), "(((notify_level)::text = ANY ((ARRAY['ALL'::character varying, 'APPLICATION'::character varying, 'NONE'::character varying])::text[])))", true),
-        Internal.createCheck(this, DSL.name("user_favorites_target_type_check"), "(((target_type)::text = ANY ((ARRAY['ACTIVITY'::character varying, 'PROGRAM'::character varying])::text[])))", true)
+        Internal.createCheck(this, DSL.name("user_favorites_target_type_check"), "(((target_type)::text = ANY ((ARRAY['ACTIVITY'::character varying, 'PROGRAM'::character varying, 'ORGANIZATION'::character varying])::text[])))", true)
     )
     override fun `as`(alias: String): UserFavorites = UserFavorites(DSL.name(alias), this)
     override fun `as`(alias: Name): UserFavorites = UserFavorites(alias, this)

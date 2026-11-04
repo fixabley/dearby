@@ -41,7 +41,9 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
  * 삭제하고 차단하기 ([block] after a confirmation), contract "명함 신고·차단".
  */
 @Composable fun WalletCardPage(received: ReceivedCard, myCards: List<Pair<String, String>>, busy: Boolean, message: String?,
-                               close: () -> Unit, contact: (ContactState) -> Unit, report: (String, String?) -> Unit, block: () -> Unit, giveBack: (String) -> Unit) {
+                               close: () -> Unit, contact: (ContactState) -> Unit, report: (String, String?) -> Unit, block: () -> Unit, giveBack: (String) -> Unit,
+                               /** An activity-role history row opens that activity's detail (contract "표시(프로필 활동 이력·명함)"). */
+                               openActivity: ((String) -> Unit)? = null) {
     var picking by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var reporting by remember { mutableStateOf(false) }
@@ -61,7 +63,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 received.originLines.forEach { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
-            CardContent(received.card, onContact = contact)
+            CardContent(received.card, onContact = contact, onActivity = openActivity)
             if (received.reciprocal) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ExampleBadge("맞교환했어요", accent = true) }
             else {
                 DearbyOutlineButton({ if (myCards.size == 1) giveBack(myCards[0].first) else picking = true }, Modifier.fillMaxWidth(), enabled = !busy && myCards.isNotEmpty()) {

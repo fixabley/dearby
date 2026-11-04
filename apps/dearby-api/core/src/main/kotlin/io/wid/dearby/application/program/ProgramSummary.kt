@@ -4,6 +4,7 @@ import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.OrganizationRef
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.Tag
 import io.wid.dearby.domain.eligibility.EligibilityFilter
@@ -33,7 +34,14 @@ data class ProgramSummary(
     val hasTimetable: Boolean = false, // 묶음의 모집 중·모집 예정 활동(status를 보내면 그 상태의 활동, kind 등 필터 반영) 중 하나라도 시간표 있는 일정이 있다(native-v1.md "트랙·세션 시간표")
     val statusCounts: Map<ActivityStatus, Int> = emptyMap(), // 조회 범위 안 게시 활동의 상태별 수(0인 상태는 빠진다)(native-v1.md "활동 상태")
     val logoUrl: String? = null, // 보일 로고 공개 경로: 프로그램 로고, 없으면 가장 가까운 조직 로고(native-v1.md "조직 로고와 로고 계승"), 없으면 null
+    val placeShort: String? = null, // 조회 범위 안 활동 장소의 짧은 꼴(native-v1.md "행 컴포넌트" placeShort, PlaceShort). 못 뽑으면 null
+    val organizationAncestors: List<OrganizationRef> = emptyList(), // 조직의 상위 경로(최상위부터, native-v1.md "조직 화면" 드롭다운). 최상위 조직은 빈 목록
 )
+
+// 발견 필터 시트의 조직·프로그램 칩(native-v1.md "발견 필터 시트 표현"): 고른 프로그램이거나 고른 조직(하위 조직 포함, 서비스가 펼친다)의 프로그램
+data class ProgramScope(val programIds: Set<Id>, val organizationIds: Set<Id>) {
+    val isEmpty get() = programIds.isEmpty() && organizationIds.isEmpty()
+}
 
 // q는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). cursor는 정렬된 목록의 위치(이전 nextCursor)
 data class ProgramSummarySearch(
@@ -48,6 +56,7 @@ data class ProgramSummarySearch(
     val tagIds: Set<Id>? = null, // 태그 필터(native-v1.md "태그"): 모두 가진 활동만(AND). 열린 활동 수·맞은 id에 함께 적용
     val programIds: Set<Id>? = null, // 이 프로그램들만(즐겨찾기). 있으면 openOnly와 상관없이 게시 활동이 있는 프로그램을 모두 준다
     val statuses: Set<ActivityStatus>? = null, // 활동 상태 필터(native-v1.md "활동 상태"). 있으면 openOnly 대신 이 상태의 활동(모집 중·예정이 아니면 최근 3년 안)만으로 묶는다
+    val scope: ProgramScope? = null, // 필터 시트의 조직·프로그램 칩(organizationIds·programIds). 다른 조건과 AND. programIds(즐겨찾기 내부용)와 다르다
 )
 
 // 대상자 필터가 있을 때 묶음을 만들 재료: 열린 활동(status가 있으면 그 상태의 활동) 한 건(1차 판정을 지난 것)
@@ -62,6 +71,8 @@ data class OpenActivity(
     val status: ActivityStatus,
     val eligibility: EligibilityGroup?,
     val hasTimetable: Boolean = false, // 시간표 있는 일정이 있다
+    val address: String? = null, // 활동 기간 일정의 주소(address_line2), placeShort 재료
+    val location: String? = null, // 장소 문구(activities.location), 주소가 없을 때 placeShort 재료
 )
 
 // nextCursor가 null이면 마지막 페이지

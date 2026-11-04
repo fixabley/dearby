@@ -5,6 +5,7 @@ import type { InputRef } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { LogoField, LogoImage } from "./logo";
+import { RolesSection } from "./roles";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
 import { type Category, categoryLabel, categoryOptions } from "./category";
 import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
@@ -435,6 +436,9 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
               )
             }
           />
+        </Form.Item>
+        <Form.Item label="역할">
+          <RolesSection kind="program" id={program.id} />
         </Form.Item>
       </Form>
     </Modal>

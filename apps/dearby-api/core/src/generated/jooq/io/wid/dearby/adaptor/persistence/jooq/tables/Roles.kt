@@ -5,19 +5,30 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_ORGANIZATION_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ROLES__ROLES_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.OrganizationsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Programs.ProgramsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.RolesRecord
 
 import java.time.OffsetDateTime
 
 import kotlin.collections.Collection
+import kotlin.collections.List
 
+import org.jooq.Check
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Identity
 import org.jooq.InverseForeignKey
 import org.jooq.Name
+import org.jooq.Path
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
 import org.jooq.Record
@@ -80,7 +91,7 @@ open class Roles(
     /**
      * The column <code>public.roles.name</code>.
      */
-    val NAME: TableField<RolesRecord, String?> = createField(DSL.name("name"), SQLDataType.VARCHAR(100).nullable(false), this, "")
+    val NAME: TableField<RolesRecord, String?> = createField(DSL.name("name"), SQLDataType.VARCHAR(200).nullable(false), this, "")
 
     /**
      * The column <code>public.roles.name_en</code>.
@@ -96,6 +107,31 @@ open class Roles(
      * The column <code>public.roles.updated_at</code>.
      */
     val UPDATED_AT: TableField<RolesRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
+
+    /**
+     * The column <code>public.roles.organization_id</code>.
+     */
+    val ORGANIZATION_ID: TableField<RolesRecord, Long?> = createField(DSL.name("organization_id"), SQLDataType.BIGINT, this, "")
+
+    /**
+     * The column <code>public.roles.program_id</code>.
+     */
+    val PROGRAM_ID: TableField<RolesRecord, Long?> = createField(DSL.name("program_id"), SQLDataType.BIGINT, this, "")
+
+    /**
+     * The column <code>public.roles.activity_id</code>.
+     */
+    val ACTIVITY_ID: TableField<RolesRecord, Long?> = createField(DSL.name("activity_id"), SQLDataType.BIGINT, this, "")
+
+    /**
+     * The column <code>public.roles.source</code>.
+     */
+    val SOURCE: TableField<RolesRecord, String?> = createField(DSL.name("source"), SQLDataType.VARCHAR(20).nullable(false), this, "")
+
+    /**
+     * The column <code>public.roles.position</code>.
+     */
+    val POSITION: TableField<RolesRecord, Int?> = createField(DSL.name("position"), SQLDataType.INTEGER.nullable(false), this, "")
 
     private constructor(alias: Name, aliased: Table<RolesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<RolesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -115,9 +151,62 @@ open class Roles(
      * Create a <code>public.roles</code> table reference
      */
     constructor(): this(DSL.name("roles"), null)
+
+    constructor(path: Table<out Record>, childPath: ForeignKey<out Record, RolesRecord>?, parentPath: InverseForeignKey<out Record, RolesRecord>?): this(Internal.createPathAlias(path, childPath, parentPath), path, childPath, parentPath, ROLES, null, null)
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    open class RolesPath : Roles, Path<RolesRecord> {
+        constructor(path: Table<out Record>, childPath: ForeignKey<out Record, RolesRecord>?, parentPath: InverseForeignKey<out Record, RolesRecord>?): super(path, childPath, parentPath)
+        private constructor(alias: Name, aliased: Table<RolesRecord>): super(alias, aliased)
+        override fun `as`(alias: String): RolesPath = RolesPath(DSL.name(alias), this)
+        override fun `as`(alias: Name): RolesPath = RolesPath(alias, this)
+        override fun `as`(alias: Table<*>): RolesPath = RolesPath(alias.qualifiedName, this)
+    }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIdentity(): Identity<RolesRecord, Long?> = super.getIdentity() as Identity<RolesRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<RolesRecord> = ROLES_PKEY
+    override fun getReferences(): List<ForeignKey<RolesRecord, *>> = listOf(ROLES__ROLES_ACTIVITY_ID_FKEY, ROLES__ROLES_ORGANIZATION_ID_FKEY, ROLES__ROLES_PROGRAM_ID_FKEY)
+
+    /**
+     * Get the implicit join path to the <code>public.activities</code> table.
+     */
+    fun activities(): ActivitiesPath = activities
+    val activities: ActivitiesPath by lazy { ActivitiesPath(this, ROLES__ROLES_ACTIVITY_ID_FKEY, null) }
+
+    /**
+     * Get the implicit join path to the <code>public.organizations</code>
+     * table.
+     */
+    fun organizations(): OrganizationsPath = organizations
+    val organizations: OrganizationsPath by lazy { OrganizationsPath(this, ROLES__ROLES_ORGANIZATION_ID_FKEY, null) }
+
+    /**
+     * Get the implicit join path to the <code>public.programs</code> table.
+     */
+    fun programs(): ProgramsPath = programs
+    val programs: ProgramsPath by lazy { ProgramsPath(this, ROLES__ROLES_PROGRAM_ID_FKEY, null) }
+
+    private lateinit var _profileHistories: ProfileHistoriesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_histories</code> table
+     */
+    fun profileHistories(): ProfileHistoriesPath {
+        if (!this::_profileHistories.isInitialized)
+            _profileHistories = ProfileHistoriesPath(this, null, PROFILE_HISTORIES__PROFILE_HISTORIES_ROLE_ID_FKEY.inverseKey)
+
+        return _profileHistories;
+    }
+
+    val profileHistories: ProfileHistoriesPath
+        get(): ProfileHistoriesPath = profileHistories()
+    override fun getChecks(): List<Check<RolesRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("roles_owner_check"), "((num_nonnulls(organization_id, program_id, activity_id) = 1))", true),
+        Internal.createCheck(this, DSL.name("roles_source_check"), "(((source)::text = ANY ((ARRAY['CURATED'::character varying, 'COLLECTED'::character varying])::text[])))", true)
+    )
     override fun `as`(alias: String): Roles = Roles(DSL.name(alias), this)
     override fun `as`(alias: Name): Roles = Roles(alias, this)
     override fun `as`(alias: Table<*>): Roles = Roles(alias.qualifiedName, this)

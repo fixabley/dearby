@@ -2,7 +2,7 @@
 // "추천 설정 퍼널·지원 자격 정보"): what the Bearer branch of the `/api/*` proxy accepts from the browser and lets through from
 // the API. Public shapes (Card, Contact, History, ProgramSummary) stay in `models.ts`; this file only adds the account-only ones.
 import { z } from "zod";
-import { CONTACT_KINDS, cardSchema, contactSchema, exchangeContextSchema, historySchema, programSummarySchema, uuid } from "./models";
+import { CONTACT_KINDS, ROLE_OWNER_KINDS, cardSchema, contactSchema, exchangeContextSchema, historySchema, programSummarySchema, roleOwnerSchema, uuid } from "./models";
 
 const text = z.string();
 const positiveInt = z.number().int().positive();
@@ -63,19 +63,16 @@ export const profileRequestSchema = z
     contacts: z
       .array(z.object({ id: uuid, kind: z.enum(CONTACT_KINDS), label: z.string().max(60), value: z.string().trim().min(1).max(500) }).strict())
       .max(50),
+    // 역할 매칭 (contract "이력 (History) — 역할 매칭"): `{roleId}` 또는 직접 입력 `{ownerKind, ownerId | ownerName, roleName}`.
     histories: z
       .array(
         z
           .object({
             id: uuid,
-            kind: z.enum(["organization", "activity"]),
-            organizationId: positiveInt.optional(),
-            organizationName: z.string().trim().min(1).max(200).optional(),
-            programId: positiveInt.optional(),
-            programName: z.string().trim().min(1).max(200).optional(),
-            activityId: positiveInt.optional(),
-            activityName: z.string().trim().min(1).max(200).optional(),
             roleId: positiveInt.optional(),
+            ownerKind: z.enum(ROLE_OWNER_KINDS).optional(),
+            ownerId: positiveInt.optional(),
+            ownerName: z.string().trim().min(1).max(200).optional(),
             roleName: z.string().trim().min(1).max(100).optional(),
             startDate: dateText,
             endDate: dateText.nullable().optional(),
@@ -88,7 +85,7 @@ export const profileRequestSchema = z
   .strict();
 export type ProfileRequest = z.infer<typeof profileRequestSchema>;
 
-// 이력 입력의 선택 창 검색 (`GET /v1/organizations|programs|roles|jobs`, contract "이력"·"직무").
+// 이력·직무 입력의 선택 창 검색 (`GET /v1/organizations|programs|jobs`, contract "이력"·"직무").
 const named = z.object({ id: z.number().int(), name: text });
 export const activityInfoPageSchema = z.object({
   items: z.array(
@@ -105,6 +102,12 @@ export const activityInfoPageSchema = z.object({
 });
 export type ActivityInfoPage = z.infer<typeof activityInfoPageSchema>;
 export type ActivityInfoItem = ActivityInfoPage["items"][number];
+/** 한 단위의 역할 목록 `GET /v1/roles?organizationId|programId|activityId&q` (contract "이력 (History) — 역할 매칭" › Role). */
+export const rolePageSchema = z.object({
+  items: z.array(z.object({ id: z.number().int(), name: text, nameEn: text.nullable().optional().catch(null), owner: roleOwnerSchema, source: text })),
+  nextCursor: z.number().int().nullable(),
+});
+export type RolePage = z.infer<typeof rolePageSchema>;
 
 // ── 연락처 인증 (contract "연락처 인증") ───────────────────────────────────────────────────────────────────────────────────────
 export const githubStartBodySchema = z.object({ platform: z.literal("web") }).strict();

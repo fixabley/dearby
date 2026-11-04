@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RequestError, errorMessage } from "@/lib/client";
-import { contactUsername } from "@/lib/models";
-import type { MyCard, Profile, ProfileHistory } from "@/lib/account-models";
+import { contactUsername, historyTitle } from "@/lib/models";
+import type { MyCard, Profile } from "@/lib/account-models";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -165,12 +165,12 @@ export function CardEditor({ card, onClose, onSaved }: { card?: MyCard; onClose:
                       onChange={(checked) => toggle(setHistoryIds)(history.id, checked)}
                     >
                       <span className="flex flex-col gap-0.5">
-                        <span className="text-subheadline font-semibold">{chain(history).join(" · ")}</span>
-                        <span className="flex flex-wrap items-center gap-2 text-footnote text-secondary-label">
-                          {history.role?.name ?? history.roleName}
-                          {history.approval === "pending" && <Badge>승인 대기</Badge>}
-                          {history.approval === "rejected" && <Badge className="text-danger">거절</Badge>}
-                        </span>
+                        <span className="text-subheadline font-semibold">{historyTitle(history)}</span>
+                        {history.approval !== "approved" && (
+                          <span className="flex flex-wrap items-center gap-2 text-footnote text-secondary-label">
+                            {history.approval === "pending" ? <Badge>승인 대기</Badge> : <Badge className="text-danger">거절</Badge>}
+                          </span>
+                        )}
                       </span>
                     </CheckRow>
                   </li>
@@ -204,12 +204,5 @@ export function CardEditor({ card, onClose, onSaved }: { card?: MyCard; onClose:
         )}
       </SheetContent>
     </Sheet>
-  );
-}
-
-/** 조직 → 프로그램 → 활동 이름(카탈로그 또는 직접 입력). */
-function chain(history: ProfileHistory): string[] {
-  return [history.organization?.name ?? history.organizationName, history.program?.name ?? history.programName, history.activity?.name ?? history.activityName].filter(
-    (value): value is string => !!value,
   );
 }

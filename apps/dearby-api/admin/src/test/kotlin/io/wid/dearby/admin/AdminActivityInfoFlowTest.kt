@@ -1052,9 +1052,9 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         fun session(track: String, title: String, start: String, end: String, kind: String = "TALK", id: Long? = null) =
             """{${id?.let { "\"id\":$it," } ?: ""}"track":$track,"kind":"$kind","title":"$title","startAt":"2026-11-20T$start:00+09:00","endAt":"2026-11-20T$end:00+09:00","speakers":[{"name":"김연사","affiliation":"우아한형제들"}],"tagIds":[$tagId]}"""
 
-        assertEquals("""{"scheduleId":$block,"tracks":[],"sessions":[]}""", read(mvc.get(path) { asAdmin() }.andExpect { status { isOk() } }).toString())
+        assertEquals("""{"scheduleId":$block,"rooms":[],"tracks":[],"sessions":[]}""", read(mvc.get(path) { asAdmin() }.andExpect { status { isOk() } }).toString())
         val first = read(
-            put(path, """{"tracks":[{"name":"Track 1","room":"A홀"},{"name":"Track 2"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE")},${session("0", "트랙1 세션", "11:40", "12:20")},${session("1", "트랙2 세션", "11:40", "12:20")}]}""")
+            put(path, """{"rooms":[{"name":"A홀"}],"tracks":[{"name":"Track 1","room":0},{"name":"Track 2"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE")},${session("0", "트랙1 세션", "11:40", "12:20")},${session("1", "트랙2 세션", "11:40", "12:20")}]}""")
                 .andExpect { status { isOk() } }
         )
         assertEquals(listOf("Track 1" to 0, "Track 2" to 1), first["tracks"].toList().map { it["name"].asString() to it["position"].asInt() })
@@ -1069,11 +1069,12 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
 
         // id로 고치면 세션 찜이 남고, 빠진 세션·트랙은 지운다(그 세션 찜도). 트랙 순서를 바꿀 수 있다
         val (trackA, trackB) = first["tracks"].toList().map { it["id"].asLong() }
+        val roomA = first["rooms"][0]["id"].asLong()
         val (keynote, talkA, talkB) = first["sessions"].toList().map { it["id"].asLong() }
         val user = java.util.UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
         listOf(talkA, talkB).forEach { jdbc.sql("insert into user_session_favorites (user_id, session_id, created_at) values (?, ?, now())").params(user, it).update() }
         val second = read(
-            put(path, """{"tracks":[{"id":$trackB,"name":"Track 2"},{"id":$trackA,"name":"Track 1 (본관)","room":"A홀"}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE", keynote)},${session("1", "트랙1 세션(제목 수정)", "11:40", "12:20", id = talkA)}]}""")
+            put(path, """{"rooms":[{"id":$roomA,"name":"A홀"}],"tracks":[{"id":$trackB,"name":"Track 2"},{"id":$trackA,"name":"Track 1 (본관)","room":0}],"sessions":[${session("null", "키노트", "10:50", "11:30", "KEYNOTE", keynote)},${session("1", "트랙1 세션(제목 수정)", "11:40", "12:20", id = talkA)}]}""")
                 .andExpect { status { isOk() } }
         )
         assertEquals(listOf(trackB, trackA), second["tracks"].toList().map { it["id"].asLong() })
@@ -1097,8 +1098,44 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val single = read(put("/v1/admin/activities/$activity/schedules/$slotSchedule/timetable", """{"tracks":[],"sessions":[${session("null", "단일 세션", "09:00", "10:00")}]}""").andExpect { status { isOk() } })
         assertEquals(0, single["tracks"].size())
         assertEquals(1, single["sessions"].size())
-        assertEquals("""{"scheduleId":$block,"tracks":[],"sessions":[]}""", read(put(path, """{"tracks":[],"sessions":[]}""").andExpect { status { isOk() } }).toString())
+        assertEquals("""{"scheduleId":$block,"rooms":[],"tracks":[],"sessions":[]}""", read(put(path, """{"tracks":[],"sessions":[]}""").andExpect { status { isOk() } }).toString())
         assertEquals(0, jdbc.sql("select count(*) from user_session_favorites where user_id = ?").param(user).query(Int::class.java).single())
         jdbc.sql("delete from users where id = ?").param(user).update()
+    }
+
+    // admin-v1.md "발견 필터 구성": 구성 GET(기본)·PUT(검증)·아이콘 목록
+    @Test
+    fun `발견 필터 구성은 기본값을 주고 저장하며 모르는 섹션·종류·아이콘·분야 태그는 400이고 아이콘 목록은 서버 상수다`() {
+        mvc.get("/v1/admin/discovery-filters").andExpect { status { isUnauthorized() } }
+        val defaults = read(mvc.get("/v1/admin/discovery-filters") { asAdmin() }.andExpect { status { isOk() } })
+        assertEquals(listOf("status", "category", "field", "eligibility"), defaults["sections"].toList().map { it["key"].asString() })
+        assertEquals(6, defaults["sections"][1]["items"].size())
+        assertEquals(0, defaults["sections"][2]["items"].size())
+        val icons = read(mvc.get("/v1/admin/icons") { asAdmin() }.andExpect { status { isOk() } })["items"]
+        assertEquals(listOf("bootcamp", "부트캠프", "graduationcap", "School"), icons[0].let { listOf(it["key"].asString(), it["label"].asString(), it["ios"].asString(), it["android"].asString()) })
+        assertEquals(true, icons.toList().any { it["key"].asString() == "dataAi" })
+
+        val field = read(mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"필터 분야 ${java.util.UUID.randomUUID()}","nameEn":"filterField","kind":"FIELD"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        fun put(content: String) = mvc.put("/v1/admin/discovery-filters") { asAdmin(); body(content) }
+        val config = """{"sections":[
+            {"key":"category","enabled":true,"title":"종류","items":[{"code":"HACKATHON","enabled":true,"label":"해커톤","icon":"hackathon"},{"code":"BOOTCAMP","enabled":false,"label":"부트캠프","icon":"bootcamp"}]},
+            {"key":"status","enabled":true,"title":"상태","subtitle":"여러 개","items":[{"code":"available","enabled":true,"label":"지원 가능","icon":"send"}]},
+            {"key":"field","enabled":true,"title":"분야","items":[{"code":"$field","enabled":true,"label":"분야 하나","icon":"dataAi"}]},
+            {"key":"eligibility","enabled":false,"title":"대상","items":[{"code":"mine","enabled":true,"label":"내 조건만","icon":"profile"}]}
+        ]}"""
+        val saved = read(put(config).andExpect { status { isOk() } })
+        assertEquals(listOf("category", "status", "field", "eligibility"), saved["sections"].toList().map { it["key"].asString() })
+        assertEquals(saved.toString(), read(mvc.get("/v1/admin/discovery-filters") { asAdmin() }).toString())
+        assertEquals(1, jdbc.sql("select count(*) from discovery_filter_config where id = 1").query(Int::class.java).single())
+        put("""{"sections":[{"key":"colors","enabled":true,"title":"색"}]}""").andExpect { status { isBadRequest() } }
+        // 종류 코드는 대문자로 정규화해 저장한다(소문자로 저장되면 공개 필터가 깨지던 결함)
+        assertEquals("CLUB", read(put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"club","enabled":true,"label":"동아리","icon":"club"}]}]}""").andExpect { status { isOk() } })["sections"][0]["items"][0]["code"].asString())
+        assertEquals("CLUB", read(mvc.get("/v1/admin/discovery-filters") { asAdmin() })["sections"][0]["items"][0]["code"].asString())
+        put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"PARTY","enabled":true,"label":"파티","icon":"bootcamp"}]}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"category","enabled":true,"title":"종류","items":[{"code":"CLUB","enabled":true,"label":"동아리","icon":"rainbow"}]}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"field","enabled":true,"title":"분야","items":[{"code":"999999","enabled":true,"label":"없음","icon":"tag"}]}]}""").andExpect { status { isBadRequest() } }
+        put("""{"sections":[{"key":"status","enabled":true,"title":"a"},{"key":"status","enabled":true,"title":"b"}]}""").andExpect { status { isBadRequest() } }
+        jdbc.sql("delete from discovery_filter_config").update()
+        mvc.delete("/v1/admin/tags/$field") { asAdmin() }.andExpect { status { isNoContent() } }
     }
 }

@@ -1,8 +1,8 @@
 package io.wid.dearby.application.profile
 
-import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.profile.ActivityInfoRef
 import io.wid.dearby.domain.profile.ApprovalStatus
-import io.wid.dearby.domain.profile.History
+import io.wid.dearby.domain.profile.RoleOwner
 import io.wid.dearby.domain.profile.VerificationStatus
 import java.util.*
 
@@ -14,8 +14,8 @@ interface HistoryReviewRepository {
 
     fun find(historyId: UUID): HistoryForReview?
 
-    // 승인 때 직접 입력 값을 활동 정보 id로 바꾼다(null이면 그대로)
-    fun updateApproval(historyId: UUID, status: ApprovalStatus, reason: String?, organizationId: Id?, programId: Id?, activityId: Id?, roleId: Id?): Boolean
+    // 승인 때 직접 입력 값을 등록된 것으로 바꾼다(null이면 그대로): owner는 이름만 적은 단위를 등록된 단위(id·이름)로, role은 역할 이름을 역할(id·이름)로
+    fun updateApproval(historyId: UUID, status: ApprovalStatus, reason: String?, owner: RoleOwner?, role: ActivityInfoRef?): Boolean
 
     fun updateVerification(historyId: UUID, status: VerificationStatus): Boolean
 }

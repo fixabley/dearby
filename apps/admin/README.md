@@ -78,8 +78,8 @@ npm run build
 
 자동 테스트는 2026-10-06 사용자 요청으로 지웠다. [`docs/evidence`](docs/evidence/README.md)는 2026-09 이전 어드민 시절 화면 기록이다.
 
-## 이력 검토·역할 (2026-10-16)
+## 이력 검토·역할 (2026-10-16, 2026-11-03 역할 귀속)
 
-- `histories.tsx`: 사용자가 직접 적은 조직·프로그램·활동·역할을 활동 정보 항목에 매핑(검색 또는 새로 만들기)해 승인하거나 사유를 적어 거절한다(`POST histories/:id/approval`). 인증자료는 bearer를 붙여 blob으로 받아 새 탭에서 연다(`apiBlob`). 인증 확인 탭은 `POST histories/:id/verification`.
-- `roles.tsx`: 역할 목록 CRUD. 띄어쓰기만 다른 이름은 서버가 400으로 거부하고 그 사유를 그대로 보인다.
+- `histories.tsx`: 행은 `귀속 단위 이름 · 역할 이름`과 단위 종류(조직·프로그램·활동)를 보이고, 직접 입력한 단위·역할에는 ‘직접 입력’ 표시가 붙는다. 승인 모달은 단위 이름만 적은 이력이면 종류를 고르고 등록된 조직·프로그램·게시된 활동을 검색해 `ownerKind·ownerId`로 보내고, 역할은 그 단위의 역할 목록에서 고르거나 ‘이 이름으로 역할 만들기’(`POST roles` 뒤 그 id로 승인)로 `roleId`를 정한다(`POST histories/:id/approval`). 거절은 사유 필수. 인증자료는 bearer를 붙여 blob으로 받아 새 탭에서 연다(`apiBlob`). 인증 확인 탭은 `POST histories/:id/verification`.
+- `roles.tsx`: 전역 역할 메뉴 대신 조직·프로그램·활동 편집 화면 안의 ‘역할’ 절(`RolesSection`). 그 단위의 역할 목록(`GET roles?organizationId|programId|activityId`)에 추가·이름 고치기·순서 바꾸기(`PATCH position`, 순서가 바뀐 행만)·삭제를 하고 출처(수집·운영자)를 보인다. 저장 버튼과 상관없이 바로 반영되며, 이력이 쓰는 역할 삭제·띄어쓰기만 다른 이름은 서버의 400 사유를 그대로 보인다. 조직도의 조직·프로그램 행은 ‘역할’ 버튼으로 같은 절을 모달로 연다.
 - 계정 id는 화면에 보이지 않는다(작성자 프로필 이름만).

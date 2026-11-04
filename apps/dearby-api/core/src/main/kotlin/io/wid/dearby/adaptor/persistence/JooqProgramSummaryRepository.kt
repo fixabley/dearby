@@ -4,8 +4,14 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_TAGS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.TAGS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATIONS
+import org.jooq.Field
+import org.jooq.Record
+import org.jooq.SelectWindowStep
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
+import io.wid.dearby.application.program.ActivityFacet
 import io.wid.dearby.application.program.OpenActivity
+import io.wid.dearby.application.program.ProgramScope
+import io.wid.dearby.domain.PlaceShort
 import io.wid.dearby.application.program.ProgramSummary
 import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.application.program.ProgramSummarySearch
@@ -39,12 +45,22 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         condition.kind?.let { add(OpenActivityConditions.kind(it)) }
         condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
         addAll(EligibilityRows.conditions(condition.eligibility))
+        condition.scope?.let { add(inScope(it)) }
     }
+
+    // 필터 시트의 조직·프로그램 칩(native-v1.md "발견 필터 시트 표현"): 고른 프로그램이거나 고른 조직(서비스가 하위 조직까지 펼친 것)의 프로그램
+    private fun inScope(scope: ProgramScope): Condition = DSL.or(
+        listOfNotNull(
+            scope.programIds.takeIf { it.isNotEmpty() }?.let { ACTIVITIES.PROGRAM_ID.`in`(it) },
+            scope.organizationIds.takeIf { it.isNotEmpty() }?.let { ACTIVITIES.PROGRAM_ID.`in`(DSL.select(PROGRAMS.ID).from(PROGRAMS).where(PROGRAMS.ORGANIZATION_ID.`in`(it))) },
+        ),
+    )
 
     override fun openActivities(condition: ProgramSummarySearch, now: OffsetDateTime): List<OpenActivity> =
         dsl.select(
             ACTIVITIES.ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, deadline, ACTIVITIES.ELIGIBILITY, OpenActivityConditions.recruitmentEnd,
             DSL.field(TimetableRows.activityHasTimetable), OpenActivityConditions.recruitmentStart, OpenActivityConditions.status(now),
+            act.ADDRESS_LINE2, ACTIVITIES.LOCATION,
         )
             .from(ACTIVITIES)
             .leftJoin(app).on(appJoin)
@@ -55,6 +71,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
                 OpenActivity(
                     row.value1()!!, row.value2()!!, row.value3()!!, row.value4(), row.value5(), row.value7(), row.value9(),
                     ActivityStatus.valueOf(row.value10()), EligibilityRows.read(row.value6()), row.value8() == true,
+                    address = row.value11(), location = row.value12(),
                 )
             }
 
@@ -62,7 +79,30 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
     private fun selected(statuses: Set<ActivityStatus>, now: OffsetDateTime): Condition =
         OpenActivityConditions.statusIn(statuses, now).and(OpenActivityConditions.open(now).or(OpenActivityConditions.upcoming(now)).or(recent(now)))
 
+    override fun count(condition: ProgramSummarySearch, now: OffsetDateTime): Int = dsl.fetchCount(grouped(condition, now).select)
+
     override fun search(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary> {
+        val g = grouped(condition, now)
+        // 모집 중 프로그램 먼저(가장 이른 마감 순) → 모집 예정 프로그램(가장 이른 시작 순) → 나머지는 최근 활동 시작이 늦은 순
+        return g.select
+            .orderBy(
+                g.openCount.gt(0).desc(), g.nearestEnd.asc().nullsLast(),
+                g.upcomingCount.gt(0).desc(), g.nearestStart.asc().nullsLast(),
+                g.latestStart.desc().nullsLast(), PROGRAMS.NAME.asc(), PROGRAMS.ID.asc(),
+            )
+            .limit(condition.size)
+            .offset(condition.cursor)
+            .fetch(g.summary)
+    }
+
+    // 프로그램별로 묶은 조회(search·count가 함께 쓴다). 정렬 키 필드와 행 → 묶음 변환을 함께 넘긴다
+    private class Grouped(
+        val select: SelectWindowStep<out Record>,
+        val openCount: Field<Int>, val nearestEnd: Field<OffsetDateTime?>, val upcomingCount: Field<Int>,
+        val nearestStart: Field<OffsetDateTime?>, val latestStart: Field<OffsetDateTime?>, val summary: (Record) -> ProgramSummary,
+    )
+
+    private fun grouped(condition: ProgramSummarySearch, now: OffsetDateTime): Grouped {
         val q = condition.q?.trim()?.takeIf { it.isNotBlank() }
         val isOpen = OpenActivityConditions.open(now)
         // 모집 예정(마감 숨기기, 2026-10-19 밤): 켜진 토글은 마감된 활동만 숨기므로 모집 예정 활동이 있는 프로그램도 돌려준다
@@ -78,6 +118,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             condition.kind?.let { add(OpenActivityConditions.kind(it)) }
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
+            condition.scope?.let { add(inScope(it)) }
         }
         // 검색어는 활동 이름과 태그 이름(한글·영문)에 맞는다(native-v1.md "태그")
         val activityMatches = q?.let { ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)).or(TagRows.activityTagMatches(it)) }
@@ -90,6 +131,12 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         // 접힌 카드 "시간표" 배지: 모집 중·모집 예정 활동 중 시간표 있는 것이 있는지
         val hasTimetable = DSL.boolOr(isSelected.and(TimetableRows.activityHasTimetable))
         val statuses = DSL.arrayAgg(OpenActivityConditions.status(now))
+        // 장소 짧은 꼴(native-v1.md "행 컴포넌트" placeShort): 모집 중·예정(status가 있으면 그 상태) 활동의 주소(활동 기간 일정)·장소 문구, 그런 활동이 없으면 조회 범위 안 활동 전부.
+        // 두 배열은 같은 행 순서(활동 id 순)이고, 범위 밖 행은 null·값 없음은 빈 문자열
+        val addresses = DSL.arrayAgg(DSL.`when`(isSelected, DSL.coalesce(act.ADDRESS_LINE2, DSL.inline("")))).orderBy(ACTIVITIES.ID)
+        val locations = DSL.arrayAgg(DSL.`when`(isSelected, DSL.coalesce(ACTIVITIES.LOCATION, DSL.inline("")))).orderBy(ACTIVITIES.ID)
+        val allAddresses = DSL.arrayAgg(DSL.coalesce(act.ADDRESS_LINE2, DSL.inline(""))).orderBy(ACTIVITIES.ID)
+        val allLocations = DSL.arrayAgg(DSL.coalesce(ACTIVITIES.LOCATION, DSL.inline(""))).orderBy(ACTIVITIES.ID)
         // 검색어가 활동 이름에 맞은 모집 중·모집 예정 활동 id. 활동 이름으로만 맞은 프로그램도 목록에 넣기 위해 HAVING에서도 쓴다
         val matchedIds = activityMatches?.let { DSL.arrayAggDistinct(DSL.`when`(it.and(isSelected), ACTIVITIES.ID)) }
         val programMatches = q?.let {
@@ -102,7 +149,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN,
             ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN,
             openCount, nearestEnd, matchedIds ?: DSL.inline(null, Array<Long>::class.java), PROGRAMS.CATEGORY, latestStart,
-            upcomingCount, nearestStart, nearestRealEnd, hasTimetable, statuses,
+            upcomingCount, nearestStart, nearestRealEnd, hasTimetable, statuses, addresses, locations, allAddresses, allLocations,
         )
             .from(PROGRAMS)
             .join(ORGANIZATIONS).on(ORGANIZATIONS.ID.eq(PROGRAMS.ORGANIZATION_ID))
@@ -117,33 +164,58 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         } else {
             select
         }
-        // 모집 중 프로그램 먼저(가장 이른 마감 순) → 모집 예정 프로그램(가장 이른 시작 순) → 나머지는 최근 활동 시작이 늦은 순
-        return filtered
-            .orderBy(
-                openCount.gt(0).desc(), nearestEnd.asc().nullsLast(),
-                upcomingCount.gt(0).desc(), nearestStart.asc().nullsLast(),
-                latestStart.desc().nullsLast(), PROGRAMS.NAME.asc(), PROGRAMS.ID.asc(),
+        fun places(addressList: List<String?>, locationList: List<String?>) =
+            addressList.indices.filter { addressList[it] != null }.map { PlaceShort.Source(addressList[it]?.ifEmpty { null }, locationList.getOrNull(it)?.ifEmpty { null }) }
+        return Grouped(filtered, openCount, nearestEnd, upcomingCount, nearestStart, latestStart) { row ->
+            val selectedPlaces = places(row[addresses].orEmpty().toList(), row[locations].orEmpty().toList())
+            val placeSources = selectedPlaces.ifEmpty { places(row[allAddresses].orEmpty().toList(), row[allLocations].orEmpty().toList()) }
+            ProgramSummary(
+                id = row[PROGRAMS.ID]!!,
+                name = row[PROGRAMS.NAME]!!,
+                nameEn = row[PROGRAMS.NAME_EN],
+                organizationId = row[ORGANIZATIONS.ID]!!,
+                organizationName = row[ORGANIZATIONS.NAME]!!,
+                organizationNameEn = row[ORGANIZATIONS.NAME_EN],
+                openActivityCount = row[openCount],
+                nearestRecruitmentEndAt = row[nearestRealEnd], // 모집 마감만. 정렬(nearestEnd)은 활동 시작 대체가 있는 정렬 키 그대로
+                matchedActivityIds = matchedIds?.let { row[it] }?.filterNotNull()?.sorted().orEmpty(),
+                category = row[PROGRAMS.CATEGORY]?.let(ActivityCategory::valueOf),
+                latestActivityAt = row[latestStart],
+                upcomingActivityCount = row[upcomingCount],
+                nearestRecruitmentStartAt = row[nearestStart],
+                hasTimetable = row[hasTimetable] == true,
+                statusCounts = row[statuses].orEmpty().filterNotNull().groupingBy(ActivityStatus::valueOf).eachCount(),
+                placeShort = PlaceShort.ofAll(placeSources),
             )
-            .limit(condition.size)
-            .offset(condition.cursor)
-            .fetch { row ->
-                ProgramSummary(
-                    id = row.value1()!!,
-                    name = row.value2()!!,
-                    nameEn = row.value3(),
-                    organizationId = row.value4()!!,
-                    organizationName = row.value5()!!,
-                    organizationNameEn = row.value6(),
-                    openActivityCount = row.value7(),
-                    nearestRecruitmentEndAt = row.value14(), // 모집 마감만. 정렬(nearestEnd)은 활동 시작 대체가 있는 정렬 키 그대로
-                    matchedActivityIds = row.value9()?.filterNotNull()?.sorted().orEmpty(),
-                    category = row.value10()?.let(ActivityCategory::valueOf),
-                    latestActivityAt = row.value11(),
-                    upcomingActivityCount = row.value12(),
-                    nearestRecruitmentStartAt = row.value13(),
-                    hasTimetable = row.value15() == true,
-                    statusCounts = row.value16().orEmpty().filterNotNull().groupingBy(ActivityStatus::valueOf).eachCount(),
+        }
+    }
+
+    // 필터 시트 개수(GET /v1/discovery/filters): kind·검색어(활동 이름·태그 또는 프로그램·조직 이름)·조직·프로그램 칩 범위 안의 게시 활동(모집 중·예정 또는 최근 3년) 한 건씩, 붙은 태그 id와 함께
+    override fun facets(condition: ProgramSummarySearch, now: OffsetDateTime): List<ActivityFacet> {
+        val q = condition.q?.trim()?.takeIf { it.isNotBlank() }
+        val tagIds = DSL.field(DSL.select(DSL.arrayAgg(ACTIVITY_TAGS.TAG_ID)).from(ACTIVITY_TAGS).where(ACTIVITY_TAGS.ACTIVITY_ID.eq(ACTIVITIES.ID)))
+        val conditions = buildList {
+            add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
+            add(OpenActivityConditions.open(now).or(OpenActivityConditions.upcoming(now)).or(recent(now)))
+            condition.kind?.let { add(OpenActivityConditions.kind(it)) }
+            condition.scope?.let { add(inScope(it)) }
+            q?.let {
+                add(
+                    ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)).or(TagRows.activityTagMatches(it))
+                        .or(PROGRAMS.NAME.containsIgnoreCase(it)).or(PROGRAMS.NAME_EN.containsIgnoreCase(it))
+                        .or(ORGANIZATIONS.NAME.containsIgnoreCase(it)).or(ORGANIZATIONS.NAME_EN.containsIgnoreCase(it)),
                 )
+            }
+        }
+        return dsl.select(ACTIVITIES.PROGRAM_ID, OpenActivityConditions.status(now), ACTIVITIES.CATEGORY, tagIds)
+            .from(ACTIVITIES)
+            .join(PROGRAMS).on(PROGRAMS.ID.eq(ACTIVITIES.PROGRAM_ID))
+            .join(ORGANIZATIONS).on(ORGANIZATIONS.ID.eq(PROGRAMS.ORGANIZATION_ID))
+            .leftJoin(app).on(appJoin)
+            .leftJoin(act).on(actJoin)
+            .where(conditions)
+            .fetch { row ->
+                ActivityFacet(row.value1()!!, ActivityStatus.valueOf(row.value2()), row.value3()?.let(ActivityCategory::valueOf), row.value4().orEmpty().filterNotNull().toSet())
             }
     }
 

@@ -28,77 +28,61 @@ open class ProfileHistoriesRecord() : UpdatableRecordImpl<ProfileHistoriesRecord
         set(value): Unit = set(1, value)
         get(): UUID? = get(1) as UUID?
 
-    open var kind: String?
+    open var roleId: Long?
         set(value): Unit = set(2, value)
-        get(): String? = get(2) as String?
+        get(): Long? = get(2) as Long?
 
-    open var organizationId: Long?
+    open var roleName: String?
         set(value): Unit = set(3, value)
-        get(): Long? = get(3) as Long?
+        get(): String? = get(3) as String?
 
-    open var organizationName: String?
+    open var startDate: LocalDate?
         set(value): Unit = set(4, value)
-        get(): String? = get(4) as String?
+        get(): LocalDate? = get(4) as LocalDate?
 
-    open var programId: Long?
+    open var endDate: LocalDate?
         set(value): Unit = set(5, value)
-        get(): Long? = get(5) as Long?
+        get(): LocalDate? = get(5) as LocalDate?
 
-    open var programName: String?
+    open var description: String?
         set(value): Unit = set(6, value)
         get(): String? = get(6) as String?
 
-    open var activityId: Long?
+    open var position: Int?
         set(value): Unit = set(7, value)
-        get(): Long? = get(7) as Long?
+        get(): Int? = get(7) as Int?
 
-    open var activityName: String?
+    open var approvalStatus: String?
         set(value): Unit = set(8, value)
         get(): String? = get(8) as String?
 
-    open var roleId: Long?
+    open var approvalReason: String?
         set(value): Unit = set(9, value)
-        get(): Long? = get(9) as Long?
+        get(): String? = get(9) as String?
 
-    open var roleName: String?
+    open var verificationStatus: String?
         set(value): Unit = set(10, value)
         get(): String? = get(10) as String?
 
-    open var startDate: LocalDate?
+    open var createdAt: OffsetDateTime?
         set(value): Unit = set(11, value)
-        get(): LocalDate? = get(11) as LocalDate?
+        get(): OffsetDateTime? = get(11) as OffsetDateTime?
 
-    open var endDate: LocalDate?
+    open var updatedAt: OffsetDateTime?
         set(value): Unit = set(12, value)
-        get(): LocalDate? = get(12) as LocalDate?
+        get(): OffsetDateTime? = get(12) as OffsetDateTime?
 
-    open var description: String?
+    open var ownerKind: String?
         set(value): Unit = set(13, value)
         get(): String? = get(13) as String?
 
-    open var position: Int?
+    open var ownerId: Long?
         set(value): Unit = set(14, value)
-        get(): Int? = get(14) as Int?
+        get(): Long? = get(14) as Long?
 
-    open var approvalStatus: String?
+    open var ownerName: String?
         set(value): Unit = set(15, value)
         get(): String? = get(15) as String?
-
-    open var approvalReason: String?
-        set(value): Unit = set(16, value)
-        get(): String? = get(16) as String?
-
-    open var verificationStatus: String?
-        set(value): Unit = set(17, value)
-        get(): String? = get(17) as String?
-
-    open var createdAt: OffsetDateTime?
-        set(value): Unit = set(18, value)
-        get(): OffsetDateTime? = get(18) as OffsetDateTime?
-
-    open var updatedAt: OffsetDateTime?
-        set(value): Unit = set(19, value)
-        get(): OffsetDateTime? = get(19) as OffsetDateTime?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -109,16 +93,9 @@ open class ProfileHistoriesRecord() : UpdatableRecordImpl<ProfileHistoriesRecord
     /**
      * Create a detached, initialised ProfileHistoriesRecord
      */
-    constructor(id: UUID? = null, userId: UUID? = null, kind: String? = null, organizationId: Long? = null, organizationName: String? = null, programId: Long? = null, programName: String? = null, activityId: Long? = null, activityName: String? = null, roleId: Long? = null, roleName: String? = null, startDate: LocalDate? = null, endDate: LocalDate? = null, description: String? = null, position: Int? = null, approvalStatus: String? = null, approvalReason: String? = null, verificationStatus: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, roleId: Long? = null, roleName: String? = null, startDate: LocalDate? = null, endDate: LocalDate? = null, description: String? = null, position: Int? = null, approvalStatus: String? = null, approvalReason: String? = null, verificationStatus: String? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null, ownerKind: String? = null, ownerId: Long? = null, ownerName: String? = null): this() {
         this.id = id
         this.userId = userId
-        this.kind = kind
-        this.organizationId = organizationId
-        this.organizationName = organizationName
-        this.programId = programId
-        this.programName = programName
-        this.activityId = activityId
-        this.activityName = activityName
         this.roleId = roleId
         this.roleName = roleName
         this.startDate = startDate
@@ -130,6 +107,9 @@ open class ProfileHistoriesRecord() : UpdatableRecordImpl<ProfileHistoriesRecord
         this.verificationStatus = verificationStatus
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.ownerKind = ownerKind
+        this.ownerId = ownerId
+        this.ownerName = ownerName
         resetTouchedOnNotNull()
     }
 }

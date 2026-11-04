@@ -1,8 +1,8 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
-import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_ROLES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.ROLES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.activity.ActivityCreation
 import io.wid.dearby.application.activity.ActivityCurationRepository
@@ -31,11 +31,12 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
 
     override fun findAllByActivityId(activityIds: Collection<Id>): List<ActivityCuration> {
         if (activityIds.isEmpty()) return emptyList()
-        val roles = dsl.selectFrom(ACTIVITY_ROLES)
-            .where(ACTIVITY_ROLES.ACTIVITY_ID.`in`(activityIds))
-            .orderBy(ACTIVITY_ROLES.POSITION)
+        // 활동 역할(native-v1.md "이력 (History) — 역할 매칭"): 수집(COLLECTED)과 운영자가 /v1/admin/roles로 만든 것(CURATED)이 함께 roles에 있다
+        val roles = dsl.select(ROLES.ACTIVITY_ID, ROLES.NAME).from(ROLES)
+            .where(ROLES.ACTIVITY_ID.`in`(activityIds))
+            .orderBy(ROLES.POSITION, ROLES.ID)
             .fetch()
-            .groupBy({ it.activityId!! }, { it.name!! })
+            .groupBy({ it.value1()!! }, { it.value2()!! })
         return dsl.selectFrom(ACTIVITIES).where(ACTIVITIES.ID.`in`(activityIds)).fetch().map {
             ActivityCuration(
                 activityId = it.id!!,

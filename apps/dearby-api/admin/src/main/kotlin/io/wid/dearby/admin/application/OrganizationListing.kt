@@ -9,6 +9,6 @@ data class OrganizationListing(
     val organization: Organization,
     val childCount: Int,
     val programCount: Int,
-    val ancestors: List<Pair<Id, String>>,
+    val ancestors: List<io.wid.dearby.domain.OrganizationRef>,
     val logoUrl: String? = null, // 조직 로고 공개 경로(admin-v1.md "조직 로고"), 없으면 null
 )
