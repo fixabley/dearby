@@ -107,7 +107,7 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 
 ### 활동 분야(tracks) 편집 — 2026-11-04 사용자 결정
 
-native-v1.md "활동 분야(tracks)"의 어드민 쪽. 같은 모집 기간의 지원 분야(풀스택·AI·클라우드)는 활동 하나의 `tracks`다. 시간표의 트랙(위 "트랙·세션 시간표")과는 다른 개념이고, `PATCH /v1/admin/activities/:id`의 필드가 아니다(세부 일정과 같이 따로 둔다).
+native-v1.md "활동 분야(tracks)"의 어드민 쪽. 같은 모집 기간의 지원 분야(풀스택·AI·클라우드)는 활동 하나의 `tracks`다. 시간표의 트랙(아래 "트랙·세션 시간표")과는 다른 개념이고, `PATCH /v1/admin/activities/:id`의 필드가 아니다(세부 일정과 같이 따로 둔다).
 
 - `GET /v1/admin/activities/:id/tracks` → `{tracks: [{id, name, description, capacity, position, participantCount, scheduleCount}]}`(`participantCount`는 그 분야를 고른 참여 기록 수, `scheduleCount`는 그 분야를 단 세부 일정 수. 삭제 확인 모달이 이 값을 쓴다).
 - `PUT` 같은 경로 `{tracks: [{id?, name, description?, capacity?}]}` → 같은 응답. 시간표 PUT과 같이 **통째로 바꾼다**: `id`가 있으면 그 분야를 고치고(참여 기록·일정의 `trackId` 유지), 없으면 새로 만들고, 빠진 것은 지운다. 순서는 배열 순서(`position`). 빈 배열이면 분야 없음.
