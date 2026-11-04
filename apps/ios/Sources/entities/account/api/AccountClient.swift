@@ -210,17 +210,29 @@ struct AccountClient: Sendable {
     func evidence(historyID: String, evidenceID: String, _ session: TokenPair) async throws -> Data {
         try await request("profile/histories/\(historyID)/evidence/\(evidenceID)", method: "GET", session: session).0
     }
-    /// Picker searches for the history steps. Organizations, programs and roles need a session; activities are public and are asked with
-    /// `forHistory=true` so events shorter than a week stay out (contract "활동 이력에서 단기 행사 제외" 2026-10-20); discovery uses `ActivityClient`.
-    func searchActivityInfo(_ kind: ActivityInfoKind, query: String, parentID: Int? = nil, _ session: TokenPair?) async throws -> ActivityInfoPage {
+    /// Picker searches for the history and job steps. Roles and jobs need a session; activities are public and are asked with `forHistory=true`
+    /// so events shorter than a week stay out (contract "활동 이력에서 단기 행사 제외" 2026-10-20); discovery uses `ActivityClient`.
+    /// `.roles` lists one unit's roles (`GET /v1/roles?organizationId|programId|activityId`, contract "이력 (History) — 역할 매칭"), so it needs
+    /// a registered `owner`; `.units` is the 어디에서 search: organizations and programs from the public `discovery/search` (which has only `q`,
+    /// no `kinds`, and no activity type yet) and activities from `GET /v1/activities?q=`, together (one failing half still shows the other);
+    /// a blank query lists nothing.
+    func searchActivityInfo(_ kind: ActivityInfoKind, query: String, owner: HistoryOwner? = nil, _ session: TokenPair?) async throws -> ActivityInfoPage {
         var items = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "size", value: "20")]
         switch kind {
-        case .organizations, .jobs: if let parentID { items.append(URLQueryItem(name: "parentId", value: String(parentID))) }
-        case .programs: if let parentID { items.append(URLQueryItem(name: "organizationId", value: String(parentID))) }
-        case .activities:
-            items.append(URLQueryItem(name: "forHistory", value: "true"))
-            if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
-        case .roles: break
+        case .jobs: break
+        case .activities: items.append(URLQueryItem(name: "forHistory", value: "true"))
+        case .roles:
+            guard let owner, let ownerID = owner.id else { return ActivityInfoPage(items: [], nextCursor: nil) }
+            items.append(URLQueryItem(name: "\(owner.kind)Id", value: String(ownerID)))
+        case .units:
+            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return ActivityInfoPage(items: [], nextCursor: nil) }
+            async let units = try? searchActivityInfo(.discovery, query: query, session)
+            async let activities = try? searchActivityInfo(.activities, query: query, session)
+            let (found, more) = await (units, activities)
+            guard found != nil || more != nil else { throw AccountError.unavailable }
+            let typed = (more?.items ?? []).map { item in var typed = item; typed.type = "activity"; return typed }
+            return ActivityInfoPage(items: (found?.items ?? []) + typed, nextCursor: nil)
+        case .discovery: items.removeLast()
         }
         var components = URLComponents()
         components.queryItems = items
@@ -436,7 +448,8 @@ struct AccountClient: Sendable {
         /// 소개 링크 넣기 (contract "소개 링크·소개 글 폐지"); nil (left out, the server reads true) when the profile has no link.
         let includeIntroLink: Bool?
     }
-    enum ActivityInfoKind: String, Sendable { case organizations, programs, activities, roles, jobs }
+    /// Raw values are the API paths; `units` is the combined 어디에서 search and `discovery` its organization·program half (`discovery/search`).
+    enum ActivityInfoKind: String, Sendable { case activities, roles, jobs, units, discovery = "discovery/search" }
     /// `{challengeId, options}` from an options call; the challenge is single use and lasts five minutes.
     struct PasskeyChallenge<Options: Decodable & Sendable>: Decodable, Sendable {
         let challengeId: String

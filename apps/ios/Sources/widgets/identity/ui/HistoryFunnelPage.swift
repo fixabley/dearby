@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Step-by-step history entry: one question per screen with progress, then a summary with evidence (contract "이력").
+/// Step-by-step history entry (contract "이력 (History) — 역할 매칭", 2026-11-03 one funnel: 어디에서 → 역할 → 기간 → 설명): one question per
+/// screen with progress, then a summary with evidence.
 /// Each step is an inset-grouped `Form` section whose header is the question and whose footer carries the error
 /// (contract "폼은 플랫폼 기본 컴포넌트"). Steps are pushed on the page's own navigation stack, so the system back button and the edge
 /// swipe go to the previous question with the answers kept (contract "뒤로 가기", as the 추천 funnel). The root (the first question, or a saved
@@ -28,9 +29,9 @@ struct HistoryFunnelPage: View {
         self.state = state
         self.saved = saved
         self.onDone = onDone
-        root = startAtSummary ? .summary : .kind
+        root = startAtSummary ? .summary : .owner
     }
-    private var steps: [HistoryDraft.Step] { draft.steps }
+    private let steps = HistoryDraft.Step.allCases
     /// Evidence is uploaded as it is picked, so only the answers count as changes.
     private var edited: Bool {
         var compared = draft
@@ -50,12 +51,8 @@ struct HistoryFunnelPage: View {
             Button("취소", role: .cancel) {}
         }
         .onChange(of: path) { _, _ in tried = false }
-        // Un-picking an activity drops the organization and program it brought along, so a typed activity asks for them fresh.
-        .onChange(of: draft.activity) { _, next in
-            guard draft.isActivity, next == nil else { return }
-            draft.organization = nil; draft.organizationName = ""
-            draft.program = nil; draft.programName = ""
-        }
+        // A role belongs to its unit, so changing the unit (also un-picking it) starts the role over.
+        .onChange(of: draft.owner) { _, _ in draft.role = nil; draft.roleName = "" }
     }
     private func page(_ step: HistoryDraft.Step) -> some View {
         let index = steps.firstIndex(of: step) ?? 0
@@ -72,31 +69,35 @@ struct HistoryFunnelPage: View {
     @ViewBuilder private func content(_ step: HistoryDraft.Step) -> some View {
         let stepError = tried ? draft.error(at: step) : nil
         switch step {
-        case .kind:
-            Section {
-                choice("조직 활동", "동아리·학회·회사 같은 조직에서 활동했어요", selected: !draft.isActivity) { draft.kind = "organization" }
-                choice("활동 참여", "컨퍼런스·해커톤·캠프 같은 활동에 참여했어요", selected: draft.isActivity) { draft.kind = "activity" }
-            } header: { question("어떤 이력인가요?") }
-        case .organization:
-            // 조직 이력의 첫 질문, 또는 직접 입력한 활동의 소속(contract "이력" 2026-10-18).
-            ActivityInfoPickerView(title: draft.isActivity ? "어떤 조직에서 한 활동인가요?" : "어떤 조직인가요?", prompt: "조직 이름 검색",
-                                   kind: .organizations, parentID: nil, account: state.account, picked: $draft.organization, typed: $draft.organizationName,
-                                   focus: $searchFocused, footer: stepError)
-        case .program:
-            // Only reached for a hand-typed activity; 조직 이력 does not ask for a program.
-            ActivityInfoPickerView(title: "어떤 프로그램인가요? (선택)", prompt: "프로그램 이름 검색",
-                                   kind: .programs, parentID: draft.organization?.id, account: state.account, picked: $draft.program, typed: $draft.programName,
-                                   focus: $searchFocused)
-        case .activity:
-            // Searches every published activity; a picked activity brings its organization and program along.
-            ActivityInfoPickerView(title: "어떤 활동인가요?", prompt: "활동 이름 검색", kind: .activities, parentID: nil,
-                                   account: state.account, picked: $draft.activity, typed: $draft.activityName, focus: $searchFocused, footer: stepError) { item in
-                draft.organization = item.organization; draft.organizationName = ""
-                draft.program = item.program; draft.programName = ""
+        case .owner:
+            // 조직·프로그램·활동 in one search; a picked unit keeps its kind, a typed name asks for its kind below.
+            ActivityInfoPickerView(title: "어디에서 활동했나요?", prompt: "조직·프로그램·활동 이름 검색", kind: .units, account: state.account,
+                                   picked: Binding(get: { draft.owner.flatMap { unit in unit.id.map { ActivityInfoRef(id: $0, name: unit.name) } } },
+                                                   set: { if $0 == nil { draft.owner = nil } }),
+                                   pickedDetail: draft.owner?.kindName, typed: $draft.ownerName, focus: $searchFocused, footer: stepError) { item in
+                draft.owner = HistoryOwner(kind: item.type ?? "activity", id: item.id, name: item.name)
             }
-        case .role:
-            ActivityInfoPickerView(title: "어떤 역할이었나요?", prompt: "역할 검색 (예: 운영진, 참가자)", kind: .roles, parentID: nil,
+            if draft.owner == nil, !draft.ownerName.isEmpty {
+                Section {
+                    Picker("종류", selection: $draft.ownerKind) {
+                        ForEach(["organization", "program", "activity"], id: \.self) { Text(HistoryOwner.kindName($0)).tag($0) }
+                    }.pickerStyle(.segmented)
+                } header: { Text("직접 입력한 곳의 종류").font(.dearby(.subheadline)) }
+            }
+        case .role where draft.owner != nil:
+            // The unit's roles (an empty search lists them all); a name not in the list is typed in the same picker.
+            ActivityInfoPickerView(title: "어떤 역할이었나요?", prompt: "역할 검색 (예: 운영진, 참가자)", kind: .roles, owner: draft.owner,
                                    account: state.account, picked: $draft.role, typed: $draft.roleName, focus: $searchFocused, footer: stepError)
+        case .role:
+            // A typed unit has no role list, so the role is typed too.
+            Section {
+                DearbyFormRow(label: "역할", required: true, text: $draft.roleName, focus: $field, value: "roleName")
+            } header: { question("어떤 역할이었나요?") } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("직접 입력한 항목은 관리자 승인 뒤 명함에 넣을 수 있어요.")
+                    if let stepError { DearbyFieldError(text: stepError) }
+                }.font(.dearby(.subheadline))
+            }
         case .period:
             Section {
                 HistoryPeriodFields(start: $draft.start, end: $draft.end, ongoing: $draft.ongoing)
@@ -117,12 +118,12 @@ struct HistoryFunnelPage: View {
     @ViewBuilder private var summary: some View {
         Section {
             VStack(alignment: .leading, spacing: 4) {
-                Text(draft.chain.joined(separator: " · ")).fontWeight(.semibold)
-                Text("\(draft.roleTitle) · \(draft.summaryLine)").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                Text(draft.history.title).fontWeight(.semibold)
+                Text(draft.summaryLine).font(.dearby(.footnote)).foregroundStyle(.secondary)
                 if !draft.description.isEmpty { Text(draft.description).padding(.top, 4) }
             }.padding(.vertical, 4).accessibilityElement(children: .combine)
             // Back to the first question: pushed over a saved history's summary, else the root itself.
-            Button { path = root == .summary ? [.kind] : [] } label: { Text("내용 고치기").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
+            Button { path = root == .summary ? [.owner] : [] } label: { Text("내용 고치기").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
         } header: {
             Text("이력").font(.dearby(.subheadline))
         } footer: {
@@ -159,18 +160,5 @@ struct HistoryFunnelPage: View {
     }
     private func question(_ text: String) -> some View {
         Text(text).font(.dearby(.title3).bold()).foregroundStyle(.primary)
-    }
-    /// A single-choice row with the system checkmark on the selected one.
-    private func choice(_ title: String, _ detail: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).foregroundStyle(DearbyStyle.ink)
-                    Text(detail).font(.dearby(.footnote)).foregroundStyle(.secondary).multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle").imageScale(.large).foregroundStyle(selected ? DearbyStyle.teal : .secondary)
-            }.padding(.vertical, 2).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-        }.accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
