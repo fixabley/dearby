@@ -11,6 +11,7 @@ import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.UserId
+import io.wid.dearby.domain.timetable.Room
 import io.wid.dearby.domain.timetable.Session
 import io.wid.dearby.domain.timetable.Timetable
 import io.wid.dearby.domain.timetable.TimetableInput
@@ -83,11 +84,13 @@ class TimetableService(
         val owners = timetables.owners(sessions.map { it.id })
         val listings = activities.publishedListings(ids = owners.values.map { it.activityId }.toSet()).associateBy { it.activity.id }
         val tracks = timetables.tracks(sessions.mapNotNull { it.trackId }.toSet())
+        val roomIdOf = { session: Session -> session.roomId ?: session.trackId?.let(tracks::get)?.roomId }
+        val rooms = timetables.rooms(sessions.mapNotNull(roomIdOf).toSet())
         return sessions.mapNotNull { session ->
             val owner = owners[session.id] ?: return@mapNotNull null
             val activity = listings[owner.activityId]?.activity ?: return@mapNotNull null
             val schedule = blocks(activity).firstOrNull { it.id == owner.scheduleId } ?: return@mapNotNull null
-            FavoriteSession(activity, schedule, session, session.trackId?.let(tracks::get), favoritedAt.getValue(session.id))
+            FavoriteSession(activity, schedule, session, session.trackId?.let(tracks::get), roomIdOf(session)?.let(rooms::get), favoritedAt.getValue(session.id))
         }.sortedWith(compareBy({ it.session.startAt }, { it.session.id }))
     }
 
@@ -99,5 +102,5 @@ class TimetableService(
 
 data class ScheduledTimetable(val activity: Activity, val schedule: Schedule, val timetable: Timetable)
 
-// track: 세션의 트랙, 전폭 세션이면 null
-data class FavoriteSession(val activity: Activity, val schedule: Schedule, val session: Session, val track: Track?, val favoritedAt: OffsetDateTime)
+// track: 세션의 트랙, 전폭 세션이면 null. room: 세션이 열리는 방(세션 값, 없으면 트랙 값), 모르면 null
+data class FavoriteSession(val activity: Activity, val schedule: Schedule, val session: Session, val track: Track?, val room: Room?, val favoritedAt: OffsetDateTime)

@@ -60,6 +60,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
@@ -359,6 +360,11 @@ val REFRESH_TOKENS: RefreshTokens = RefreshTokens.REFRESH_TOKENS
  * The table <code>public.roles</code>.
  */
 val ROLES: Roles = Roles.ROLES
+
+/**
+ * The table <code>public.schedule_rooms</code>.
+ */
+val SCHEDULE_ROOMS: ScheduleRooms = ScheduleRooms.SCHEDULE_ROOMS
 
 /**
  * The table <code>public.schedule_session_tags</code>.

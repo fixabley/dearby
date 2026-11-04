@@ -55,6 +55,10 @@ open class ScheduleSessionsRecord() : UpdatableRecordImpl<ScheduleSessionsRecord
         set(value): Unit = set(8, value)
         get(): JSONB? = get(8) as JSONB?
 
+    open var roomId: Long?
+        set(value): Unit = set(9, value)
+        get(): Long? = get(9) as Long?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -64,7 +68,7 @@ open class ScheduleSessionsRecord() : UpdatableRecordImpl<ScheduleSessionsRecord
     /**
      * Create a detached, initialised ScheduleSessionsRecord
      */
-    constructor(id: Long? = null, scheduleId: Long? = null, trackId: Long? = null, kind: String? = null, title: String? = null, description: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, speakers: JSONB? = null): this() {
+    constructor(id: Long? = null, scheduleId: Long? = null, trackId: Long? = null, kind: String? = null, title: String? = null, description: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, speakers: JSONB? = null, roomId: Long? = null): this() {
         this.id = id
         this.scheduleId = scheduleId
         this.trackId = trackId
@@ -74,6 +78,7 @@ open class ScheduleSessionsRecord() : UpdatableRecordImpl<ScheduleSessionsRecord
         this.startAt = startAt
         this.endAt = endAt
         this.speakers = speakers
+        this.roomId = roomId
         resetTouchedOnNotNull()
     }
 }
