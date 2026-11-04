@@ -105,29 +105,29 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - `officialSource`: 출처가 프로그램의 공식 도메인인지. false면 웹 전체 검색에서 나온 것이라 출처를 확인하고 게시해야 한다
 - `applicationUrl`, `location`, `cost`, `audience`, `sourceCheckedAt`: 수집이 원문에서 확인한 값(없으면 null)
 
-### 활동 트랙(tracks) 편집 — 2026-11-04 사용자 결정
+### 활동 트랙 묶음(trackGroups) 편집 — 2026-11-04 사용자 결정
 
-native-v1.md "활동 트랙(tracks)"의 어드민 쪽. 모집 기간·선발 일정이 모두 같은 지원 분야·직군(풀스택·AI·클라우드, 디자이너·개발자·PM)은 활동 하나의 `tracks`다. 시간표의 트랙(아래 "트랙·세션 시간표")과는 다른 개념이고, 일정에는 트랙이 붙지 않는다. `tracks`는 `PATCH /v1/admin/activities/:id`의 필드가 아니다(세부 일정과 같이 따로 둔다).
+native-v1.md "활동 트랙(tracks)"의 어드민 쪽. 모집 기간·선발 일정이 모두 같은 지원 분야·직군·지역(풀스택·AI·클라우드, 디자이너·개발자·PM, 서울·대전)은 활동 하나의 트랙 묶음(`trackGroups`)이다. SSAFY처럼 지역과 분야로 나뉘면 묶음 둘. 시간표의 트랙(아래 "트랙·세션 시간표")과는 다른 개념이고, 일정에는 트랙이 붙지 않는다. `trackGroups`는 `PATCH /v1/admin/activities/:id`의 필드가 아니다(세부 일정과 같이 따로 둔다).
 
-- `GET /v1/admin/activities/:id/tracks` → `{trackLabel, tracks: [{id, name, description, capacity, position, participantCount}]}`(`participantCount`는 그 트랙을 고른 참여 기록 수. 삭제 확인 모달이 이 값을 쓴다).
-- `PUT` 같은 경로 `{trackLabel?, tracks: [{id?, name, description?, capacity?}]}` → 같은 응답. 시간표 PUT과 같이 **통째로 바꾼다**: `id`가 있으면 그 트랙을 고치고(참여 기록의 `trackId` 유지), 없으면 새로 만들고, 빠진 것은 지운다. 순서는 배열 순서(`position`). 빈 배열이면 트랙 없음.
-- **명칭 선택**: `trackLabel`은 `TRACK`·`FIELD`·`JOB_FAMILY`(화면 `트랙`·`분야`·`직군`, 기본 `TRACK`; 공개 응답도 같은 열거형이고 한글 `트랙`·`분야`·`직군`은 화면 표시 매핑, 다국어 키 `track`/`field`/`jobFamily`, 영문 Track/Field/Role). 활동마다 고르고 생략하면 유지.
-- 삭제 규칙: 지운 트랙을 고른 참여 기록은 `trackId`를 비운다(지원함 기록 자체는 남는다). 어드민 화면은 저장 전에 확인 모달에 `참여 기록 n건의 {라벨}이 비워져요`를 보인다.
-- 400: 이름 비움·중복(띄어쓰기 무시), `capacity`가 0 이하, 개수 한도 20, 다른 활동의 `id`, 모르는 `trackLabel`. 404: 없는 활동.
-- `AdminActivity.tracks`·`trackLabel`은 공개 `Activity`와 같은 모양. `ActivityCreateInput`·운영 데이터 가져오기 `activities[]`에 `tracks?: [{name, description?, capacity?}]`·`trackLabel?`. 수집기 제출(`submit_candidate`)도 `tracks`를 내며(라벨은 기본 `TRACK`), 운영자가 고친 트랙·라벨은 `curated_fields`의 `tracks`·`trackLabel`로 남아 재수집이 덮어쓰지 않는다.
-- **어드민 화면**: 활동 편집기 `트랙` 탭. 맨 위 **명칭 선택 세그먼트** `트랙 | 분야 | 직군`(기본 트랙), 아래 목록(이름·한 줄 설명·정원, 끌어서 순서 바꾸기, 삭제는 위 모달). 탭 제목과 목록 머리글은 고른 라벨을 따른다.
+- `GET /v1/admin/activities/:id/track-groups` → `{trackGroups: [{id, label, customLabel, position, tracks: [{id, name, description, capacity, position, participantCount}]}]}`(`participantCount`는 그 트랙을 고른 참여 기록 수. 삭제 확인 모달이 이 값을 쓴다).
+- `PUT` 같은 경로 `{trackGroups: [{id?, label, customLabel?, tracks: [{id?, name, description?, capacity?}]}]}` → 같은 응답. 시간표 PUT과 같이 **통째로 바꾼다**: 묶음·트랙 모두 `id`가 있으면 고치고(참여 기록의 `trackIds` 유지), 없으면 새로 만들고, 빠진 것은 지운다. 순서는 배열 순서(`position`). 빈 배열이면 트랙 없음.
+- **라벨**: `label`은 `TRACK`·`FIELD`·`JOB_FAMILY`·`REGION`·`CUSTOM`(화면 `트랙`·`분야`·`직군`·`지역`·직접 입력, 기본 `TRACK`; 공개 응답도 같은 열거형이고 한글은 화면 표시 매핑, 다국어 키 `track`/`field`/`jobFamily`/`region`, 영문 Track/Field/Role/Region). `CUSTOM`이면 `customLabel`(1~20자) 필수이고 그 글자가 그대로 보인다. 묶음마다 고른다.
+- 삭제 규칙: 지운 묶음·트랙을 고른 참여 기록은 그 트랙 id만 뺀다(지원함 기록 자체는 남는다). 어드민 화면은 저장 전에 확인 모달에 `참여 기록 n건에서 {라벨} {트랙 이름}이 빠져요`(묶음을 지우면 그 묶음의 트랙 전부)를 보인다.
+- 400: 묶음 라벨 모름, `CUSTOM`인데 `customLabel` 없음, 묶음 안 트랙 이름 비움·중복(띄어쓰기 무시), `capacity`가 0 이하, 트랙 없는 묶음, 한도(묶음 5, 묶음당 트랙 20), 다른 활동의 `id`. 404: 없는 활동.
+- `AdminActivity.trackGroups`는 공개 `Activity`와 같은 모양. `ActivityCreateInput`·운영 데이터 가져오기 `activities[]`에 `trackGroups?: [{label, customLabel?, tracks: [{name, description?, capacity?}]}]`. 수집기 제출(`submit_candidate`)도 같은 모양이며, 운영자가 고친 묶음은 `curated_fields`의 `trackGroups`로 남아 재수집이 덮어쓰지 않는다.
+- **어드민 화면**: 활동 편집기 `트랙` 탭. 묶음 카드 목록(끌어서 묶음 순서 바꾸기, `묶음 추가`, 묶음 삭제는 위 모달). 묶음 카드 맨 위에 **라벨 선택 세그먼트** `트랙 | 분야 | 직군 | 지역 | 직접 입력`(기본 트랙; 직접 입력이면 이름 입력 칸), 아래 트랙 목록(이름·한 줄 설명·정원, 끌어서 순서 바꾸기, 삭제는 위 모달). 묶음 카드 제목은 고른 라벨을 따른다.
 
 ### 활동 합치기 — 2026-11-04 사용자 결정
 
 같은 프로그램·같은 모집 기간·같은 선발 일정(활동 시작일 포함)의 활동 둘 이상(트랙별로 쪼개져 있던 활동)을 하나로 합친다. 첫 대상은 카카오테크 부트캠프 5기 풀스택·AI·클라우드(native-v1.md "활동 트랙(tracks)" 이관). 데이터 마이그레이션 스크립트로 하지 않는다.
 
-- `POST /v1/admin/activities/merge` 본문 `{keepActivityId, mergeActivityIds: number[], trackNames?: {[activityId]: string}, apply?: boolean}`. ICS 가져오기와 같은 미리 보기 방식: `apply`가 없으면 아무것도 바꾸지 않고 영향 요약을, `apply: true`면 실행 뒤 같은 요약과 합쳐진 `AdminActivity`를 돌려준다.
-- 규칙: 남길 활동 하나를 고르고 나머지 활동은 **각각 트랙이 되어 남길 활동의 `tracks`에 추가**된다. 트랙 이름 기본값은 원래 활동명에서 프로그램명·기수를 뺀 나머지(`카카오테크 부트캠프 5기 풀스택` → `풀스택`), `trackNames`로 고칠 수 있다. 남길 활동에 이미 `tracks`가 있으면 그 뒤에 붙는다. 남길 활동 자신도 트랙이 필요하면(`카카오테크 부트캠프 5기 풀스택`을 남기는 경우) `trackNames[keepActivityId]`로 이름을 주어 트랙을 만들고, 그 활동의 참여 기록은 그 트랙으로 둔다. 이름이 겹치면 400. 합친 뒤 `trackLabel`은 기본 `트랙`이고 트랙 편집에서 바꿀 수 있다.
-- 이관: 합쳐지는 활동의 참여 기록(`user_activities`·일정 상태)은 남길 활동으로 옮기고 `trackId`를 그 트랙으로 둔다. 찜(`user_favorites ACTIVITY`)은 `trackId` 없이 옮긴다. **일정은 남길 활동의 것만 유지**한다(합쳐지는 활동의 일정은 같아야 하므로 버린다; 세부 일정의 시간표·세션 찜도 함께 버려지므로 미리 보기에 수를 보인다). 일정 상태는 남길 활동의 같은 제목·같은 시각 일정으로 옮기고 맞는 일정이 없으면 버린다(제안). **같은 사용자의 중복 기록**은 하나로: 남길 활동의 기록이 있으면 그것을 남기고(그 기록에 `trackId`가 없고 합쳐지는 기록이 있으면 그 트랙을 물려받는다), 없으면 가장 먼저 만든 기록을 남기며 나머지 기록의 일정 상태는 버린다. 찜·알림 목록 행·`published_at`도 같은 식으로 남길 활동 기준(제안: 서버 담당 확인).
+- `POST /v1/admin/activities/merge` 본문 `{keepActivityId, mergeActivityIds: number[], groupLabel?: {label, customLabel?}, trackNames?: {[activityId]: string}, apply?: boolean}`. ICS 가져오기와 같은 미리 보기 방식: `apply`가 없으면 아무것도 바꾸지 않고 영향 요약을, `apply: true`면 실행 뒤 같은 요약과 합쳐진 `AdminActivity`를 돌려준다.
+- 규칙(묶음 단위): 남길 활동 하나를 고르고, 나머지 활동은 **각각 트랙이 되어 남길 활동의 새 묶음 하나에 들어간다**. 새 묶음의 라벨 기본값은 `TRACK`이고 `groupLabel`로 바꾼다(라벨은 합친 뒤 트랙 묶음 편집에서도 바꿀 수 있다). 트랙 이름 기본값은 원래 활동명에서 프로그램명·기수를 뺀 나머지(`카카오테크 부트캠프 5기 풀스택` → `풀스택`), `trackNames`로 고칠 수 있다. 남길 활동에 이미 묶음이 있으면 새 묶음은 그 뒤에 붙는다. 남길 활동 자신도 트랙이 필요하면(`카카오테크 부트캠프 5기 풀스택`을 남기는 경우) `trackNames[keepActivityId]`로 이름을 주어 같은 묶음에 트랙을 만들고, 그 활동의 참여 기록에 그 트랙을 더한다. 합쳐지는 활동이 이미 자기 묶음을 가지고 있으면 미리 보기에서 경고하고 `apply`는 400(먼저 묶음을 정리; 제안). 새 묶음 안 이름이 겹치면 400.
+- 이관: 합쳐지는 활동의 참여 기록(`user_activities`·일정 상태)은 남길 활동으로 옮기고 `trackIds`에 그 트랙을 더한다. 찜(`user_favorites ACTIVITY`)은 트랙 없이 옮긴다. **일정은 남길 활동의 것만 유지**한다(합쳐지는 활동의 일정은 같아야 하므로 버린다; 세부 일정의 시간표·세션 찜도 함께 버려지므로 미리 보기에 수를 보인다). 일정 상태는 남길 활동의 같은 제목·같은 시각 일정으로 옮기고 맞는 일정이 없으면 버린다(제안). **같은 사용자의 중복 기록**은 하나로: 남길 활동의 기록이 있으면 그것을 남기고(새 묶음에 고른 트랙이 없고 합쳐지는 기록이 있으면 그 트랙을 물려받는다), 없으면 가장 먼저 만든 기록을 남기며 나머지 기록의 일정 상태는 버린다. 찜·알림 목록 행·`published_at`도 같은 식으로 남길 활동 기준(제안: 서버 담당 확인).
 - 합쳐진 활동 행은 이관 뒤 지운다(`DELETE`와 같이 일정·역할·연락처 정리). 대신 `activity_merges(merged_activity_id pk, kept_activity_id, merged_at)` 를 남겨 공개 `GET /v1/activities/{id}`·웹 `/activities/:id`가 합쳐진 id로 오면 남긴 활동으로 **301**(`Location`)을 돌려준다(`dearby://activities/…` 딥링크는 앱이 같은 API를 읽으므로 따라간다). 그 밖의 경로(`PUT /v1/me/activities/{id}`, 즐겨찾기, 시간표)는 합쳐진 id에 404. 합쳐진 활동의 수집 출처(`source_id`·roundKey)는 남길 활동에 매여 다음 수집이 같은 트랙을 새 초안으로 다시 만들지 않는다(구현 방식은 서버 담당).
-- 되돌리기 없음. 확인 모달에 미리 보기의 영향 요약: `참여 기록 n건, 찜 n건을 옮기고 일정 n개(세션 찜 n건)와 활동 n개를 지워요. 되돌릴 수 없어요.` 그리고 트랙 이름 편집 칸.
+- 되돌리기 없음. 확인 모달에 미리 보기의 영향 요약: `참여 기록 n건, 찜 n건을 옮기고 일정 n개(세션 찜 n건)와 활동 n개를 지워요. 되돌릴 수 없어요.` 그리고 묶음 라벨 선택·트랙 이름 편집 칸.
 - 400: 같은 프로그램이 아님, 모집 기간이 다름, 선발 일정(활동 시작일 포함)이 다름(제목·날짜·시각 비교, 제안), 게시 상태가 서로 다름(초안과 게시 활동을 섞지 않는다, 제안), `keepActivityId`가 `mergeActivityIds`에 포함, 활동 하나뿐. 404: 없는 활동.
-- **어드민 화면**: 활동 목록에서 같은 프로그램 활동을 여러 개 고르면 `합치기` 행동 → 남길 활동 선택 → 트랙 이름 편집 → 미리 보기 요약 → 확인.
+- **어드민 화면**: 활동 목록에서 같은 프로그램 활동을 여러 개 고르면 `합치기` 행동 → 남길 활동 선택 → 묶음 라벨·트랙 이름 편집 → 미리 보기 요약 → 확인.
 
 ## 이력 검토·역할 — 2026-10-16 사용자 결정, 2026-11-03 밤 역할 귀속으로 개정
 

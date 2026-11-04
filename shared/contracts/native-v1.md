@@ -364,7 +364,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 언어(2026-10-15 사용자 결정): 요청 헤더 `Accept-Language`에서 지원 언어(`ko`, `en`) 중 가장 선호하는 것으로 `name`·`description`·`organization.name`·`program.name`을 하나씩 준다. 영문 값이 없는 항목은 한글로 채운다. 헤더가 없거나 읽을 수 없거나 지원 언어가 없으면 한국어. 응답에 `Content-Language`(`ko`·`en`)와 `Vary: Accept-Language`를 붙인다. 앱은 기기 언어 순서(iOS `Locale.preferredLanguages`, Android `LocaleList`, 최대 5개, 순서대로 q 값)를, 웹 프록시는 브라우저의 `Accept-Language`를 활동 조회에만 그대로 보낸다(언어 목록 형식이 아니면 버린다). 앱 화면 자체는 아직 한국어다.
 - `q`는 활동 이름·설명(한글·영문 모두)에서 찾는다. 대소문자 없는 부분 일치(`%`·`_`도 글자 그대로) 또는 단어 유사도(PostgreSQL `pg_trgm` `word_similarity` 0.4 이상)면 결과에 넣는다. 그래서 오타("워크샵"→"워크숍")·띄어쓰기 차이("개발환경")도 찾는다. 순서는 여전히 id 순이다(유사도 순 정렬은 하지 않음).
 - id는 숫자(bigint)다. 기존 카탈로그 UUID는 쓰지 않는다.
-- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, applicationUrl, imageUrl, application, activitySchedule, schedules[], eligibility}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 2026-10-18 `eligibility`(대상자 조건 JSON, 없으면 null)를 더한다(아래 "대상자 조건"). 2026-10-19 `applicationUrl`(신청 링크 `activities.application_url`, 없으면 null)을 더한다(아래 "신청 확인 조건 완화·공개 applicationUrl"). 2026-11-04 `tracks: [{id, name, description?, capacity?}]`(지원 트랙, 없으면 빈 배열)·`trackLabel`(`TRACK|FIELD|JOB_FAMILY`, 기본 `TRACK`; 화면 표시 `트랙`·`분야`·`직군`)을 더한다(아래 "활동 트랙(tracks)"). 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
+- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, applicationUrl, imageUrl, application, activitySchedule, schedules[], eligibility}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 2026-10-18 `eligibility`(대상자 조건 JSON, 없으면 null)를 더한다(아래 "대상자 조건"). 2026-10-19 `applicationUrl`(신청 링크 `activities.application_url`, 없으면 null)을 더한다(아래 "신청 확인 조건 완화·공개 applicationUrl"). 2026-11-04 `trackGroups: [{id, label, customLabel?, tracks: [{id, name, description?, capacity?}]}]`(지원 트랙 묶음, 없으면 빈 배열)을 더한다(아래 "활동 트랙(tracks)"). 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
   - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `applicationUrl ?? officialUrl`을 연다(2026-10-19 밤 "신청 확인 조건 완화").
   - 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
@@ -582,42 +582,43 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 ## 활동 트랙(tracks) — 2026-11-04 사용자 결정
 
-사용자 결정: 프로그램의 트랙(풀스택·AI·클라우드 같은 지원 분야, 디자이너·개발자·PM 같은 직군)이 여러 개여도 **모집 기간과 선발 일정(활동 시작일 포함)이 모두 같으면 활동 하나**로 둔다(활동을 트랙별로 쪼개지 않는다). 하나라도 다르면 별도 활동이다(예: 크래프톤 정글의 세 Lab은 선발 일정이 달라 분리 유지). 합치는 대표 예: 카카오테크 부트캠프 5기(풀스택·AI·클라우드), 디프만·DDD·SOPT·넥스터즈처럼 한 모집에서 여러 직군을 뽑는 연합동아리(트랙 = 직군). 일정은 활동 공통이고, 트랙별로 일정이 다르면 활동을 분리한다(일정에 트랙을 달지 않는다). 사유: 같은 모집의 트랙 차이로 홈 행이 세 배가 됐다(카카오테크 부트캠프 5기 풀스택·AI·클라우드가 세 활동이었다).
+사용자 결정: 프로그램의 트랙(풀스택·AI·클라우드 같은 지원 분야, 디자이너·개발자·PM 같은 직군, 서울·대전 같은 지역)이 여러 개여도 **모집 기간과 선발 일정(활동 시작일 포함)이 모두 같으면 활동 하나**로 둔다(활동을 트랙별로 쪼개지 않는다). 하나라도 다르면 별도 활동이다(예: 크래프톤 정글의 세 Lab은 선발 일정이 달라 분리 유지). 합치는 대표 예: 카카오테크 부트캠프 5기(풀스택·AI·클라우드), 디프만·DDD·SOPT·넥스터즈처럼 한 모집에서 여러 직군을 뽑는 연합동아리(트랙 = 직군), SSAFY처럼 지역(서울·대전·광주·구미·부울경)과 분야(자바·파이썬·임베디드·모바일)로 나뉘는 경우(트랙 묶음 둘). 일정은 활동 공통이고, 트랙별로 일정이 다르면 활동을 분리한다(일정에 트랙을 달지 않는다). 사유: 같은 모집의 트랙 차이로 홈 행이 세 배가 됐다(카카오테크 부트캠프 5기 풀스택·AI·클라우드가 세 활동이었다).
 
-낱말 구분: 이 절의 **트랙(`tracks`·`trackId`)** 은 사용자가 지원서를 낼 때 고르는 트랙이다. 같은 "트랙"이라는 말이 두 곳에 더 있으므로 섞어 쓰지 않는다: 컨퍼런스 시간표의 **세션 트랙**(`timetable.tracks`·`Session.trackId`, 아래 "트랙·세션 시간표")은 강연장 단위이고, **진행 트랙**(단계 막대, 아래 "내 활동 진행 트랙")은 선발·활동 단계의 표시다. 화면 문구는 활동마다 `트랙`·`분야`·`직군` 중 고르고 기본은 `트랙`이다(아래 `trackLabel`, 2026-11-04). `분야`를 고른 활동은 소개 카드의 분야 태그 칩(`fieldTags`, 위 "분야·성격 태그와 아이콘")과 같은 낱말이 한 화면에 두 번 나올 수 있다(어드민이 고를 때 감안).
+낱말 구분: 이 절의 **트랙(`trackGroups[].tracks`·`trackIds`)** 은 사용자가 지원서를 낼 때 고르는 트랙이다. 같은 "트랙"이라는 말이 두 곳에 더 있으므로 섞어 쓰지 않는다: 컨퍼런스 시간표의 **세션 트랙**(`timetable.tracks`·`Session.trackId`, 아래 "트랙·세션 시간표")은 강연장 단위이고, **진행 트랙**(단계 막대, 아래 "내 활동 진행 트랙")은 선발·활동 단계의 표시다. 화면 문구는 묶음마다 `트랙`·`분야`·`직군`·`지역`·직접 입력 중 고르고 기본은 `트랙`이다(아래 `label`, 2026-11-04). `분야`를 고른 묶음은 소개 카드의 분야 태그 칩(`fieldTags`, 위 "분야·성격 태그와 아이콘")과 같은 낱말이 한 화면에 두 번 나올 수 있다(어드민이 고를 때 감안).
 
 ### 데이터
 
-- `Activity.tracks: [{id, name, description?, capacity?}]`. 순서는 배열 순서(어드민·수집기가 정한 순서)다. 트랙이 없는 활동은 빈 배열이다. `description`은 칩 아래 한 줄 설명(선택), `capacity`는 트랙별 모집 인원(선택, 숫자). 어드민 `AdminActivity.tracks`도 같은 모양([admin-v1.md](admin-v1.md) "활동 트랙(tracks) 편집").
-- `Activity.trackLabel: "TRACK"|"FIELD"|"JOB_FAMILY"`(기본 `"TRACK"`; 어드민과 같은 열거형, 2026-11-04 정리). 활동마다 어드민이 고른다. 화면 표시는 앱·웹의 매핑으로만: 다국어 키 `track`/`field`/`jobFamily` → 한국어 `트랙`·`분야`·`직군`, 영문 Track/Field/Role. 앱·웹은 상세 카드 제목·선택 시트 제목·`선택 안 함` 문구에 이 라벨을 쓴다. 행 표기(` · 풀스택`)는 라벨 없이 이름만.
+- `Activity.trackGroups: [{id, label: "TRACK"|"FIELD"|"JOB_FAMILY"|"REGION"|"CUSTOM", customLabel?: string, tracks: [{id, name, description?, capacity?}]}]`(2026-11-04 트랙 묶음 확장). 묶음은 0개 이상이고 순서는 배열 순서(어드민·수집기가 정한 순서), 묶음 안 트랙 순서도 배열 순서다. 한 묶음이면 지금까지의 단일 트랙 목록과 같다. 트랙이 없는 활동은 빈 배열이다. `description`은 칩 아래 한 줄 설명(선택), `capacity`는 트랙별 모집 인원(선택, 숫자). 어드민 `AdminActivity.trackGroups`도 같은 모양([admin-v1.md](admin-v1.md) "활동 트랙 묶음(trackGroups) 편집").
+- **표시 라벨**: `label`은 어드민과 같은 열거형이고 화면 표시는 앱·웹의 매핑으로만: 다국어 키 `track`/`field`/`jobFamily`/`region` → 한국어 `트랙`·`분야`·`직군`·`지역`, 영문 Track/Field/Role/Region. `CUSTOM`은 `customLabel` 그대로(번역 없음). 앱·웹은 상세 트랙 카드의 묶음 제목·선택 시트의 섹션 제목·`선택 안 함` 문구에 이 라벨을 쓴다. 행 표기(` · 서울 · 임베디드`)는 라벨 없이 이름만.
 - 일정(`application`·`activitySchedule`·`schedules[]`)은 활동 공통이다. 일정에 트랙 필드를 두지 않고, 트랙별 활동 기간 덮어쓰기도 없다(트랙별로 다르면 별도 활동).
-- 참여 기록 `user_activities`에 `track_id`(논리 FK, null 가능). `GET /v1/me/activities` 항목에 `trackId: number|null`을 더한다. 활동의 `tracks`가 바뀌어 그 트랙이 없어지면(어드민 삭제) 서버가 `trackId`를 비운다.
+- 참여 기록 `user_activity_tracks(user_activity_id, track_id)`(논리 FK; 묶음마다 최대 하나). `GET /v1/me/activities` 항목에 `trackIds: number[]`(묶음 순서, 고르지 않은 묶음은 없음, 하나도 안 골랐으면 빈 배열). 어드민이 묶음이나 트랙을 지우면 서버가 그 id만 뺀다(지원함 기록 자체는 남는다).
 - 찜(`user_favorites ACTIVITY`, `PUT /v1/me/favorites/activities/{id}`)은 트랙 없이 그대로다. 트랙은 **지원함에만** 의미가 있다.
 
 ### API(로그인, Bearer)
 
-- `PUT /v1/me/activities/{activityId}` 본문 `{trackId?}`: 없으면 만들고 있으면 `trackId`만 바꾼다. 생략하면 유지, JSON `null`이면 비움, 값이면 설정(어드민 `phase`·`overlapCheck`와 같은 생략·null 구분). `trackId`가 그 활동의 `tracks[].id` 중 하나가 아니면 400. 트랙 없는 활동(`tracks`가 빈 배열)에 값을 보내도 400. 응답 항목에 `trackId`.
-- `POST /v1/me/activities/import` 항목에 `trackId?`. 기기 기록의 최선 올리기이므로 틀린 `trackId`는 그 항목을 거절하지 않고 `trackId`만 비운다(제안: 서버 담당 확인).
-- 공개 `GET /v1/activities/{id}`·목록 응답의 `Activity`에 `tracks`·`trackLabel`.
+- `PUT /v1/me/activities/{activityId}` 본문 `{trackIds?: number[]}`: 없으면 만들고 있으면 `trackIds`만 바꾼다. 생략하면 유지, 배열을 보내면 통째로 바꾼다(빈 배열 = 선택 안 함; 일부 묶음만 골라도 된다). 검증: 각 id는 그 활동의 어느 묶음 `tracks[].id`여야 하고, 같은 묶음에서 둘이면 400. 트랙 없는 활동(`trackGroups`가 비어 있음)에 빈 배열이 아닌 값을 보내도 400. 응답 항목에 `trackIds`.
+- `POST /v1/me/activities/import` 항목에 `trackIds?`. 기기 기록의 최선 올리기이므로 틀린 id는 그 항목을 거절하지 않고 그 id만 뺀다(같은 묶음에 둘이면 앞의 것만; 제안: 서버 담당 확인).
+- 공개 `GET /v1/activities/{id}`·목록 응답의 `Activity`에 `trackGroups`.
 - 내 활동 진행 트랙(단계 막대)·진행 단계 화면·겹침 확인·캘린더 추가·캘린더 피드·홈 행의 다음 일정은 활동 공통 일정만 보며 고른 트랙과 무관하다(바뀌지 않음).
 
 ### 화면
 
-- **행 표기**: 홈 `지원할 수 있는 활동`·발견 이벤트 탭·프로그램 화면·팔로우 달력의 행은 활동 하나(`카카오테크 부트캠프 5기`)다. **내 활동 행**(홈 `내 활동 ›`, 내 활동 화면의 날짜별 목록(시안 ⑧·⑧-0), 지도 시트, 펼친 틀)은 트랙을 골랐으면 활동명 뒤에 ` · 트랙 이름`(`카카오테크 부트캠프 5기 · 풀스택`, 라벨 없이). 발견 프로그램 행의 `활동 n개`(`ProgramSummary.openActivityCount`)는 합친 수다(카카오 `활동 3개` → `활동 1개`).
-- **상세**: 소개 카드 위에 `{trackLabel}` 카드(제목 `트랙`·`분야`·`직군`; `tracks`가 비어 있으면 카드 없음). 민트 칩 `풀스택`·`AI 실무 개발`·`클라우드 네이티브`(배열 순서), 칩 아래 한 줄 설명(`description`, 있을 때만). `capacity`는 상세 카드에는 두지 않고 선택 시트의 행에만 보인다. 내 활동에서 트랙을 골랐으면 그 칩에 체크 표시를 두는 것은 제안(확정 전; 색은 민트 그대로, 청록 채움은 쓰지 않는다).
-- **트랙 선택 시트**: `내 활동에 추가 › 지원함`을 누르면 `tracks`가 있는 활동에서만 시트(iOS 시스템 시트 `.presentationDetents`, Android Material 3 `ModalBottomSheet`)가 뜬 뒤 저장한다. 제목 `{trackLabel} 선택`, 보조 한 줄 `고른 {trackLabel}은 내 활동 행과 참여 이력에 함께 표시돼요`, 라디오 목록(트랙 이름 + 한 줄 설명, `capacity`가 있으면 설명 뒤에 ` · 정원 60`) + 맨 아래 `{trackLabel} 선택 안 함`(보조 `나중에 진행 단계 화면에서 고를 수 있어요`), 버튼 `지원함으로 담기`(청록 전폭). 끌어내려 닫으면 담지 않는다(초안, 사용자 확인 뒤). `찜`은 시트 없이 바로다. 시안 ③-c·③-d.
-- **트랙 바꾸기**: 이미 지원함 상태면 진행 단계 화면(`ActivityProgressPage`)의 트랙 줄(`{trackLabel} · 풀스택`, 없으면 `{trackLabel} · 선택 안 함`, 오른쪽 꺾쇠)에서 같은 시트로 바꾼다. 상세의 `지원했어요` 메뉴에는 트랙 항목을 두지 않는다(메뉴는 바꾸기·빼기만).
-- 웹(`/activities/:id`)은 `{trackLabel}` 카드만 같고, 시트는 웹 내 활동이 생길 때 같은 규칙으로 둔다.
+- **행 표기**: 홈 `지원할 수 있는 활동`·발견 이벤트 탭·프로그램 화면·팔로우 달력의 행은 활동 하나(`SSAFY 14기`)다. **내 활동 행**(홈 `내 활동 ›`, 내 활동 화면의 날짜별 목록(시안 ⑧·⑧-0), 지도 시트, 펼친 틀)은 트랙을 골랐으면 활동명 뒤에 고른 트랙 이름을 **묶음 순서로** 이어 붙인다(` · 서울 · 임베디드`, `카카오테크 부트캠프 5기 · 풀스택`; 라벨 없이 이름만, 고르지 않은 묶음은 건너뜀). 발견 프로그램 행의 `활동 n개`(`ProgramSummary.openActivityCount`)는 합친 수다(카카오 `활동 3개` → `활동 1개`).
+- **상세**: 소개 카드 위에 트랙 카드(`trackGroups`가 비어 있으면 카드 없음). **묶음마다 제목(라벨) + 민트 칩 한 줄**(묶음 순서, 칩은 트랙 순서; 예: `지역` 줄 `서울`·`대전`·`광주`·`구미`·`부울경`, `분야` 줄 `자바`·`파이썬`·`임베디드`·`모바일`), 칩 아래 한 줄 설명(`description`, 있을 때만). 묶음이 하나면 그 라벨이 카드 제목이고, 둘 이상이면 카드 제목 `트랙` 아래 묶음 제목이 소제목이다. `capacity`는 상세 카드에는 두지 않고 선택 시트의 행에만 보인다. 내 활동에서 고른 칩에 체크 표시를 두는 것은 제안(확정 전; 색은 민트 그대로, 청록 채움은 쓰지 않는다).
+- **트랙 선택 시트**: `내 활동에 추가 › 지원함`을 누르면 `trackGroups`가 있는 활동에서만 시트(iOS 시스템 시트 `.presentationDetents`, Android Material 3 `ModalBottomSheet`)가 뜬 뒤 저장한다. 제목은 묶음이 하나면 `{라벨} 선택`, 둘 이상이면 `트랙 선택`. 보조 한 줄 `고른 트랙은 내 활동 행과 참여 이력에 함께 표시돼요`. **묶음마다 라디오 섹션**(섹션 제목 = 라벨; 행은 트랙 이름 + 한 줄 설명, `capacity`가 있으면 설명 뒤에 ` · 정원 60`; 각 섹션 맨 아래 `{라벨} 선택 안 함`, 보조 `나중에 진행 단계 화면에서 고를 수 있어요`). 버튼 `지원함으로 담기`(청록 전폭). 끌어내려 닫으면 담지 않는다(초안, 사용자 확인 뒤). `찜`은 시트 없이 바로다. 시안 ③-c·③-d(묶음 하나 기준).
+- **트랙 바꾸기**: 이미 지원함 상태면 진행 단계 화면(`ActivityProgressPage`)의 트랙 줄(묶음마다 한 줄 `{라벨} · 서울`, 없으면 `{라벨} · 선택 안 함`, 오른쪽 꺾쇠)에서 같은 시트로 바꾼다. 상세의 `지원했어요` 메뉴에는 트랙 항목을 두지 않는다(메뉴는 바꾸기·빼기만).
+- 웹(`/activities/:id`)은 트랙 카드만 같고, 시트는 웹 내 활동이 생길 때 같은 규칙으로 둔다.
 
 ### 수집기·이관
 
-- 수집기 규칙: 같은 프로그램에서 **모집 기간과 선발 일정(활동 시작일 포함)이 모두 같은** 트랙(지원 분야·직군)은 **활동 하나 + `tracks`**, 하나라도 다르면 별도 활동이다. `submit_candidate`에 `tracks: [{name, description?, capacity?}]`(본문 표기 순서). 자세한 문장은 batch `collector/WORKFLOW.md` "추출 규칙".
+- 수집기 규칙: 같은 프로그램에서 **모집 기간과 선발 일정(활동 시작일 포함)이 모두 같은** 트랙(지원 분야·직군·지역)은 **활동 하나 + `trackGroups`**, 하나라도 다르면 별도 활동이다. `submit_candidate`에 `trackGroups: [{label, customLabel?, tracks: [{name, description?, capacity?}]}]`(본문 표기 순서). 자세한 문장은 batch `collector/WORKFLOW.md` "추출 규칙".
 - 이관: 기존 카카오테크 부트캠프 5기 세 활동(풀스택·AI·클라우드)을 하나로 합치는 것은 어드민 **활동 합치기** 도구로 한다([admin-v1.md](admin-v1.md) "활동 합치기"). 데이터 마이그레이션 스크립트로 하지 않는다. 합쳐진 활동 id로 오는 `GET /v1/activities/{id}`·웹 `/activities/:id`·`dearby://activities/…`는 남긴 활동으로 301 리디렉션이다(iOS `URLSession`·Android OkHttp는 기본으로 따라간다).
 
 ### 대체되는 결정
 
 - 트랙별 활동 분리(수집기 "트랙은 페이지가 따로 지원하는 별개 기수로 소개할 때만 별도 활동", roundKey의 트랙 접미사 예)는 이 절로 대체한다: 모집 기간·선발 일정이 하나라도 다를 때만 별도 활동.
-- 2026-11-04 첫 정리의 "일정 `trackId`·상세 타임라인 트랙 이름 접두어·화면 문구 `분야` 고정"은 같은 날 사용자 정정으로 뺐다(일정은 활동 공통, 문구는 `trackLabel`).
+- 2026-11-04 첫 정리의 "일정 `trackId`·상세 타임라인 트랙 이름 접두어·화면 문구 `분야` 고정"은 같은 날 사용자 정정으로 뺐다(일정은 활동 공통, 문구는 묶음 라벨).
+- 2026-11-04 같은 날의 단일 `tracks`·`trackLabel`·참여 기록 `trackId`는 `trackGroups`·`trackIds`로 대체(지역별·분야별 트랙 묶음).
 
 ## 광고 목적 개인정보 제3자 제공 동의(선택) — 2026-10-25 사용자 결정
 
@@ -982,11 +983,11 @@ Spring Mail(SMTP)로 한글 평문 한 통을 보낸다. 제목 `[Dearby] 이메
 
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
-| GET /v1/me/activities | — | 200 `{items: [{activityId, createdAt, deleted, statuses: [{scheduleId, statusId?, kind}]}]}`(2026-11-04 항목에 `trackId`, 위 "활동 트랙(tracks)"). `deleted`: 활동이 지워졌거나 게시가 내려감("삭제된 활동") |
-| PUT /v1/me/activities/{activityId} | 없음 또는 `{}`(2026-11-04 `{trackId?}`, 위 "활동 트랙(tracks)") | 200 항목(없으면 만들고 있으면 그대로; `trackId`를 보내면 그것만 바꾼다). 게시되지 않은 활동 404 |
+| GET /v1/me/activities | — | 200 `{items: [{activityId, createdAt, deleted, statuses: [{scheduleId, statusId?, kind}]}]}`(2026-11-04 항목에 `trackIds`, 위 "활동 트랙(tracks)"). `deleted`: 활동이 지워졌거나 게시가 내려감("삭제된 활동") |
+| PUT /v1/me/activities/{activityId} | 없음 또는 `{}`(2026-11-04 `{trackIds?}`, 위 "활동 트랙(tracks)") | 200 항목(없으면 만들고 있으면 그대로; `trackIds`를 보내면 그것만 바꾼다). 게시되지 않은 활동 404 |
 | DELETE /v1/me/activities/{activityId} | — | 204(일정 상태도 함께 지움). 없어도 204 |
 | PUT /v1/me/activities/{activityId}/schedules/{scheduleId} | `{statusId}` 또는 `{kind}`(기본 상태) | 200 항목. 그 활동의 일정이 아니거나 그 일정의 상태가 아니면 400 |
-| POST /v1/me/activities/import | `{items: [{activityId, statuses: [{scheduleId, kind}]}]}`(2026-11-04 항목에 `trackId?`) | 200 목록. 기기에만 있던 기록을 로그인 뒤 한 번 올린다(이미 있으면 서버 값 유지) |
+| POST /v1/me/activities/import | `{items: [{activityId, statuses: [{scheduleId, kind}]}]}`(2026-11-04 항목에 `trackIds?`) | 200 목록. 기기에만 있던 기록을 로그인 뒤 한 번 올린다(이미 있으면 서버 값 유지) |
 
 - 공개 `Schedule`에 `statuses: [{id?, name, kind}]`(어드민 지정 또는 기본 세 개)와 `overlapCheck: {startTime, endTime} | null`(서울 `HH:mm`)을 더한다. 세부 일정(`schedules[]`)뿐 아니라 모집 기간(`application`)·활동 기간(`activitySchedule`)도 같은 필드를 가지며, 그 id도 "그 활동의 일정"으로 `PUT …/schedules/{scheduleId}`에 쓸 수 있다.
 
