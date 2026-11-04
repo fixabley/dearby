@@ -2135,7 +2135,12 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **진입**(조율 판단): 발견 우상단 글래스 묶음 맨 앞 `+`(iOS `plus`, Android `Add`) → 시트 `무엇을 열까요`: `프로그램`(값 예시 `스터디 · 동아리 · 해커톤`) · `이벤트`(`밋업 · 워크숍 · 강연`). 만드는 것이 발견에서 찾는 대상과 같아서 발견에 둔다. 내 프로필 탭의 `참여 중`에는 내가 연 것과 참여한 것이 내 활동 행으로 함께 보인다.
 - **입력**(개설 폼 ㉙-c, 오른쪽 위 `열기`; 설명 문구 없음):
   - 커버(선택, 프로필 사진과 같은 형식·크기 규칙), 이름(필수), 종류(필수, 기존 종류 목록 그대로: 프로그램 부트캠프·동아리·공모전·해커톤·스터디·기타, 이벤트 컨퍼런스·밋업·강연·워크숍), 소개.
-  - 일정: 프로그램 = 시작·끝 날짜, 이벤트 = 날짜·시작·끝 시각. 장소 = 주소(기존 장소 입력) 또는 `온라인`.
+  - **일정 = 활동 상세 일정 카드 그대로**(2026-11-05 사용자 "일정 만들 때 실제 활동 상세보기처럼(선발 기간, 활동 기간처럼). 처음엔 점 하나만 두고 누르면 캘린더에 입력하는 폼 양식 띄우고, 입력하면 활동 상세처럼 갱신하고, 아래에 더 추가하기 누르면 또 폼 뜨고"; **대체 기록**: 같은 날 앞선 시작·끝 날짜 행과 모임 전체 장소 행은 대체). 시안 ㉙-c4(빈 상태)·㉙-c3(입력 시트)·㉙-c5(고치기)·㉙-c(채운 상태, 상세 ㉙-d와 같은 카드).
+    - 카드: 상세의 일정 타임라인과 같은 컴포넌트(묶음 `선발 과정`·`활동 일정`, 점·세로선·이름·날짜, 날짜 표기 규칙 같음). 처음에는 묶음마다 **빈 점 하나**(테두리만 청록) + `일정 추가`. 저장하면 묶음 안에서 날짜순 자동 정렬, 묶음 마지막 아래 빈 점 + `더 추가하기`.
+    - 입력 시트(빈 점·`더 추가하기`·기존 일정을 누름): 이름 · 종류(기존 일정 종류 `DEADLINE` 마감·`ANNOUNCEMENT` 발표·`INTERVIEW` 면접·`EVENT` 행사·교육 등, 묶음에 따라 기본값: 선발 과정 = 마감, 활동 일정 = 행사) · `하루 종일`(켜면 날짜만) · 시작·끝(네이티브 날짜·시간 피커, iOS `DatePicker`, Android Material 3 DatePicker·TimePicker) · 장소(선택, 주소 또는 `온라인`) → `저장`. 기존 일정이면 아래 `일정 삭제`(빨강 글자 버튼). 설명 문구 없음.
+    - **`선발 과정` 묶음**(조율 판단): 참여 방식이 `바로 참여`이고 선발 일정이 없으면 기본으로 **접어 둔다**(묶음 이름 + 아래 꺾쇠만, 누르면 펼쳐 빈 점). `개설자 승인`으로 바꾸거나 선발 일정이 하나라도 있으면 펼친다. 지우지 않는다. 이유: 바로 참여 모임에는 모집·발표 단계가 대개 없어서 빈 묶음이 입력을 재촉하지 않게.
+    - **`활동 일정`은 최소 하나 필수**. 없으면 오른쪽 위 `열기`가 비활성.
+    - 상세의 머리 날짜 줄(`11월 16일 (월) ~ 11월 30일 (월)`)은 활동 일정의 처음·끝에서 서버가 만든다(공식 활동과 같은 규칙), 장소 줄은 일정 장소가 모두 같으면 그 값, 다르면 첫 활동 일정 장소.
   - 정원(선택, 차면 `참여하기` 비활성 `정원이 찼어요`).
   - 참여 조건(아래), 공개 범위(아래).
   - 묶음 `대화방`: `디스코드 서버 연결`(선택, 아래). 연결하지 않으면 대화방 없는 모임(일정·참여자만).
@@ -2193,7 +2198,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **개인정보 장치**:
   - 제출 확인 시트(㉙-j2, CTA 시트): `이 답변은 개설자에게 전달돼요` + 전달되는 것 행(기본 프로필·조건 근거·폼 답변 n개·디스코드 이름) + 한 줄 `연락처·증빙 파일·다른 이력은 전달되지 않아요 · 모임이 끝나고 30일 뒤 답변이 지워져요` + `제출하고 참여 신청`(바로 참여면 `제출하고 참여`).
   - **금지 질문**: 주민등록번호·외국인등록번호·여권번호·계좌번호·카드번호·비밀번호, 건강·병력·장애, 종교, 정치 성향, 성생활·성적 지향, 노동조합 가입(개인정보 보호법의 민감정보·고유식별정보 범주를 참고한 조율 목록, 법률 검토 필요). 질문을 저장할 때 서버가 문구를 키워드로 검사해 걸리면 422 `SENSITIVE_QUESTION`(앱은 시트에 빨강 연한 경고 줄 `민감한 개인정보는 물을 수 없어요` + 예시, `완료` 비활성, ㉙-i3). 검사를 피한 질문은 신고(개설 글 신고 사유 `부적절한 질문`)로 운영자가 처리(질문 삭제·모임 내리기).
-  - **보관**: 답변은 모임 종료일(프로그램 끝 날짜·이벤트 끝 시각, 없으면 개설자가 닫은 때) + 30일 뒤 지운다(batch 매일 04:00, 명함 회수와 함께, 지운 수 로그). 거절된 신청의 답변은 거절 + 30일 뒤. 모임이 지워지면 즉시.
+  - **보관**: 답변은 모임 종료일(마지막 `ACTIVITY` 일정의 끝, 개설자가 먼저 닫으면 그때) + 30일 뒤 지운다(batch 매일 04:00, 명함 회수와 함께, 지운 수 로그). 거절된 신청의 답변은 거절 + 30일 뒤. 모임이 지워지면 즉시.
   - 참여자는 언제든 **자기 답 삭제**(상세 `⋯` › `내 답변 지우기`; 지우면 그 모임에서도 나간다, 폼 조건이 있으니 다시 참여하려면 다시 제출) + `나가기`.
   - 개인정보처리방침에 "직접 개설 모임 개설자에게 제공(제공받는 자: 그 모임의 개설자, 항목: 기본 프로필·조건 근거·폼 답변·디스코드 이름, 목적: 참여 자격 확인·모임 운영, 보유: 모임 종료 30일 뒤까지)" 항목을 더한다. **문구는 자리표시, 법률 문구 확인 필요**.
 
@@ -2210,7 +2215,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 | 경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
-| POST /v1/hosted | Bearer | `{type: PROGRAM|EVENT, name, kind, description?, startsAt/endsAt 또는 startDate/endDate, place?: Place|null(온라인), capacity?, conditions: Condition[], visibility: LINK_ONLY|PUBLIC}` | 201 Hosted. 단계 조건 미인증 422 `HOST_NOT_VERIFIED`, 금지 프로그램 422 `STAGE_CONDITION_DISABLED` |
+| POST /v1/hosted | Bearer | `{type: PROGRAM|EVENT, name, kind, description?, schedules: HostedSchedule[], capacity?, conditions: Condition[], visibility: LINK_ONLY|PUBLIC}` | 201 Hosted. 단계 조건 미인증 422 `HOST_NOT_VERIFIED`, 금지 프로그램 422 `STAGE_CONDITION_DISABLED` |
 | PUT /v1/hosted/:id | Bearer(개설자) | 같은 본문 | 200 Hosted(`PUBLIC`이면 다시 승인 대기) |
 | DELETE /v1/hosted/:id | Bearer(개설자) | — | 204(참여자의 디스코드 역할 회수) |
 | PUT /v1/hosted/:id/cover | Bearer(개설자) | multipart `file` | 200 `{coverUrl}` |
@@ -2234,8 +2239,9 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - Hosted: `{id, type, name, kind, description, coverUrl, host: {userId, name, handle, photoUrl}, schedule, place, capacity, memberCount, discord: {guildId?, guildName, roleName, status?: OK|BROKEN}|null, conditions: Condition[], visibility, approval: PENDING|APPROVED|REJECTED|null, createdAt}`.
 - HostMemberView(개설자에게 가는 최소 정보): `{userId, name, handle, job, bio, photoUrl, status: PENDING|JOINED, evidence: [{type: STAGE_PASSED|EXCHANGED_WITH_HOST|FORM, label, verified: boolean}], verifiedHistoryNames: string[], answers: [{questionId, question, value}], discordName: string|null, appliedAt}`. 이 밖의 프로필 값(연락처·다른 이력·참여 활동·증빙 파일)은 싣지 않는다.
 - Form(Hosted의 `form`, 개설 요청 본문에도): `{questions: [{id, type: SHORT|LONG|SINGLE|MULTI|YES_NO, title, required, options?: string[], condition?: {passing: string[]}}], joinMode: INSTANT|APPROVAL}`. Answer: `{questionId, value: string|string[]|boolean}`.
+- HostedSchedule(저장 모양은 기존 활동 일정 스키마 재사용 제안): 요청 `{id?, title, kind, phase: SELECTION|ACTIVITY, allDay, startAt?, endAt?, startDate?, endDateExclusive?, timeZone, address?: string|null, online: boolean}`, 응답은 공개 Activity의 `Schedule`과 같은 모양(`phase` 포함). 서버는 직접 개설마다 활동 하나를 만들어(`hosted.activity_id`) 기존 `schedules` 테이블에 행으로 넣는다. 그래서 상세 일정 카드·내 활동 진행 트랙·캘린더 연동·위젯이 공식 활동과 같은 코드로 동작한다. `ACTIVITY` 일정이 하나도 없으면 422 `ACTIVITY_SCHEDULE_REQUIRED`. 모집 슬롯(`application`)·활동 기간 슬롯(`activitySchedule`)은 직접 개설에서 따로 받지 않고, 서버가 `SELECTION`·`ACTIVITY` 일정의 처음·끝으로 채운다(조율 판단, 확인 필요).
 - Condition: `{type: ANYONE}` · `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle}`(기수마다 같은 kind·제목의 선발 단계로 대응).
 - StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
 - 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
-- 저장(제안): `hosted(id, host_user_id, type, name, kind, description, cover bytea null, schedule jsonb, place jsonb, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title)`, `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
+- 저장(제안): `hosted(id, host_user_id, activity_id → activities, type, name, kind, description, cover bytea null, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title)`, `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
 - 통계(analytics-v1.md에 더한다, 제안): `hosted_create(type, visibility, conditionTypes)`, `hosted_join`, `hosted_leave`, `stage_verification_submit`, `discord_connect`.
