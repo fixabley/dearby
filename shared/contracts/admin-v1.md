@@ -105,6 +105,30 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - `officialSource`: 출처가 프로그램의 공식 도메인인지. false면 웹 전체 검색에서 나온 것이라 출처를 확인하고 게시해야 한다
 - `applicationUrl`, `location`, `cost`, `audience`, `sourceCheckedAt`: 수집이 원문에서 확인한 값(없으면 null)
 
+### 활동 분야(tracks) 편집 — 2026-11-04 사용자 결정
+
+native-v1.md "활동 분야(tracks)"의 어드민 쪽. 같은 모집 기간의 지원 분야(풀스택·AI·클라우드)는 활동 하나의 `tracks`다. 시간표의 트랙(위 "트랙·세션 시간표")과는 다른 개념이고, `PATCH /v1/admin/activities/:id`의 필드가 아니다(세부 일정과 같이 따로 둔다).
+
+- `GET /v1/admin/activities/:id/tracks` → `{tracks: [{id, name, description, capacity, position, participantCount, scheduleCount}]}`(`participantCount`는 그 분야를 고른 참여 기록 수, `scheduleCount`는 그 분야를 단 세부 일정 수. 삭제 확인 모달이 이 값을 쓴다).
+- `PUT` 같은 경로 `{tracks: [{id?, name, description?, capacity?}]}` → 같은 응답. 시간표 PUT과 같이 **통째로 바꾼다**: `id`가 있으면 그 분야를 고치고(참여 기록·일정의 `trackId` 유지), 없으면 새로 만들고, 빠진 것은 지운다. 순서는 배열 순서(`position`). 빈 배열이면 분야 없음.
+- 삭제 규칙: 지운 분야를 고른 참여 기록은 `trackId`를 비운다(지원함 기록 자체는 남는다). 그 분야를 단 세부 일정은 **공통으로 바뀌지 않고 함께 지워진다**(`curated_deleted`로 남겨 수집이 다시 넣지 않는다). 어드민 화면은 저장 전에 확인 모달에 `참여 기록 n건의 분야가 비워지고 일정 n개가 지워져요`를 보이고, 일정을 남기려면 먼저 일정 편집에서 `trackId`를 비우라고 안내한다.
+- 400: 이름 비움·중복(띄어쓰기 무시), `capacity`가 0 이하, 개수 한도 20, 다른 활동의 `id`. 404: 없는 활동.
+- ScheduleItemInput에 `trackId?: number|null`(POST 생략·PATCH 생략은 유지, JSON `null`은 공통으로, 값은 그 활동의 `tracks[].id` 중 하나여야 하고 아니면 400; `phase`와 같은 생략·null 구분). 모집·활동 기간 블록에 보내면 400. 응답 Schedule(어드민·공개)에 `trackId`.
+- `AdminActivity.tracks`는 공개 `Activity.tracks`와 같은 모양. `ActivityCreateInput`·운영 데이터 가져오기 `activities[]`에 `tracks?: [{name, description?, capacity?}]`. 수집기 제출(`submit_candidate`)도 같은 필드이고, 운영자가 고친 분야는 `curated_fields`의 `tracks`로 남아 재수집이 덮어쓰지 않는다.
+- **어드민 화면**: 활동 편집기 `분야` 탭(이름·한 줄 설명·정원, 끌어서 순서 바꾸기, 삭제는 위 모달). 세부 일정 폼에 `분야` 선택(기본 `공통`), 캘린더 편집기 블록 제목에 분야 접두어(`풀스택 면접`).
+
+### 활동 합치기 — 2026-11-04 사용자 결정
+
+같은 프로그램·같은 모집 기간의 활동 둘 이상(트랙별로 쪼개져 있던 활동)을 하나로 합친다. 첫 대상은 카카오테크 부트캠프 5기 풀스택·AI·클라우드(native-v1.md "활동 분야(tracks)" 이관). 데이터 마이그레이션 스크립트로 하지 않는다.
+
+- `POST /v1/admin/activities/merge` 본문 `{keepActivityId, mergeActivityIds: number[], trackNames?: {[activityId]: string}, apply?: boolean}`. ICS 가져오기와 같은 미리 보기 방식: `apply`가 없으면 아무것도 바꾸지 않고 영향 요약을, `apply: true`면 실행 뒤 같은 요약과 합쳐진 `AdminActivity`를 돌려준다.
+- 규칙: 남길 활동 하나를 고르고 나머지 활동은 **각각 분야가 되어 남길 활동의 `tracks`에 추가**된다. 분야 이름 기본값은 원래 활동명에서 프로그램명·기수를 뺀 나머지(`카카오테크 부트캠프 5기 풀스택` → `풀스택`), `trackNames`로 고칠 수 있다. 남길 활동에 이미 `tracks`가 있으면 그 뒤에 붙는다. 남길 활동 자신도 분야가 필요하면(`카카오테크 부트캠프 5기 풀스택`을 남기는 경우) `trackNames[keepActivityId]`로 이름을 주어 분야를 만들고, 그 활동의 참여 기록은 그 분야로 둔다. 이름이 겹치면 400.
+- 이관: 합쳐지는 활동의 참여 기록(`user_activities`·일정 상태)은 남길 활동으로 옮기고 `trackId`를 그 분야로 둔다. 찜(`user_favorites ACTIVITY`)은 `trackId` 없이 옮긴다. 세부 일정은 그 분야의 `trackId`를 달아 옮기고(시간표·세션 찜도 함께), 모집·활동 기간은 남길 활동 것을 쓴다(다르면 미리 보기에서 경고, `apply`는 400: 모집 기간이 다르면 합치지 않는다). **같은 사용자의 중복 기록**은 하나로: 남길 활동의 기록이 있으면 그것을 남기고(그 기록에 `trackId`가 없고 합쳐지는 기록이 있으면 그 분야를 물려받는다), 없으면 가장 먼저 만든 기록을 남기며 나머지 기록의 일정 상태는 버린다. 찜·알림 목록 행·`published_at`도 같은 식으로 남길 활동 기준(제안: 서버 담당 확인).
+- 합쳐진 활동 행은 이관 뒤 지운다(`DELETE`와 같이 일정·역할·연락처 정리). 대신 `activity_merges(merged_activity_id pk, kept_activity_id, merged_at)` 를 남겨 공개 `GET /v1/activities/{id}`·웹 `/activities/:id`가 합쳐진 id로 오면 남긴 활동으로 **301**(`Location`)을 돌려준다(`dearby://activities/…` 딥링크는 앱이 같은 API를 읽으므로 따라간다). 그 밖의 경로(`PUT /v1/me/activities/{id}`, 즐겨찾기, 시간표)는 합쳐진 id에 404. 합쳐진 활동의 수집 출처(`source_id`·roundKey)는 남길 활동에 매여 다음 수집이 같은 트랙을 새 초안으로 다시 만들지 않는다(구현 방식은 서버 담당).
+- 되돌리기 없음. 확인 모달에 미리 보기의 영향 요약: `참여 기록 n건, 찜 n건, 일정 n개(세션 찜 n건)를 옮기고 활동 n개를 지워요. 되돌릴 수 없어요.` 그리고 분야 이름 편집 칸.
+- 400: 같은 프로그램이 아님, 모집 기간이 다름, 게시 상태가 서로 다름(초안과 게시 활동을 섞지 않는다, 제안), `keepActivityId`가 `mergeActivityIds`에 포함, 활동 하나뿐. 404: 없는 활동.
+- **어드민 화면**: 활동 목록에서 같은 프로그램 활동을 여러 개 고르면 `합치기` 행동 → 남길 활동 선택 → 분야 이름 편집 → 미리 보기 요약 → 확인.
+
 ## 이력 검토·역할 — 2026-10-16 사용자 결정, 2026-11-03 밤 역할 귀속으로 개정
 
 사용자가 프로필 이력(역할 매칭, `native-v1.md` "이력 (History) — 역할 매칭")에서 등록된 역할 대신 역할 이름을 직접 적으면 관리자 승인 전까지 명함에 넣을 수 없다. 인증자료를 올리면 관리자가 확인한다(`native-v1.md` "프로필·명함 v2" → "관리자"). 화면에는 작성자의 프로필 이름만 보여 주고 계정 id는 싣지 않는다.
@@ -155,7 +179,7 @@ native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`PO
 
 사용자: "어드민에서 활동에 스케줄들도 편집할 수 있으면 좋겠어. 구글캘린더 느낌으로". 모집·활동 기간(슬롯 일정) 외의 **세부 일정**(`schedules[]`: 테스트·면접·발표·세션 등)을 어드민에서 만들고 고치고 지운다.
 
-- ScheduleItemInput: `{title, kind: DEADLINE|ANNOUNCEMENT|INTERVIEW|EVENT, status?: TENTATIVE|CONFIRMED|CANCELLED(기본 CONFIRMED), startAt?, endAt?, startDate?, endDate?(포함), timeZone?(기본 Asia/Seoul), dateLabel?, note?(사유 ≤300)}`. 날짜와 시각을 섞으면 400, 끝이 시작보다 앞서면 400, 둘 다 없고 `dateLabel`도 없으면 400. 운영자가 만든·고친 세부 일정은 `schedules.curated = true`(수집이 덮어쓰지 않음, 기존 규칙), 지운 일정은 `schedules.curated_deleted = true`로 남아 응답·공개 API에서 빠지고 수집이 같은 `title`(띄어쓰기 무시)·같은 시작의 일정을 다시 넣지 않는다.
+- ScheduleItemInput: `{title, kind: DEADLINE|ANNOUNCEMENT|INTERVIEW|EVENT, status?: TENTATIVE|CONFIRMED|CANCELLED(기본 CONFIRMED), startAt?, endAt?, startDate?, endDate?(포함), timeZone?(기본 Asia/Seoul), dateLabel?, note?(사유 ≤300)}`(2026-11-04 `trackId?`, 위 "활동 분야(tracks) 편집"). 날짜와 시각을 섞으면 400, 끝이 시작보다 앞서면 400, 둘 다 없고 `dateLabel`도 없으면 400. 운영자가 만든·고친 세부 일정은 `schedules.curated = true`(수집이 덮어쓰지 않음, 기존 규칙), 지운 일정은 `schedules.curated_deleted = true`로 남아 응답·공개 API에서 빠지고 수집이 같은 `title`(띄어쓰기 무시)·같은 시작의 일정을 다시 넣지 않는다.
 - 응답 Schedule에 `curatedNote`(기존)·`curated`(기존) 그대로. `AdminActivity.schedules`는 세부 일정만, 시각·날짜 순.
 - **어드민 화면**: 활동 편집기 안의 `일정` 탭(또는 상세의 `일정 편집` 버튼)에 두 가지 보기. ① **달력 보기**: 월 달력(Ant `Calendar`)에 모집 기간·활동 기간을 바탕 띠로, 세부 일정을 날짜 칸의 칩으로 그린다. 날짜 칸을 누르면 그 날짜가 채워진 `일정 추가` 폼이 열리고, 칩을 누르면 편집 폼이 열린다(끌어서 옮기기는 두지 않는다). ② **목록 보기**: 시각 순 표에 제목·종류·상태·기간·원문·사유, 행마다 편집·삭제. 폼은 기존 기간 블록(날짜/시각 전환, 시작 선택 비움 가능, 사유)을 재사용한다.
 - 공개 API·앱은 바뀌지 않는다(세부 일정은 이미 `schedules[]`로 내려가고 진행 트랙이 쓴다).
