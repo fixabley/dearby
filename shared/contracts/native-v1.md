@@ -1781,7 +1781,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 - 사용자에게 보이는 이름은 `내 시간표`(2026-10-26 표현 변경)이고 코드·API의 세션 찜(session favorites)은 그대로다.
 - 잠금 화면·Dynamic Island 확장: 첫 줄 `{활동 이름}`(보조색), 둘째 줄 `지금 · 트랙 B · 그랜드볼룸 B · 세션 제목` 과 오른쪽 `남은 12:30`(카운트다운; 세션 시작 전이면 `10:50 · …`과 `시작까지 29:59`), 셋째 줄 `다음 14:50 · 트랙 C · 방 · 제목`(없으면 생략). 트랙·방은 있을 때만, 시각은 블록 시간대. 1시간 이상이면 시간 자리를 보인다.
-- Dynamic Island compact: 왼쪽 앱 심볼(`DearbySymbol`), 오른쪽 남은 시간. minimal: 남은 시간. 글꼴은 시스템 글꼴(확장에는 Pretendard를 넣지 않는다).
+- Dynamic Island compact: 왼쪽 앱 심볼(`DearbySymbol`), 오른쪽 남은 시간. minimal: 남은 시간. 글꼴은 2026-11-05부터 Pretendard(아래 "글꼴은 되도록 Pretendard 고정", 옛 "시스템 글꼴, 확장에는 Pretendard를 넣지 않는다"는 대체).
 - 탭 → 앱의 그 블록 시간표 시트를 **`내 시간표`** 보기로(`dearby://timetable/<activityId>/<scheduleId>`, 찜한 세션 이동 알림과 같은 라우팅 `openLinkedTimetable`; 상세의 `activity_view` source는 `link`). 활동이 지워졌거나 블록에 시간표가 없어지면 상세만 열린다.
 
 ### 표시 디자인 — 2026-10-27 사용자 결정
@@ -1804,7 +1804,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **이동**(2026-10-27 이동 모드 유지: 세션 사이 공백·첫 세션 전, 계층 진행 시간·위치 > 세션명 > 트랙명): 위 줄 `● LIVE` + 오른쪽 `12분 후 시작`(청록) → 가장 큰 줄 사람 아이콘(`figure.walk`) + `그랜드볼룸 B로 이동`(20/800 청록, 조사 `로/으로`는 받침으로) → 세션명(15/700) → 트랙 색 점 + 트랙명 · 활동명 → 진행 막대(공백 경과) + `안내 종료`.
 - **하루 진행 트랙 → 한 줄 진행 막대**(판단 근거): 위젯·워치와 같은 표현이 되고, 잠금 화면 높이 안에 다음 세션·이동 줄을 넣을 자리가 생기며, 하루 전체 흐름은 탭해서 여는 `내 시간표`가 맡는다. iOS 확장에 `StageSegment`를 넣던 규칙은 없앤다.
 - **Dynamic Island 확장**: 같은 배치를 한 단계 줄인 크기(세션 제목 15/700, 다음 세션명 13/600). 앱 머리(로고·활동명)는 두지 않는다(활동명 줄과 겹침).
-- **글꼴**: 확장·잠금 화면·알림은 시스템 글꼴(Pretendard를 넣지 않음), 크기·굵기 계층만 위젯과 맞춘다.
+- **글꼴**(같은 날 "폰트는 되도록 Pretendard 고정"으로 바로 대체): iOS 잠금 화면·Dynamic Island 확장·compact·minimal은 **Pretendard**(위젯 extension에 글꼴 파일 + `UIAppFonts`), Android 진행 중 알림·Now Bar는 시스템 글꼴(시스템 알림 양식이라 앱 글꼴 불가)에 크기·굵기 계층만 맞춘다.
 - **Android**: 진행 중 알림의 펼친 본문(`ProgressStyle` 구간 하나 = 지금 세션 경과)을 같은 순서의 줄로, `안내 종료`는 알림 액션. 접힌 칩·Now Bar 접힘은 분 단위 그대로.
 - 연속 세션(지금 세션이 끝나자마자 다음 시작)에서 위 `8분 남음`과 아래 `8분 후`가 같은 숫자로 두 번 나오는 문제는 사용자 확인 중(추천: 간격 0~1분이면 `→ 끝나면 바로 그랜드볼룸 B`). 정해지기 전에는 위 규칙 그대로.
 - 구현 배정은 이 계약 확정 뒤 조율 세션이 한다.
@@ -1844,7 +1844,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 사용자 요청: Galaxy Watch·Apple Watch용 디자인. **1단계 = 앱을 따로 만들지 않고 폰 기능에서 거의 그대로 이어지는 표면만**: 라이브 액티비티·진행 알림·위젯/타일·컴플리케이션. 데이터는 폰 앱이 공급한다(iOS WidgetKit 컴플리케이션·ActivityKit 라이브 액티비티의 watchOS 자동 미러링, Android Wear 데이터 레이어 + Tiles API + `OngoingActivity`). **워치 독립 앱은 범위 밖**이다. 시안 "워치" 섹션 ㉔-a~㉔-f.
 
-- **화면 기준**: Apple Watch 45mm 둥근 사각 198×242pt, Galaxy Watch 원형 지름 450px(약 225dp, 가장자리 안전 영역 안쪽에만 내용). 시안 글꼴은 Pretendard로 대신 그렸고 실제는 Apple Watch SF Compact, Galaxy Watch 시스템 글꼴이다.
+- **화면 기준**: Apple Watch 45mm 둥근 사각 198×242pt, Galaxy Watch 원형 지름 450px(약 225dp, 가장자리 안전 영역 안쪽에만 내용). 글꼴은 Apple Watch 위젯·컴플리케이션·스마트 스택은 **Pretendard**(watch 위젯 extension에 글꼴 파일 + `UIAppFonts`, 2026-11-05; 옛 "실제는 SF Compact"는 대체), Galaxy Watch 타일·컴플리케이션·진행 중 활동은 시스템 글꼴(ProtoLayout·시스템 양식이라 앱 글꼴 불가)에 계층만 맞춤.
 - **색·글자**: 검정 바탕 + 청록 강조(글자 #5FD4D2, 링 #2BB5B5). 워치용 축소 체계: 큰 숫자 32/800, 제목 15/600, 보조 12.
 - **날짜 규칙**: 위 "홈 화면 위젯"과 같다. D-day를 보이는 곳은 날짜를 쓰지 않고, 24시간 이하는 `4시간 19분 후`. 위계도 같다(큰 D-day → 활동명 → 일정 이름).
 - **Apple Watch**
@@ -1952,6 +1952,9 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 상세·프로그램·조직 화면은 **흰 배경** 위에 그림자 카드(모서리 16, 안 여백 18·20, 사이 28)로 섹션을 나눈다. 회색 그룹 배경과 커버 색 틴트는 쓰지 않는다. Android는 Material 3 `ElevatedCard`(elevation 1).
 - **한국어 줄바꿈은 단어 중간에서 하지 않는다**(2026-11-03 "시스템 메세지는 단어 중간에 줄바꿈이 일어나지 않았으면"): 안내 문구·카드 제목·메타 값 모두. 웹 `word-break: keep-all; overflow-wrap: break-word`, Android `TextStyle(lineBreak = LineBreak(wordBreak = Phrase))`, iOS는 `AttributedString`의 `NSParagraphStyle.lineBreakStrategy = .hangulWordPriority`(SwiftUI `Text`가 문단 스타일을 받지 않는 곳은 `UIViewRepresentable` `UILabel` 대신 문구를 짧게 나눠 쓴다). 빈 시간 블록처럼 두 뜻이 붙은 문구는 줄을 나눠 둔다(`10분 비어 있어요` / `이동 › 트랙 B · 그랜드볼룸 B`).
 - **글자 계층(Pretendard, 이 열 가지만)**: 화면 제목 26/700(상세·프로그램·조직 이름) · 섹션 제목 22/700(홈 묶음 제목, 내 활동 월) · 소제목 17/600(주차·날짜 머리글, 접힌 줄) · 행 제목 17/600(활동명·프로그램명) · 행 안 제목 15/600(카드 섹션 이름, 일정 행 제목, 타임라인 제목, 띠 이름) · 본문 15/400(소개, 경로, 메뉴 항목, 대상) · 보조 13/400(조직 줄, 메타 값, 날짜·시각, 안내) · 컨트롤 라벨 13/600(버튼·칩·링크·플로팅; 고정 CTA만 17/600; 메타 라벨도 13/600) · 배지 12/700(D-day, 상태, 상태 캡션, 지도 번호) · 마이크로 11(트랙 이름 400, 현재 단계·진행 일수·알림 수 700). iOS `Font.dearby(...)` 매핑(title2=22, headline=17 semibold, subheadline=15, footnote=13, caption=12, caption2=11), 26만 고정 크기. **웹 `--font-sans`는 Pretendard를 시스템 글꼴보다 앞에**(2026-11-03 결정 ⑤).
+- **글꼴은 되도록 Pretendard 고정**(2026-11-05 사용자 지시 "폰트는 되도록 Pretendard 고정으로 해줘. 계약 수정해줘"; **대체 기록**: 라이브 액티비티의 "글꼴은 시스템 글꼴(확장에는 Pretendard를 넣지 않는다)"(2026-10-26), 같은 날 "표시 디자인 통일"의 "확장·잠금 화면·알림은 시스템 글꼴", 워치 절의 "실제는 Apple Watch SF Compact"는 이 규칙으로 대체):
+  - **기본 = Pretendard**: 앱·웹, iOS 홈 위젯, 라이브 액티비티(잠금 화면·Dynamic Island 확장·compact·minimal), Apple Watch 위젯·컴플리케이션(스마트 스택 포함). iOS는 위젯 extension(그리고 watch 위젯 extension) **타깃에 글꼴 파일을 넣고** 그 extension의 Info.plist `UIAppFonts`에 등록한 뒤 `Font.custom`으로 쓴다(글자 크기 배율은 `relativeTo:`로 따름). 필요한 굵기만(400·600·700, 큰 숫자가 있으면 800) 넣어 extension 크기·메모리 부담을 줄인다. **확인 항목(iOS 담당)**: 실기기에서 extension별로 표시를 확인한다(포럼 보고상 타깃에 글꼴이 빠지면 조용히 시스템 글꼴로 떨어짐, developer.apple.com/forums/thread/715159).
+  - **예외(시스템이 그려 앱 글꼴을 쓸 수 없는 곳 → 시스템 기본 글꼴, 크기·굵기 계층만 맞춤)**: Android 홈·커버 위젯(Glance `TextStyle.fontFamily`는 시스템 글꼴 계열만 받아 앱에 넣은 글꼴을 쓰지 못함; 글자를 비트맵으로 그리는 우회는 접근성·글자 크기·다크 대응이 깨져 쓰지 않는다), Android 진행 중 알림·Now Bar·상태 표시줄 칩(시스템 알림 양식), Wear OS 타일·컴플리케이션(ProtoLayout은 API 36부터 타일을 시스템 글꼴로 그림)·진행 중 활동. 출처: proandroiddev "Jetpack Glance: no way to custom fonts", developer.android.com Glance `TextStyle`·wear-protolayout 릴리스 노트.
 - **날짜 표기 통일**(2026-11-03, 아래 "대체되는 결정"): 모든 화면에서 `M월 d일 (요일)`, 시각은 실제 시각이 있을 때만 `HH:mm`(자정·23:59로 저장된 날짜 일정은 시각 없음), 범위 `~`, 연도는 올해와 다를 때만 앞에 `yyyy년`, 월만은 `yyyy년 M월`, 반복 일정은 `기간 · 월~금 09:00 ~ 18:00`. `오늘`·`내일` 같은 상대 표기는 쓰지 않고 D-DAY 배지와 주 한 줄이 오늘을 알린다. 모집 기간 `10월 14일 (수) ~ 11월 8일 (일)`, 마감만 알면 `11월 9일 (월) 17:00 마감`.
 - **D-day 규칙**(2026-11-03): 마감 날짜를 알고 모집 중이면 모집 시작을 몰라도 늘 `D-n`(당일 `D-DAY`), 모집 예정은 시작까지 `D-n`(`시작` 접두어 없음, 청록 채움). **지난 날수(`D+n`)는 쓰지 않는다**. 모집 중·예정이 아닌 행은 D-day 자리에 `Activity.status`의 상태 칩: `진행 중`(민트), `모집 마감`·`종료`·`모집 미정`(흰 바탕 테두리). 프로그램 행은 정렬 키가 가리키는 가장 가까운 활동의 상태를 따른다. 내 활동 행은 다음 일정까지 `D-n`, 참여 중인 기간 활동은 `진행 중` 대신 배지 없음(상태 캡션이 말함).
 
