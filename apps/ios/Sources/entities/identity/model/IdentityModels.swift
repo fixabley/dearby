@@ -109,11 +109,14 @@ struct ContactModel: Identifiable, Equatable {
     /// Row label: the owner's `label`, or the kind name when none was given.
     var rowLabel: String { displayLabel.isEmpty ? kindName : displayLabel }
 }
-/// A history as shown on cards and profiles: `title` is 조직 → 프로그램 → 활동, `verified` hides the 미확인 badge.
+/// A history as shown on cards and profiles (contract "이력 (History) — 역할 매칭" › 표시): `title` is `귀속 단위 · 역할` (`디프만 19기 · iOS 개발자`),
+/// `affiliation` the units above it (`디프만 · 디프만 19기`), `activityID` set when the role is an activity's so the row can open its detail,
+/// `verified` hides the 미확인 badge.
 struct HistoryModel: Identifiable, Equatable {
     let id: String
     var title: String
-    var role: String
+    var affiliation: String
+    var activityID: String?
     var startDate: String
     var endDate: String?
     var verified = false
@@ -146,6 +149,6 @@ extension CardModel {
     static let placeholder = CardModel(
         id: "", name: "내 명함", profileName: "이름", job: "직무 · 직무", introLink: nil,
         description: "", contacts: [ContactModel(id: "p", kind: "email", displayLabel: "", value: "name@example.com")],
-        histories: [HistoryModel(id: "h", title: "조직 · 프로그램 · 활동", role: "역할", startDate: "2026.01", endDate: "진행 중")],
+        histories: [HistoryModel(id: "h", title: "활동 이름 · 역할", affiliation: "조직 · 프로그램", startDate: "2026.01", endDate: "진행 중")],
         organization: "조직 이름")
 }

@@ -71,8 +71,8 @@ struct CardComposer: View {
                     DearbyCheckRow(isOn: Binding(get: { draft.publicHistoryIDs.contains(history.id) },
                                                  set: { on in if on { draft.publicHistoryIDs.insert(history.id) } else { draft.publicHistoryIDs.remove(history.id) } })) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(history.chain.joined(separator: " · ")).fontWeight(.semibold)
-                            Text([history.roleTitle, ContactRules.period(start: history.startDate, end: history.endDate)].filter { !$0.isEmpty }.joined(separator: " · "))
+                            Text(history.title).fontWeight(.semibold)
+                            Text((history.affiliation + [ContactRules.period(start: history.startDate, end: history.endDate)]).filter { !$0.isEmpty }.joined(separator: " · "))
                                 .font(.dearby(.footnote)).foregroundStyle(.secondary)
                             if !history.isApproved {
                                 Text(history.approval == "rejected" ? "거절된 이력은 명함에 넣을 수 없어요" : "관리자 승인 뒤 명함에 넣을 수 있어요")

@@ -17,17 +17,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-/** One search hit the picker shows. */
-data class PickerItem(val id: Long, val name: String, val detail: String?)
+/** One search hit the picker shows. [kind] comes back with the pick when the list mixes unit kinds (ids repeat across kinds); [kindLabel] is its overline text. */
+data class PickerItem(val id: Long, val name: String, val detail: String?, val kind: String? = null, val kindLabel: String? = null)
 
 /**
  * 한 단계의 선택 창: 등록된 활동 정보(조직·프로그램·활동·역할)를 검색해 고르거나 그대로 적는다. 직접 입력은 관리자 승인 전까지 명함에 못 넣는다.
  * 검색 요청·결과는 화면이 갖고, 이 위젯은 값과 콜백만 받는다. 검색은 발견 탭과 같은 `DearbySearchField`, 결과는 행 전체가 눌리는 `ListItem`, 결과 없음은 빈 상태,
  * 맨 아래 `"<검색어>" 직접 입력` 행이다(contract "퍼널 검색은 발견 검색과 같은 경험", 2026-10-20). 고른 항목은 `ListItem`(확인 아이콘 + `바꾸기`)로 보인다.
+ * [belowTyped] sits under the typed-name row (the 어디에서 step asks the unit's kind there); [idleHint] is the text under an empty query with no results.
  */
 @Composable fun ActivityInfoPicker(
     title: String, prompt: String, query: String, onQueryChange: (String) -> Unit, items: List<PickerItem>, loading: Boolean, failed: Boolean,
     pickedName: String?, typedName: String, onPick: (PickerItem) -> Unit, onClearPick: () -> Unit, onType: (String) -> Unit, modifier: Modifier = Modifier,
+    idleHint: String = "이름으로 검색하거나 없으면 그대로 적어 주세요.", belowTyped: (@Composable () -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
@@ -37,10 +39,13 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
             return@Column
         }
         DearbySearchField(query, onQueryChange, prompt)
-        if (typedName.isNotEmpty()) ListItem({ Text(typedName) }, supportingContent = { Text("직접 입력 · 관리자 승인 뒤 명함에 넣을 수 있어요") },
-            leadingContent = { Icon(Icons.Rounded.Edit, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }, trailingContent = { TextButton({ onType("") }) { Text("지우기") } },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer))
-        PickerResults(query, items, loading, failed, "이름으로 검색하거나 없으면 그대로 적어 주세요.", onPick) { onType(it); onQueryChange("") }
+        if (typedName.isNotEmpty()) {
+            ListItem({ Text(typedName) }, supportingContent = { Text("직접 입력 · 관리자 승인 뒤 명함에 넣을 수 있어요") },
+                leadingContent = { Icon(Icons.Rounded.Edit, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }, trailingContent = { TextButton({ onType("") }) { Text("지우기") } },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer))
+            belowTyped?.invoke()
+        }
+        PickerResults(query, items, loading, failed, idleHint, onPick) { onType(it); onQueryChange("") }
     }
 }
 
@@ -57,8 +62,8 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
         trimmed.isEmpty() && items.isEmpty() -> Text(idleHint, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
     items.forEach { item ->
-        ListItem({ Text(item.name) }, Modifier.clickable(role = Role.Button) { onPick(item) }, supportingContent = item.detail?.let { { Text(it) } },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+        ListItem({ Text(item.name) }, Modifier.clickable(role = Role.Button) { onPick(item) }, overlineContent = item.kindLabel?.let { { Text(it) } },
+            supportingContent = item.detail?.let { { Text(it) } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
     }
     if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {

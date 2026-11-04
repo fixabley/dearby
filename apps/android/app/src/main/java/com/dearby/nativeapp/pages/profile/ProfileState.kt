@@ -7,6 +7,7 @@ import com.dearby.nativeapp.entities.account.model.ActivityInfoItem
 import com.dearby.nativeapp.entities.account.model.ActivityInfoRef
 import com.dearby.nativeapp.entities.account.model.ProfileJob
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
+import com.dearby.nativeapp.entities.account.model.HistoryOwner
 import com.dearby.nativeapp.entities.account.model.ProfileVersionDetail
 import com.dearby.nativeapp.entities.account.model.currentOrganization
 import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
@@ -107,77 +108,60 @@ data class ProfileFormState(
 }
 
 /**
- * One history being entered step by step (2026-10-18 퍼널 분리). 조직 이력: 조직 → 역할 → 기간 → 설명 → 확인.
- * 활동 이력: 활동(전체 검색) → 역할 → 기간 → 설명 → 확인; 활동을 직접 적었을 때만 조직(필수)·프로그램(선택)을 활동 다음에 묻는다.
- * 활동 정보에서 고른 활동은 그 소속 조직·프로그램을 함께 채우고, 서버도 activityId로 소속을 맞춘다.
+ * One history being entered step by step (contract "이력 (History) — 역할 매칭", one funnel since 2026-11-03): 어디에서(조직·프로그램·활동 통합 검색,
+ * 없으면 종류를 고르고 이름 직접 입력) → 역할(그 단위의 역할 목록, 없으면 직접 입력) → 기간 → 설명 → 확인. A role belongs to its unit, so changing
+ * the unit drops the role. [organization]·[program]·[activity] are the saved history's convenience refs (summary only; the server fills them again).
  */
 data class HistoryDraft(
-    val id: String = UUID.randomUUID().toString(), val kind: String = "organization",
-    val organization: ActivityInfoRef? = null, val organizationName: String = "",
-    val program: ActivityInfoRef? = null, val programName: String = "",
-    val activity: ActivityInfoRef? = null, val activityName: String = "",
+    val id: String = UUID.randomUUID().toString(),
+    val ownerKind: String = "organization", val owner: ActivityInfoRef? = null, val ownerName: String = "",
     val role: ActivityInfoRef? = null, val roleName: String = "",
+    val organization: ActivityInfoRef? = null, val program: ActivityInfoRef? = null, val activity: ActivityInfoRef? = null,
     val start: LocalDate? = null, val end: LocalDate? = null, val ongoing: Boolean = true, val description: String = "",
     val approval: String = "approved", val approvalReason: String? = null, val verification: String = "unverified", val evidence: List<EvidenceMeta> = emptyList(),
 ) {
-    enum class Step { KIND, ORGANIZATION, PROGRAM, ACTIVITY, ROLE, PERIOD, DESCRIPTION, SUMMARY }
-    val isActivity get() = kind == "activity"
-    /** A hand-typed activity (not from the catalogue) still needs its 조직. */
-    val customActivity get() = isActivity && activity == null && activityName.isNotBlank()
-    val steps get() = if (isActivity) listOfNotNull(Step.KIND, Step.ACTIVITY, Step.ORGANIZATION.takeIf { customActivity }, Step.PROGRAM.takeIf { customActivity }, Step.ROLE, Step.PERIOD, Step.DESCRIPTION, Step.SUMMARY)
-        else listOf(Step.KIND, Step.ORGANIZATION, Step.ROLE, Step.PERIOD, Step.DESCRIPTION, Step.SUMMARY)
+    enum class Step { UNIT, ROLE, PERIOD, DESCRIPTION, SUMMARY }
+    val steps get() = Step.entries
+    /** The unit was typed, not picked: its kind is asked too, and there is no role list to search. */
+    val customUnit get() = owner == null
     fun error(step: Step): String? = when (step) {
-        Step.ORGANIZATION -> "조직을 고르거나 적어 주세요.".takeIf { step in steps && organization == null && organizationName.isBlank() }
-        Step.ACTIVITY -> "활동을 고르거나 적어 주세요.".takeIf { isActivity && activity == null && activityName.isBlank() }
+        Step.UNIT -> "조직·프로그램·활동을 고르거나 적어 주세요.".takeIf { owner == null && ownerName.isBlank() }
         Step.ROLE -> "역할을 고르거나 적어 주세요.".takeIf { role == null && roleName.isBlank() }
         Step.PERIOD -> when { start == null -> "시작일을 골라 주세요."; !ongoing && end != null && end < start -> "종료일은 시작일 이후로 골라 주세요."; else -> null }
         else -> null
     }
-    val history get() = AccountHistory(id, kind,
-        organization, organizationName.trim().ifEmpty { null }.takeIf { organization == null },
-        program, programName.trim().ifEmpty { null }.takeIf { program == null },
-        if (isActivity) activity else null, activityName.trim().ifEmpty { null }.takeIf { isActivity && activity == null },
-        role, roleName.trim().ifEmpty { null }.takeIf { role == null },
+    val history get() = AccountHistory(id, role, if (role == null) roleName.trim() else "", HistoryOwner(ownerKind, owner?.id, owner?.name ?: ownerName.trim()),
+        organization, program, activity,
         start?.toString().orEmpty(), if (ongoing) null else end?.toString(), description.trim(), approval, approvalReason, verification, evidence)
-    val summaryLine get() = (if (isActivity) "활동 참여" else "조직 활동") + " · " + historyPeriod(start, if (ongoing) null else end, ongoing)
-    /** What the summary shows: 조직 · 프로그램 · 활동 and the role, from the draft itself. */
-    val chainText get() = history.chain.joinToString(" · ")
-    val roleText get() = history.roleTitle
+    /** `활동 · 2026.03 – 진행 중`: the unit kind and the period. */
+    val summaryLine get() = unitLabel(ownerKind) + " · " + historyPeriod(start, if (ongoing) null else end, ongoing)
+    /** What the summary shows: `귀속 단위 · 역할` and the 소속 line, from the draft itself. */
+    val title get() = history.title
+    val affiliation get() = history.affiliation
     val hasCustomEntry get() = history.hasCustomEntry
-    /** A picker choice for [step]; clearing a parent also clears what depended on it. A picked activity brings its 조직·프로그램 along. */
-    fun picked(step: Step, id: Long, name: String, organization: ActivityInfoRef? = null, program: ActivityInfoRef? = null): HistoryDraft = when (step) {
-        Step.ORGANIZATION -> copy(organization = ActivityInfoRef(id, name), organizationName = "", program = null, programName = "", activity = null, activityName = "")
-        Step.PROGRAM -> copy(program = ActivityInfoRef(id, name), programName = "", activity = null, activityName = "")
-        Step.ACTIVITY -> copy(activity = ActivityInfoRef(id, name), activityName = "",
-            organization = organization ?: this.organization, organizationName = if (organization != null) "" else organizationName,
-            program = program ?: this.program, programName = if (program != null) "" else programName)
-        Step.ROLE -> copy(role = ActivityInfoRef(id, name), roleName = "")
-        else -> this
-    }
-    fun cleared(step: Step): HistoryDraft = when (step) {
-        Step.ORGANIZATION -> copy(organization = null); Step.PROGRAM -> copy(program = null); Step.ACTIVITY -> copy(activity = null); Step.ROLE -> copy(role = null); else -> this
-    }
-    fun typed(step: Step, name: String): HistoryDraft = when (step) {
-        Step.ORGANIZATION -> copy(organizationName = name, organization = null); Step.PROGRAM -> copy(programName = name, program = null)
-        Step.ACTIVITY -> copy(activityName = name, activity = null); Step.ROLE -> copy(roleName = name, role = null); else -> this
-    }
-    fun pickedName(step: Step): String? = when (step) { Step.ORGANIZATION -> organization?.name; Step.PROGRAM -> program?.name; Step.ACTIVITY -> activity?.name; Step.ROLE -> role?.name; else -> null }
-    fun typedName(step: Step): String = when (step) { Step.ORGANIZATION -> organizationName; Step.PROGRAM -> programName; Step.ACTIVITY -> activityName; Step.ROLE -> roleName; else -> "" }
+    /** A picked unit replaces the typed name and, being a different unit, drops the role; the hit's parents ([organization]·[program]) feed the summary's 소속 line. */
+    fun pickedUnit(kind: String, id: Long, name: String, organization: ActivityInfoRef? = null, program: ActivityInfoRef? = null): HistoryDraft =
+        if (owner?.id == id && ownerKind == kind) this
+        else copy(ownerKind = kind, owner = ActivityInfoRef(id, name), ownerName = "", role = null, roleName = "", organization = organization, program = program, activity = null)
+    fun clearedUnit() = copy(owner = null, role = null, roleName = "", organization = null, program = null, activity = null)
+    fun typedUnit(name: String) = copy(ownerName = name, owner = null, role = null, roleName = "", organization = null, program = null, activity = null)
+    fun pickedRole(id: Long, name: String) = copy(role = ActivityInfoRef(id, name), roleName = "")
+    fun clearedRole() = copy(role = null)
+    fun typedRole(name: String) = copy(roleName = name, role = null)
 
     companion object {
-        fun from(h: AccountHistory) = HistoryDraft(h.id, h.kind,
-            h.organization, if (h.organization == null) h.organizationName.orEmpty() else "",
-            h.program, if (h.program == null) h.programName.orEmpty() else "",
-            h.activity, if (h.activity == null) h.activityName.orEmpty() else "",
-            h.role, if (h.role == null) h.roleName.orEmpty() else "",
+        fun from(h: AccountHistory) = HistoryDraft(h.id, h.owner.kind, h.owner.id?.let { ActivityInfoRef(it, h.owner.name) }, if (h.owner.isCustom) h.owner.name else "",
+            h.role, if (h.role == null) h.roleName else "", h.organization, h.program, h.activity,
             runCatching { LocalDate.parse(h.startDate.take(10)) }.getOrNull(), h.endDate?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() },
             h.endDate == null, h.description, h.approval, h.approvalReason, h.verification, h.evidence)
     }
 }
+/** 조직·프로그램·활동 as the funnel names a unit kind (`organization`·`program`·`activity`). */
+fun unitLabel(kind: String?) = when (kind) { "activity" -> "활동"; "program" -> "프로그램"; else -> "조직" }
 /** One history as the profile list shows it; computed outside the composable so pages render State only. */
 data class HistoryRowState(val id: String, val title: String, val detail: String, val verified: Boolean, val approvalTag: String?, val saved: Boolean)
-fun AccountHistory.rowState(saved: Boolean) = HistoryRowState(id, chain.joinToString(" · "),
-    listOf(roleTitle, periodText(startDate, endDate)).filter { it.isNotEmpty() }.joinToString(" · "), isVerified, approvalTag, saved)
+fun AccountHistory.rowState(saved: Boolean) = HistoryRowState(id, title,
+    listOf(affiliation, periodText(startDate, endDate)).filter { it.isNotEmpty() }.joinToString(" · "), isVerified, approvalTag, saved)
 /** 직접 입력했거나 승인 전인 이력의 승인 상태 태그, 나머지는 null. */
 private val AccountHistory.approvalTag get() = if (hasCustomEntry || !isApproved) when (approval) { "approved" -> "승인됨"; "rejected" -> "거절됨"; else -> "승인 대기" } else null
 /** `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`. */
@@ -192,7 +176,7 @@ fun ProfileVersionDetail.view() = VersionDetailView(version, createdAt, profile.
     profile.contacts.map { it.label to it.value }, profile.histories.historyCards())
 /** 내 프로필 이력을 명함 이력 행(`CardHistoryRow`)으로(contract "내 프로필 활동 이력 = 명함 이력"): 승인 대기·거절은 태그로 남긴다. */
 fun List<AccountHistory>.historyCards() = map {
-    CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, periodText(it.startDate, it.endDate), it.isVerified, it.description, it.approvalTag)
+    CardHistoryState(it.id, it.title, it.affiliation, periodText(it.startDate, it.endDate), it.isVerified, it.description, it.approvalTag, it.activity?.id?.toString())
 }
 
 /** The funnel sheet: which draft is open, whether the history exists on the server (evidence can be attached), and the picker search. */
