@@ -2140,6 +2140,13 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
     - 입력 시트(빈 점·`더 추가하기`·기존 일정을 누름): 이름 · 종류(기존 일정 종류 `DEADLINE` 마감·`ANNOUNCEMENT` 발표·`INTERVIEW` 면접·`EVENT` 행사·교육 등, 묶음에 따라 기본값: 선발 과정 = 마감, 활동 일정 = 행사) · `하루 종일`(켜면 날짜만) · 시작·끝(네이티브 날짜·시간 피커, iOS `DatePicker`, Android Material 3 DatePicker·TimePicker) · 장소(선택, 주소 또는 `온라인`) → `저장`. 기존 일정이면 아래 `일정 삭제`(빨강 글자 버튼). 설명 문구 없음.
     - **`선발 과정` 묶음**(조율 판단): 참여 방식이 `바로 참여`이고 선발 일정이 없으면 기본으로 **접어 둔다**(묶음 이름 + 아래 꺾쇠만, 누르면 펼쳐 빈 점). `개설자 승인`으로 바꾸거나 선발 일정이 하나라도 있으면 펼친다. 지우지 않는다. 이유: 바로 참여 모임에는 모집·발표 단계가 대개 없어서 빈 묶음이 입력을 재촉하지 않게.
     - **`활동 일정`은 최소 하나 필수**. 없으면 오른쪽 위 `열기`가 비활성.
+    - **반복**(2026-11-05 사용자 "매주·매일처럼 캘린더 생성 시 가능한 옵션이 모두 있으면 좋겠어. 캘린더 연동할 때 원활하게"; iOS 캘린더 앱 반복 범위). 입력 시트에 행 셋(㉙-c6):
+      - `반복`(값 + 위아래 꺾쇠, 네이티브 메뉴): `안 함`·`매일`·`매주`·`2주마다`·`매월`·`매년`·`사용자 지정`.
+      - `사용자 지정`(시트 안 푸시, ㉙-c7·㉙-c8): `빈도`(매일·매주·매월·매년) + `간격`(n일·주·개월·년마다) → 매주면 요일 다중 선택(원 일곱 개) → 매월이면 `날짜 | n째 주 요일` 분할 전환(날짜 = 그달 n일, n째 주 요일 = 첫째~넷째·마지막 주 + 요일) → 매년이면 월 다중 선택. 설명 줄 없이 결과는 `반복` 행 값으로(`매주 월·목`, `매월 셋째 주 토요일`).
+      - `반복 종료`: `안 함`·`날짜까지`(네이티브 날짜 피커)·`n회 뒤`. 하루 종일이 아닌 일정의 `날짜까지`는 그 날 끝까지.
+      - `건너뛸 날`(반복일 때만): 날짜 여러 개 추가·삭제(시트 안 목록, 행 밀어서 삭제).
+      - 카드 표시: 반복 일정은 타임라인에 **한 점**, 날짜 줄 `매주 월·목 20:00 ~ 22:00 · 온라인` + 둘째 줄 기간(`11월 16일 (월)부터 11월 30일 (월)까지` 또는 `10회`, 종료 없음이면 `11월 16일 (월)부터`) + 작은 민트 `반복` 표시. 다음 회차 D-day는 기존 규칙(다음 회차 기준).
+      - **다음 단계(이번에 넣지 않음)**: 회차별 수정(`이 일정만`·`이후 모두`), 회차 취소 알림.
     - 상세의 머리 날짜 줄(`11월 16일 (월) ~ 11월 30일 (월)`)은 활동 일정의 처음·끝에서 서버가 만든다(공식 활동과 같은 규칙), 장소 줄은 일정 장소가 모두 같으면 그 값, 다르면 첫 활동 일정 장소.
   - 정원(선택, 차면 `참여하기` 비활성 `정원이 찼어요`).
   - 참여 조건(아래), 공개 범위(아래).
@@ -2211,6 +2218,15 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 확인한 문서(2026-11-05): Discord Developer Docs "Guild" 리소스(Add Guild Member: `guilds.join` 범위 + 같은 앱의 봇 토큰, 봇은 `CREATE_INSTANT_INVITE` 권한으로 그 서버에 있어야 함, `roles` 지정에는 `MANAGE_ROLES`; Add/Remove Guild Member Role: `MANAGE_ROLES`), "Permissions"(봇은 자기 가장 높은 역할보다 낮은 역할만 다룸), "OAuth2"(`identify`·`guilds.join`·`bot` 범위, `permissions`·`guild_id`·`disable_guild_select` 매개변수).
 - **보류(사용자 외부 계정 작업)**: 디스코드 개발자 포털 앱 등록, 봇 토큰·클라이언트 시크릿 발급, 리디렉트 주소 등록(`https://api.dearby.wid.io.kr/v1/me/identities/discord/callback`, 봇 초대 `…/v1/hosted/discord/callback`), 운영 env `DISCORD_CLIENT_ID`·`DISCORD_CLIENT_SECRET`·`DISCORD_BOT_TOKEN`. 값이 없으면 디스코드 행·서버 연결 행을 숨기고 관련 API는 503.
 
+### 반복 일정 확장 — 2026-11-05
+
+직접 개설의 반복 입력을 위해 "반복 일정과 겹침 결과 묶음 — 2026-10-22"의 저장 규칙을 넓힌다(공식 활동 일정·어드민 편집기에도 같은 범위가 적용된다; 어드민 편집기 UI를 넓히는 것은 어드민 담당 다음 단계). **대체 기록**: 10-22의 허용 부분집합(`FREQ=DAILY|WEEKLY`, `BYDAY` 요일 목록만, `INTERVAL` 1~4)은 아래로 대체한다. 10-22의 "ICS 구독 피드는 없다"는 이미 "캘린더 피드 — 한 피드 방식"(2026-11-04)으로 대체됐다.
+
+- **저장**: `schedules.recurrence`(RFC 5545 RRULE 본문, 접두사 없이, 기존 컬럼) + 새 `schedules.exdates date[] null`(건너뛸 날, 회차의 시작 날짜, 일정 시간대 기준).
+- **지원 범위**: `FREQ=DAILY|WEEKLY|MONTHLY|YEARLY`, `INTERVAL`(1~99), `BYDAY`(요일 목록, MONTHLY·YEARLY에서는 서수 하나 붙은 요일 `3SA`·`-1FR`), `BYMONTHDAY`(1~31 하나), `BYMONTH`(1~12 목록), `UNTIL` 또는 `COUNT`(1~400) 중 하나 또는 둘 다 없음(종료 없음). **미지원**: `BYSETPOS`, `HOURLY`·`MINUTELY`·`SECONDLY`, `BYHOUR`·`BYMINUTE`·`BYWEEKNO`·`BYYEARDAY`, `WKST` 변경. 그 밖은 400 `RECURRENCE_UNSUPPORTED`. 31일처럼 없는 날은 RFC 5545대로 그 달을 건너뛴다(시트의 날짜 고르기에서 29~31일을 고르면 경고 줄 없이 그대로 저장, 조율 판단).
+- **서버가 회차를 펼친다**: 활동·일정 조회 응답에서 반복 일정은 원래 `Schedule`(`recurrence`·`exdates`·`recurrenceSummary` 포함, 카드 한 점 표시용) 하나와 함께, 조회 창(오늘 − 1일 ~ + 400일, 최대 400회) 안 회차를 `Schedule.occurrences: [{startAt, endAt} | {startDate, endDateExclusive}]`로 내려 준다. `recurrenceSummary`는 서버가 만든 표시 문자열(`매주 월·목`, `매월 셋째 주 토요일`). 겹침 확인·홈 다음 일정·위젯·알림·선발 결과 묻기·LIVE 판정은 **펼친 회차**를 읽는다(**대체 기록**: 10-22 "앱이 규칙을 풀어 회차 창을 만든다"는 서버 회차 읽기로 대체, 옛 응답에 `occurrences`가 없으면 앱 풀이를 대체 경로로 남긴다).
+- **기기 캘린더로 갈 때는 규칙 그대로**: 캘린더 피드 ICS(`/v1/me/calendar/{token}.ics`)의 `VEVENT`에 `RRULE`·`EXDATE`를 그대로 싣는다(회차를 펼쳐 여러 VEVENT로 만들지 않음; `DTSTART`는 첫 회차, 시각 일정은 `TZID`, 하루 종일은 `VALUE=DATE`). 일정 하나만 넣는 `캘린더에 추가`는 iOS `EKRecurrenceRule`(빈도·간격·요일·`daysOfTheMonth`·`monthsOfTheYear`·`setPositions` 없이 서수 요일은 `EKRecurrenceDayOfWeek(dayOfTheWeek:weekNumber:)`·종료 `EKRecurrenceEnd`), 건너뛸 날은 저장 뒤 해당 회차를 지워 반영(EventKit에 EXDATE 직접 지정이 없음, 조율 판단, 확인 필요). Android `ACTION_INSERT`에 `CalendarContract.Events.RRULE`·`EXDATE`.
+
 ### API(API 담당, 이름은 제안)
 
 | 경로 | 인증 | 요청 | 응답 |
@@ -2239,7 +2255,7 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - Hosted: `{id, type, name, kind, description, coverUrl, host: {userId, name, handle, photoUrl}, schedule, place, capacity, memberCount, discord: {guildId?, guildName, roleName, status?: OK|BROKEN}|null, conditions: Condition[], visibility, approval: PENDING|APPROVED|REJECTED|null, createdAt}`.
 - HostMemberView(개설자에게 가는 최소 정보): `{userId, name, handle, job, bio, photoUrl, status: PENDING|JOINED, evidence: [{type: STAGE_PASSED|EXCHANGED_WITH_HOST|FORM, label, verified: boolean}], verifiedHistoryNames: string[], answers: [{questionId, question, value}], discordName: string|null, appliedAt}`. 이 밖의 프로필 값(연락처·다른 이력·참여 활동·증빙 파일)은 싣지 않는다.
 - Form(Hosted의 `form`, 개설 요청 본문에도): `{questions: [{id, type: SHORT|LONG|SINGLE|MULTI|YES_NO, title, required, options?: string[], condition?: {passing: string[]}}], joinMode: INSTANT|APPROVAL}`. Answer: `{questionId, value: string|string[]|boolean}`.
-- HostedSchedule(저장 모양은 기존 활동 일정 스키마 재사용 제안): 요청 `{id?, title, kind, phase: SELECTION|ACTIVITY, allDay, startAt?, endAt?, startDate?, endDateExclusive?, timeZone, address?: string|null, online: boolean}`, 응답은 공개 Activity의 `Schedule`과 같은 모양(`phase` 포함). 서버는 직접 개설마다 활동 하나를 만들어(`hosted.activity_id`) 기존 `schedules` 테이블에 행으로 넣는다. 그래서 상세 일정 카드·내 활동 진행 트랙·캘린더 연동·위젯이 공식 활동과 같은 코드로 동작한다. `ACTIVITY` 일정이 하나도 없으면 422 `ACTIVITY_SCHEDULE_REQUIRED`. 모집 슬롯(`application`)·활동 기간 슬롯(`activitySchedule`)은 직접 개설에서 따로 받지 않고, 서버가 `SELECTION`·`ACTIVITY` 일정의 처음·끝으로 채운다(조율 판단, 확인 필요).
+- HostedSchedule(저장 모양은 기존 활동 일정 스키마 재사용 제안): 요청 `{id?, title, kind, phase: SELECTION|ACTIVITY, allDay, startAt?, endAt?, startDate?, endDateExclusive?, timeZone, address?: string|null, online: boolean, recurrence?: string|null, exdates?: string[]}`(`recurrence`·`exdates`는 아래 "반복 일정 확장 — 2026-11-05"), 응답은 공개 Activity의 `Schedule`과 같은 모양(`phase` 포함). 서버는 직접 개설마다 활동 하나를 만들어(`hosted.activity_id`) 기존 `schedules` 테이블에 행으로 넣는다. 그래서 상세 일정 카드·내 활동 진행 트랙·캘린더 연동·위젯이 공식 활동과 같은 코드로 동작한다. `ACTIVITY` 일정이 하나도 없으면 422 `ACTIVITY_SCHEDULE_REQUIRED`. 모집 슬롯(`application`)·활동 기간 슬롯(`activitySchedule`)은 직접 개설에서 따로 받지 않고, 서버가 `SELECTION`·`ACTIVITY` 일정의 처음·끝으로 채운다(조율 판단, 확인 필요).
 - Condition: `{type: ANYONE}` · `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle}`(기수마다 같은 kind·제목의 선발 단계로 대응).
 - StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
 - 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
