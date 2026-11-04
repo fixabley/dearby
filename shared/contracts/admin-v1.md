@@ -111,7 +111,7 @@ native-v1.md "활동 트랙(tracks)"의 어드민 쪽. 모집 기간·선발 일
 
 - `GET /v1/admin/activities/:id/tracks` → `{trackLabel, tracks: [{id, name, description, capacity, position, participantCount}]}`(`participantCount`는 그 트랙을 고른 참여 기록 수. 삭제 확인 모달이 이 값을 쓴다).
 - `PUT` 같은 경로 `{trackLabel?, tracks: [{id?, name, description?, capacity?}]}` → 같은 응답. 시간표 PUT과 같이 **통째로 바꾼다**: `id`가 있으면 그 트랙을 고치고(참여 기록의 `trackId` 유지), 없으면 새로 만들고, 빠진 것은 지운다. 순서는 배열 순서(`position`). 빈 배열이면 트랙 없음.
-- **명칭 선택**: `trackLabel`은 `TRACK`·`FIELD`·`JOB_FAMILY`(화면 `트랙`·`분야`·`직군`, 기본 `TRACK`; 공개 응답은 native-v1.md의 `"트랙"|"분야"|"직군"` 라벨, 다국어 키 `track`/`field`/`jobFamily`, 영문 Track/Field/Role). 활동마다 고르고 생략하면 유지.
+- **명칭 선택**: `trackLabel`은 `TRACK`·`FIELD`·`JOB_FAMILY`(화면 `트랙`·`분야`·`직군`, 기본 `TRACK`; 공개 응답도 같은 열거형이고 한글 `트랙`·`분야`·`직군`은 화면 표시 매핑, 다국어 키 `track`/`field`/`jobFamily`, 영문 Track/Field/Role). 활동마다 고르고 생략하면 유지.
 - 삭제 규칙: 지운 트랙을 고른 참여 기록은 `trackId`를 비운다(지원함 기록 자체는 남는다). 어드민 화면은 저장 전에 확인 모달에 `참여 기록 n건의 {라벨}이 비워져요`를 보인다.
 - 400: 이름 비움·중복(띄어쓰기 무시), `capacity`가 0 이하, 개수 한도 20, 다른 활동의 `id`, 모르는 `trackLabel`. 404: 없는 활동.
 - `AdminActivity.tracks`·`trackLabel`은 공개 `Activity`와 같은 모양. `ActivityCreateInput`·운영 데이터 가져오기 `activities[]`에 `tracks?: [{name, description?, capacity?}]`·`trackLabel?`. 수집기 제출(`submit_candidate`)도 `tracks`를 내며(라벨은 기본 `TRACK`), 운영자가 고친 트랙·라벨은 `curated_fields`의 `tracks`·`trackLabel`로 남아 재수집이 덮어쓰지 않는다.
