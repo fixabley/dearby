@@ -1042,7 +1042,7 @@ Spring Mail(SMTP)로 한글 평문 한 통을 보낸다. 제목 `[Dearby] 이메
   - 맨 위 내 사진·이름 카드(`프로필 수정` 보조 줄, 누르면 프로필 수정).
   - `계정 설정` 행 → 계정 화면(㉗-c).
   - 묶음 `환경설정`: `알림`(㉗-d) · `권한`(㉗-e) · `화면 모드`(값 `시스템`, ㉗-f).
-  - 묶음 `리소스`: `스토어 리뷰하러 가기`(↗ 바깥 링크; iOS App Store 리뷰 쓰기 딥 링크 `https://apps.apple.com/app/id{appId}?action=write-review`, 버튼에서 `SKStoreReviewController`는 표시가 보장되지 않아 쓰지 않음; Android Play 스토어 앱 페이지 `market://details?id=…`, In-App Review API는 할당량 제한으로 버튼에 쓰지 않음) · `지원팀 문의하기`(↗; iOS `MFMailComposeViewController`, 없으면 `mailto:`; Android `ACTION_SENDTO`; **받는 주소는 계약에 없어 `support@…` 자리표시, 사용자 결정 필요**; 제목에 앱 버전·기기 정보).
+  - 묶음 `리소스`: `스토어 리뷰하러 가기`(↗ 바깥 링크; iOS App Store 리뷰 쓰기 딥 링크 `https://apps.apple.com/app/id{appId}?action=write-review`, 버튼에서 `SKStoreReviewController`는 표시가 보장되지 않아 쓰지 않음; Android Play 스토어 앱 페이지 `market://details?id=…`, In-App Review API는 할당량 제한으로 버튼에 쓰지 않음) · `지원팀 문의하기`(↗; iOS `MFMailComposeViewController`, 없으면 `mailto:`; Android `ACTION_SENDTO`; 받는 주소 **`fixabley@naver.com`**(2026-11-05 사용자 결정); 제목에 앱 버전·기기 정보).
   - `로그아웃`(기본 행, 빨강 아님, 누르면 확인 시트).
   - 바닥 줄: 작은 글자 버전 + `이용약관 · 개인정보처리방침 · 오픈소스 라이선스` 링크(인앱 브라우저).
   - 비로그인이면 사진 카드·`계정 설정`·로그아웃 대신 `로그인` CTA, `환경설정`·`리소스`·바닥 줄은 그대로.
