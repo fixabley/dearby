@@ -2163,14 +2163,39 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 증빙: 기존 이력 인증자료 규칙 그대로(인증당 3개, 파일당 5MB, `image/jpeg`·`image/png`·`image/webp`·`application/pdf`).
 - 상태: `PENDING` `대기 중`(호박) · `VERIFIED` `확인됨`(청록) · `REJECTED` `반려`(빨강, 반려 사유 한 줄). 글리프 + 글자, 회색 채움 없음. 관리자가 확인한다(어드민 확인 큐). 반려 뒤 다시 올릴 수 있다.
 - 이 인증은 내 활동 진행 트랙의 사용자 표시(`통과`·`대기`·`탈락`, 기기 안 표시)와 별개다. 확인됨이 되어도 트랙 표시를 바꾸지 않는다.
-- 다른 사람에게 보이는 범위: 직접 개설에 참여할 때 참여 확인 시트에서 동의한 범위(통과 단계 이름)만, 개설자와 같은 모임 참여자에게. 증빙 파일은 관리자만 본다.
+- 다른 사람에게 보이는 범위: 직접 개설에 참여(신청)할 때 그 모임의 **개설자에게만** 조건과 이어진 인증의 이름·상태(`SSAFY 17기 · 서류 전형 통과 · 인증됨`). 증빙 파일은 관리자만 본다.
 
 ### 참여 흐름
 
 1. 상세(㉙-d): 조건마다 충족이면 청록 체크, 아니면 빈 원 + `인증하기`(단계) 또는 안내 없음(맞교환; 맞교환은 개설자에게 명함 교환을 요청하는 기존 흐름). 조건을 모두 충족하면 하단 `참여하기`, 아니면 `단계 인증하기`(CTA 아래 한 줄 `<프로그램> <단계> 통과 인증이 있어야 참여할 수 있어요`) 또는 맞교환이 빠졌으면 `명함 교환 요청`.
-2. 참여 확인 시트(㉙-e, CTA 시트라 설명 허용): `개설자와 다른 참여자에게 아래 내용이 보여요` + 행 `통과 단계`(조건으로 쓰인 인증, 예 `SSAFY 17기 서류 발표`) · `디스코드 이름`(디스코드 서버가 연결된 모임일 때) + `참여`. **디스코드가 연결된 모임은 참여자도 디스코드 계정 연결이 필요하다**: 내 디스코드가 연결 안 돼 있으면 행 값 `연결 안 됨`, CTA `디스코드 연결하고 참여`(㉙-e2) → 디스코드 연결 흐름(아래) → 앱으로 돌아오면 이어서 참여 완료 → 봇이 서버에 넣고 역할 부여. 연결을 취소하면 참여하지 않은 채 시트로 돌아온다.
+2. 참여 폼이 있으면 폼 작성(㉙-j) → 제출 확인 시트(㉙-j2, 아래 "개인정보 장치"). 폼이 없으면 참여 확인 시트(㉙-e, CTA 시트라 설명 허용): `개설자와 다른 참여자에게 아래 내용이 보여요` + 행 `통과 단계`(조건으로 쓰인 인증, 예 `SSAFY 17기 서류 발표`) · `디스코드 이름`(디스코드 서버가 연결된 모임일 때) + `참여`. **디스코드가 연결된 모임은 참여자도 디스코드 계정 연결이 필요하다**: 내 디스코드가 연결 안 돼 있으면 행 값 `연결 안 됨`, CTA `디스코드 연결하고 참여`(㉙-e2) → 디스코드 연결 흐름(아래) → 앱으로 돌아오면 이어서 참여 완료 → 봇이 서버에 넣고 역할 부여. 연결을 취소하면 참여하지 않은 채 시트로 돌아온다.
 3. 참여 뒤(㉙-d3): `대화방` 구역(디스코드 서버 이름 + 받은 역할)이 **참여자에게만** 보이고 하단 CTA `디스코드에서 열기`(서버 열기 딥 링크 `https://discord.com/channels/{guildId}`, 디스코드 앱이 있으면 앱으로). 대화방이 없는 모임은 CTA 없이 참여 상태만. 나가기는 `⋯` 메뉴 `나가기`(확인 시트). 개설자는 참여자 목록에서 `내보내기`.
-- 참여자 목록(개설자·참여자에게만): 행 = 기본 프로필(이름·핸들·직업·소개) + 통과 단계 + 디스코드 이름(있을 때). 명함 교환 요청은 PR #519 행 규칙 그대로.
+- 참여자 목록: 개설자용은 아래 "개설자에게 가는 정보"(㉙-k·㉙-k2). 참여자끼리는 기본 프로필(이름·핸들·직업·소개)만 보이고 폼 답변·조건 근거는 보이지 않는다(조율 판단). 명함 교환 요청은 PR #519 행 규칙 그대로.
+
+### 개설자에게 가는 정보·참여 폼·참여 방식 — 2026-11-05
+
+사용자 지시(2026-11-05): "개설자에게 전달되는 정보는 기본정보와 자격 관련 최소정보만(통과 여부를 알 수 있는 활동 정보, 이력). 추가 조건은 커스텀 입력. 개설자가 폼도 만들 수 있게". 시안 ㉙-i~㉙-k3.
+
+- **개설자에게 가는 정보(최소)**: 참여자(승인 대기 포함)마다
+  - 기본 프로필: 이름·핸들·직업·소개(사진 있으면 사진).
+  - **조건 근거 한 줄**: 단계 조건이면 `<프로그램> <기수> · <단계> 통과 · 인증됨`, 맞교환 조건이면 `명함 맞교환`, 폼 조건이면 `<질문> · <답>`.
+  - 조건과 이어진 인증 이력의 **이름만**(예 `SSAFY 17기 서류 전형`).
+  - 폼 답변.
+  - 디스코드 이름(디스코드가 연결된 모임만).
+  - **주지 않는 것**: 증빙 파일(관리자만), 연락처, 조건과 무관한 다른 이력, 다른 참여 활동, 가입 시기, 팔로우. 명함을 맞교환했더라도 이 화면에는 명함 내용을 싣지 않는다(명함은 받은 명함에서 따로 본다).
+  - 화면: 개설자 참여자 목록(㉙-k, 분할 전환 `승인 대기 n | 참여 중 n`, 행 = 기본 프로필 + 조건 근거 한 줄) → 참여자 상세(㉙-k2, 위 순서대로, 하단 `거절 | 승인`).
+- **참여 폼**(개설 폼 › `참여 폼`, ㉙-i): 질문 추가·순서(편집에서 끌기)·필수 여부. 종류 `짧은 답`(≤200자)·`긴 답`(≤2000자)·`하나 고르기`·`여러 개 고르기`(선택지 2~10개)·`예/아니오`. **파일 질문 없음**. 질문은 최대 10개(조율 판단).
+  - 질문 편집 시트(㉙-i2): 질문 · 종류 · `필수` · **`조건으로 쓰기`**(예/아니오·고르기만) → `통과 답`(하나 이상) 지정. 통과 답이 아니면 참여할 수 없다(제출 전 앱이 막고 서버도 403). 이것이 커스텀 추가 조건이며 **자기 신고이고 인증이 아니다**(시트 한 줄). 조건으로 쓴 질문은 상세의 `참여 조건` 목록에도 `<질문> · <통과 답>`으로 보인다.
+  - 결합: 폼 조건도 다른 조건과 모두 충족(AND).
+- **참여 방식**(개설 폼 `참여 방식`, 개설자 선택):
+  - `바로 참여`(기본): 조건 충족 + 폼 제출 → 즉시 참여(디스코드 서버 추가·역할).
+  - `개설자 승인`: 제출 → `승인 대기 중`(상세 하단 비활성 상태 버튼, `⋯` 메뉴 `신청 취소`, ㉙-j3) → 개설자가 답을 보고 `승인`(이때 디스코드 서버 추가·역할) 또는 `거절`(㉙-k3 시트: 사유 선택 `정원이 찼어요`·`조건과 맞지 않아요`·직접 입력·적지 않음). 참여자에게는 `참여하지 못했어요` + 고른 사유만(㉙-j4), 알림 목록 종류 `HOSTED_RESULT`. 승인 대기는 정원에 세지 않는다. 개설자에게는 새 신청 알림 `HOSTED_APPLICATION`.
+- **개인정보 장치**:
+  - 제출 확인 시트(㉙-j2, CTA 시트): `이 답변은 개설자에게 전달돼요` + 전달되는 것 행(기본 프로필·조건 근거·폼 답변 n개·디스코드 이름) + 한 줄 `연락처·증빙 파일·다른 이력은 전달되지 않아요 · 모임이 끝나고 30일 뒤 답변이 지워져요` + `제출하고 참여 신청`(바로 참여면 `제출하고 참여`).
+  - **금지 질문**: 주민등록번호·외국인등록번호·여권번호·계좌번호·카드번호·비밀번호, 건강·병력·장애, 종교, 정치 성향, 성생활·성적 지향, 노동조합 가입(개인정보 보호법의 민감정보·고유식별정보 범주를 참고한 조율 목록, 법률 검토 필요). 질문을 저장할 때 서버가 문구를 키워드로 검사해 걸리면 422 `SENSITIVE_QUESTION`(앱은 시트에 빨강 연한 경고 줄 `민감한 개인정보는 물을 수 없어요` + 예시, `완료` 비활성, ㉙-i3). 검사를 피한 질문은 신고(개설 글 신고 사유 `부적절한 질문`)로 운영자가 처리(질문 삭제·모임 내리기).
+  - **보관**: 답변은 모임 종료일(프로그램 끝 날짜·이벤트 끝 시각, 없으면 개설자가 닫은 때) + 30일 뒤 지운다(batch 매일 04:00, 명함 회수와 함께, 지운 수 로그). 거절된 신청의 답변은 거절 + 30일 뒤. 모임이 지워지면 즉시.
+  - 참여자는 언제든 **자기 답 삭제**(상세 `⋯` › `내 답변 지우기`; 지우면 그 모임에서도 나간다, 폼 조건이 있으니 다시 참여하려면 다시 제출) + `나가기`.
+  - 개인정보처리방침에 "직접 개설 모임 개설자에게 제공(제공받는 자: 그 모임의 개설자, 항목: 기본 프로필·조건 근거·폼 답변·디스코드 이름, 목적: 참여 자격 확인·모임 운영, 보유: 모임 종료 30일 뒤까지)" 항목을 더한다. **문구는 자리표시, 법률 문구 확인 필요**.
 
 ### 디스코드 연결(2번안)
 
@@ -2190,10 +2215,14 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 | DELETE /v1/hosted/:id | Bearer(개설자) | — | 204(참여자의 디스코드 역할 회수) |
 | PUT /v1/hosted/:id/cover | Bearer(개설자) | multipart `file` | 200 `{coverUrl}` |
 | GET /v1/hosted/:id | Bearer 선택 | — | 200 Hosted(`discord.guildId`는 참여자·개설자에게만, `discord.status`는 개설자에게만, `viewer: {joined, conditionsMet: [{type, met}]}`). 차단 사이 404 |
-| POST /v1/hosted/:id/join | Bearer | — | 201. 조건 미충족 403 `CONDITIONS_NOT_MET`(`missing[]`), 정원 409 `FULL`, 디스코드가 연결된 모임인데 내 디스코드가 없으면 409 `DISCORD_REQUIRED`(앱은 연결 흐름 뒤 다시 호출) |
-| DELETE /v1/hosted/:id/members/me | Bearer | — | 204(나가기) |
+| POST /v1/hosted/:id/join | Bearer | `{answers: Answer[]}` | 201 `{status: JOINED|PENDING}`(참여 방식에 따라). 조건·폼 조건 미충족 403 `CONDITIONS_NOT_MET`(`missing[]`), 필수 답 누락 422, 정원 409 `FULL`, 디스코드가 연결된 모임인데 내 디스코드가 없으면 409 `DISCORD_REQUIRED`(앱은 연결 흐름 뒤 다시 호출) |
+| DELETE /v1/hosted/:id/members/me | Bearer | — | 204(나가기·신청 취소, 답변도 지움) |
+| DELETE /v1/hosted/:id/members/me/answers | Bearer | — | 204(내 답 삭제 = 나가기) |
+| POST /v1/hosted/:id/members/:userId/approve | Bearer(개설자) | — | 200(디스코드 추가·역할). 대기 중이 아니면 409 |
+| POST /v1/hosted/:id/members/:userId/reject | Bearer(개설자) | `{reason?: FULL|MISMATCH, reasonText?: string(≤100)}` | 200 |
 | DELETE /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 204(내보내기) |
-| GET /v1/hosted/:id/members | Bearer(개설자·참여자) | — | 200 `{items: [{userId, name, handle, job, bio, photoUrl, passedStage?, discordName?}]}` |
+| GET /v1/hosted/:id/members | Bearer(개설자·참여자) | `?status=PENDING|JOINED` | 개설자: 200 `{items: HostMemberView[]}`, 참여자: 200 `{items: [{userId, name, handle, job, bio, photoUrl}]}`(PENDING은 개설자만) |
+| GET /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 200 HostMemberView |
 | POST /v1/hosted/:id/reports | Bearer | `{reason, detail?}` | 201(명함 신고와 같은 사유·24시간 중복 규칙) |
 | GET/POST /v1/me/stage-verifications | Bearer | POST multipart `{activityId, scheduleId, files[]}` | 201 StageVerification. GET은 내 목록 |
 | DELETE /v1/me/stage-verifications/:id | Bearer | — | 204 |
@@ -2203,8 +2232,10 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 | PUT /v1/hosted/:id/discord/role | Bearer(개설자) | `{roleId}` 또는 `{createName}` | 200 |
 
 - Hosted: `{id, type, name, kind, description, coverUrl, host: {userId, name, handle, photoUrl}, schedule, place, capacity, memberCount, discord: {guildId?, guildName, roleName, status?: OK|BROKEN}|null, conditions: Condition[], visibility, approval: PENDING|APPROVED|REJECTED|null, createdAt}`.
+- HostMemberView(개설자에게 가는 최소 정보): `{userId, name, handle, job, bio, photoUrl, status: PENDING|JOINED, evidence: [{type: STAGE_PASSED|EXCHANGED_WITH_HOST|FORM, label, verified: boolean}], verifiedHistoryNames: string[], answers: [{questionId, question, value}], discordName: string|null, appliedAt}`. 이 밖의 프로필 값(연락처·다른 이력·참여 활동·증빙 파일)은 싣지 않는다.
+- Form(Hosted의 `form`, 개설 요청 본문에도): `{questions: [{id, type: SHORT|LONG|SINGLE|MULTI|YES_NO, title, required, options?: string[], condition?: {passing: string[]}}], joinMode: INSTANT|APPROVAL}`. Answer: `{questionId, value: string|string[]|boolean}`.
 - Condition: `{type: ANYONE}` · `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle}`(기수마다 같은 kind·제목의 선발 단계로 대응).
 - StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
 - 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
-- 저장(제안): `hosted(id, host_user_id, type, name, kind, description, cover bytea null, schedule jsonb, place jsonb, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title)`, `hosted_members(hosted_id, user_id, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST)`, `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
+- 저장(제안): `hosted(id, host_user_id, type, name, kind, description, cover bytea null, schedule jsonb, place jsonb, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title)`, `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
 - 통계(analytics-v1.md에 더한다, 제안): `hosted_create(type, visibility, conditionTypes)`, `hosted_join`, `hosted_leave`, `stage_verification_submit`, `discord_connect`.
