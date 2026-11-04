@@ -325,13 +325,13 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
 
 native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정 블록(활동 기간 또는 세부 일정, 모집 기간 제외) 하나에 딸린다.
 
-- `GET /v1/admin/activities/:id/schedules/:scheduleId/timetable` → `{scheduleId, tracks: [{id, name, room, position}], sessions: [{id, trackId, track, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[]}]}`(없으면 빈 목록, `track`은 tracks 순번). 게시 전 활동도 된다.
-- `PUT` 같은 경로 `{tracks: [{id?, name, room?}], sessions: [{id?, track?, kind, title, description?, startAt, endAt, speakers?: [{name, affiliation?}], tagIds?}]}` → 같은 응답. **통째로 바꾼다**: `id`가 있으면 그 트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다(그 세션의 찜도 지워짐). `track`은 요청 `tracks` 순번(0부터), 없으면 전폭 세션. 트랙 0개면 단일 진행. 빈 목록 둘이면 시간표를 지운다.
-- 400: 모집 기간·반복·날짜 미정 블록, 블록 시간 밖 세션, 끝 ≤ 시작, 같은 트랙(또는 전폭) 세션 시간 겹침, 트랙 이름 중복, 순번 밖 `track`, 다른 블록의 id, 없는 태그, 개수·길이 한도(트랙 20, 세션 300, 연사 10, 태그 5). 404: 없거나 지운 블록.
+- `GET /v1/admin/activities/:id/schedules/:scheduleId/timetable` → `{scheduleId, rooms: [{id, name, position}], tracks: [{id, name, roomId, room, position}], sessions: [{id, trackId, track, roomId, room, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[]}]}`(없으면 빈 목록, `track`은 tracks 순번, `room`은 rooms 순번). 세션의 `roomId`·`room`은 세션 자체 값이다(트랙의 방을 채우지 않는다). 게시 전 활동도 된다. (2026-11-05 방: `rooms`를 더하고 트랙 `room`이 방 이름 문자열에서 rooms 순번으로 바뀌었다.)
+- `PUT` 같은 경로 `{rooms: [{id?, name}], tracks: [{id?, name, room?}], sessions: [{id?, track?, room?, kind, title, description?, startAt, endAt, speakers?: [{name, affiliation?}], tagIds?}]}` → 같은 응답. **통째로 바꾼다**: `id`가 있으면 그 방·트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다(그 세션의 찜도 지워짐; 빠진 방을 가리키던 트랙·세션은 방 없음). `track`은 요청 `tracks` 순번(0부터), 없으면 전폭 세션. 트랙·세션의 `room`은 요청 `rooms` 순번(0부터), 없으면 방 없음(세션은 트랙의 방을 따름). 방 순서는 배열 순서. 트랙 0개면 단일 진행. 빈 목록 셋이면 시간표를 지운다.
+- 400: 모집 기간·반복·날짜 미정 블록, 블록 시간 밖 세션, 끝 ≤ 시작, 같은 트랙(또는 전폭) 세션 시간 겹침, 트랙 이름 중복, 방 이름 중복(앞뒤 공백 정리 뒤)·빈 방 이름, 순번 밖 `track`·`room`, 다른 블록의 id, 없는 태그, 개수·길이 한도(방 30·이름 100자, 트랙 20, 세션 300, 연사 10, 태그 5). 404: 없거나 지운 블록.
 - 세부 일정 블록에 시간표를 붙이면 그 블록은 `curated = true`가 된다(재수집이 지우지 않게, 세션 id 유지).
 - 일정 응답(`application`·`activitySchedule`·`schedules[]`)에 `hasTimetable`.
-- 화면(다음 단계): 일정 탭의 블록 행마다 `시간표` 버튼 → 트랙 목록(이름·방·순서)과 세션 표(시작·끝·트랙·종류·제목·연사·태그) 편집.
-- 가져오기(아래 "운영 데이터 가져오기"): `activities[].timetables: [{scheduleId|scheduleRef, overwrite?, tracks: [{name, room?}], sessions: [{track?, kind, title, startAt, endAt, speakers?, tagNames?, description?}]}]`. 세션이 이미 있으면 `overwrite`일 때만 바꾼다(이때 기존 세션 id가 바뀌어 찜이 지워진다). 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 검증은 위 PUT과 같다.
+- 화면: 일정 탭의 블록 행마다 `시간표` 버튼 → 세션 표(시작·끝·트랙·방·종류·제목·연사·태그), 트랙 목록(이름·방 선택·순서), **방 목록**(2026-11-05: 이름·순서·추가·지우기, 쓰는 트랙·세션 수) 편집. 트랙과 세션(전폭 세션 포함)은 방을 목록에서 고른다. 세션의 방은 비우면 트랙의 방을 따른다. V68 이관으로 생긴 방은 띄어쓰기만 다른 같은 방이 따로 있을 수 있어 어드민이 확인한다.
+- 가져오기(아래 "운영 데이터 가져오기"): `activities[].timetables: [{scheduleId|scheduleRef, overwrite?, tracks: [{name, room?}](room은 방 이름 문자열; 같은 이름은 한 방으로 묶어 방 목록을 만든다, 2026-11-05), sessions: [{track?, kind, title, startAt, endAt, speakers?, tagNames?, description?}]}]`. 세션이 이미 있으면 `overwrite`일 때만 바꾼다(이때 기존 세션 id가 바뀌어 찜이 지워진다). 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 검증은 위 PUT과 같다.
 
 ## 운영 데이터 가져오기 — 2026-10-22
 
