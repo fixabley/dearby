@@ -376,3 +376,12 @@ native-v1.md "직접 개설(사용자가 여는 프로그램·이벤트) — 202
 - **단계 인증 확인 큐**: 메뉴 `단계 인증`. 표(대기가 위): 사용자·프로그램·기수·단계·올린 시각·파일 수. 행을 열면 파일 보기(이력 인증자료 보기와 같은 방식)와 `확인`·`반려`(사유 필수). `GET /v1/admin/stage-verifications?status=PENDING`, `GET /v1/admin/stage-verifications/:id/files/:fileId`, `POST /v1/admin/stage-verifications/:id/verify`, `POST /v1/admin/stage-verifications/:id/reject {reason}`. 파일 보유 기간은 이력 인증자료와 같다.
 - **프로그램별 단계 조건 끄기**: 프로그램 편집에 스위치 `단계 조건 걸기`(기본 켬). 끄면 새 직접 개설에서 그 프로그램을 단계 조건으로 고를 수 없고, 이미 열린 것은 새 참여만 막힌다. `PATCH /v1/admin/programs/:id {stageConditionAllowed: boolean}`.
 - **신고**: 직접 개설 신고(`hosted_reports`)는 기존 `신고` 메뉴에 대상 종류 `직접 개설`로 함께 보이고, 처리에 `내리기`가 있다·`질문 지우기`(사유 `부적절한 질문`: 금지 질문이 검사를 피한 경우, 지운 질문의 답변도 함께 지움)가 있다. 행을 열면 참여 폼 질문 목록이 보인다(답변은 보이지 않음). 보유 기간·상태는 명함 신고와 같다.
+
+## 자격 키 사전 — 2026-11-05
+
+native-v1.md "자격 조건 — 2026-11-05"의 어드민 쪽(API 이름은 제안, API 담당). ADMIN 역할.
+
+- 메뉴 `자격 키`: 표(승인 대기가 위): 이름·값 종류·선택지·제안한 사용자(이름·@핸들)·쓰인 모임 수·제안 시각. 기본 키(대상자 조건 어휘 + `gender`)는 `기본`으로 보이고 고칠 수 없다.
+- 행을 열면 이름·영문 키(어드민이 정함, camelCase, 중복 금지)·값 종류·선택지(라벨·영문 값)를 고치고 `승인`·`반려`(사유) 또는 `합치기`(같은 뜻의 기존 키로 옮김: 그 키를 쓰던 모임 조건과 자기 신고 값이 대상 키로 옮겨짐).
+- `GET /v1/admin/qualification-keys?status=PENDING`, `PATCH /v1/admin/qualification-keys/:key {label, key?, valueType, options}`, `POST /v1/admin/qualification-keys/:key/approve`, `POST …/reject {reason}`, `POST …/merge {into}`.
+- 승인되면 공용 검색과 프로필 지원 자격 정보 입력에 나오고, 수집 배치의 대상자 조건 어휘에는 넣지 않는다(수집 어휘는 그대로, 조율 판단).

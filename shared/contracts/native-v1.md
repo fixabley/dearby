@@ -2161,13 +2161,33 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 
 ### 참여 조건
 
-- 고를 수 있는 것(하나 이상, ㉙-c2 시트):
-  - **누구나**(다른 조건과 함께 고를 수 없음).
+**2026-11-05 갱신**(사용자 결정, ㉙-c2 새 시트). **대체 기록**: 같은 날 앞선 안의 `누구나` 선택지는 없앤다(조건을 하나도 고르지 않으면 누구나, `Condition` 목록이 비면 됨). 단계 조건의 "프로그램 › 기수 여러 개 › 단계" 고르기는 아래 "내 활동에서 고름"으로 대체한다.
+
+- 고를 수 있는 것(없으면 누구나, ㉙-c2 시트; 시트 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요`):
   - **나와 명함을 맞교환한 사람**: 개설자와 회수·철회되지 않은 맞교환 상태("명함 교환 — 2026-10-19"의 맞교환 정의, 계정 쌍).
   - **단계 통과 인증**: 프로그램 하나 › 그 프로그램의 기수(활동) 여러 개 › 단계 하나. 단계는 그 활동의 **선발 단계**(`Schedule.phase` 선발, "내 활동 진행 트랙")이고 "그 단계 이상" = 고른 단계 또는 그 뒤 선발 단계의 인증이 `확인됨`이거나, 그 활동을 `참여 중`으로 인증받은 것. 기수가 여럿이면 단계는 기수마다 같은 이름(종류)의 단계로 맞춘다(조율 판단: 기수마다 일정 id가 달라서 고를 때 첫 기수의 단계를 고르면 다른 기수는 같은 `kind`·제목의 선발 단계로 대응, 대응이 없는 기수는 고를 수 없게 흐림).
+  - **단계 통과 인증 고르기(갱신)**: 개설자가 **자기 내 활동에서 검색해** 고른다. 고를 수 있는 것은 개설자 본인의 단계 인증이 `확인됨`인 단계뿐이고(그래서 "개설자도 인증" 확인이 고르는 순간 끝남), 시트에는 `SSAFY 17기 · 서류 발표 통과 · 인증됨` 한 행으로 보인다. 프로그램 전체(다른 기수) 적용은 사용자 확인 중이라 고른 기수만 쓰고, 그 아래 `같은 프로그램 다른 기수에도` 토글은 **자리만**(비활성) 둔다. 이 토글이 확정되면 위 "기수 사이 하나만(OR)"과 기수별 단계 대응 규칙이 그 토글의 동작이 된다.
+  - **자격**(신규, ㉙-c2 `자격` 묶음 → `자격 추가`): 아래 "자격 조건 — 2026-11-05".
 - **결합**(조율 판단, 확인 필요): 조건 종류 사이는 **모두 충족(AND)**, 단계 조건 안의 기수 사이는 **하나만(OR)**. 이유: 직접 개설의 기본이 비공개 모임이라 좁히는 쪽이 의도와 맞고, 같은 프로그램 여러 기수는 넓히려고 고르는 것이다. 시트 아래 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요. 기수는 하나만 맞으면 돼요`(CTA 시트라 허용). 상세의 조건 제목은 `참여 조건 · 모두 충족`.
 - **개설자도 인증**: 단계 조건은 개설자 본인이 같은 조건을 `확인됨`으로 가져야 걸 수 있다(시트 `내 인증` 줄; 없으면 `인증하기 ›`로 단계 인증 화면). 저장 때 서버가 다시 확인한다(422 `HOST_NOT_VERIFIED`).
 - **주최 측 금지**: 어드민이 프로그램마다 `단계 조건 걸기`를 끌 수 있다(공식 주최 측이 합격자 모임을 금지하는 경우). 꺼진 프로그램은 시트의 프로그램 고르기에서 흐리게 보이고 고를 수 없다(422 `STAGE_CONDITION_DISABLED`). 이미 그 조건으로 열린 것은 그대로 두고 새 참여만 막는다(조율 판단, 확인 필요).
+
+### 자격 조건 — 2026-11-05
+
+사용자 결정(2026-11-05): 참여 조건에 자격(지원 자격 정보와 같은 키)을 건다. 시안 ㉙-l~㉙-l5·㉙-o.
+
+- **자격 키 사전**: 공용 키 = "대상자 조건(eligibility) — 2026-10-18"의 어휘(`age`·`birthYear`·`schoolYear`·`educationLevel`·`educationStatus`·`major`·`region`·`employment`·`experienceYears`·`nationality`·`teamSize`) + 신규 `gender` + 어드민이 승인한 사용자 제안 키. 키마다 값 종류: `RANGE`(from/to, 한쪽 생략 가능), `NUMBER`, `SINGLE`·`MULTI`(선택지 목록), **`BOOL`(신규)**. 묶음은 기존 그룹(`op: all|any`, 깊이 3)을 그대로 쓴다.
+- **시트**: `자격 추가` → 자격 키 검색 시트(㉙-l, 행 = 키 이름 + 값 종류, 제안 키는 `사용자 제안`) → 고른 키의 값 입력(㉙-l2 범위 `부터 ~ 까지`, ㉙-l3 예/아니오 분할 전환, 고르기는 칩·체크) → `추가`. 묶음은 `자격 묶음`(㉙-l4, `모두 | 하나라도` + 안에 자격 여러 개). 참여 조건 시트의 행은 `나이 19~34세`·`재학상태 · 취업상태 하나라도`처럼 키 이름 + 값 요약.
+- **자동 매칭**: 참여자의 **지원 자격 정보**(프로필, 동의한 사람만)와 같은 키로 서버가 판정한다(기존 대상자 조건 2차 판정과 같은 평가기, 조건 없는 키는 판정 불가로 보고 아래 직접 입력으로). 값이 없으면 상세의 그 조건은 빈 원 + `입력하기`(지원 자격 정보 화면으로, 동의 전이면 동의 시트 먼저). **개설자에게는 값이 아니라 `자격 충족`(자격 n개 충족)만** 보인다(지원 자격 정보 동의의 "다른 사람에게 보이지 않음"을 지킴; 그래도 "모임 개설자에게 충족 여부가 전달됨"을 동의 요약에 한 줄 더해야 한다, 법률 문구 확인 필요).
+- **새 자격 제안**(㉙-l5, 검색에 없을 때): 이름 · 값 종류 · 선택지(고르기 종류일 때) → `제안하고 쓰기`(CTA 시트 한 줄 `승인 전에는 이 모임에서만 쓰이고 참여자가 신청 때 직접 입력해요`). 어드민 승인 큐(admin-v1 "자격 키 사전 — 2026-11-05")로 간다. **승인 전**: 그 개설자의 모임에서만 쓰이고, 참여자가 신청 때 직접 입력(자기 신고, ㉙-o; 개설자에게는 이 값도 `자격 충족`으로만). **승인 뒤**: 공용 검색에 뜨고 프로필 지원 자격 정보에서도 입력할 수 있다. 반려되면 이미 쓰인 모임에서는 직접 입력 조건으로 남는다(조율 판단, 확인 필요). 같은 이름의 제안은 어드민이 합친다.
+- **성별**(`gender`, 값 `female`·`male`·`undisclosed`, 화면 `여성`·`남성`·`밝히지 않음`): 프로필 지원 자격 정보에 선택 항목으로 더한다. 단, **성별 제한 모임은 프로필 값으로 자동 매칭하지 않는다**: 신청 때 성별을 따로 입력해 제출하고(㉙-o, `밝히지 않음`은 고를 수 없음), 제출 확인 시트에 `성별`이 개설자에게 전달된다고 행으로 보인다. 개설자 참여자 상세에 `성별` 값이 보인다(다른 자격과 달리 값이 전달됨).
+
+### 제출 명함 — 2026-11-05
+
+- 개설 폼 `참여` 묶음에 `제출 명함 필수 항목`(㉙-m): 명함 노출 항목(연락처 각각·소셜 링크·이력·참여 중인 활동·참여했던 활동·가입 시기·팔로우 목록)에서 고른다. 고르지 않으면 명함 제출 단계가 없다.
+- 신청 때 `제출할 명함` 시트(㉙-n): 내 명함 목록, 필수 항목이 빠진 명함은 흐리게 + `<항목> 빠짐`(빨강) + `명함 고치기` 바로 가기, 아래 `새 명함`. 기본 선택은 필수 항목을 모두 가진 명함 중 켠 항목이 가장 적은 것(조율 판단: 의도보다 많이 건네지 않게). CTA `이 명함 제출` + 한 줄 `개설자에게만 전달돼요 · 맞교환은 따로 해요`.
+- 제출은 **개설자에게 한쪽 전달**이다(맞교환이 아니고 개설자 지갑에 들어가지 않음, 그 모임의 참여자 상세에서만 보임). 명함을 고치거나 지우면 제출본도 따라 바뀐다(발행 스냅샷 규칙 그대로; 지우면 `제출한 명함이 지워졌어요`). 맞교환은 PR #519 흐름으로 따로 한다. 답변과 같은 보관 규칙(모임 종료 30일 뒤 제출 관계 삭제).
+- 개설자 참여자 상세(㉙-k2)에 `제출 명함` 카드(그 명함에서 켠 항목만).
 
 ### 단계 인증
 
@@ -2256,8 +2276,11 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - HostMemberView(개설자에게 가는 최소 정보): `{userId, name, handle, job, bio, photoUrl, status: PENDING|JOINED, evidence: [{type: STAGE_PASSED|EXCHANGED_WITH_HOST|FORM, label, verified: boolean}], verifiedHistoryNames: string[], answers: [{questionId, question, value}], discordName: string|null, appliedAt}`. 이 밖의 프로필 값(연락처·다른 이력·참여 활동·증빙 파일)은 싣지 않는다.
 - Form(Hosted의 `form`, 개설 요청 본문에도): `{questions: [{id, type: SHORT|LONG|SINGLE|MULTI|YES_NO, title, required, options?: string[], condition?: {passing: string[]}}], joinMode: INSTANT|APPROVAL}`. Answer: `{questionId, value: string|string[]|boolean}`.
 - HostedSchedule(저장 모양은 기존 활동 일정 스키마 재사용 제안): 요청 `{id?, title, kind, phase: SELECTION|ACTIVITY, allDay, startAt?, endAt?, startDate?, endDateExclusive?, timeZone, address?: string|null, online: boolean, recurrence?: string|null, exdates?: string[]}`(`recurrence`·`exdates`는 아래 "반복 일정 확장 — 2026-11-05"), 응답은 공개 Activity의 `Schedule`과 같은 모양(`phase` 포함). 서버는 직접 개설마다 활동 하나를 만들어(`hosted.activity_id`) 기존 `schedules` 테이블에 행으로 넣는다. 그래서 상세 일정 카드·내 활동 진행 트랙·캘린더 연동·위젯이 공식 활동과 같은 코드로 동작한다. `ACTIVITY` 일정이 하나도 없으면 422 `ACTIVITY_SCHEDULE_REQUIRED`. 모집 슬롯(`application`)·활동 기간 슬롯(`activitySchedule`)은 직접 개설에서 따로 받지 않고, 서버가 `SELECTION`·`ACTIVITY` 일정의 처음·끝으로 채운다(조율 판단, 확인 필요).
-- Condition: `{type: ANYONE}` · `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle}`(기수마다 같은 kind·제목의 선발 단계로 대응).
+- Condition: `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle, applyToProgram: false}`(지금은 개설자가 고른 기수 하나, `applyToProgram`은 자리만) · `{type: QUALIFICATION, rule: Eligibility}`(기존 `eligibility` 그룹 JSON, 조건의 `fieldEn`은 자격 키, `BOOL`은 `values: [true]`) · `{type: GENDER, values: ["female"]}`. `ANYONE`은 없앰(빈 목록 = 누구나).
+- QualificationKey: `{key, label, valueType: RANGE|NUMBER|SINGLE|MULTI|BOOL, options?: [{value, label}], source: BUILTIN|SUGGESTED, status: APPROVED|PENDING|REJECTED, ownerHostedId?}`. `GET /v1/qualification-keys?q=` → 공용(APPROVED) + 내가 제안한 PENDING. `POST /v1/qualification-keys {label, valueType, options?}` → 201 PENDING.
+- 참여 요청 본문 확장: `POST /v1/hosted/:id/join {answers, cardId?, gender?, selfReported?: [{key, value}]}`(성별 제한·제출 명함·승인 전 제안 키 자기 신고). HostMemberView에 `qualificationMet: number`(충족 수, 값 없음)·`gender?`·`submittedCard?: Card`(켠 항목만).
+- 지원 자격 정보 확장: Profile 자격 정보에 `gender`와 승인된 제안 키 값(`extra: [{key, value}]`).
 - StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
 - 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
-- 저장(제안): `hosted(id, host_user_id, activity_id → activities, type, name, kind, description, cover bytea null, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title)`, `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
+- 저장(제안): `hosted(id, host_user_id, activity_id → activities, type, name, kind, description, cover bytea null, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title, apply_to_program, rule jsonb)`, `qualification_keys(key pk, label, value_type, options jsonb, source, status, suggested_by, owner_hosted_id, created_at, reviewed_at, reviewed_by)`, `hosted_submitted_cards(hosted_id, user_id, card_id, submitted_at)`, `hosted_self_reports(hosted_id, user_id, key, value jsonb)`(답변과 같은 보관), `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
 - 통계(analytics-v1.md에 더한다, 제안): `hosted_create(type, visibility, conditionTypes)`, `hosted_join`, `hosted_leave`, `stage_verification_submit`, `discord_connect`.
