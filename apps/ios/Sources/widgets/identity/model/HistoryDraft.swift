@@ -9,6 +9,11 @@ struct HistoryDraft: Equatable, Identifiable {
     var owner: HistoryOwner?
     var ownerKind = "organization"
     var ownerName = ""
+    /// The unit and its parents as refs (the server's convenience values, or the picked hit's), passed through so an untouched saved
+    /// history round-trips unchanged and a new row shows its 소속 line before the save.
+    var organization: ActivityInfoRef?
+    var program: ActivityInfoRef?
+    var activity: ActivityInfoRef?
     var role: ActivityInfoRef?
     var roleName = ""
     var start: Date?
@@ -25,6 +30,7 @@ struct HistoryDraft: Equatable, Identifiable {
     init(history h: AccountHistory) {
         id = h.id
         if h.owner.id != nil { owner = h.owner } else { ownerKind = h.owner.kind; ownerName = h.owner.name }
+        organization = h.organization; program = h.program; activity = h.activity
         role = h.role; roleName = h.role == nil ? h.roleName : ""
         start = ProfileForm.date(h.startDate); end = h.endDate.flatMap(ProfileForm.date); ongoing = h.endDate == nil
         description = h.description
@@ -33,12 +39,17 @@ struct HistoryDraft: Equatable, Identifiable {
     private static func trimmed(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
     /// The unit as it will be saved: the picked one, or the typed kind and name.
     var unit: HistoryOwner { owner ?? HistoryOwner(kind: ownerKind, id: nil, name: Self.trimmed(ownerName)) }
-    /// The server fills the 조직·프로그램 refs on save; an activity unit is its own `activity` ref so the row links before that.
+    /// A picked search hit: the unit becomes `owner` and the refs follow the server's rule (an activity's 조직·프로그램·활동, a program's 조직·프로그램, an organization's 조직).
+    mutating func pick(_ item: ActivityInfoItem) {
+        let kind = item.type ?? "activity", ref = ActivityInfoRef(id: item.id, name: item.name)
+        owner = HistoryOwner(kind: kind, id: item.id, name: item.name)
+        organization = kind == "organization" ? ref : item.organization
+        program = kind == "program" ? ref : item.program
+        activity = kind == "activity" ? ref : nil
+    }
     var history: AccountHistory {
-        let unit = unit
-        return AccountHistory(
-            id: id, role: role, roleName: role?.name ?? Self.trimmed(roleName), owner: unit,
-            activity: unit.kind == "activity" ? unit.id.map { ActivityInfoRef(id: $0, name: unit.name) } : nil,
+        AccountHistory(
+            id: id, role: role, roleName: role?.name ?? Self.trimmed(roleName), owner: unit, organization: organization, program: program, activity: activity,
             startDate: start.map(ProfileForm.day) ?? "", endDate: ongoing ? nil : end.map(ProfileForm.day),
             description: Self.trimmed(description), approval: approval, approvalReason: approvalReason, verification: verification, evidence: evidence)
     }

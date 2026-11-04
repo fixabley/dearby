@@ -51,8 +51,11 @@ struct HistoryFunnelPage: View {
             Button("취소", role: .cancel) {}
         }
         .onChange(of: path) { _, _ in tried = false }
-        // A role belongs to its unit, so changing the unit (also un-picking it) starts the role over.
-        .onChange(of: draft.owner) { _, _ in draft.role = nil; draft.roleName = "" }
+        // A role belongs to its unit, so changing the unit (also un-picking it) starts the role over; un-picking drops the unit's refs too.
+        .onChange(of: draft.owner) { _, next in
+            draft.role = nil; draft.roleName = ""
+            if next == nil { draft.organization = nil; draft.program = nil; draft.activity = nil }
+        }
     }
     private func page(_ step: HistoryDraft.Step) -> some View {
         let index = steps.firstIndex(of: step) ?? 0
@@ -74,9 +77,7 @@ struct HistoryFunnelPage: View {
             ActivityInfoPickerView(title: "어디에서 활동했나요?", prompt: "조직·프로그램·활동 이름 검색", kind: .units, account: state.account,
                                    picked: Binding(get: { draft.owner.flatMap { unit in unit.id.map { ActivityInfoRef(id: $0, name: unit.name) } } },
                                                    set: { if $0 == nil { draft.owner = nil } }),
-                                   pickedDetail: draft.owner?.kindName, typed: $draft.ownerName, focus: $searchFocused, footer: stepError) { item in
-                draft.owner = HistoryOwner(kind: item.type ?? "activity", id: item.id, name: item.name)
-            }
+                                   pickedDetail: draft.owner?.kindName, typed: $draft.ownerName, focus: $searchFocused, footer: stepError) { draft.pick($0) }
             if draft.owner == nil, !draft.ownerName.isEmpty {
                 Section {
                     Picker("종류", selection: $draft.ownerKind) {
