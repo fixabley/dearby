@@ -362,7 +362,7 @@ native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정
 
 사용자: "필터에 들어가는 항목들 어드민에서 관리할 수 있게" → "아이콘 종류도 선택할 수 있게". 앱 필터 시트의 섹션과 항목을 어드민이 정하고 공개 `GET /v1/discovery/filters`(native-v1.md "발견 필터 시트 표현")가 그대로 내려 준다.
 
-- **페이지** `필터 구성`: 섹션 목록(`활동 상태`·`종류`·`분야`·`대상`)을 끌어 순서를 바꾸고 켜고 끈다. `활동 상태`는 세 묶음의 표시 이름만(묶음 규칙은 코드). `종류`는 **모드별 두 목록**(2026-11-03 밤): `kinds.program`은 프로그램 종류(BOOTCAMP·CLUB·CONTEST·HACKATHON·STUDY·OTHER), `kinds.event`는 이벤트 종류(CONFERENCE·MEETUP·LECTURE·WORKSHOP), 각 목록의 코드마다 노출·순서·표시 이름·**아이콘**. 공개 `GET /v1/discovery/filters`는 `kind` 질의(program|event)에 맞는 목록을 `종류` 섹션으로 준다. `분야`는 태그 사전의 분야 태그 중 보일 것과 순서·아이콘(비우면 상위 분야 전부, 사전 순). `대상`은 켜기와 표시 이름·보조 문구.
+- **페이지** `필터 구성`: 섹션 목록(`활동 상태`·`종류`·`분야`·`자격`; 2026-11-04 화면 라벨 통일, 옛 `대상`)을 끌어 순서를 바꾸고 켜고 끈다. `활동 상태`는 세 묶음의 표시 이름만(묶음 규칙은 코드). `종류`는 **모드별 두 목록**(2026-11-03 밤): `kinds.program`은 프로그램 종류(BOOTCAMP·CLUB·CONTEST·HACKATHON·STUDY·OTHER), `kinds.event`는 이벤트 종류(CONFERENCE·MEETUP·LECTURE·WORKSHOP), 각 목록의 코드마다 노출·순서·표시 이름·**아이콘**. 공개 `GET /v1/discovery/filters`는 `kind` 질의(program|event)에 맞는 목록을 `종류` 섹션으로 준다. `분야`는 태그 사전의 분야 태그 중 보일 것과 순서·아이콘(비우면 상위 분야 전부, 사전 순). `대상`은 켜기와 표시 이름·보조 문구.
 - **아이콘 선택기**: 앱에 내장된 "아이콘 통일" 표의 키 목록(`GET /v1/admin/icons` → `[{key, label, ios, android}]`, 서버 상수)을 격자로 보여 고른다. 미리 보기는 어드민의 같은 이름 인라인 SVG. 표에 없는 아이콘은 고를 수 없다(새 아이콘은 코드 변경).
 - **저장**: `GET/PUT /v1/admin/discovery-filters` → `{sections: [{key, enabled, title, subtitle?, items?: [{code, enabled, label, icon}], kinds?: {program: [...], event: [...]}}]}`(`종류` 섹션은 `items` 대신 `kinds` 두 목록)(한 행 `discovery_filter_config(id=1, config jsonb, updated_at)`, V65). 모르는 섹션 키·종류 코드·아이콘 키·없는 태그 id는 400. 저장 즉시 공개 응답에 반영(캐시 5분).
 - 기본값(행이 없을 때): 상태 세 묶음, 종류는 프로그램 모드 여섯(부트캠프·동아리·공모전·해커톤·스터디·기타)과 이벤트 모드 넷(컨퍼런스·밋업·강연·워크숍), 분야 상위 전부, 대상 켬.
