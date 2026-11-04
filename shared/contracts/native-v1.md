@@ -2122,3 +2122,89 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **큰 화면(2단계, 폰 뒤)**: UI 담당이 두 칸 레이아웃·레일·위 탭 막대·커버 배너·Flip 위젯 시각, 플로우 담당이 `NavigationSplitView`/`ListDetailPaneScaffold` 선택 상태·접었다 펼칠 때의 연속성·내 활동 오른쪽 칸 규칙·폰 세로 잠금·플렉스 모드 분할. 1단계에서 지킬 것은 "너비 고정 금지"뿐.
 - **웹 담당**: 상세·발견 행·글꼴.
 - **어드민 담당**: [admin-v1.md](admin-v1.md) "일정 캘린더 편집기·ICS 가져오기 — 2026-11-03".
+
+## 직접 개설(사용자가 여는 프로그램·이벤트) — 2026-11-05 사용자 결정
+
+사용자 결정(2026-11-05, 큰 방향 전환): 활동 안에서는 **명함 교환만** 한다("명함 교환 범위·기본 명함·참여자 목록 — 2026-11-05", PR #519의 QR·참여자 목록 그대로). 활동·단계별 채팅방은 만들지 않는다. 대신 로그인한 사용자가 **프로그램 또는 이벤트를 직접 연다**(스터디·비공개 모임 포함). Luma 만들기의 구조만 가져오고 화면은 우리 체계다. 시안: [Dearby 홈 탭과 활동 상세 시안](https://claude.ai/artifact/NT7wjjRMjWdSkQn3D4GzS6) ㉙. 어드민 쪽은 [admin-v1.md](admin-v1.md) "직접 개설 승인·단계 인증 확인 — 2026-11-05".
+
+**대화방은 디스코드 서버 연결(봇 자동 초대)만**(2026-11-05 사용자 "discord만 지원하고 자동초대식으로"). **대체 기록**: 같은 날 앞선 안의 모임 링크 입력 칸(카카오톡 오픈채팅 `open.kakao.com`·디스코드 초대 `discord.gg`·`discord.com/invite` 주소 받기와 종류 판정)은 없앤다. 초대·오픈채팅 주소는 받지도 저장하지도 않는다.
+
+### 무엇을 여나
+
+- **개설자**: 로그인한 사용자(조직이 아님). 비로그인이면 로그인 시트.
+- **진입**(조율 판단): 발견 우상단 글래스 묶음 맨 앞 `+`(iOS `plus`, Android `Add`) → 시트 `무엇을 열까요`: `프로그램`(값 예시 `스터디 · 동아리 · 해커톤`) · `이벤트`(`밋업 · 워크숍 · 강연`). 만드는 것이 발견에서 찾는 대상과 같아서 발견에 둔다. 내 프로필 탭의 `참여 중`에는 내가 연 것과 참여한 것이 내 활동 행으로 함께 보인다.
+- **입력**(개설 폼 ㉙-c, 오른쪽 위 `열기`; 설명 문구 없음):
+  - 커버(선택, 프로필 사진과 같은 형식·크기 규칙), 이름(필수), 종류(필수, 기존 종류 목록 그대로: 프로그램 부트캠프·동아리·공모전·해커톤·스터디·기타, 이벤트 컨퍼런스·밋업·강연·워크숍), 소개.
+  - 일정: 프로그램 = 시작·끝 날짜, 이벤트 = 날짜·시작·끝 시각. 장소 = 주소(기존 장소 입력) 또는 `온라인`.
+  - 정원(선택, 차면 `참여하기` 비활성 `정원이 찼어요`).
+  - 참여 조건(아래), 공개 범위(아래).
+  - 묶음 `대화방`: `디스코드 서버 연결`(선택, 아래). 연결하지 않으면 대화방 없는 모임(일정·참여자만).
+- **표시**: 공식 수집 프로그램과 구별한다. 발견 행은 조직 줄 자리에 개설자 이니셜 원(사진 있으면 사진) + 이름 + `직접 개설` 캡슐, 상세는 종류 줄 옆 같은 캡슐 + `개설자` 프로필 행(누르면 그 사람의 기본 프로필 ㉗-i). 캡슐은 배지 규칙의 "흰 바탕 가는 테두리·보조 글자"(회색 채움 금지).
+
+### 공개 범위와 운영자 승인
+
+- `LINK_ONLY`(기본): 링크를 받은 사람만 상세를 연다(발견·검색·맞춤 대기열에 나오지 않음). 공유 링크는 기존 활동 공유 주소(`/activities/:id`, 유니버설 링크·App Links)를 그대로 쓴다.
+- `PUBLIC`: 발견 노출을 신청한다. **운영자 승인 뒤에만** 발견·검색에 나온다(승인 전에는 `LINK_ONLY`처럼 동작). 승인·반려는 어드민 승인 큐. 내용(이름·소개·커버)을 고치면 다시 승인 대기가 된다(조율 판단, 확인 필요).
+- 신고·차단: 상세 `⋯` 메뉴 `신고`(개설 글)·개설자 행 길게 누르기 `신고`·`차단`(개설자). 개설 글 신고는 어드민 신고 메뉴에 대상 종류 `직접 개설`로 보이고 운영자가 내릴 수 있다. 차단은 PR #519의 계정 단위 차단(`POST /v1/me/blocks {userId}`)을 쓰고, 차단한 사이는 서로가 연 것의 상세가 404이고 참여할 수 없다.
+
+### 참여 조건
+
+- 고를 수 있는 것(하나 이상, ㉙-c2 시트):
+  - **누구나**(다른 조건과 함께 고를 수 없음).
+  - **나와 명함을 맞교환한 사람**: 개설자와 회수·철회되지 않은 맞교환 상태("명함 교환 — 2026-10-19"의 맞교환 정의, 계정 쌍).
+  - **단계 통과 인증**: 프로그램 하나 › 그 프로그램의 기수(활동) 여러 개 › 단계 하나. 단계는 그 활동의 **선발 단계**(`Schedule.phase` 선발, "내 활동 진행 트랙")이고 "그 단계 이상" = 고른 단계 또는 그 뒤 선발 단계의 인증이 `확인됨`이거나, 그 활동을 `참여 중`으로 인증받은 것. 기수가 여럿이면 단계는 기수마다 같은 이름(종류)의 단계로 맞춘다(조율 판단: 기수마다 일정 id가 달라서 고를 때 첫 기수의 단계를 고르면 다른 기수는 같은 `kind`·제목의 선발 단계로 대응, 대응이 없는 기수는 고를 수 없게 흐림).
+- **결합**(조율 판단, 확인 필요): 조건 종류 사이는 **모두 충족(AND)**, 단계 조건 안의 기수 사이는 **하나만(OR)**. 이유: 직접 개설의 기본이 비공개 모임이라 좁히는 쪽이 의도와 맞고, 같은 프로그램 여러 기수는 넓히려고 고르는 것이다. 시트 아래 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요. 기수는 하나만 맞으면 돼요`(CTA 시트라 허용). 상세의 조건 제목은 `참여 조건 · 모두 충족`.
+- **개설자도 인증**: 단계 조건은 개설자 본인이 같은 조건을 `확인됨`으로 가져야 걸 수 있다(시트 `내 인증` 줄; 없으면 `인증하기 ›`로 단계 인증 화면). 저장 때 서버가 다시 확인한다(422 `HOST_NOT_VERIFIED`).
+- **주최 측 금지**: 어드민이 프로그램마다 `단계 조건 걸기`를 끌 수 있다(공식 주최 측이 합격자 모임을 금지하는 경우). 꺼진 프로그램은 시트의 프로그램 고르기에서 흐리게 보이고 고를 수 없다(422 `STAGE_CONDITION_DISABLED`). 이미 그 조건으로 열린 것은 그대로 두고 새 참여만 막는다(조율 판단, 확인 필요).
+
+### 단계 인증
+
+- 화면: 프로필 수정 › 내 정보 › `단계 인증`(㉙-f2 목록: 행 = `프로그램 기수 · 단계` + 상태) → `단계 인증 추가`(㉙-f: 프로그램 › 기수 › 단계 + 증빙 파일 → 하단 `제출`, CTA 아래 한 줄 형식 안내). 상세의 미충족 조건 `인증하기`·하단 `단계 인증하기`에서도 같은 화면으로(고른 조건이 미리 채워짐).
+- 증빙: 기존 이력 인증자료 규칙 그대로(인증당 3개, 파일당 5MB, `image/jpeg`·`image/png`·`image/webp`·`application/pdf`).
+- 상태: `PENDING` `대기 중`(호박) · `VERIFIED` `확인됨`(청록) · `REJECTED` `반려`(빨강, 반려 사유 한 줄). 글리프 + 글자, 회색 채움 없음. 관리자가 확인한다(어드민 확인 큐). 반려 뒤 다시 올릴 수 있다.
+- 이 인증은 내 활동 진행 트랙의 사용자 표시(`통과`·`대기`·`탈락`, 기기 안 표시)와 별개다. 확인됨이 되어도 트랙 표시를 바꾸지 않는다.
+- 다른 사람에게 보이는 범위: 직접 개설에 참여할 때 참여 확인 시트에서 동의한 범위(통과 단계 이름)만, 개설자와 같은 모임 참여자에게. 증빙 파일은 관리자만 본다.
+
+### 참여 흐름
+
+1. 상세(㉙-d): 조건마다 충족이면 청록 체크, 아니면 빈 원 + `인증하기`(단계) 또는 안내 없음(맞교환; 맞교환은 개설자에게 명함 교환을 요청하는 기존 흐름). 조건을 모두 충족하면 하단 `참여하기`, 아니면 `단계 인증하기`(CTA 아래 한 줄 `<프로그램> <단계> 통과 인증이 있어야 참여할 수 있어요`) 또는 맞교환이 빠졌으면 `명함 교환 요청`.
+2. 참여 확인 시트(㉙-e, CTA 시트라 설명 허용): `개설자와 다른 참여자에게 아래 내용이 보여요` + 행 `통과 단계`(조건으로 쓰인 인증, 예 `SSAFY 17기 서류 발표`) · `디스코드 이름`(디스코드 서버가 연결된 모임일 때) + `참여`. **디스코드가 연결된 모임은 참여자도 디스코드 계정 연결이 필요하다**: 내 디스코드가 연결 안 돼 있으면 행 값 `연결 안 됨`, CTA `디스코드 연결하고 참여`(㉙-e2) → 디스코드 연결 흐름(아래) → 앱으로 돌아오면 이어서 참여 완료 → 봇이 서버에 넣고 역할 부여. 연결을 취소하면 참여하지 않은 채 시트로 돌아온다.
+3. 참여 뒤(㉙-d3): `대화방` 구역(디스코드 서버 이름 + 받은 역할)이 **참여자에게만** 보이고 하단 CTA `디스코드에서 열기`(서버 열기 딥 링크 `https://discord.com/channels/{guildId}`, 디스코드 앱이 있으면 앱으로). 대화방이 없는 모임은 CTA 없이 참여 상태만. 나가기는 `⋯` 메뉴 `나가기`(확인 시트). 개설자는 참여자 목록에서 `내보내기`.
+- 참여자 목록(개설자·참여자에게만): 행 = 기본 프로필(이름·핸들·직업·소개) + 통과 단계 + 디스코드 이름(있을 때). 명함 교환 요청은 PR #519 행 규칙 그대로.
+
+### 디스코드 연결(2번안)
+
+- **계정 연결**(㉙-g): 설정 › 계정 설정 › `연결된 로그인`에 `디스코드` 행(`연결하기` / `<사용자명> · 연결됨`). **로그인 수단으로는 쓰지 않는다**(로그인 화면에 디스코드 없음, 마지막 로그인 수단 판정에 세지 않음). OAuth2 인가 코드 흐름, 범위 **`identify`**(사용자 id·사용자명) + **`guilds.join`**(참여 때 서버에 추가). 서버는 액세스·리프레시 토큰을 암호화해 저장한다. `연결 해제` 때 토큰을 지우고, 참여 중인 모임의 디스코드 역할은 그대로 두지 않고 회수한다(조율 판단, 확인 필요).
+- **서버 연결**(㉙-h, 개설자): 개설 폼 `디스코드 서버 연결` → Dearby 봇 초대 주소(`https://discord.com/oauth2/authorize?client_id=…&scope=bot&permissions=268435457`, 권한 = `CREATE_INSTANT_INVITE`(1<<0) + `MANAGE_ROLES`(1<<28)) → 디스코드 화면에서 서버 고르기 → 돌아오면 서버 이름 + **참여자에게 줄 역할 고르기**(봇의 가장 높은 역할보다 낮은 역할만 고를 수 있음, 디스코드 규칙) 또는 `새 역할 만들기`(봇이 만듦) → `연결`(CTA 아래 한 줄 허용). 돌아온 `guild_id`는 참고값이라 서버가 봇이 그 서버에 실제로 있는지 확인한다(디스코드 문서: redirect의 `guild_id`는 hint).
+- **참여·역할 회수(자동 초대식)**: 참여하면 서버가 `PUT /guilds/{guild.id}/members/{user.id}`(봇 토큰, 사용자 액세스 토큰 `guilds.join`, `roles: [roleId]`)로 서버에 넣는다(초대 링크를 쓰지 않음). 이미 서버에 있으면 `PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}`로 역할만. **나가기·내보내기·조건 상실**(단계 인증 반려·맞교환이 깨짐·차단) 때 `DELETE /guilds/{guild.id}/members/{user.id}/roles/{role.id}`로 **역할만 회수**(서버에서 내보내지는 않음, 역할 회수에 필요한 권한만 받기 위해). 조건 상실은 그 모임에서도 자동으로 나간 것으로 처리한다(조율 판단, 확인 필요). 디스코드 호출 실패는 참여를 막지 않고 재시도 큐에 넣는다.
+- **봇 상태**: 봇이 서버에서 빠졌거나(`GUILD_DELETE`·멤버 제거 이벤트, 또는 호출 403·404) 권한·역할 순서가 맞지 않으면 모임의 디스코드 상태를 `BROKEN`으로 두고 개설자에게 알림(알림 목록 종류 `HOSTED_DISCORD_BROKEN`, 그 모임의 묶음) + 상세에 **개설자만 보는 상태 행**(㉙-d4: `디스코드 봇이 서버에 없어요` / `새 참여자를 서버에 넣지 못하고 있어요` + `다시 연결`, 빨강 연한 면). 그동안 참여는 받되 서버 추가는 재시도 큐에 남기고, 다시 연결되면 처리한다.
+- 확인한 문서(2026-11-05): Discord Developer Docs "Guild" 리소스(Add Guild Member: `guilds.join` 범위 + 같은 앱의 봇 토큰, 봇은 `CREATE_INSTANT_INVITE` 권한으로 그 서버에 있어야 함, `roles` 지정에는 `MANAGE_ROLES`; Add/Remove Guild Member Role: `MANAGE_ROLES`), "Permissions"(봇은 자기 가장 높은 역할보다 낮은 역할만 다룸), "OAuth2"(`identify`·`guilds.join`·`bot` 범위, `permissions`·`guild_id`·`disable_guild_select` 매개변수).
+- **보류(사용자 외부 계정 작업)**: 디스코드 개발자 포털 앱 등록, 봇 토큰·클라이언트 시크릿 발급, 리디렉트 주소 등록(`https://api.dearby.wid.io.kr/v1/me/identities/discord/callback`, 봇 초대 `…/v1/hosted/discord/callback`), 운영 env `DISCORD_CLIENT_ID`·`DISCORD_CLIENT_SECRET`·`DISCORD_BOT_TOKEN`. 값이 없으면 디스코드 행·서버 연결 행을 숨기고 관련 API는 503.
+
+### API(API 담당, 이름은 제안)
+
+| 경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/hosted | Bearer | `{type: PROGRAM|EVENT, name, kind, description?, startsAt/endsAt 또는 startDate/endDate, place?: Place|null(온라인), capacity?, conditions: Condition[], visibility: LINK_ONLY|PUBLIC}` | 201 Hosted. 단계 조건 미인증 422 `HOST_NOT_VERIFIED`, 금지 프로그램 422 `STAGE_CONDITION_DISABLED` |
+| PUT /v1/hosted/:id | Bearer(개설자) | 같은 본문 | 200 Hosted(`PUBLIC`이면 다시 승인 대기) |
+| DELETE /v1/hosted/:id | Bearer(개설자) | — | 204(참여자의 디스코드 역할 회수) |
+| PUT /v1/hosted/:id/cover | Bearer(개설자) | multipart `file` | 200 `{coverUrl}` |
+| GET /v1/hosted/:id | Bearer 선택 | — | 200 Hosted(`discord.guildId`는 참여자·개설자에게만, `discord.status`는 개설자에게만, `viewer: {joined, conditionsMet: [{type, met}]}`). 차단 사이 404 |
+| POST /v1/hosted/:id/join | Bearer | — | 201. 조건 미충족 403 `CONDITIONS_NOT_MET`(`missing[]`), 정원 409 `FULL`, 디스코드가 연결된 모임인데 내 디스코드가 없으면 409 `DISCORD_REQUIRED`(앱은 연결 흐름 뒤 다시 호출) |
+| DELETE /v1/hosted/:id/members/me | Bearer | — | 204(나가기) |
+| DELETE /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 204(내보내기) |
+| GET /v1/hosted/:id/members | Bearer(개설자·참여자) | — | 200 `{items: [{userId, name, handle, job, bio, photoUrl, passedStage?, discordName?}]}` |
+| POST /v1/hosted/:id/reports | Bearer | `{reason, detail?}` | 201(명함 신고와 같은 사유·24시간 중복 규칙) |
+| GET/POST /v1/me/stage-verifications | Bearer | POST multipart `{activityId, scheduleId, files[]}` | 201 StageVerification. GET은 내 목록 |
+| DELETE /v1/me/stage-verifications/:id | Bearer | — | 204 |
+| GET /v1/me/identities/discord/start · /callback | Bearer | — | 디스코드 OAuth(GitHub 연락처 연결과 같은 start → 콜백 → 1회용 code → complete 구조, CSRF 규칙 같음) |
+| DELETE /v1/me/identities/discord | Bearer | — | 204 |
+| POST /v1/hosted/:id/discord | Bearer(개설자) | `{code}`(봇 초대 콜백) → 서버 확인 | 200 `{guildId, guildName, roles: [{id, name, assignable}]}` |
+| PUT /v1/hosted/:id/discord/role | Bearer(개설자) | `{roleId}` 또는 `{createName}` | 200 |
+
+- Hosted: `{id, type, name, kind, description, coverUrl, host: {userId, name, handle, photoUrl}, schedule, place, capacity, memberCount, discord: {guildId?, guildName, roleName, status?: OK|BROKEN}|null, conditions: Condition[], visibility, approval: PENDING|APPROVED|REJECTED|null, createdAt}`.
+- Condition: `{type: ANYONE}` · `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle}`(기수마다 같은 kind·제목의 선발 단계로 대응).
+- StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
+- 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
+- 저장(제안): `hosted(id, host_user_id, type, name, kind, description, cover bytea null, schedule jsonb, place jsonb, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title)`, `hosted_members(hosted_id, user_id, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST)`, `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
+- 통계(analytics-v1.md에 더한다, 제안): `hosted_create(type, visibility, conditionTypes)`, `hosted_join`, `hosted_leave`, `stage_verification_submit`, `discord_connect`.

@@ -367,3 +367,12 @@ native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정
 - **분야 아이콘은 겹치지 않게**(2026-11-05 사용자 결정, 분야 팔로우 화면의 분야 로고가 이 아이콘이라): `분야` 섹션에서 같은 아이콘을 두 분야에 고를 수 없다. 선택기에서 다른 분야가 이미 쓴 아이콘은 흐리게 보이고 고를 수 없으며, 저장할 때 겹치면 `400 DUPLICATE_FIELD_ICON`(겹친 `code` 둘을 함께 돌려줌; 오류 이름·응답 모양은 2026-11-05 사용자 확정). 분야별 색은 두지 않는다(앱은 민트 원 + 청록 글리프로 통일).
 - **저장**: `GET/PUT /v1/admin/discovery-filters` → `{sections: [{key, enabled, title, subtitle?, items?: [{code, enabled, label, icon}], kinds?: {program: [...], event: [...]}}]}`(`종류` 섹션은 `items` 대신 `kinds` 두 목록)(한 행 `discovery_filter_config(id=1, config jsonb, updated_at)`, V65). 모르는 섹션 키·종류 코드·아이콘 키·없는 태그 id는 400. 저장 즉시 공개 응답에 반영(캐시 5분).
 - 기본값(행이 없을 때): 상태 세 묶음, 종류는 프로그램 모드 여섯(부트캠프·동아리·공모전·해커톤·스터디·기타)과 이벤트 모드 넷(컨퍼런스·밋업·강연·워크숍), 분야 상위 전부, 대상 켬.
+
+## 직접 개설 승인·단계 인증 확인 — 2026-11-05
+
+native-v1.md "직접 개설(사용자가 여는 프로그램·이벤트) — 2026-11-05"의 어드민 쪽(API 이름은 제안, API 담당). 모두 ADMIN 역할.
+
+- **발견 노출 승인 큐**: 메뉴 `직접 개설`. 표(승인 대기가 위): 이름·종류·개설자(이름·@핸들)·공개 범위 신청 시각·참여 조건 요약·디스코드 서버 연결 여부·신고 수. 행을 열면 커버·소개·일정·장소·디스코드 서버 이름과 `승인`·`반려`(사유 필수). `GET /v1/admin/hosted?approval=PENDING|APPROVED|REJECTED`, `POST /v1/admin/hosted/:id/approve`, `POST /v1/admin/hosted/:id/reject {reason}`, `POST /v1/admin/hosted/:id/withdraw {note}`(내리기: 발견·링크 모두 닫힘, 참여자 디스코드 역할 회수). 내용이 바뀐 승인 건은 다시 대기로 돌아오고 바뀐 칸을 표시한다.
+- **단계 인증 확인 큐**: 메뉴 `단계 인증`. 표(대기가 위): 사용자·프로그램·기수·단계·올린 시각·파일 수. 행을 열면 파일 보기(이력 인증자료 보기와 같은 방식)와 `확인`·`반려`(사유 필수). `GET /v1/admin/stage-verifications?status=PENDING`, `GET /v1/admin/stage-verifications/:id/files/:fileId`, `POST /v1/admin/stage-verifications/:id/verify`, `POST /v1/admin/stage-verifications/:id/reject {reason}`. 파일 보유 기간은 이력 인증자료와 같다.
+- **프로그램별 단계 조건 끄기**: 프로그램 편집에 스위치 `단계 조건 걸기`(기본 켬). 끄면 새 직접 개설에서 그 프로그램을 단계 조건으로 고를 수 없고, 이미 열린 것은 새 참여만 막힌다. `PATCH /v1/admin/programs/:id {stageConditionAllowed: boolean}`.
+- **신고**: 직접 개설 신고(`hosted_reports`)는 기존 `신고` 메뉴에 대상 종류 `직접 개설`로 함께 보이고, 처리에 `내리기`가 있다. 보유 기간·상태는 명함 신고와 같다.
