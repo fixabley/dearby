@@ -70,6 +70,8 @@ private sealed interface Route {
     var mineOpen by remember { mutableStateOf<String?>(null) }
     // An App Link `/activities/<id>` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the activity the 발견 tab should open next.
     var discoveryOpen by remember { mutableStateOf<String?>(null) }
+    // An activity-role history row (내 프로필·명함, contract "이력 (History) — 역할 매칭" 표시) opens its activity the way an App Link does: the `linked` effect below switches to 발견.
+    val openHistoryActivity: (String) -> Unit = { activityModel.openLinked(it) }
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -263,9 +265,9 @@ private sealed interface Route {
                     RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null; openQueue() }; recommendation.next() },
                         recommendation::skip, recommendation::back, recommendation::retryTags)
                 } else when (val screen = route) {
-                    is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
+                    is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards, { route = null }, openHistoryActivity) }
                         ?: LaunchedEffect(screen) { route = null }
-                    Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
+                    Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared, openHistoryActivity) }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards, screen.activityId) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) {
                         (publish.state.value.phase as? PublishPhase.Published)?.let { myCards.preselect(it.card.id) }
@@ -311,8 +313,9 @@ private sealed interface Route {
                                 sessions = sessions, sessionHeart = sessionHeart, ready = ready, showQr = showTodayQr, guide = todayGuide, consumeGuide = { todayGuide = null }, askNotifications = askNotificationsOnce) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
-                            edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery }, askConsent = { route = Route.Consent })
+                            edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread,
+                            openActivity = openHistoryActivity)
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery }, askConsent = { route = Route.Consent }, openActivity = openHistoryActivity)
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))

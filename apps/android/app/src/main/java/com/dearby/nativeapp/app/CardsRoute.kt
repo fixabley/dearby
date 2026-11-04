@@ -29,6 +29,8 @@ enum class CardsSegment(val label: String) { MINE("내 명함"), RECEIVED("받�
 @Composable fun CardsRoute(
     consentNeeded: Boolean, askConsent: () -> Unit, segment: CardsSegment, select: (CardsSegment) -> Unit, myCards: MyCardsViewModel, wallet: WalletViewModel, account: AccountViewModel,
     create: () -> Unit, showQr: (PublishedCard) -> Unit, edit: (PublishedCard) -> Unit, openReceived: (ReceivedCard) -> Unit, settings: () -> Unit, notify: () -> Unit, unread: Int = 0,
+    /** An activity-role history row on 내 명함 opens that activity's detail (contract "표시(프로필 활동 이력·명함)"). */
+    openActivity: ((String) -> Unit)? = null,
 ) {
     val topBar = TopAppBarDefaults.pinnedScrollBehavior()
     Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection)) {
@@ -39,7 +41,7 @@ enum class CardsSegment(val label: String) { MINE("내 명함"), RECEIVED("받�
             CardsSegment.entries.forEach { Tab(segment == it, { select(it) }, text = { Text(it.label) }) }
         }
         when (segment) {
-            CardsSegment.MINE -> MyCardsRoute(myCards, create, showQr, edit)
+            CardsSegment.MINE -> MyCardsRoute(myCards, create, showQr, edit, openActivity)
             CardsSegment.RECEIVED -> WalletRoute(wallet, account, openReceived)
         }
     }
