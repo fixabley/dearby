@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Link
@@ -28,7 +29,7 @@ import com.dearby.nativeapp.shared.ui.*
  * 연락처 → 활동 이력(소개 글은 2026-10-26 폐지). 카드는 자기 높이만큼 펼쳐지고 스크롤은 담는 화면이 맡는다. 행동 버튼은 호출자가 카드 바깥에 둔다.
  * [body] false는 머리와 연락처만 그린다 — 내 프로필 보기 모드가 이력을 카드 아래에 같은 [CardHistoryRow]로 따로 둔다.
  */
-@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, body: Boolean = true, onContact: (ContactState) -> Unit) {
+@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, body: Boolean = true, onContact: (ContactState) -> Unit, onActivity: ((String) -> Unit)? = null) {
     Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Header(state, onContact)
@@ -38,7 +39,7 @@ import com.dearby.nativeapp.shared.ui.*
             }
             if (body) Section("활동 이력") {
                 if (state.histories.isEmpty()) Empty("공개된 활동 이력이 없어요")
-                else state.histories.forEach { CardHistoryRow(it) }
+                else state.histories.forEach { CardHistoryRow(it, onActivity) }
             }
         }
     }
@@ -93,17 +94,25 @@ import com.dearby.nativeapp.shared.ui.*
     }
 }
 
-/** 명함 이력 한 줄: 기간, 조직 · 프로그램 · 활동, 역할과 확인됨/미확인(내 프로필은 승인 상태도), 설명 한 줄. 내 프로필 보기 모드도 이것을 쓴다. */
-@Composable fun CardHistoryRow(history: CardHistoryState) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(history.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-        Text(history.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (history.role.isNotBlank()) Text(history.role, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            // 미확인: no admin-verified evidence yet.
-            ExampleBadge(if (history.verified) "확인됨" else "미확인", accent = history.verified)
-            history.approval?.let { ExampleBadge(it) }
+/**
+ * 명함 이력 한 줄: 기간, `귀속 단위 · 역할`, 소속(조직 · 프로그램)과 확인됨/미확인(내 프로필은 승인 상태도), 설명 한 줄. 내 프로필 보기 모드도 이것을 쓴다.
+ * 활동 역할(`activityId`)이고 [openActivity]가 있으면 행 전체가 그 활동 상세로 이어진다(contract "표시(프로필 활동 이력·명함)").
+ */
+@Composable fun CardHistoryRow(history: CardHistoryState, openActivity: ((String) -> Unit)? = null) {
+    val target = history.activityId?.takeIf { openActivity != null }
+    Row(Modifier.fillMaxWidth().let { if (target != null) it.clickable(role = Role.Button, onClickLabel = "활동 상세 보기") { openActivity?.invoke(target) } else it }.padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(history.date, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text(history.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (history.detail.isNotBlank()) Text(history.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                // 미확인: no admin-verified evidence yet.
+                ExampleBadge(if (history.verified) "확인됨" else "미확인", accent = history.verified)
+                history.approval?.let { ExampleBadge(it) }
+            }
+            if (history.description.isNotBlank()) Text(history.description, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
-        if (history.description.isNotBlank()) Text(history.description, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        if (target != null) Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

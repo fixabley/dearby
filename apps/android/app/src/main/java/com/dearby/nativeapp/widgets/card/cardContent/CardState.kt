@@ -12,10 +12,12 @@ data class ContactState(val id: String, val kind: String, val label: String, val
     val shown: String get() = ContactRules.shown(kind, value)
 }
 /**
- * [title] is 조직 · 프로그램 · 활동; [verified] picks the 확인됨/미확인 badge; [description] is the optional one-line note (contract "이력").
- * [approval] is the 승인 대기·거절됨 tag the owner sees on their profile (cards hold approved histories only, so it stays null there).
+ * [title] is `귀속 단위 · 역할` (`디프만 19기 · iOS 개발자`, contract "이력 (History) — 역할 매칭"); [detail] the 소속 line above the unit (`조직 · 프로그램`), blank for an
+ * organization role; [verified] picks the 확인됨/미확인 badge; [description] is the optional one-line note. [approval] is the 승인 대기·거절됨 tag the owner sees on
+ * their profile (cards hold approved histories only, so it stays null there). [activityId] is set for an activity role: the row then opens that activity's detail.
  */
-data class CardHistoryState(val id: String, val title: String, val role: String, val date: String, val verified: Boolean = false, val description: String = "", val approval: String? = null)
+data class CardHistoryState(val id: String, val title: String, val detail: String, val date: String, val verified: Boolean = false, val description: String = "", val approval: String? = null,
+                            val activityId: String? = null)
 data class CardState(
     /** [title]·[description] are the card's own name and note: the card face does not draw them (contract "명함 표현"), but the wallet search (`filterWallet`) matches on them. */
     val id: String, val person: String, val job: String, val title: String,

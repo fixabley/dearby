@@ -18,7 +18,9 @@ import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
+import com.dearby.nativeapp.entities.account.model.ActivityInfoItem
 import com.dearby.nativeapp.entities.account.model.toActivityInfoPage
+import com.dearby.nativeapp.entities.account.model.toDiscoveryUnits
 import com.dearby.nativeapp.entities.account.model.toEvidence
 import com.dearby.nativeapp.entities.account.model.toEmailChallenge
 import com.dearby.nativeapp.entities.account.model.toVersionDetail
@@ -41,6 +43,8 @@ import com.dearby.nativeapp.entities.account.model.toRecommendationPreferences
 import com.dearby.nativeapp.entities.account.model.toRecommendations
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -159,15 +163,32 @@ class AccountClient(private val api: String, private val transport: Transport = 
         exchange(HttpRequest("GET", api + path, session?.accessToken, null, headers = mapOf("Accept" to "image/jpeg, image/*"))).bytes ?: throw AccountException(AccountError.UNAVAILABLE)
     suspend fun deleteEvidence(historyId: String, evidenceId: String, session: AccountSession) { request("DELETE", "profile/histories/$historyId/evidence/$evidenceId", null, session) }
     /**
-     * Picker searches for the history steps (organizations, programs, roles need a session; activities are public). Activities go with `forHistory=true`
+     * Picker searches (organizations, programs and jobs need a session; activities are public). Activities go with `forHistory=true`
      * (contract "활동 이력에서 단기 행사 제외", 2026-10-20) so events under a week are left out; discovery uses `fetchActivities` and is unaffected.
      */
     suspend fun searchActivityInfo(kind: ActivityInfoKind, query: String, parentId: Long?, session: AccountSession?): ActivityInfoPage {
         val params = mutableListOf("q=" + java.net.URLEncoder.encode(query, "UTF-8"), "size=20")
         if (kind == ActivityInfoKind.ACTIVITIES) params += "forHistory=true"
-        parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
-        return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
+        parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it" } }
+        return send("GET", kind.path + "?" + params.joinToString("&"), null, session).toActivityInfoPage(kind.unit)
     }
+    /**
+     * 어디에서 통합 검색 (contract "이력 (History) — 역할 매칭" › 입력 퍼널): 조직·프로그램 from the public `GET /v1/discovery/search?q=` (it has no activity
+     * type and answers nothing to a blank query, so that side is skipped then) and 활동 from `searchActivityInfo(ACTIVITIES)`, in one list. One failing
+     * side still shows the other; both failing throws. A 401 (expired access token, rejected even on these public routes) propagates so the caller's
+     * `authorized` can refresh and retry.
+     */
+    suspend fun searchUnits(query: String, session: AccountSession?): List<ActivityInfoItem> = coroutineScope {
+        suspend fun <T> partial(call: suspend () -> T): T? = try { call() } catch (e: AccountException) { if (e.error == AccountError.UNAUTHORIZED) throw e else null }
+        val units = async { if (query.isBlank()) emptyList() else partial { send("GET", "discovery/search?q=" + java.net.URLEncoder.encode(query.trim(), "UTF-8"), null, session).toDiscoveryUnits() } }
+        val activities = async { partial { searchActivityInfo(ActivityInfoKind.ACTIVITIES, query, null, session).items } }
+        val (first, second) = units.await() to activities.await()
+        if (first == null && second == null) throw AccountException(AccountError.UNAVAILABLE)
+        first.orEmpty() + second.orEmpty()
+    }
+    /** 그 단위의 역할 목록 (`GET /v1/roles?organizationId|programId|activityId&q`, Bearer; contract "이력 (History) — 역할 매칭"); a blank [query] lists them all. */
+    suspend fun searchRoles(ownerKind: String, ownerId: Long, query: String, session: AccountSession): ActivityInfoPage =
+        send("GET", "roles?${ownerKind}Id=$ownerId&q=" + java.net.URLEncoder.encode(query, "UTF-8") + "&size=20", null, session).toActivityInfoPage()
     /** `POST /v1/cards`: the server copies the chosen data and, with [includePhoto]·[includeIntroLink], the profile photo and 소개 링크 (contract "프로필 사진", "소개 링크·소개 글 폐지"). */
     suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, includePhoto: Boolean, includeIntroLink: Boolean, session: AccountSession): PublishedCard =
         send("POST", "cards", cardBody(name, description, contactIds, historyIds, includePhoto, includeIntroLink), session).toPublishedCard()
@@ -299,7 +320,8 @@ class AccountClient(private val api: String, private val transport: Transport = 
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 
-    enum class ActivityInfoKind(val path: String) { ORGANIZATIONS("organizations"), PROGRAMS("programs"), ACTIVITIES("activities"), ROLES("roles"), JOBS("jobs") }
+    /** [unit] is the hit's `ActivityInfoItem.kind` when the list is of role owners (jobs are not). */
+    enum class ActivityInfoKind(val path: String, val unit: String? = path.dropLast(1)) { ORGANIZATIONS("organizations"), PROGRAMS("programs"), ACTIVITIES("activities", "activity"), JOBS("jobs", null) }
 
     private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null, headers: Map<String, String> = emptyMap()): JSONObject {
         val text = request(method, path, body, session, headers)
