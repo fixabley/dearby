@@ -420,7 +420,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val conference = activityWithPeriod("맥락 컨퍼런스", "-3 hours", "+5 hours")
         block(conference, "오전 세션", "-3 hours", "-1 hours")
         val afternoon = block(conference, "오후 세션", "-1 hours", "+2 hours")
-        val trackB = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 B', '그랜드볼룸 B', 1) returning id").param(afternoon).query(Long::class.java).single()
+        val trackB = jdbc.sql("with r as (insert into schedule_rooms (schedule_id, name, position) values (?, '그랜드볼룸 B', 0) returning id) insert into schedule_tracks (schedule_id, name, room_id, position) select ?, '트랙 B', r.id, 1 from r returning id").params(afternoon, afternoon).query(Long::class.java).single()
         fun session(track: Long?, title: String) = jdbc.sql(
             "insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', ?, now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb) returning id"
         ).params(listOf<Any?>(afternoon, track, title)).query(Long::class.java).single()

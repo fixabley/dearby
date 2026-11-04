@@ -28,6 +28,9 @@ open class ScheduleTracksRecord() : UpdatableRecordImpl<ScheduleTracksRecord>(Sc
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
+    /**
+     * V68 이후 쓰지 않음(schedule_rooms로 이관). 다음 정리에서 삭제
+     */
     open var room: String?
         set(value): Unit = set(3, value)
         get(): String? = get(3) as String?
@@ -35,6 +38,10 @@ open class ScheduleTracksRecord() : UpdatableRecordImpl<ScheduleTracksRecord>(Sc
     open var position: Int?
         set(value): Unit = set(4, value)
         get(): Int? = get(4) as Int?
+
+    open var roomId: Long?
+        set(value): Unit = set(5, value)
+        get(): Long? = get(5) as Long?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -45,12 +52,13 @@ open class ScheduleTracksRecord() : UpdatableRecordImpl<ScheduleTracksRecord>(Sc
     /**
      * Create a detached, initialised ScheduleTracksRecord
      */
-    constructor(id: Long? = null, scheduleId: Long? = null, name: String? = null, room: String? = null, position: Int? = null): this() {
+    constructor(id: Long? = null, scheduleId: Long? = null, name: String? = null, room: String? = null, position: Int? = null, roomId: Long? = null): this() {
         this.id = id
         this.scheduleId = scheduleId
         this.name = name
         this.room = room
         this.position = position
+        this.roomId = roomId
         resetTouchedOnNotNull()
     }
 }

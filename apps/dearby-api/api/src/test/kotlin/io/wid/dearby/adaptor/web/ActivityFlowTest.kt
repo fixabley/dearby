@@ -1108,8 +1108,11 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             values (?, '쉬는시간', 'EVENT', 'CONFIRMED', 'TIMED', '2026-11-20T12:30:00+09:00', '2026-11-20T13:50:00+09:00', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp) returning id
             """
         ).param(activity).query(Long::class.java).single()
-        fun track(name: String, position: Int) = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, ?, ?, ?) returning id")
-            .params(block, name, "$name 홀", position).query(Long::class.java).single()
+        fun track(name: String, position: Int): Long {
+            val room = jdbc.sql("insert into schedule_rooms (schedule_id, name, position) values (?, ?, ?) returning id").params(block, "$name 홀", position).query(Long::class.java).single()
+            return jdbc.sql("insert into schedule_tracks (schedule_id, name, room_id, position) values (?, ?, ?, ?) returning id")
+                .params(block, name, room, position).query(Long::class.java).single()
+        }
         val trackA = track("Track 1", 0)
         val trackB = track("Track 2", 1)
         fun session(trackId: Long?, kind: String, title: String, start: String, end: String) = jdbc.sql(

@@ -10,16 +10,20 @@ import java.time.ZoneId
 
 // 트랙·세션 시간표(native-v1.md "트랙·세션 시간표"): 일정 블록(Schedule) 하나에 딸린 하위 시간표.
 // 트랙이 없으면(단일 진행) 세션은 모두 trackId null로 시간순 한 줄이다
-data class Timetable(val scheduleId: Id, val tracks: List<Track>, val sessions: List<Session>)
+data class Timetable(val scheduleId: Id, val rooms: List<Room>, val tracks: List<Track>, val sessions: List<Session>)
 
-// position 순서가 표시 순서. 색은 앱이 이 순서로 팔레트에서 고른다
-data class Track(val id: Id, val name: String, val room: String?, val position: Int)
+// 블록의 방 사전(native-v1.md "같은 방이면 그 자리에서 대기"). 같은 방 판정은 이 id로만 한다(이름 비교 없음)
+data class Room(val id: Id, val name: String, val position: Int)
+
+// position 순서가 표시 순서. 색은 앱이 이 순서로 팔레트에서 고른다. room은 roomId 방의 이름(옛 응답 호환)
+data class Track(val id: Id, val name: String, val roomId: Id?, val room: String?, val position: Int)
 
 // trackId null = 모든 트랙에 걸친 전폭 세션(키노트·쉬는시간·점심, 또는 트랙 없는 시간표의 세션)
 data class Session(
     val id: Id,
     val scheduleId: Id,
     val trackId: Id?,
+    val roomId: Id?, // 세션 자체의 방. null이면 트랙의 방을 따른다(판정은 앱: session.roomId ?: track.roomId)
     val kind: SessionKind,
     val title: String,
     val description: String?,
@@ -34,12 +38,26 @@ enum class SessionKind { TALK, KEYNOTE, BREAK, MEAL, OTHER }
 data class Speaker(val name: String, val affiliation: String?)
 
 // 시간표 통째 저장 입력. id가 있으면 그 트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다.
-// 세션의 track은 tracks 목록의 순번(0부터), null이면 전폭
-data class TimetableInput(val tracks: List<TrackInput>, val sessions: List<SessionInput>) {
-    val isEmpty: Boolean get() = tracks.isEmpty() && sessions.isEmpty()
+// 세션의 track은 tracks 목록의 순번(0부터), null이면 전폭. 트랙·세션의 room은 rooms 목록의 순번(0부터), null이면 방 없음
+data class TimetableInput(val rooms: List<RoomInput>, val tracks: List<TrackInput>, val sessions: List<SessionInput>) {
+    val isEmpty: Boolean get() = rooms.isEmpty() && tracks.isEmpty() && sessions.isEmpty()
+
+    companion object {
+        // 방을 이름 문자열로 받는 입력(수집·가져오기): 같은 이름(앞뒤 공백만 정리)은 한 방으로 묶는다(V68 이관과 같은 규칙)
+        fun withRoomNames(tracks: List<Pair<String, String?>>, sessions: List<SessionInput>): TimetableInput {
+            val names = tracks.mapNotNull { it.second?.trim()?.ifEmpty { null } }.distinct()
+            return TimetableInput(
+                names.map { RoomInput(null, it) },
+                tracks.map { (name, room) -> TrackInput(null, name, room?.trim()?.ifEmpty { null }?.let(names::indexOf)) },
+                sessions,
+            )
+        }
+    }
 }
 
-data class TrackInput(val id: Id?, val name: String, val room: String?)
+data class RoomInput(val id: Id?, val name: String)
+
+data class TrackInput(val id: Id?, val name: String, val room: Int?)
 
 data class SessionInput(
     val id: Id?,
@@ -51,9 +69,11 @@ data class SessionInput(
     val endAt: OffsetDateTime,
     val speakers: List<Speaker>,
     val tagIds: List<Id>,
+    val room: Int? = null, // rooms 순번. null이면 트랙의 방을 따른다(전폭 세션이면 방 없음)
 )
 
 object TimetableRules {
+    const val MAX_ROOMS = 30 // 트랙 20 + 전폭 세션만 쓰는 방(키노트홀·식당 등)
     const val MAX_TRACKS = 20
     const val MAX_SESSIONS = 300
     const val MAX_SPEAKERS = 10
@@ -80,10 +100,15 @@ object TimetableRules {
     fun validate(input: TimetableInput, window: Pair<OffsetDateTime, OffsetDateTime>): TimetableInput {
         if (input.tracks.size > MAX_TRACKS) throw InvalidInputException("트랙은 ${MAX_TRACKS}개까지입니다")
         if (input.sessions.size > MAX_SESSIONS) throw InvalidInputException("세션은 ${MAX_SESSIONS}개까지입니다")
-        val tracks = input.tracks.map { it.copy(name = it.name.trim(), room = it.room?.trim()?.ifEmpty { null }) }
+        if (input.rooms.size > MAX_ROOMS) throw InvalidInputException("방은 ${MAX_ROOMS}개까지입니다")
+        val rooms = input.rooms.map { it.copy(name = it.name.trim()) }
+        rooms.forEach { if (it.name.length !in 1..100) throw InvalidInputException("방 이름은 1~100자입니다") }
+        if (rooms.map { it.name }.toSet().size != rooms.size) throw InvalidInputException("같은 이름의 방이 있습니다")
+        requireDistinctIds(rooms.mapNotNull { it.id }, "방")
+        val tracks = input.tracks.map { it.copy(name = it.name.trim()) }
         tracks.forEach {
             if (it.name.length !in 1..50) throw InvalidInputException("트랙 이름은 1~50자입니다")
-            if ((it.room?.length ?: 0) > 100) throw InvalidInputException("방 이름은 100자까지입니다")
+            if (it.room != null && it.room !in rooms.indices) throw InvalidInputException("트랙의 room 순번이 방 목록 밖입니다: ${it.name}")
         }
         if (tracks.map { it.name }.toSet().size != tracks.size) throw InvalidInputException("같은 이름의 트랙이 있습니다")
         requireDistinctIds(tracks.mapNotNull { it.id }, "트랙")
@@ -100,6 +125,7 @@ object TimetableRules {
             if (!cleaned.endAt.isAfter(cleaned.startAt)) throw InvalidInputException("세션 끝이 시작보다 뒤여야 합니다: ${cleaned.title}")
             if (cleaned.startAt.isBefore(from) || cleaned.endAt.isAfter(to)) throw InvalidInputException("세션은 일정 시간 안에 있어야 합니다: ${cleaned.title}")
             if (cleaned.track != null && cleaned.track !in tracks.indices) throw InvalidInputException("세션의 track 순번이 트랙 목록 밖입니다: ${cleaned.title}")
+            if (cleaned.room != null && cleaned.room !in rooms.indices) throw InvalidInputException("세션의 room 순번이 방 목록 밖입니다: ${cleaned.title}")
             if (cleaned.speakers.size > MAX_SPEAKERS) throw InvalidInputException("연사는 세션마다 ${MAX_SPEAKERS}명까지입니다")
             cleaned.speakers.forEach {
                 if (it.name.length !in 1..100) throw InvalidInputException("연사 이름은 1~100자입니다")
@@ -118,7 +144,7 @@ object TimetableRules {
                 }
             }
         }
-        return TimetableInput(tracks, sessions)
+        return TimetableInput(rooms, tracks, sessions)
     }
 
     private fun requireDistinctIds(ids: List<Id>, what: String) {
