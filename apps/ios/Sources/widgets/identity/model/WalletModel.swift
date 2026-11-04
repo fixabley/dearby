@@ -245,6 +245,6 @@ extension [AccountHistory] {
     /// Organization name of the most recent approved history (start date descending), nil when none names one.
     var latestOrganization: String? {
         filter { $0.approval == "approved" }.sorted { $0.startDate > $1.startDate }
-            .lazy.compactMap { $0.organization?.name ?? $0.organizationName }.first { !$0.isEmpty }
+            .lazy.compactMap(\.organizationName).first { !$0.isEmpty }
     }
 }

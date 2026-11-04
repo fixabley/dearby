@@ -45,7 +45,9 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
 
 /** 내 프로필 tab: read mode by default with the top-bar 수정 editor (contract "프로필 읽기/수정 모드"), the history funnel (with file pickers for evidence) and the version screens. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, leaveSetup: () -> Unit = {}, askConsent: () -> Unit = {}) {
+@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, leaveSetup: () -> Unit = {}, askConsent: () -> Unit = {},
+                             /** An activity-role history row opens that activity's detail (contract "표시(프로필 활동 이력·명함)"). */
+                             openActivity: ((String) -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val funnel by model.funnel.collectAsStateWithLifecycle()
     val versions by model.versions.collectAsStateWithLifecycle()
@@ -138,7 +140,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) askConsent() else model.save() }, model::revert,
             { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, leaveSetup,
             pickPhoto = { if (state.consentRequired) askConsent() else if (!preparing) pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-            deletePhoto = { if (state.consentRequired) askConsent() else model.deletePhoto() }, contact = openContact,
+            deletePhoto = { if (state.consentRequired) askConsent() else model.deletePhoto() }, contact = openContact, openActivity = openActivity,
             linkGithub = { if (state.consentRequired) askConsent() else model.linkGithub(OAuthBrowser(context)) }, requestEmailCode = { if (state.consentRequired) askConsent() else model.requestEmailCode() },
             changeEmailCode = model::changeEmailCode, verifyEmail = model::verifyEmail)
     }

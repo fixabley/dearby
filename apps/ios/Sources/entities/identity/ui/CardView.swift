@@ -152,18 +152,32 @@ struct CardHistoryRows: View {
     }
 }
 
-/// Airbnb-style credential row: period, 조직 · 프로그램 · 활동 title, role with the verification badge, optional description.
+/// Airbnb-style credential row: period, `귀속 단위 · 역할` title (an activity's opens its detail through `activityOpener`), the units above it
+/// with the verification badge, optional description.
 private struct HistoryRow: View {
     let history: HistoryModel
+    @Environment(\.activityOpener) private var opener
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(history.startDate + (history.endDate.map { " – " + $0 } ?? "")).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-            Text(history.title).font(.dearby(.subheadline).weight(.bold)).foregroundStyle(DearbyStyle.ink)
+            if let activityID = history.activityID, let opener {
+                Button { opener.open(activityID) } label: {
+                    HStack(spacing: 4) {
+                        title
+                        Image(systemName: "chevron.right").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                    }.contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityHint("활동 상세를 열어요")
+            } else {
+                title
+            }
             HStack(spacing: 8) {
-                if !history.role.isEmpty { Text(history.role).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet) }
+                if !history.affiliation.isEmpty { Text(history.affiliation).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet) }
                 HistoryBadge(verified: history.verified)
             }
             if !history.description.isEmpty { Text(history.description).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.ink) }
         }.padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var title: some View {
+        Text(history.title).font(.dearby(.subheadline).weight(.bold)).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.leading)
     }
 }

@@ -22,19 +22,18 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
 }
 
 /** One received card (contract "받은 명함 상세"): 내 명함도 건네기 needs the account's own cards, loaded here if the tab never was. */
-@Composable fun WalletCardRoute(received: ReceivedCard, wallet: WalletViewModel, myCards: MyCardsViewModel, close: () -> Unit) {
+@Composable fun WalletCardRoute(received: ReceivedCard, wallet: WalletViewModel, myCards: MyCardsViewModel, close: () -> Unit, openActivity: ((String) -> Unit)? = null) {
     val state by wallet.state.collectAsStateWithLifecycle()
     val mine by myCards.state.collectAsStateWithLifecycle()
     val openContact = rememberOpenContact()
     LaunchedEffect(Unit) { if (mine.phase != MyCardsPhase.LOADED) myCards.load() }
     WalletCardPage(received, mine.cards.map { it.id to it.title }, state.busy, state.message, close, openContact,
-        report = { reason, detail -> wallet.report(received.card.id, reason, detail) }, block = { wallet.block(received.card.id) }) { myCardId ->
-        wallet.reciprocate(received.card.id, myCardId)
-    }
+        report = { reason, detail -> wallet.report(received.card.id, reason, detail) }, block = { wallet.block(received.card.id) },
+        giveBack = { myCardId -> wallet.reciprocate(received.card.id, myCardId) }, openActivity = openActivity)
 }
 
 /** 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); saving lands on 받은 명함 › that card's detail through [WalletState.opened]. */
-@Composable fun SharedCardRoute(shared: SharedCard, wallet: WalletViewModel, close: () -> Unit) {
+@Composable fun SharedCardRoute(shared: SharedCard, wallet: WalletViewModel, close: () -> Unit, openActivity: ((String) -> Unit)? = null) {
     val openContact = rememberOpenContact()
-    SharedCardPage(shared, close, openContact, report = { reason, detail -> shared.card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared)
+    SharedCardPage(shared, close, openContact, report = { reason, detail -> shared.card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared, openActivity = openActivity)
 }

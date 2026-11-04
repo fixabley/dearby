@@ -12,7 +12,7 @@ struct JobTagPicker: View {
     init(form: Binding<ProfileForm>, account: AccountViewModel, focus: FocusState<Bool>.Binding? = nil) {
         _form = form
         self.focus = focus
-        _search = State(initialValue: ActivityInfoSearchModel(kind: .jobs, parentID: nil, account: account))
+        _search = State(initialValue: ActivityInfoSearchModel(kind: .jobs, account: account))
     }
     private var full: Bool { form.jobs.count >= ProfileForm.maxJobs }
     var body: some View {
