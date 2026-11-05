@@ -1737,6 +1737,194 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - 접근성: 섹션 머리글은 제목(heading)으로 읽힌다. "참여 중" 강조는 색만으로 나타내지 않고 배지 글자를 둔다.
 - iOS 2026-10-26 구현: `ActivityStageModel.phase`(없으면 nil) → `ActivityStages.isSelection`(phase 우선, 없으면 옛 판정), 섹션 소속 `ActivityStage.inActivitySection`(시간표 블록은 늘 활동 일정). 활동 상세 `ActivityInformationView`는 `행사 일정` 제목 대신 같은 모양의 `선발 과정`·`활동 일정` 제목 두 개(heading 특성), 진행 단계 `ActivityProgressPage`는 두 `Section`. 내 활동 목록 행·배지·정렬은 그대로.
 
+## 직접 개설(사용자가 여는 프로그램·이벤트) — 2026-11-05 사용자 결정
+
+사용자 결정(2026-11-05, 큰 방향 전환): 활동 안에서는 **명함 교환만** 한다("명함 교환 범위·기본 명함·참여자 목록 — 2026-11-05", PR #519의 QR·참여자 목록 그대로). 활동·단계별 채팅방은 만들지 않는다. 대신 로그인한 사용자가 **프로그램 또는 이벤트를 직접 연다**(스터디·비공개 모임 포함). Luma 만들기의 구조만 가져오고 화면은 우리 체계다. 시안: [Dearby 홈 탭과 활동 상세 시안](https://claude.ai/artifact/NT7wjjRMjWdSkQn3D4GzS6) ㉙. 어드민 쪽은 [admin-v1.md](admin-v1.md) "직접 개설 승인·단계 인증 확인 — 2026-11-05".
+
+**대화방은 디스코드 서버 연결(봇 자동 초대)만**(2026-11-05 사용자 "discord만 지원하고 자동초대식으로"). **대체 기록**: 같은 날 앞선 안의 모임 링크 입력 칸(카카오톡 오픈채팅 `open.kakao.com`·디스코드 초대 `discord.gg`·`discord.com/invite` 주소 받기와 종류 판정)은 없앤다. 초대·오픈채팅 주소는 받지도 저장하지도 않는다.
+
+### 직접 개설 프로그램 = 프로그램 화면 + 회차(활동) 여러 개 — 2026-11-05
+
+사용자 결정(2026-11-05): 직접 개설 상세는 프로그램 화면(⑤)의 요소를 모두 포함한다. **대체 기록**: 같은 날 앞선 "직접 개설 하나 = 상세 한 장"(프로그램도 단일 상세)과 저장 제안 `hosted.activity_id`(하나)는 아래로 대체한다. 직접 개설 **이벤트**는 지금처럼 단일 활동 상세다.
+
+- **프로그램 화면**(㉙-p): 배너(커버, 없으면 아래 "이미지 대체") → 로고 자리 = **개설자 사진 원**(사진 없으면 이니셜) + `팔로우`(프로그램 팔로우와 같은 규칙·알림 수준) → 이름 → 조직 줄 자리 = **개설자 줄**(`이름 · @핸들 ›`, 누르면 개설자 기본 프로필) + `직접 개설` 캡슐 → 종류 줄 → 태그 칩(개설 폼 `태그`, 기존 분야 태그에서 고름) → 개수 줄 `n 모집 중 · n 모집 예정 · n 지난 활동` → 카드 `모집 중`·`모집 예정`·`지난 활동`(행 컴포넌트, 회차마다 한 행) → 개설자 링크(개설 폼 `링크`, 선택; 없으면 줄 생략. 모임 대화방 링크는 받지 않는 규칙 그대로라 `discord.gg`·`open.kakao.com` 주소는 400).
+- **연관 프로그램·이미지 대체·노출**(2026-11-05 사용자 결정 "로고는 안 되면 그냥 연관된 활동 커버 이미지로. 직접 개설할 때 어떤 프로그램에 대한 스터디인지 링크할 수 있으면 좋겠어. 해당 프로그램 구독한 사람들에게 노출되도록"):
+  - 개설 폼 기본 묶음에 `연관 프로그램`(선택, 하나): 누르면 발견 프로그램 검색 시트(㉙-r, 행 = 로고 + 이름 + 조직 + 선택 원 → `고르기`). 공식 프로그램만 고를 수 있다(직접 개설끼리는 연결하지 않음, 조율 판단). 프로그램 화면에 `<연관 프로그램> 연관 ›` 줄(누르면 그 프로그램 화면).
+  - **이미지 대체**: 로고·커버를 올리지 않으면 연관 프로그램의 **커버**를 행 썸네일·배너·회차 상세 커버로 쓴다(조직 로고는 빌리지 않음). 로고 자리는 개설자 사진 원 그대로. 연관 프로그램도 없으면 썸네일은 이름 첫 글자(청록 계열 단색 바탕), 커버는 같은 단색. 따로 무늬 모음은 만들지 않는다. **대체 기록**: 같은 날 앞선 "모임 로고 업로드(선택)"는 커버 업로드 하나로 줄인다(로고 업로드 없음, 행 썸네일은 커버 축소).
+  - **노출**(운영자 승인 뒤, 기존 규칙): 연관 프로그램을 팔로우한 사람의 내 활동 `팔로우` 탭 날짜별 목록에 회차 행이 섞인다(㉙-t, 조직 줄 끝 `직접 개설` 캡슐). 연관 프로그램 화면(⑤)에 묶음 `관련 모임`(㉙-s, 직접 개설 프로그램 행 목록, 열린 회차가 있는 것 먼저, 최대 5개 + `모두 보기`). **푸시 알림은 보내지 않는다**(팔로워 알림 수준과 무관, 알림 목록에도 넣지 않음). 
+  - **오해 방지**: 커버를 빌린 모임도 행·상세에 `직접 개설` 캡슐 + 개설자 줄을 반드시 보인다(빼는 설정 없음). 이름 규칙은 어드민 승인 체크(admin-v1 "직접 개설 승인·단계 인증 확인").
+  - API: 개설 요청 `relatedProgramId?: number`. `ProgramSummary.hosted`에 `relatedProgram: {id, name}|null`, 이미지 필드는 서버가 대체를 적용한 값(`coverUrl`, `coverBorrowedFrom: programId|null`). `GET /v1/programs/:id/related-hosted?size=5` → 승인된 직접 개설 `ProgramSummary[]`. 팔로우 탭 조회(기존 팔로우 탭 목록 API, 위 "팔로우 카드 줄과 관리 화면")는 팔로우한 프로그램을 연관 프로그램으로 가진 승인된 직접 개설 회차를 함께 돌려준다(항목에 `hosted` 블록). 저장 `programs.related_program_id bigint null → programs`.
+- **개설자 보기**(㉙-p2): `팔로우` 자리에 `새 회차 열기`, 오른쪽 위 `⋯`(프로그램 고치기·닫기).
+- **회차 = 활동**: 각 회차는 활동 상세(③)와 같은 구성(㉙-d: 위에 `개설자 · 프로그램` 줄, 누르면 프로그램 화면) + 참여 조건·참여 흐름·디스코드·참여 폼·참여 방식·정원·제출 명함. 위 절들의 참여 규칙은 **회차 단위**다(조건·폼·정원·디스코드 역할은 회차마다).
+- **새 회차 열기**(㉙-p3): 시트 `복제할 회차`(기본 가장 최근) + `가져올 것` 체크(일정·참여 조건·참여 폼·제출 명함 필수 항목·디스코드 서버·역할, 기본 모두) → `복제해서 열기`(CTA 시트 한 줄 `일정은 같은 간격으로 다음 날짜로 옮겨 와요`) → 개설 폼(㉙-c)이 채워진 채 열리고 개설자가 고쳐 `열기`. 일정 옮기기 = 원 회차의 첫 일정부터 마지막 일정까지 길이만큼 뒤로(원 회차가 끝난 다음 날 시작, 요일 맞춤; 조율 판단, 확인 필요). 회차 이름은 `<프로그램 이름> n회차`가 기본(고칠 수 있음).
+- **발견**: 승인된 직접 개설 프로그램은 발견 프로그램 행(㉙-a)으로 보이고 `활동 n개`는 열린 회차 수. 승인은 프로그램 단위이고, 새 회차는 프로그램이 승인돼 있으면 다시 승인받지 않는다(조율 판단, 확인 필요).
+- **저장**(API 담당, 제안): 공식과 같은 `programs`·`activities`를 재사용한다. `programs.owner_user_id bigint null`(직접 개설이면 개설자, 공식이면 null; 조직 `organization_id`는 null), `programs.hosted_meta jsonb`(공개 범위·승인 상태·로고·링크), 회차는 `activities`(그 프로그램 소속) + `hosted_rounds(activity_id pk, conditions jsonb, form jsonb, join_mode, capacity, required_card_fields, discord_guild_id, discord_role_id, discord_status)`. 이벤트도 같은 구조에 활동 하나. 위 제안의 `hosted`·`hosted_conditions`·`hosted_discord` 표는 이 둘로 합친다(`hosted_members`·`hosted_answers`·`hosted_submitted_cards`는 `activity_id` 기준).
+- **API**(제안): 위 표의 `/v1/hosted/:id`는 **회차(활동) id**로 읽는다(참여·멤버·폼·디스코드). 프로그램 수준은 `POST /v1/hosted/programs {type, name, kind, description?, tags[], logo?, link?, visibility, firstRound: Round}` → 201 `{program: ProgramSummary, round: Hosted}`, `PATCH /v1/hosted/programs/:programId`, `POST /v1/hosted/programs/:programId/rounds {copyFrom?: activityId, include?: [SCHEDULES, CONDITIONS, FORM, REQUIRED_CARD, DISCORD], round: Round}` → 201 Hosted(복제는 서버가 `include` 항목을 원 회차에서 가져오고 `round`의 값으로 덮어씀; 일정 옮기기 기본값은 앱이 미리 계산해 보냄). 조회는 공식과 같은 `GET /v1/programs/:id`(`ProgramSummary.hosted.host` 포함)·`GET /v1/activities/:id`(직접 개설 회차면 `hosted` 블록 포함)를 그대로 쓴다.
+
+### 무엇을 여나
+
+- **개설자**: 로그인한 사용자(조직이 아님). 비로그인이면 로그인 시트.
+- **진입**(조율 판단): 발견 우상단 글래스 묶음 맨 앞 `+`(iOS `plus`, Android `Add`) → 시트 `무엇을 열까요`: `프로그램`(값 예시 `스터디 · 동아리 · 해커톤`) · `이벤트`(`밋업 · 워크숍 · 강연`). 만드는 것이 발견에서 찾는 대상과 같아서 발견에 둔다. 내 프로필 탭의 `참여 중`에는 내가 연 것과 참여한 것이 내 활동 행으로 함께 보인다.
+- **입력**(개설 폼 ㉙-c, 오른쪽 위 `열기`; 설명 문구 없음):
+  - 커버(선택, 프로필 사진과 같은 형식·크기 규칙), 이름(필수), 종류(필수, 기존 종류 목록 그대로: 프로그램 부트캠프·동아리·공모전·해커톤·스터디·기타, 이벤트 컨퍼런스·밋업·강연·워크숍), 소개.
+  - **일정 = 활동 상세 일정 카드 그대로**(2026-11-05 사용자 "일정 만들 때 실제 활동 상세보기처럼(선발 기간, 활동 기간처럼). 처음엔 점 하나만 두고 누르면 캘린더에 입력하는 폼 양식 띄우고, 입력하면 활동 상세처럼 갱신하고, 아래에 더 추가하기 누르면 또 폼 뜨고"; **대체 기록**: 같은 날 앞선 시작·끝 날짜 행과 모임 전체 장소 행은 대체). 시안 ㉙-c4(빈 상태)·㉙-c3(입력 시트)·㉙-c5(고치기)·㉙-c(채운 상태, 상세 ㉙-d와 같은 카드).
+    - 카드: 상세의 일정 타임라인과 같은 컴포넌트(묶음 `선발 과정`·`활동 일정`, 점·세로선·이름·날짜, 날짜 표기 규칙 같음). 처음에는 묶음마다 **빈 점 하나**(테두리만 청록) + `일정 추가`. 저장하면 묶음 안에서 날짜순 자동 정렬, 묶음 마지막 아래 빈 점 + `더 추가하기`.
+    - 입력 시트(빈 점·`더 추가하기`·기존 일정을 누름): 이름 · 종류(기존 일정 종류 `DEADLINE` 마감·`ANNOUNCEMENT` 발표·`INTERVIEW` 면접·`EVENT` 행사·교육 등, 묶음에 따라 기본값: 선발 과정 = 마감, 활동 일정 = 행사) · `하루 종일`(켜면 날짜만) · 시작·끝(네이티브 날짜·시간 피커, iOS `DatePicker`, Android Material 3 DatePicker·TimePicker) · 장소(선택, 주소 또는 `온라인`) → `저장`. 기존 일정이면 아래 `일정 삭제`(빨강 글자 버튼). 설명 문구 없음.
+    - **`선발 과정` 묶음**(조율 판단): 참여 방식이 `바로 참여`이고 선발 일정이 없으면 기본으로 **접어 둔다**(묶음 이름 + 아래 꺾쇠만, 누르면 펼쳐 빈 점). `개설자 승인`으로 바꾸거나 선발 일정이 하나라도 있으면 펼친다. 지우지 않는다. 이유: 바로 참여 모임에는 모집·발표 단계가 대개 없어서 빈 묶음이 입력을 재촉하지 않게.
+    - **`활동 일정`은 최소 하나 필수**. 없으면 오른쪽 위 `열기`가 비활성.
+    - **반복**(2026-11-05 사용자 "매주·매일처럼 캘린더 생성 시 가능한 옵션이 모두 있으면 좋겠어. 캘린더 연동할 때 원활하게"; iOS 캘린더 앱 반복 범위). 입력 시트에 행 셋(㉙-c6):
+      - `반복`(값 + 위아래 꺾쇠, 네이티브 메뉴): `안 함`·`매일`·`매주`·`2주마다`·`매월`·`매년`·`사용자 지정`.
+      - `사용자 지정`(시트 안 푸시, ㉙-c7·㉙-c8): `빈도`(매일·매주·매월·매년) + `간격`(n일·주·개월·년마다) → 매주면 요일 다중 선택(원 일곱 개) → 매월이면 `날짜 | n째 주 요일` 분할 전환(날짜 = 그달 n일, n째 주 요일 = 첫째~넷째·마지막 주 + 요일) → 매년이면 월 다중 선택. 설명 줄 없이 결과는 `반복` 행 값으로(`매주 월·목`, `매월 셋째 주 토요일`).
+      - `반복 종료`: `안 함`·`날짜까지`(네이티브 날짜 피커)·`n회 뒤`. 하루 종일이 아닌 일정의 `날짜까지`는 그 날 끝까지.
+      - `건너뛸 날`(반복일 때만): 날짜 여러 개 추가·삭제(시트 안 목록, 행 밀어서 삭제).
+      - 카드 표시: 반복 일정은 타임라인에 **한 점**, 날짜 줄 `매주 월·목 20:00 ~ 22:00 · 온라인` + 둘째 줄 기간(`11월 16일 (월)부터 11월 30일 (월)까지` 또는 `10회`, 종료 없음이면 `11월 16일 (월)부터`) + 작은 민트 `반복` 표시. 다음 회차 D-day는 기존 규칙(다음 회차 기준).
+      - **다음 단계(이번에 넣지 않음)**: 회차별 수정(`이 일정만`·`이후 모두`), 회차 취소 알림.
+    - 상세의 머리 날짜 줄(`11월 16일 (월) ~ 11월 30일 (월)`)은 활동 일정의 처음·끝에서 서버가 만든다(공식 활동과 같은 규칙), 장소 줄은 일정 장소가 모두 같으면 그 값, 다르면 첫 활동 일정 장소.
+  - 정원(선택, 차면 `참여하기` 비활성 `정원이 찼어요`).
+  - 참여 조건(아래), 공개 범위(아래).
+  - 묶음 `대화방`: `디스코드 서버 연결`(선택, 아래). 연결하지 않으면 대화방 없는 모임(일정·참여자만).
+- **표시**: 공식 수집 프로그램과 구별한다. 발견 행은 조직 줄 자리에 개설자 이니셜 원(사진 있으면 사진) + 이름 + `직접 개설` 캡슐, 상세는 종류 줄 옆 같은 캡슐 + `개설자` 프로필 행(누르면 그 사람의 기본 프로필 ㉗-i). 캡슐은 배지 규칙의 "흰 바탕 가는 테두리·보조 글자"(회색 채움 금지).
+
+### 공개 범위와 운영자 승인
+
+- `LINK_ONLY`(기본): 링크를 받은 사람만 상세를 연다(발견·검색·맞춤 대기열에 나오지 않음). 공유 링크는 기존 활동 공유 주소(`/activities/:id`, 유니버설 링크·App Links)를 그대로 쓴다.
+- `PUBLIC`: 발견 노출을 신청한다. **운영자 승인 뒤에만** 발견·검색에 나온다(승인 전에는 `LINK_ONLY`처럼 동작). 승인·반려는 어드민 승인 큐. 내용(이름·소개·커버)을 고치면 다시 승인 대기가 된다(조율 판단, 확인 필요).
+- 신고·차단: 상세 `⋯` 메뉴 `신고`(개설 글)·개설자 행 길게 누르기 `신고`·`차단`(개설자). 개설 글 신고는 어드민 신고 메뉴에 대상 종류 `직접 개설`로 보이고 운영자가 내릴 수 있다. 차단은 PR #519의 계정 단위 차단(`POST /v1/me/blocks {userId}`)을 쓰고, 차단한 사이는 서로가 연 것의 상세가 404이고 참여할 수 없다.
+
+### 참여 조건
+
+**2026-11-05 갱신**(사용자 결정, ㉙-c2 새 시트). **대체 기록**: 같은 날 앞선 안의 `누구나` 선택지는 없앤다(조건을 하나도 고르지 않으면 누구나, `Condition` 목록이 비면 됨). 단계 조건의 "프로그램 › 기수 여러 개 › 단계" 고르기는 아래 "내 활동에서 고름"으로 대체한다.
+
+- 고를 수 있는 것(없으면 누구나, ㉙-c2 시트; 시트 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요`):
+  - **나와 명함을 맞교환한 사람**: 개설자와 회수·철회되지 않은 맞교환 상태("명함 교환 — 2026-10-19"의 맞교환 정의, 계정 쌍).
+  - **단계 통과 인증**: 프로그램 하나 › 그 프로그램의 기수(활동) 여러 개 › 단계 하나. 단계는 그 활동의 **선발 단계**(`Schedule.phase` 선발, "내 활동 진행 트랙")이고 "그 단계 이상" = 고른 단계 또는 그 뒤 선발 단계의 인증이 `확인됨`이거나, 그 활동을 `참여 중`으로 인증받은 것. 기수가 여럿이면 단계는 기수마다 같은 이름(종류)의 단계로 맞춘다(조율 판단: 기수마다 일정 id가 달라서 고를 때 첫 기수의 단계를 고르면 다른 기수는 같은 `kind`·제목의 선발 단계로 대응, 대응이 없는 기수는 고를 수 없게 흐림).
+  - **단계 통과 인증 고르기(갱신)**: 개설자가 **자기 내 활동에서 검색해** 고른다. 고를 수 있는 것은 개설자 본인의 단계 인증이 `확인됨`인 단계뿐이고(그래서 "개설자도 인증" 확인이 고르는 순간 끝남), 시트에는 `SSAFY 17기 · 서류 발표 통과 · 인증됨` 한 행으로 보인다. 프로그램 전체(다른 기수) 적용은 사용자 확인 중이라 고른 기수만 쓰고, 그 아래 `같은 프로그램 다른 기수에도` 토글은 **자리만**(비활성) 둔다. 이 토글이 확정되면 위 "기수 사이 하나만(OR)"과 기수별 단계 대응 규칙이 그 토글의 동작이 된다.
+  - **자격**(신규, ㉙-c2 `자격` 묶음 → `자격 추가`): 아래 "자격 조건 — 2026-11-05".
+- **결합**(조율 판단, 확인 필요): 조건 종류 사이는 **모두 충족(AND)**, 단계 조건 안의 기수 사이는 **하나만(OR)**. 이유: 직접 개설의 기본이 비공개 모임이라 좁히는 쪽이 의도와 맞고, 같은 프로그램 여러 기수는 넓히려고 고르는 것이다. 시트 아래 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요. 기수는 하나만 맞으면 돼요`(CTA 시트라 허용). 상세의 조건 제목은 `참여 조건 · 모두 충족`.
+- **개설자도 인증**: 단계 조건은 개설자 본인이 같은 조건을 `확인됨`으로 가져야 걸 수 있다(시트 `내 인증` 줄; 없으면 `인증하기 ›`로 단계 인증 화면). 저장 때 서버가 다시 확인한다(422 `HOST_NOT_VERIFIED`).
+- **주최 측 금지**: 어드민이 프로그램마다 `단계 조건 걸기`를 끌 수 있다(공식 주최 측이 합격자 모임을 금지하는 경우). 꺼진 프로그램은 시트의 프로그램 고르기에서 흐리게 보이고 고를 수 없다(422 `STAGE_CONDITION_DISABLED`). 이미 그 조건으로 열린 것은 그대로 두고 새 참여만 막는다(조율 판단, 확인 필요).
+
+### 자격 조건 — 2026-11-05
+
+사용자 결정(2026-11-05): 참여 조건에 자격(지원 자격 정보와 같은 키)을 건다. 시안 ㉙-l~㉙-l5·㉙-o.
+
+- **자격 키 사전**: 공용 키 = "대상자 조건(eligibility) — 2026-10-18"의 어휘(`age`·`birthYear`·`schoolYear`·`educationLevel`·`educationStatus`·`major`·`region`·`employment`·`experienceYears`·`nationality`·`teamSize`) + 신규 `gender` + 어드민이 승인한 사용자 제안 키. 키마다 값 종류: `RANGE`(from/to, 한쪽 생략 가능), `NUMBER`, `SINGLE`·`MULTI`(선택지 목록), **`BOOL`(신규)**. 묶음은 기존 그룹(`op: all|any`, 깊이 3)을 그대로 쓴다.
+- **시트**: `자격 추가` → 자격 키 검색 시트(㉙-l, 행 = 키 이름 + 값 종류, 제안 키는 `사용자 제안`) → 고른 키의 값 입력(㉙-l2 범위 `부터 ~ 까지`, ㉙-l3 예/아니오 분할 전환, 고르기는 칩·체크) → `추가`. 묶음은 `자격 묶음`(㉙-l4, `모두 | 하나라도` + 안에 자격 여러 개). 참여 조건 시트의 행은 `나이 19~34세`·`재학상태 · 취업상태 하나라도`처럼 키 이름 + 값 요약.
+- **자동 매칭**: 참여자의 **지원 자격 정보**(프로필, 동의한 사람만)와 같은 키로 서버가 판정한다(기존 대상자 조건 2차 판정과 같은 평가기, 조건 없는 키는 판정 불가로 보고 아래 직접 입력으로). 값이 없으면 상세의 그 조건은 빈 원 + `입력하기`(지원 자격 정보 화면으로, 동의 전이면 동의 시트 먼저). **개설자에게는 값이 아니라 `자격 충족`(자격 n개 충족)만** 보인다(지원 자격 정보 동의의 "다른 사람에게 보이지 않음"을 지킴; 그래도 "모임 개설자에게 충족 여부가 전달됨"을 동의 요약에 한 줄 더해야 한다, 법률 문구 확인 필요).
+- **새 자격 제안**(㉙-l5, 검색에 없을 때): 이름 · 값 종류 · 선택지(고르기 종류일 때) → `제안하고 쓰기`(CTA 시트 한 줄 `승인 전에는 이 모임에서만 쓰이고 참여자가 신청 때 직접 입력해요`). 어드민 승인 큐(admin-v1 "자격 키 사전 — 2026-11-05")로 간다. **승인 전**: 그 개설자의 모임에서만 쓰이고, 참여자가 신청 때 직접 입력(자기 신고, ㉙-o; 개설자에게는 이 값도 `자격 충족`으로만). **승인 뒤**: 공용 검색에 뜨고 프로필 지원 자격 정보에서도 입력할 수 있다. 반려되면 이미 쓰인 모임에서는 직접 입력 조건으로 남는다(조율 판단, 확인 필요). 같은 이름의 제안은 어드민이 합친다.
+- **성별**(`gender`, 값 `female`·`male`·`undisclosed`, 화면 `여성`·`남성`·`밝히지 않음`): 프로필 지원 자격 정보에 선택 항목으로 더한다. 단, **성별 제한 모임은 프로필 값으로 자동 매칭하지 않는다**: 신청 때 성별을 따로 입력해 제출하고(㉙-o, `밝히지 않음`은 고를 수 없음), 제출 확인 시트에 `성별`이 개설자에게 전달된다고 행으로 보인다. 개설자 참여자 상세에 `성별` 값이 보인다(다른 자격과 달리 값이 전달됨).
+
+### 제출 명함 — 2026-11-05
+
+- 개설 폼 `참여` 묶음에 `제출 명함 필수 항목`(㉙-m): 명함 노출 항목(연락처 각각·소셜 링크·이력·참여 중인 활동·참여했던 활동·가입 시기·팔로우 목록)에서 고른다. 고르지 않으면 명함 제출 단계가 없다.
+- 신청 때 `제출할 명함` 시트(㉙-n): 내 명함 목록, 필수 항목이 빠진 명함은 흐리게 + `<항목> 빠짐`(빨강) + `명함 고치기` 바로 가기, 아래 `새 명함`. 기본 선택은 필수 항목을 모두 가진 명함 중 켠 항목이 가장 적은 것(조율 판단: 의도보다 많이 건네지 않게). CTA `이 명함 제출` + 한 줄 `개설자에게만 전달돼요 · 맞교환은 따로 해요`.
+- 제출은 **개설자에게 한쪽 전달**이다(맞교환이 아니고 개설자 지갑에 들어가지 않음, 그 모임의 참여자 상세에서만 보임). 명함을 고치거나 지우면 제출본도 따라 바뀐다(발행 스냅샷 규칙 그대로; 지우면 `제출한 명함이 지워졌어요`). 맞교환은 PR #519 흐름으로 따로 한다. 답변과 같은 보관 규칙(모임 종료 30일 뒤 제출 관계 삭제).
+- 개설자 참여자 상세(㉙-k2)에 `제출 명함` 카드(그 명함에서 켠 항목만).
+
+### 단계 인증
+
+- 화면: 프로필 수정 › 내 정보 › `단계 인증`(㉙-f2 목록: 행 = `프로그램 기수 · 단계` + 상태) → `단계 인증 추가`(㉙-f: 프로그램 › 기수 › 단계 + 증빙 파일 → 하단 `제출`, CTA 아래 한 줄 형식 안내). 상세의 미충족 조건 `인증하기`·하단 `단계 인증하기`에서도 같은 화면으로(고른 조건이 미리 채워짐).
+- 증빙: 기존 이력 인증자료 규칙 그대로(인증당 3개, 파일당 5MB, `image/jpeg`·`image/png`·`image/webp`·`application/pdf`).
+- 상태: `PENDING` `대기 중`(호박) · `VERIFIED` `확인됨`(청록) · `REJECTED` `반려`(빨강, 반려 사유 한 줄). 글리프 + 글자, 회색 채움 없음. 관리자가 확인한다(어드민 확인 큐). 반려 뒤 다시 올릴 수 있다.
+- 이 인증은 내 활동 진행 트랙의 사용자 표시(`통과`·`대기`·`탈락`, 기기 안 표시)와 별개다. 확인됨이 되어도 트랙 표시를 바꾸지 않는다.
+- 다른 사람에게 보이는 범위: 직접 개설에 참여(신청)할 때 그 모임의 **개설자에게만** 조건과 이어진 인증의 이름·상태(`SSAFY 17기 · 서류 전형 통과 · 인증됨`). 증빙 파일은 관리자만 본다.
+
+### 참여 흐름
+
+1. 상세(㉙-d): 조건마다 충족이면 청록 체크, 아니면 빈 원 + `인증하기`(단계) 또는 안내 없음(맞교환; 맞교환은 개설자에게 명함 교환을 요청하는 기존 흐름). 조건을 모두 충족하면 하단 `참여하기`, 아니면 `단계 인증하기`(CTA 아래 한 줄 `<프로그램> <단계> 통과 인증이 있어야 참여할 수 있어요`) 또는 맞교환이 빠졌으면 `명함 교환 요청`.
+2. 참여 폼이 있으면 폼 작성(㉙-j) → 제출 확인 시트(㉙-j2, 아래 "개인정보 장치"). 폼이 없으면 참여 확인 시트(㉙-e, CTA 시트라 설명 허용): `개설자와 다른 참여자에게 아래 내용이 보여요` + 행 `통과 단계`(조건으로 쓰인 인증, 예 `SSAFY 17기 서류 발표`) · `디스코드 이름`(디스코드 서버가 연결된 모임일 때) + `참여`. **디스코드가 연결된 모임은 참여자도 디스코드 계정 연결이 필요하다**: 내 디스코드가 연결 안 돼 있으면 행 값 `연결 안 됨`, CTA `디스코드 연결하고 참여`(㉙-e2) → 디스코드 연결 흐름(아래) → 앱으로 돌아오면 이어서 참여 완료 → 봇이 서버에 넣고 역할 부여. 연결을 취소하면 참여하지 않은 채 시트로 돌아온다.
+3. 참여 뒤(㉙-d3): `대화방` 구역(디스코드 서버 이름 + 받은 역할)이 **참여자에게만** 보이고 하단 CTA `디스코드에서 열기`(서버 열기 딥 링크 `https://discord.com/channels/{guildId}`, 디스코드 앱이 있으면 앱으로). 대화방이 없는 모임은 CTA 없이 참여 상태만. 나가기는 `⋯` 메뉴 `나가기`(확인 시트). 개설자는 참여자 목록에서 `내보내기`.
+- 참여자 목록: 개설자용은 아래 "개설자에게 가는 정보"(㉙-k·㉙-k2). 참여자끼리는 기본 프로필(이름·핸들·직업·소개)만 보이고 폼 답변·조건 근거는 보이지 않는다(조율 판단). 명함 교환 요청은 PR #519 행 규칙 그대로.
+
+### 개설자에게 가는 정보·참여 폼·참여 방식 — 2026-11-05
+
+사용자 지시(2026-11-05): "개설자에게 전달되는 정보는 기본정보와 자격 관련 최소정보만(통과 여부를 알 수 있는 활동 정보, 이력). 추가 조건은 커스텀 입력. 개설자가 폼도 만들 수 있게". 시안 ㉙-i~㉙-k3.
+
+- **개설자에게 가는 정보(최소)**: 참여자(승인 대기 포함)마다
+  - 기본 프로필: 이름·핸들·직업·소개(사진 있으면 사진).
+  - **조건 근거 한 줄**: 단계 조건이면 `<프로그램> <기수> · <단계> 통과 · 인증됨`, 맞교환 조건이면 `명함 맞교환`, 폼 조건이면 `<질문> · <답>`.
+  - 조건과 이어진 인증 이력의 **이름만**(예 `SSAFY 17기 서류 전형`).
+  - 폼 답변.
+  - 디스코드 이름(디스코드가 연결된 모임만).
+  - **주지 않는 것**: 증빙 파일(관리자만), 연락처, 조건과 무관한 다른 이력, 다른 참여 활동, 가입 시기, 팔로우. 명함을 맞교환했더라도 이 화면에는 명함 내용을 싣지 않는다(명함은 받은 명함에서 따로 본다).
+  - 화면: 개설자 참여자 목록(㉙-k, 분할 전환 `승인 대기 n | 참여 중 n`, 행 = 기본 프로필 + 조건 근거 한 줄) → 참여자 상세(㉙-k2, 위 순서대로, 하단 `거절 | 승인`).
+- **참여 폼**(개설 폼 › `참여 폼`, ㉙-i): 질문 추가·순서(편집에서 끌기)·필수 여부. 종류 `짧은 답`(≤200자)·`긴 답`(≤2000자)·`하나 고르기`·`여러 개 고르기`(선택지 2~10개)·`예/아니오`. **파일 질문 없음**. 질문은 최대 10개(조율 판단).
+  - 질문 편집 시트(㉙-i2): 질문 · 종류 · `필수` · **`조건으로 쓰기`**(예/아니오·고르기만) → `통과 답`(하나 이상) 지정. 통과 답이 아니면 참여할 수 없다(제출 전 앱이 막고 서버도 403). 이것이 커스텀 추가 조건이며 **자기 신고이고 인증이 아니다**(시트 한 줄). 조건으로 쓴 질문은 상세의 `참여 조건` 목록에도 `<질문> · <통과 답>`으로 보인다.
+  - **질문 종류 확장**(2026-11-05 사용자 "그렇게 해주세요" + "앱 출시 경험은 Play Console OAuth2가 있다면 활용", ㉙-i4 메뉴 구분선 아래 셋):
+    - **`링크`(지금 구현)**: `https://`로 시작하는 주소만, 형식 검사(호스트 있음·2048자 이하·공백 없음, 아니면 422 `INVALID_LINK`). 개설자에게 그대로 전달(제출 확인 시트의 `폼 답변`에 포함, 기존 규칙). 대화방 주소 금지 규칙과는 별개(참여자 답이라 허용).
+    - **`프로젝트 링크`(시안·계약만, 구현 보류)**: GitHub을 연결했으면 **내 공개 저장소 목록에서 고르기**(㉙-j5, 검색; 행 = 저장소 이름 + `소유자`·`기여자` + 언어). 서버가 공개 API로 확인: 소유자 = 저장소 `owner.login`이 연결 login과 같음, 기여자 = `GET /repos/{owner}/{repo}/contributors`(공개, 익명 기여자 제외)에 연결 login이 있음 → 답에 `확인됨 · 소유자|기여자`. 목록은 `GET /users/{login}/repos?type=owner` + 최근 기여 저장소(공개 이벤트, 조율 판단)로 만들고 사용자 토큰은 쓰지 않는다(서버 앱 토큰으로 호출 한도만 올림). 연결 안 했으면 `링크 직접 입력`(`github.com/...` 형식만, `미확인`).
+    - **`앱`(시안·계약만, 구현 보류)**: 분할 전환 `Google Play | App Store`.
+      - **Google Play**(㉙-j6): Google 계정으로 Play 권한 추가 허락(점진 권한, 로그인용 Google과 같은 계정일 필요 없음) → 서버가 **Play Developer Reporting API** `GET https://playdeveloperreporting.googleapis.com/v1beta1/apps:search`(범위 `https://www.googleapis.com/auth/playdeveloperreporting`, `pageSize` 기본 50·최대 1000, `nextPageToken`)로 그 사용자가 접근할 수 있는 앱 목록 → 고르면 답에 `Play Console 접근 확인됨`(앱 이름·패키지 이름). **한계**: 응답은 "호출한 사용자가 접근할 수 있는 앱"이라 초대받은 사용자 앱도 포함되어 **본인 출시 증명이 아니다**(시트 한 줄 `Play Console에서 접근할 수 있는 앱이에요 · 초대받은 앱도 포함돼요`, 개설자 쪽 표시도 `접근 확인됨`). 민감 범위일 수 있어 Google OAuth 앱 검증이 필요할 수 있다(**확인 필요**). 토큰은 목록을 받은 뒤 버린다(저장하지 않음). 출처 https://developers.google.com/play/developer/reporting/reference/rest/v1beta1/apps/search (2026-11-05 확인).
+      - **App Store**(㉙-j7): 사용자 OAuth가 없다(App Store Connect API는 개발자가 발급하는 API 키 방식이라 **사용자에게 키를 요구하지 않는다**). 스토어 링크(`https://apps.apple.com/...`) + 증빙 파일(App Store Connect 앱 화면 등, 기존 인증자료 형식·크기) → 관리자 확인(단계 인증과 같은 어드민 확인 큐, 종류 `앱 출시`) → `확인됨`. 확인 전에는 `확인 대기`로 전달.
+    - 개설자 참여자 상세(㉙-k2)의 폼 답변에 확인 표시(`확인됨 · 소유자`, `Play Console 접근 확인됨`, `확인됨`(App Store), `미확인`).
+    - **다음 단계**: Figma(커뮤니티 프로필·파일 소유 확인) 질문 종류는 이번에 넣지 않는다.
+  - 결합: 폼 조건도 다른 조건과 모두 충족(AND).
+- **참여 방식**(개설 폼 `참여 방식`, 개설자 선택):
+  - `바로 참여`(기본): 조건 충족 + 폼 제출 → 즉시 참여(디스코드 서버 추가·역할).
+  - `개설자 승인`: 제출 → `승인 대기 중`(상세 하단 비활성 상태 버튼, `⋯` 메뉴 `신청 취소`, ㉙-j3) → 개설자가 답을 보고 `승인`(이때 디스코드 서버 추가·역할) 또는 `거절`(㉙-k3 시트: 사유 선택 `정원이 찼어요`·`조건과 맞지 않아요`·직접 입력·적지 않음). 참여자에게는 `참여하지 못했어요` + 고른 사유만(㉙-j4), 알림 목록 종류 `HOSTED_RESULT`. 승인 대기는 정원에 세지 않는다. 개설자에게는 새 신청 알림 `HOSTED_APPLICATION`.
+- **개인정보 장치**:
+  - 제출 확인 시트(㉙-j2, CTA 시트): `이 답변은 개설자에게 전달돼요` + 전달되는 것 행(기본 프로필·조건 근거·폼 답변 n개·디스코드 이름) + 한 줄 `연락처·증빙 파일·다른 이력은 전달되지 않아요 · 모임이 끝나고 30일 뒤 답변이 지워져요` + `제출하고 참여 신청`(바로 참여면 `제출하고 참여`).
+  - **금지 질문**: 주민등록번호·외국인등록번호·여권번호·계좌번호·카드번호·비밀번호, 건강·병력·장애, 종교, 정치 성향, 성생활·성적 지향, 노동조합 가입(개인정보 보호법의 민감정보·고유식별정보 범주를 참고한 조율 목록, 법률 검토 필요). 질문을 저장할 때 서버가 문구를 키워드로 검사해 걸리면 422 `SENSITIVE_QUESTION`(앱은 시트에 빨강 연한 경고 줄 `민감한 개인정보는 물을 수 없어요` + 예시, `완료` 비활성, ㉙-i3). 검사를 피한 질문은 신고(개설 글 신고 사유 `부적절한 질문`)로 운영자가 처리(질문 삭제·모임 내리기).
+  - **보관**: 답변은 모임 종료일(마지막 `ACTIVITY` 일정의 끝, 개설자가 먼저 닫으면 그때) + 30일 뒤 지운다(batch 매일 04:00, 명함 회수와 함께, 지운 수 로그). 거절된 신청의 답변은 거절 + 30일 뒤. 모임이 지워지면 즉시.
+  - 참여자는 언제든 **자기 답 삭제**(상세 `⋯` › `내 답변 지우기`; 지우면 그 모임에서도 나간다, 폼 조건이 있으니 다시 참여하려면 다시 제출) + `나가기`.
+  - 개인정보처리방침에 "직접 개설 모임 개설자에게 제공(제공받는 자: 그 모임의 개설자, 항목: 기본 프로필·조건 근거·폼 답변·디스코드 이름, 목적: 참여 자격 확인·모임 운영, 보유: 모임 종료 30일 뒤까지)" 항목을 더한다. **문구는 자리표시, 법률 문구 확인 필요**.
+
+### 디스코드 연결(2번안)
+
+- **GitHub 연결**(㉙-g, 2026-11-05): `연결된 로그인`에 `GitHub` 행(로그인 수단 아님). 연결 흐름은 기존 "연락처 인증"의 GitHub OAuth(start → 콜백 → complete) 그대로이고 **범위 없음**(GitHub 문서: "(no scope) Grants read-only access to public information", 쓰기 권한 없음, 토큰 저장 없음, login만 저장). 연결하면 프로필 연락처 GitHub이 `확인됨`(같은 login으로 판정, 이미 인증한 사람은 연결된 것으로 본다). 이 행과 연락처 인증은 같은 상태를 보인다.
+- **계정 연결**(㉙-g): 설정 › 계정 설정 › `연결된 로그인`에 `디스코드` 행(`연결하기` / `<사용자명> · 연결됨`). **로그인 수단으로는 쓰지 않는다**(로그인 화면에 디스코드 없음, 마지막 로그인 수단 판정에 세지 않음). OAuth2 인가 코드 흐름, 범위 **`identify`**(사용자 id·사용자명) + **`guilds.join`**(참여 때 서버에 추가). 서버는 액세스·리프레시 토큰을 암호화해 저장한다. 경로는 PR #521 구현 기준(아래 "디스코드 연결 구현 기록 — 2026-11-05"): `POST /v1/me/connections/discord/start {platform}` → `GET /v1/me/connections/discord/callback`(1회용 code로 앱 복귀) → `POST /v1/me/connections/discord/complete {code}`, 해제 `DELETE /v1/me/connections/discord`. 상태는 `GET /v1/me`의 `connections.discord: {available, username, linkedAt}`(`available=false`면 서버에 비밀 값이 없어 행을 숨김). `연결 해제` 때 토큰을 지우고, 참여 중인 모임의 디스코드 역할은 그대로 두지 않고 회수한다(조율 판단, 확인 필요).
+- **서버 연결**(㉙-h, 개설자): 개설 폼 `디스코드 서버 연결` → Dearby 봇 초대 주소(`https://discord.com/oauth2/authorize?client_id=…&scope=bot&permissions=268435457`, 권한 = `CREATE_INSTANT_INVITE`(1<<0) + `MANAGE_ROLES`(1<<28)) → 디스코드 화면에서 서버 고르기 → 돌아오면 서버 이름 + **참여자에게 줄 역할 고르기**(봇의 가장 높은 역할보다 낮은 역할만 고를 수 있음, 디스코드 규칙; `새 역할 만들기`는 #521에 아직 없어 다음 단계) → `연결`(CTA 아래 한 줄 허용). 경로(PR #521): `POST /v1/me/discord/guilds/start {platform}` → `GET /v1/me/discord/guilds/callback` → `POST /v1/me/discord/guilds/complete {code}` → 201 `{id, guildId, guildName, roles}`. 서버 연결은 **사용자 소유 행**이고(`GET /v1/me/discord/guilds`, 역할 `GET /v1/me/discord/guilds/:id/roles`, 삭제 `DELETE /v1/me/discord/guilds/:id`), 모임에는 그 행 id와 역할 id를 붙인다. **서버 확정은 콜백의 `guild_id`가 아니라 complete에서 교환한 토큰 응답의 `guild.id`**(실제로 봇을 승인한 서버)로 하고 봇 토큰으로 봇이 있는지 다시 확인한다(**대체 기록**: 같은 날 앞선 "돌아온 `guild_id`는 참고값이라 확인한다"는 이 규칙으로 대체; `guild_id`만 믿으면 봇이 이미 있는 남의 서버를 가로챌 수 있음).
+- **참여·역할 회수(자동 초대식)**: 참여하면 서버가 `PUT /guilds/{guild.id}/members/{user.id}`(봇 토큰, 사용자 액세스 토큰 `guilds.join`, `roles: [roleId]`)로 서버에 넣는다(초대 링크를 쓰지 않음). 이미 서버에 있으면 `PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}`로 역할만. **나가기·내보내기·조건 상실**(단계 인증 반려·맞교환이 깨짐·차단) 때 `DELETE /guilds/{guild.id}/members/{user.id}/roles/{role.id}`로 **역할만 회수**(서버에서 내보내지는 않음, 역할 회수에 필요한 권한만 받기 위해). 조건 상실은 그 모임에서도 자동으로 나간 것으로 처리한다(조율 판단, 확인 필요). 디스코드 호출 실패는 참여를 막지 않고 재시도 큐에 넣는다.
+- **봇 상태**: 봇이 서버에서 빠졌거나(`GUILD_DELETE`·멤버 제거 이벤트, 또는 호출 403·404) 권한·역할 순서가 맞지 않으면 모임의 디스코드 상태를 `BROKEN`으로 두고 개설자에게 알림(알림 목록 종류 `HOSTED_DISCORD_BROKEN`, 그 모임의 묶음) + 상세에 **개설자만 보는 상태 행**(㉙-d4: `디스코드 봇이 서버에 없어요` / `새 참여자를 서버에 넣지 못하고 있어요` + `다시 연결`, 빨강 연한 면). 그동안 참여는 받되 서버 추가는 재시도 큐에 남기고, 다시 연결되면 처리한다.
+- 확인한 문서(2026-11-05): Discord Developer Docs "Guild" 리소스(Add Guild Member: `guilds.join` 범위 + 같은 앱의 봇 토큰, 봇은 `CREATE_INSTANT_INVITE` 권한으로 그 서버에 있어야 함, `roles` 지정에는 `MANAGE_ROLES`; Add/Remove Guild Member Role: `MANAGE_ROLES`), "Permissions"(봇은 자기 가장 높은 역할보다 낮은 역할만 다룸), "OAuth2"(`identify`·`guilds.join`·`bot` 범위, `permissions`·`guild_id`·`disable_guild_select` 매개변수).
+- **보류(사용자 외부 계정 작업)**: GitHub OAuth 앱(기존 연락처 인증 앱 재사용 가능, 콜백 주소 추가 필요 여부 확인), Google Cloud OAuth 동의 화면에 `playdeveloperreporting` 범위 추가와 민감 범위 검증, 디스코드 개발자 포털 앱 등록, 봇 토큰·클라이언트 시크릿 발급, 리디렉트 주소 등록(`https://api.dearby.wid.io.kr/v1/me/connections/discord/callback`, 봇 초대 `https://api.dearby.wid.io.kr/v1/me/discord/guilds/callback`), 운영 env(#521 기준) `DISCORD_CLIENT_ID`·`DISCORD_CLIENT_SECRET`·`DISCORD_BOT_TOKEN`·`DISCORD_TOKEN_KEY`·`DISCORD_CALLBACK_URL`·`DISCORD_BOT_CALLBACK_URL`. 값이 없으면 디스코드 행·서버 연결 행을 숨기고 관련 API는 503.
+
+### 반복 일정 확장 — 2026-11-05
+
+직접 개설의 반복 입력을 위해 "반복 일정과 겹침 결과 묶음 — 2026-10-22"의 저장 규칙을 넓힌다(공식 활동 일정·어드민 편집기에도 같은 범위가 적용된다; 어드민 편집기 UI를 넓히는 것은 어드민 담당 다음 단계). **대체 기록**: 10-22의 허용 부분집합(`FREQ=DAILY|WEEKLY`, `BYDAY` 요일 목록만, `INTERVAL` 1~4)은 아래로 대체한다. 10-22의 "ICS 구독 피드는 없다"는 이미 "캘린더 피드 — 한 피드 방식"(2026-11-04)으로 대체됐다.
+
+- **저장**: `schedules.recurrence`(RFC 5545 RRULE 본문, 접두사 없이, 기존 컬럼) + 새 `schedules.exdates date[] null`(건너뛸 날, 회차의 시작 날짜, 일정 시간대 기준).
+- **지원 범위**: `FREQ=DAILY|WEEKLY|MONTHLY|YEARLY`, `INTERVAL`(1~99), `BYDAY`(요일 목록, MONTHLY·YEARLY에서는 서수 하나 붙은 요일 `3SA`·`-1FR`), `BYMONTHDAY`(1~31 하나), `BYMONTH`(1~12 목록), `UNTIL` 또는 `COUNT`(1~400) 중 하나 또는 둘 다 없음(종료 없음). **미지원**: `BYSETPOS`, `HOURLY`·`MINUTELY`·`SECONDLY`, `BYHOUR`·`BYMINUTE`·`BYWEEKNO`·`BYYEARDAY`, `WKST` 변경. 그 밖은 400 `RECURRENCE_UNSUPPORTED`. 31일처럼 없는 날은 RFC 5545대로 그 달을 건너뛴다(시트의 날짜 고르기에서 29~31일을 고르면 경고 줄 없이 그대로 저장, 조율 판단).
+- **서버가 회차를 펼친다**: 활동·일정 조회 응답에서 반복 일정은 원래 `Schedule`(`recurrence`·`exdates`·`recurrenceSummary` 포함, 카드 한 점 표시용) 하나와 함께, 조회 창(오늘 − 1일 ~ + 400일, 최대 400회) 안 회차를 `Schedule.occurrences: [{startAt, endAt} | {startDate, endDateExclusive}]`로 내려 준다. `recurrenceSummary`는 서버가 만든 표시 문자열(`매주 월·목`, `매월 셋째 주 토요일`). 겹침 확인·홈 다음 일정·위젯·알림·선발 결과 묻기·LIVE 판정은 **펼친 회차**를 읽는다(**대체 기록**: 10-22 "앱이 규칙을 풀어 회차 창을 만든다"는 서버 회차 읽기로 대체, 옛 응답에 `occurrences`가 없으면 앱 풀이를 대체 경로로 남긴다).
+- **기기 캘린더로 갈 때는 규칙 그대로**: 캘린더 피드 ICS(`/v1/me/calendar/{token}.ics`)의 `VEVENT`에 `RRULE`·`EXDATE`를 그대로 싣는다(회차를 펼쳐 여러 VEVENT로 만들지 않음; `DTSTART`는 첫 회차, 시각 일정은 `TZID`, 하루 종일은 `VALUE=DATE`). 일정 하나만 넣는 `캘린더에 추가`는 iOS `EKRecurrenceRule`(빈도·간격·요일·`daysOfTheMonth`·`monthsOfTheYear`·`setPositions` 없이 서수 요일은 `EKRecurrenceDayOfWeek(dayOfTheWeek:weekNumber:)`·종료 `EKRecurrenceEnd`), **건너뛸 날이 있는 반복 일정은 iOS에서 하나씩 추가하지 않고 캘린더 구독으로 안내한다**(2026-11-05 사용자 결정; **대체 기록**: 같은 날 앞선 "저장 뒤 해당 회차를 지워 반영"은 대체. EventKit에 EXDATE 직접 지정이 없고 쓰기 전용 일정 추가 화면으로는 회차를 지울 수 없어서). 그 일정의 `캘린더에 추가`를 누르면 시트(㉙-q, CTA 시트 한 줄 `건너뛸 날까지 맞추려면 캘린더 구독으로 넣어요`): `캘린더 구독하기`(CTA, 내 활동 `캘린더 연동`과 같은 흐름 → 피드 ICS에 EXDATE 포함) / `건너뛸 날 없이 추가`(보조 글자 버튼, `EKRecurrenceRule`만). 건너뛸 날이 없는 반복 일정은 지금처럼 바로 시스템 일정 추가 화면. Android `ACTION_INSERT`에 `CalendarContract.Events.RRULE`·`EXDATE`.
+
+### API(API 담당, 이름은 제안)
+
+| 경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/hosted | Bearer | `{type: PROGRAM|EVENT, name, kind, description?, schedules: HostedSchedule[], capacity?, conditions: Condition[], visibility: LINK_ONLY|PUBLIC}` | 201 Hosted. 단계 조건 미인증 422 `HOST_NOT_VERIFIED`, 금지 프로그램 422 `STAGE_CONDITION_DISABLED` |
+| PUT /v1/hosted/:id | Bearer(개설자) | 같은 본문 | 200 Hosted(`PUBLIC`이면 다시 승인 대기) |
+| DELETE /v1/hosted/:id | Bearer(개설자) | — | 204(참여자의 디스코드 역할 회수) |
+| PUT /v1/hosted/:id/cover | Bearer(개설자) | multipart `file` | 200 `{coverUrl}` |
+| GET /v1/hosted/:id | Bearer 선택 | — | 200 Hosted(`discord.guildId`는 참여자·개설자에게만, `discord.status`는 개설자에게만, `viewer: {joined, conditionsMet: [{type, met}]}`). 차단 사이 404 |
+| POST /v1/hosted/:id/join | Bearer | `{answers: Answer[]}` | 201 `{status: JOINED|PENDING}`(참여 방식에 따라). 조건·폼 조건 미충족 403 `CONDITIONS_NOT_MET`(`missing[]`), 필수 답 누락 422, 정원 409 `FULL`, 디스코드가 연결된 모임인데 내 디스코드가 없으면 409 `DISCORD_REQUIRED`(앱은 연결 흐름 뒤 다시 호출) |
+| DELETE /v1/hosted/:id/members/me | Bearer | — | 204(나가기·신청 취소, 답변도 지움) |
+| DELETE /v1/hosted/:id/members/me/answers | Bearer | — | 204(내 답 삭제 = 나가기) |
+| POST /v1/hosted/:id/members/:userId/approve | Bearer(개설자) | — | 200(디스코드 추가·역할). 대기 중이 아니면 409 |
+| POST /v1/hosted/:id/members/:userId/reject | Bearer(개설자) | `{reason?: FULL|MISMATCH, reasonText?: string(≤100)}` | 200 |
+| DELETE /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 204(내보내기) |
+| GET /v1/hosted/:id/members | Bearer(개설자·참여자) | `?status=PENDING|JOINED` | 개설자: 200 `{items: HostMemberView[]}`, 참여자: 200 `{items: [{userId, name, handle, job, bio, photoUrl}]}`(PENDING은 개설자만) |
+| GET /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 200 HostMemberView |
+| POST /v1/hosted/:id/reports | Bearer | `{reason, detail?}` | 201(명함 신고와 같은 사유·24시간 중복 규칙) |
+| GET/POST /v1/me/stage-verifications | Bearer | POST multipart `{activityId, scheduleId, files[]}` | 201 StageVerification. GET은 내 목록 |
+| DELETE /v1/me/stage-verifications/:id | Bearer | — | 204 |
+| (디스코드 계정·서버 연결) | | | PR #521 "디스코드 연결 구현 기록"의 `/v1/me/connections/discord/*`·`/v1/me/discord/guilds*` 그대로 |
+| PUT /v1/hosted/:id/discord | Bearer(개설자) | `{guildConnectionId, roleId}`(내 서버 연결 행과 그 서버의 `assignable` 역할) | 200 `{guildName, roleName, status}`. 남의 연결·줄 수 없는 역할 422, 봇 빠짐 409 `DISCORD_BOT_NOT_IN_GUILD` |
+| DELETE /v1/hosted/:id/discord | Bearer(개설자) | — | 204(모임에서 연결만 뗌, 참여자 역할 회수) |
+
+- Hosted: `{id, type, name, kind, description, coverUrl, host: {userId, name, handle, photoUrl}, schedule, place, capacity, memberCount, discord: {guildId?, guildName, roleName, status?: OK|BROKEN}|null, conditions: Condition[], visibility, approval: PENDING|APPROVED|REJECTED|null, createdAt}`.
+- HostMemberView(개설자에게 가는 최소 정보): `{userId, name, handle, job, bio, photoUrl, status: PENDING|JOINED, evidence: [{type: STAGE_PASSED|EXCHANGED_WITH_HOST|FORM, label, verified: boolean}], verifiedHistoryNames: string[], answers: [{questionId, question, value}], discordName: string|null, appliedAt}`. 이 밖의 프로필 값(연락처·다른 이력·참여 활동·증빙 파일)은 싣지 않는다.
+- Form(Hosted의 `form`, 개설 요청 본문에도): `{questions: [{id, type: SHORT|LONG|SINGLE|MULTI|YES_NO|LINK|PROJECT_LINK|APP, title, required, options?: string[], condition?: {passing: string[]}}], joinMode: INSTANT|APPROVAL}`. Answer: `{questionId, value: string|string[]|boolean}`(`PROJECT_LINK`·`APP`은 `{url, verification: {status: VERIFIED|PENDING|UNVERIFIED, kind: GITHUB_OWNER|GITHUB_CONTRIBUTOR|PLAY_ACCESS|APPSTORE_REVIEWED|null}}`). 관련 API(구현 보류, 제안): `GET /v1/me/github/repos?q=` → `[{fullName, role: OWNER|CONTRIBUTOR, language}]`(GitHub 연결 필요, 아니면 409 `GITHUB_NOT_LINKED`), `POST /v1/me/google-play/start`·`/complete {code}` → `{apps: [{name, packageName}]}`(토큰 저장 없음), App Store 증빙은 `POST /v1/me/stage-verifications`와 같은 multipart에 `kind: APP_RELEASE`.
+- HostedSchedule(저장 모양은 기존 활동 일정 스키마 재사용 제안): 요청 `{id?, title, kind, phase: SELECTION|ACTIVITY, allDay, startAt?, endAt?, startDate?, endDateExclusive?, timeZone, address?: string|null, online: boolean, recurrence?: string|null, exdates?: string[]}`(`recurrence`·`exdates`는 아래 "반복 일정 확장 — 2026-11-05"), 응답은 공개 Activity의 `Schedule`과 같은 모양(`phase` 포함). 서버는 직접 개설마다 활동 하나를 만들어(`hosted.activity_id`) 기존 `schedules` 테이블에 행으로 넣는다. 그래서 상세 일정 카드·내 활동 진행 트랙·캘린더 연동·위젯이 공식 활동과 같은 코드로 동작한다. `ACTIVITY` 일정이 하나도 없으면 422 `ACTIVITY_SCHEDULE_REQUIRED`. 모집 슬롯(`application`)·활동 기간 슬롯(`activitySchedule`)은 직접 개설에서 따로 받지 않고, 서버가 `SELECTION`·`ACTIVITY` 일정의 처음·끝으로 채운다(조율 판단, 확인 필요).
+- Condition: `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle, applyToProgram: false}`(지금은 개설자가 고른 기수 하나, `applyToProgram`은 자리만) · `{type: QUALIFICATION, rule: Eligibility}`(기존 `eligibility` 그룹 JSON, 조건의 `fieldEn`은 자격 키, `BOOL`은 `values: [true]`) · `{type: GENDER, values: ["female"]}`. `ANYONE`은 없앰(빈 목록 = 누구나).
+- QualificationKey: `{key, label, valueType: RANGE|NUMBER|SINGLE|MULTI|BOOL, options?: [{value, label}], source: BUILTIN|SUGGESTED, status: APPROVED|PENDING|REJECTED, ownerHostedId?}`. `GET /v1/qualification-keys?q=` → 공용(APPROVED) + 내가 제안한 PENDING. `POST /v1/qualification-keys {label, valueType, options?}` → 201 PENDING.
+- 참여 요청 본문 확장: `POST /v1/hosted/:id/join {answers, cardId?, gender?, selfReported?: [{key, value}]}`(성별 제한·제출 명함·승인 전 제안 키 자기 신고). HostMemberView에 `qualificationMet: number`(충족 수, 값 없음)·`gender?`·`submittedCard?: Card`(켠 항목만).
+- 지원 자격 정보 확장: Profile 자격 정보에 `gender`와 승인된 제안 키 값(`extra: [{key, value}]`).
+- StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
+- 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
+- 저장(제안): `hosted(id, host_user_id, activity_id → activities, type, name, kind, description, cover bytea null, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title, apply_to_program, rule jsonb)`, `qualification_keys(key pk, label, value_type, options jsonb, source, status, suggested_by, owner_hosted_id, created_at, reviewed_at, reviewed_by)`, `hosted_submitted_cards(hosted_id, user_id, card_id, submitted_at)`, `hosted_self_reports(hosted_id, user_id, key, value jsonb)`(답변과 같은 보관), `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
+- 통계(analytics-v1.md에 더한다, 제안): `hosted_create(type, visibility, conditionTypes)`, `hosted_join`, `hosted_leave`, `stage_verification_submit`, `discord_connect`.
+
 ## 오늘 내 행사 카드 — 2026-10-26 사용자 결정
 
 **2026-11-03 리뉴얼로 일부 대체**(아래 "홈 탭·활동 상세·프로그램·조직·내 활동 리뉴얼" › "대체되는 결정").
@@ -2122,192 +2310,3 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **큰 화면(2단계, 폰 뒤)**: UI 담당이 두 칸 레이아웃·레일·위 탭 막대·커버 배너·Flip 위젯 시각, 플로우 담당이 `NavigationSplitView`/`ListDetailPaneScaffold` 선택 상태·접었다 펼칠 때의 연속성·내 활동 오른쪽 칸 규칙·폰 세로 잠금·플렉스 모드 분할. 1단계에서 지킬 것은 "너비 고정 금지"뿐.
 - **웹 담당**: 상세·발견 행·글꼴.
 - **어드민 담당**: [admin-v1.md](admin-v1.md) "일정 캘린더 편집기·ICS 가져오기 — 2026-11-03".
-
-## 직접 개설(사용자가 여는 프로그램·이벤트) — 2026-11-05 사용자 결정
-
-사용자 결정(2026-11-05, 큰 방향 전환): 활동 안에서는 **명함 교환만** 한다("명함 교환 범위·기본 명함·참여자 목록 — 2026-11-05", PR #519의 QR·참여자 목록 그대로). 활동·단계별 채팅방은 만들지 않는다. 대신 로그인한 사용자가 **프로그램 또는 이벤트를 직접 연다**(스터디·비공개 모임 포함). Luma 만들기의 구조만 가져오고 화면은 우리 체계다. 시안: [Dearby 홈 탭과 활동 상세 시안](https://claude.ai/artifact/NT7wjjRMjWdSkQn3D4GzS6) ㉙. 어드민 쪽은 [admin-v1.md](admin-v1.md) "직접 개설 승인·단계 인증 확인 — 2026-11-05".
-
-**대화방은 디스코드 서버 연결(봇 자동 초대)만**(2026-11-05 사용자 "discord만 지원하고 자동초대식으로"). **대체 기록**: 같은 날 앞선 안의 모임 링크 입력 칸(카카오톡 오픈채팅 `open.kakao.com`·디스코드 초대 `discord.gg`·`discord.com/invite` 주소 받기와 종류 판정)은 없앤다. 초대·오픈채팅 주소는 받지도 저장하지도 않는다.
-
-### 직접 개설 프로그램 = 프로그램 화면 + 회차(활동) 여러 개 — 2026-11-05
-
-사용자 결정(2026-11-05): 직접 개설 상세는 프로그램 화면(⑤)의 요소를 모두 포함한다. **대체 기록**: 같은 날 앞선 "직접 개설 하나 = 상세 한 장"(프로그램도 단일 상세)과 저장 제안 `hosted.activity_id`(하나)는 아래로 대체한다. 직접 개설 **이벤트**는 지금처럼 단일 활동 상세다.
-
-- **프로그램 화면**(㉙-p): 배너(커버, 없으면 아래 "이미지 대체") → 로고 자리 = **개설자 사진 원**(사진 없으면 이니셜) + `팔로우`(프로그램 팔로우와 같은 규칙·알림 수준) → 이름 → 조직 줄 자리 = **개설자 줄**(`이름 · @핸들 ›`, 누르면 개설자 기본 프로필) + `직접 개설` 캡슐 → 종류 줄 → 태그 칩(개설 폼 `태그`, 기존 분야 태그에서 고름) → 개수 줄 `n 모집 중 · n 모집 예정 · n 지난 활동` → 카드 `모집 중`·`모집 예정`·`지난 활동`(행 컴포넌트, 회차마다 한 행) → 개설자 링크(개설 폼 `링크`, 선택; 없으면 줄 생략. 모임 대화방 링크는 받지 않는 규칙 그대로라 `discord.gg`·`open.kakao.com` 주소는 400).
-- **연관 프로그램·이미지 대체·노출**(2026-11-05 사용자 결정 "로고는 안 되면 그냥 연관된 활동 커버 이미지로. 직접 개설할 때 어떤 프로그램에 대한 스터디인지 링크할 수 있으면 좋겠어. 해당 프로그램 구독한 사람들에게 노출되도록"):
-  - 개설 폼 기본 묶음에 `연관 프로그램`(선택, 하나): 누르면 발견 프로그램 검색 시트(㉙-r, 행 = 로고 + 이름 + 조직 + 선택 원 → `고르기`). 공식 프로그램만 고를 수 있다(직접 개설끼리는 연결하지 않음, 조율 판단). 프로그램 화면에 `<연관 프로그램> 연관 ›` 줄(누르면 그 프로그램 화면).
-  - **이미지 대체**: 로고·커버를 올리지 않으면 연관 프로그램의 **커버**를 행 썸네일·배너·회차 상세 커버로 쓴다(조직 로고는 빌리지 않음). 로고 자리는 개설자 사진 원 그대로. 연관 프로그램도 없으면 썸네일은 이름 첫 글자(청록 계열 단색 바탕), 커버는 같은 단색. 따로 무늬 모음은 만들지 않는다. **대체 기록**: 같은 날 앞선 "모임 로고 업로드(선택)"는 커버 업로드 하나로 줄인다(로고 업로드 없음, 행 썸네일은 커버 축소).
-  - **노출**(운영자 승인 뒤, 기존 규칙): 연관 프로그램을 팔로우한 사람의 내 활동 `팔로우` 탭 날짜별 목록에 회차 행이 섞인다(㉙-t, 조직 줄 끝 `직접 개설` 캡슐). 연관 프로그램 화면(⑤)에 묶음 `관련 모임`(㉙-s, 직접 개설 프로그램 행 목록, 열린 회차가 있는 것 먼저, 최대 5개 + `모두 보기`). **푸시 알림은 보내지 않는다**(팔로워 알림 수준과 무관, 알림 목록에도 넣지 않음). 
-  - **오해 방지**: 커버를 빌린 모임도 행·상세에 `직접 개설` 캡슐 + 개설자 줄을 반드시 보인다(빼는 설정 없음). 이름 규칙은 어드민 승인 체크(admin-v1 "직접 개설 승인·단계 인증 확인").
-  - API: 개설 요청 `relatedProgramId?: number`. `ProgramSummary.hosted`에 `relatedProgram: {id, name}|null`, 이미지 필드는 서버가 대체를 적용한 값(`coverUrl`, `coverBorrowedFrom: programId|null`). `GET /v1/programs/:id/related-hosted?size=5` → 승인된 직접 개설 `ProgramSummary[]`. 팔로우 탭 조회(기존 팔로우 탭 목록 API, 위 "팔로우 카드 줄과 관리 화면")는 팔로우한 프로그램을 연관 프로그램으로 가진 승인된 직접 개설 회차를 함께 돌려준다(항목에 `hosted` 블록). 저장 `programs.related_program_id bigint null → programs`.
-- **개설자 보기**(㉙-p2): `팔로우` 자리에 `새 회차 열기`, 오른쪽 위 `⋯`(프로그램 고치기·닫기).
-- **회차 = 활동**: 각 회차는 활동 상세(③)와 같은 구성(㉙-d: 위에 `개설자 · 프로그램` 줄, 누르면 프로그램 화면) + 참여 조건·참여 흐름·디스코드·참여 폼·참여 방식·정원·제출 명함. 위 절들의 참여 규칙은 **회차 단위**다(조건·폼·정원·디스코드 역할은 회차마다).
-- **새 회차 열기**(㉙-p3): 시트 `복제할 회차`(기본 가장 최근) + `가져올 것` 체크(일정·참여 조건·참여 폼·제출 명함 필수 항목·디스코드 서버·역할, 기본 모두) → `복제해서 열기`(CTA 시트 한 줄 `일정은 같은 간격으로 다음 날짜로 옮겨 와요`) → 개설 폼(㉙-c)이 채워진 채 열리고 개설자가 고쳐 `열기`. 일정 옮기기 = 원 회차의 첫 일정부터 마지막 일정까지 길이만큼 뒤로(원 회차가 끝난 다음 날 시작, 요일 맞춤; 조율 판단, 확인 필요). 회차 이름은 `<프로그램 이름> n회차`가 기본(고칠 수 있음).
-- **발견**: 승인된 직접 개설 프로그램은 발견 프로그램 행(㉙-a)으로 보이고 `활동 n개`는 열린 회차 수. 승인은 프로그램 단위이고, 새 회차는 프로그램이 승인돼 있으면 다시 승인받지 않는다(조율 판단, 확인 필요).
-- **저장**(API 담당, 제안): 공식과 같은 `programs`·`activities`를 재사용한다. `programs.owner_user_id bigint null`(직접 개설이면 개설자, 공식이면 null; 조직 `organization_id`는 null), `programs.hosted_meta jsonb`(공개 범위·승인 상태·로고·링크), 회차는 `activities`(그 프로그램 소속) + `hosted_rounds(activity_id pk, conditions jsonb, form jsonb, join_mode, capacity, required_card_fields, discord_guild_id, discord_role_id, discord_status)`. 이벤트도 같은 구조에 활동 하나. 위 제안의 `hosted`·`hosted_conditions`·`hosted_discord` 표는 이 둘로 합친다(`hosted_members`·`hosted_answers`·`hosted_submitted_cards`는 `activity_id` 기준).
-- **API**(제안): 위 표의 `/v1/hosted/:id`는 **회차(활동) id**로 읽는다(참여·멤버·폼·디스코드). 프로그램 수준은 `POST /v1/hosted/programs {type, name, kind, description?, tags[], logo?, link?, visibility, firstRound: Round}` → 201 `{program: ProgramSummary, round: Hosted}`, `PATCH /v1/hosted/programs/:programId`, `POST /v1/hosted/programs/:programId/rounds {copyFrom?: activityId, include?: [SCHEDULES, CONDITIONS, FORM, REQUIRED_CARD, DISCORD], round: Round}` → 201 Hosted(복제는 서버가 `include` 항목을 원 회차에서 가져오고 `round`의 값으로 덮어씀; 일정 옮기기 기본값은 앱이 미리 계산해 보냄). 조회는 공식과 같은 `GET /v1/programs/:id`(`ProgramSummary.hosted.host` 포함)·`GET /v1/activities/:id`(직접 개설 회차면 `hosted` 블록 포함)를 그대로 쓴다.
-
-### 무엇을 여나
-
-- **개설자**: 로그인한 사용자(조직이 아님). 비로그인이면 로그인 시트.
-- **진입**(조율 판단): 발견 우상단 글래스 묶음 맨 앞 `+`(iOS `plus`, Android `Add`) → 시트 `무엇을 열까요`: `프로그램`(값 예시 `스터디 · 동아리 · 해커톤`) · `이벤트`(`밋업 · 워크숍 · 강연`). 만드는 것이 발견에서 찾는 대상과 같아서 발견에 둔다. 내 프로필 탭의 `참여 중`에는 내가 연 것과 참여한 것이 내 활동 행으로 함께 보인다.
-- **입력**(개설 폼 ㉙-c, 오른쪽 위 `열기`; 설명 문구 없음):
-  - 커버(선택, 프로필 사진과 같은 형식·크기 규칙), 이름(필수), 종류(필수, 기존 종류 목록 그대로: 프로그램 부트캠프·동아리·공모전·해커톤·스터디·기타, 이벤트 컨퍼런스·밋업·강연·워크숍), 소개.
-  - **일정 = 활동 상세 일정 카드 그대로**(2026-11-05 사용자 "일정 만들 때 실제 활동 상세보기처럼(선발 기간, 활동 기간처럼). 처음엔 점 하나만 두고 누르면 캘린더에 입력하는 폼 양식 띄우고, 입력하면 활동 상세처럼 갱신하고, 아래에 더 추가하기 누르면 또 폼 뜨고"; **대체 기록**: 같은 날 앞선 시작·끝 날짜 행과 모임 전체 장소 행은 대체). 시안 ㉙-c4(빈 상태)·㉙-c3(입력 시트)·㉙-c5(고치기)·㉙-c(채운 상태, 상세 ㉙-d와 같은 카드).
-    - 카드: 상세의 일정 타임라인과 같은 컴포넌트(묶음 `선발 과정`·`활동 일정`, 점·세로선·이름·날짜, 날짜 표기 규칙 같음). 처음에는 묶음마다 **빈 점 하나**(테두리만 청록) + `일정 추가`. 저장하면 묶음 안에서 날짜순 자동 정렬, 묶음 마지막 아래 빈 점 + `더 추가하기`.
-    - 입력 시트(빈 점·`더 추가하기`·기존 일정을 누름): 이름 · 종류(기존 일정 종류 `DEADLINE` 마감·`ANNOUNCEMENT` 발표·`INTERVIEW` 면접·`EVENT` 행사·교육 등, 묶음에 따라 기본값: 선발 과정 = 마감, 활동 일정 = 행사) · `하루 종일`(켜면 날짜만) · 시작·끝(네이티브 날짜·시간 피커, iOS `DatePicker`, Android Material 3 DatePicker·TimePicker) · 장소(선택, 주소 또는 `온라인`) → `저장`. 기존 일정이면 아래 `일정 삭제`(빨강 글자 버튼). 설명 문구 없음.
-    - **`선발 과정` 묶음**(조율 판단): 참여 방식이 `바로 참여`이고 선발 일정이 없으면 기본으로 **접어 둔다**(묶음 이름 + 아래 꺾쇠만, 누르면 펼쳐 빈 점). `개설자 승인`으로 바꾸거나 선발 일정이 하나라도 있으면 펼친다. 지우지 않는다. 이유: 바로 참여 모임에는 모집·발표 단계가 대개 없어서 빈 묶음이 입력을 재촉하지 않게.
-    - **`활동 일정`은 최소 하나 필수**. 없으면 오른쪽 위 `열기`가 비활성.
-    - **반복**(2026-11-05 사용자 "매주·매일처럼 캘린더 생성 시 가능한 옵션이 모두 있으면 좋겠어. 캘린더 연동할 때 원활하게"; iOS 캘린더 앱 반복 범위). 입력 시트에 행 셋(㉙-c6):
-      - `반복`(값 + 위아래 꺾쇠, 네이티브 메뉴): `안 함`·`매일`·`매주`·`2주마다`·`매월`·`매년`·`사용자 지정`.
-      - `사용자 지정`(시트 안 푸시, ㉙-c7·㉙-c8): `빈도`(매일·매주·매월·매년) + `간격`(n일·주·개월·년마다) → 매주면 요일 다중 선택(원 일곱 개) → 매월이면 `날짜 | n째 주 요일` 분할 전환(날짜 = 그달 n일, n째 주 요일 = 첫째~넷째·마지막 주 + 요일) → 매년이면 월 다중 선택. 설명 줄 없이 결과는 `반복` 행 값으로(`매주 월·목`, `매월 셋째 주 토요일`).
-      - `반복 종료`: `안 함`·`날짜까지`(네이티브 날짜 피커)·`n회 뒤`. 하루 종일이 아닌 일정의 `날짜까지`는 그 날 끝까지.
-      - `건너뛸 날`(반복일 때만): 날짜 여러 개 추가·삭제(시트 안 목록, 행 밀어서 삭제).
-      - 카드 표시: 반복 일정은 타임라인에 **한 점**, 날짜 줄 `매주 월·목 20:00 ~ 22:00 · 온라인` + 둘째 줄 기간(`11월 16일 (월)부터 11월 30일 (월)까지` 또는 `10회`, 종료 없음이면 `11월 16일 (월)부터`) + 작은 민트 `반복` 표시. 다음 회차 D-day는 기존 규칙(다음 회차 기준).
-      - **다음 단계(이번에 넣지 않음)**: 회차별 수정(`이 일정만`·`이후 모두`), 회차 취소 알림.
-    - 상세의 머리 날짜 줄(`11월 16일 (월) ~ 11월 30일 (월)`)은 활동 일정의 처음·끝에서 서버가 만든다(공식 활동과 같은 규칙), 장소 줄은 일정 장소가 모두 같으면 그 값, 다르면 첫 활동 일정 장소.
-  - 정원(선택, 차면 `참여하기` 비활성 `정원이 찼어요`).
-  - 참여 조건(아래), 공개 범위(아래).
-  - 묶음 `대화방`: `디스코드 서버 연결`(선택, 아래). 연결하지 않으면 대화방 없는 모임(일정·참여자만).
-- **표시**: 공식 수집 프로그램과 구별한다. 발견 행은 조직 줄 자리에 개설자 이니셜 원(사진 있으면 사진) + 이름 + `직접 개설` 캡슐, 상세는 종류 줄 옆 같은 캡슐 + `개설자` 프로필 행(누르면 그 사람의 기본 프로필 ㉗-i). 캡슐은 배지 규칙의 "흰 바탕 가는 테두리·보조 글자"(회색 채움 금지).
-
-### 공개 범위와 운영자 승인
-
-- `LINK_ONLY`(기본): 링크를 받은 사람만 상세를 연다(발견·검색·맞춤 대기열에 나오지 않음). 공유 링크는 기존 활동 공유 주소(`/activities/:id`, 유니버설 링크·App Links)를 그대로 쓴다.
-- `PUBLIC`: 발견 노출을 신청한다. **운영자 승인 뒤에만** 발견·검색에 나온다(승인 전에는 `LINK_ONLY`처럼 동작). 승인·반려는 어드민 승인 큐. 내용(이름·소개·커버)을 고치면 다시 승인 대기가 된다(조율 판단, 확인 필요).
-- 신고·차단: 상세 `⋯` 메뉴 `신고`(개설 글)·개설자 행 길게 누르기 `신고`·`차단`(개설자). 개설 글 신고는 어드민 신고 메뉴에 대상 종류 `직접 개설`로 보이고 운영자가 내릴 수 있다. 차단은 PR #519의 계정 단위 차단(`POST /v1/me/blocks {userId}`)을 쓰고, 차단한 사이는 서로가 연 것의 상세가 404이고 참여할 수 없다.
-
-### 참여 조건
-
-**2026-11-05 갱신**(사용자 결정, ㉙-c2 새 시트). **대체 기록**: 같은 날 앞선 안의 `누구나` 선택지는 없앤다(조건을 하나도 고르지 않으면 누구나, `Condition` 목록이 비면 됨). 단계 조건의 "프로그램 › 기수 여러 개 › 단계" 고르기는 아래 "내 활동에서 고름"으로 대체한다.
-
-- 고를 수 있는 것(없으면 누구나, ㉙-c2 시트; 시트 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요`):
-  - **나와 명함을 맞교환한 사람**: 개설자와 회수·철회되지 않은 맞교환 상태("명함 교환 — 2026-10-19"의 맞교환 정의, 계정 쌍).
-  - **단계 통과 인증**: 프로그램 하나 › 그 프로그램의 기수(활동) 여러 개 › 단계 하나. 단계는 그 활동의 **선발 단계**(`Schedule.phase` 선발, "내 활동 진행 트랙")이고 "그 단계 이상" = 고른 단계 또는 그 뒤 선발 단계의 인증이 `확인됨`이거나, 그 활동을 `참여 중`으로 인증받은 것. 기수가 여럿이면 단계는 기수마다 같은 이름(종류)의 단계로 맞춘다(조율 판단: 기수마다 일정 id가 달라서 고를 때 첫 기수의 단계를 고르면 다른 기수는 같은 `kind`·제목의 선발 단계로 대응, 대응이 없는 기수는 고를 수 없게 흐림).
-  - **단계 통과 인증 고르기(갱신)**: 개설자가 **자기 내 활동에서 검색해** 고른다. 고를 수 있는 것은 개설자 본인의 단계 인증이 `확인됨`인 단계뿐이고(그래서 "개설자도 인증" 확인이 고르는 순간 끝남), 시트에는 `SSAFY 17기 · 서류 발표 통과 · 인증됨` 한 행으로 보인다. 프로그램 전체(다른 기수) 적용은 사용자 확인 중이라 고른 기수만 쓰고, 그 아래 `같은 프로그램 다른 기수에도` 토글은 **자리만**(비활성) 둔다. 이 토글이 확정되면 위 "기수 사이 하나만(OR)"과 기수별 단계 대응 규칙이 그 토글의 동작이 된다.
-  - **자격**(신규, ㉙-c2 `자격` 묶음 → `자격 추가`): 아래 "자격 조건 — 2026-11-05".
-- **결합**(조율 판단, 확인 필요): 조건 종류 사이는 **모두 충족(AND)**, 단계 조건 안의 기수 사이는 **하나만(OR)**. 이유: 직접 개설의 기본이 비공개 모임이라 좁히는 쪽이 의도와 맞고, 같은 프로그램 여러 기수는 넓히려고 고르는 것이다. 시트 아래 한 줄 `고른 조건을 모두 충족해야 참여할 수 있어요. 기수는 하나만 맞으면 돼요`(CTA 시트라 허용). 상세의 조건 제목은 `참여 조건 · 모두 충족`.
-- **개설자도 인증**: 단계 조건은 개설자 본인이 같은 조건을 `확인됨`으로 가져야 걸 수 있다(시트 `내 인증` 줄; 없으면 `인증하기 ›`로 단계 인증 화면). 저장 때 서버가 다시 확인한다(422 `HOST_NOT_VERIFIED`).
-- **주최 측 금지**: 어드민이 프로그램마다 `단계 조건 걸기`를 끌 수 있다(공식 주최 측이 합격자 모임을 금지하는 경우). 꺼진 프로그램은 시트의 프로그램 고르기에서 흐리게 보이고 고를 수 없다(422 `STAGE_CONDITION_DISABLED`). 이미 그 조건으로 열린 것은 그대로 두고 새 참여만 막는다(조율 판단, 확인 필요).
-
-### 자격 조건 — 2026-11-05
-
-사용자 결정(2026-11-05): 참여 조건에 자격(지원 자격 정보와 같은 키)을 건다. 시안 ㉙-l~㉙-l5·㉙-o.
-
-- **자격 키 사전**: 공용 키 = "대상자 조건(eligibility) — 2026-10-18"의 어휘(`age`·`birthYear`·`schoolYear`·`educationLevel`·`educationStatus`·`major`·`region`·`employment`·`experienceYears`·`nationality`·`teamSize`) + 신규 `gender` + 어드민이 승인한 사용자 제안 키. 키마다 값 종류: `RANGE`(from/to, 한쪽 생략 가능), `NUMBER`, `SINGLE`·`MULTI`(선택지 목록), **`BOOL`(신규)**. 묶음은 기존 그룹(`op: all|any`, 깊이 3)을 그대로 쓴다.
-- **시트**: `자격 추가` → 자격 키 검색 시트(㉙-l, 행 = 키 이름 + 값 종류, 제안 키는 `사용자 제안`) → 고른 키의 값 입력(㉙-l2 범위 `부터 ~ 까지`, ㉙-l3 예/아니오 분할 전환, 고르기는 칩·체크) → `추가`. 묶음은 `자격 묶음`(㉙-l4, `모두 | 하나라도` + 안에 자격 여러 개). 참여 조건 시트의 행은 `나이 19~34세`·`재학상태 · 취업상태 하나라도`처럼 키 이름 + 값 요약.
-- **자동 매칭**: 참여자의 **지원 자격 정보**(프로필, 동의한 사람만)와 같은 키로 서버가 판정한다(기존 대상자 조건 2차 판정과 같은 평가기, 조건 없는 키는 판정 불가로 보고 아래 직접 입력으로). 값이 없으면 상세의 그 조건은 빈 원 + `입력하기`(지원 자격 정보 화면으로, 동의 전이면 동의 시트 먼저). **개설자에게는 값이 아니라 `자격 충족`(자격 n개 충족)만** 보인다(지원 자격 정보 동의의 "다른 사람에게 보이지 않음"을 지킴; 그래도 "모임 개설자에게 충족 여부가 전달됨"을 동의 요약에 한 줄 더해야 한다, 법률 문구 확인 필요).
-- **새 자격 제안**(㉙-l5, 검색에 없을 때): 이름 · 값 종류 · 선택지(고르기 종류일 때) → `제안하고 쓰기`(CTA 시트 한 줄 `승인 전에는 이 모임에서만 쓰이고 참여자가 신청 때 직접 입력해요`). 어드민 승인 큐(admin-v1 "자격 키 사전 — 2026-11-05")로 간다. **승인 전**: 그 개설자의 모임에서만 쓰이고, 참여자가 신청 때 직접 입력(자기 신고, ㉙-o; 개설자에게는 이 값도 `자격 충족`으로만). **승인 뒤**: 공용 검색에 뜨고 프로필 지원 자격 정보에서도 입력할 수 있다. 반려되면 이미 쓰인 모임에서는 직접 입력 조건으로 남는다(조율 판단, 확인 필요). 같은 이름의 제안은 어드민이 합친다.
-- **성별**(`gender`, 값 `female`·`male`·`undisclosed`, 화면 `여성`·`남성`·`밝히지 않음`): 프로필 지원 자격 정보에 선택 항목으로 더한다. 단, **성별 제한 모임은 프로필 값으로 자동 매칭하지 않는다**: 신청 때 성별을 따로 입력해 제출하고(㉙-o, `밝히지 않음`은 고를 수 없음), 제출 확인 시트에 `성별`이 개설자에게 전달된다고 행으로 보인다. 개설자 참여자 상세에 `성별` 값이 보인다(다른 자격과 달리 값이 전달됨).
-
-### 제출 명함 — 2026-11-05
-
-- 개설 폼 `참여` 묶음에 `제출 명함 필수 항목`(㉙-m): 명함 노출 항목(연락처 각각·소셜 링크·이력·참여 중인 활동·참여했던 활동·가입 시기·팔로우 목록)에서 고른다. 고르지 않으면 명함 제출 단계가 없다.
-- 신청 때 `제출할 명함` 시트(㉙-n): 내 명함 목록, 필수 항목이 빠진 명함은 흐리게 + `<항목> 빠짐`(빨강) + `명함 고치기` 바로 가기, 아래 `새 명함`. 기본 선택은 필수 항목을 모두 가진 명함 중 켠 항목이 가장 적은 것(조율 판단: 의도보다 많이 건네지 않게). CTA `이 명함 제출` + 한 줄 `개설자에게만 전달돼요 · 맞교환은 따로 해요`.
-- 제출은 **개설자에게 한쪽 전달**이다(맞교환이 아니고 개설자 지갑에 들어가지 않음, 그 모임의 참여자 상세에서만 보임). 명함을 고치거나 지우면 제출본도 따라 바뀐다(발행 스냅샷 규칙 그대로; 지우면 `제출한 명함이 지워졌어요`). 맞교환은 PR #519 흐름으로 따로 한다. 답변과 같은 보관 규칙(모임 종료 30일 뒤 제출 관계 삭제).
-- 개설자 참여자 상세(㉙-k2)에 `제출 명함` 카드(그 명함에서 켠 항목만).
-
-### 단계 인증
-
-- 화면: 프로필 수정 › 내 정보 › `단계 인증`(㉙-f2 목록: 행 = `프로그램 기수 · 단계` + 상태) → `단계 인증 추가`(㉙-f: 프로그램 › 기수 › 단계 + 증빙 파일 → 하단 `제출`, CTA 아래 한 줄 형식 안내). 상세의 미충족 조건 `인증하기`·하단 `단계 인증하기`에서도 같은 화면으로(고른 조건이 미리 채워짐).
-- 증빙: 기존 이력 인증자료 규칙 그대로(인증당 3개, 파일당 5MB, `image/jpeg`·`image/png`·`image/webp`·`application/pdf`).
-- 상태: `PENDING` `대기 중`(호박) · `VERIFIED` `확인됨`(청록) · `REJECTED` `반려`(빨강, 반려 사유 한 줄). 글리프 + 글자, 회색 채움 없음. 관리자가 확인한다(어드민 확인 큐). 반려 뒤 다시 올릴 수 있다.
-- 이 인증은 내 활동 진행 트랙의 사용자 표시(`통과`·`대기`·`탈락`, 기기 안 표시)와 별개다. 확인됨이 되어도 트랙 표시를 바꾸지 않는다.
-- 다른 사람에게 보이는 범위: 직접 개설에 참여(신청)할 때 그 모임의 **개설자에게만** 조건과 이어진 인증의 이름·상태(`SSAFY 17기 · 서류 전형 통과 · 인증됨`). 증빙 파일은 관리자만 본다.
-
-### 참여 흐름
-
-1. 상세(㉙-d): 조건마다 충족이면 청록 체크, 아니면 빈 원 + `인증하기`(단계) 또는 안내 없음(맞교환; 맞교환은 개설자에게 명함 교환을 요청하는 기존 흐름). 조건을 모두 충족하면 하단 `참여하기`, 아니면 `단계 인증하기`(CTA 아래 한 줄 `<프로그램> <단계> 통과 인증이 있어야 참여할 수 있어요`) 또는 맞교환이 빠졌으면 `명함 교환 요청`.
-2. 참여 폼이 있으면 폼 작성(㉙-j) → 제출 확인 시트(㉙-j2, 아래 "개인정보 장치"). 폼이 없으면 참여 확인 시트(㉙-e, CTA 시트라 설명 허용): `개설자와 다른 참여자에게 아래 내용이 보여요` + 행 `통과 단계`(조건으로 쓰인 인증, 예 `SSAFY 17기 서류 발표`) · `디스코드 이름`(디스코드 서버가 연결된 모임일 때) + `참여`. **디스코드가 연결된 모임은 참여자도 디스코드 계정 연결이 필요하다**: 내 디스코드가 연결 안 돼 있으면 행 값 `연결 안 됨`, CTA `디스코드 연결하고 참여`(㉙-e2) → 디스코드 연결 흐름(아래) → 앱으로 돌아오면 이어서 참여 완료 → 봇이 서버에 넣고 역할 부여. 연결을 취소하면 참여하지 않은 채 시트로 돌아온다.
-3. 참여 뒤(㉙-d3): `대화방` 구역(디스코드 서버 이름 + 받은 역할)이 **참여자에게만** 보이고 하단 CTA `디스코드에서 열기`(서버 열기 딥 링크 `https://discord.com/channels/{guildId}`, 디스코드 앱이 있으면 앱으로). 대화방이 없는 모임은 CTA 없이 참여 상태만. 나가기는 `⋯` 메뉴 `나가기`(확인 시트). 개설자는 참여자 목록에서 `내보내기`.
-- 참여자 목록: 개설자용은 아래 "개설자에게 가는 정보"(㉙-k·㉙-k2). 참여자끼리는 기본 프로필(이름·핸들·직업·소개)만 보이고 폼 답변·조건 근거는 보이지 않는다(조율 판단). 명함 교환 요청은 PR #519 행 규칙 그대로.
-
-### 개설자에게 가는 정보·참여 폼·참여 방식 — 2026-11-05
-
-사용자 지시(2026-11-05): "개설자에게 전달되는 정보는 기본정보와 자격 관련 최소정보만(통과 여부를 알 수 있는 활동 정보, 이력). 추가 조건은 커스텀 입력. 개설자가 폼도 만들 수 있게". 시안 ㉙-i~㉙-k3.
-
-- **개설자에게 가는 정보(최소)**: 참여자(승인 대기 포함)마다
-  - 기본 프로필: 이름·핸들·직업·소개(사진 있으면 사진).
-  - **조건 근거 한 줄**: 단계 조건이면 `<프로그램> <기수> · <단계> 통과 · 인증됨`, 맞교환 조건이면 `명함 맞교환`, 폼 조건이면 `<질문> · <답>`.
-  - 조건과 이어진 인증 이력의 **이름만**(예 `SSAFY 17기 서류 전형`).
-  - 폼 답변.
-  - 디스코드 이름(디스코드가 연결된 모임만).
-  - **주지 않는 것**: 증빙 파일(관리자만), 연락처, 조건과 무관한 다른 이력, 다른 참여 활동, 가입 시기, 팔로우. 명함을 맞교환했더라도 이 화면에는 명함 내용을 싣지 않는다(명함은 받은 명함에서 따로 본다).
-  - 화면: 개설자 참여자 목록(㉙-k, 분할 전환 `승인 대기 n | 참여 중 n`, 행 = 기본 프로필 + 조건 근거 한 줄) → 참여자 상세(㉙-k2, 위 순서대로, 하단 `거절 | 승인`).
-- **참여 폼**(개설 폼 › `참여 폼`, ㉙-i): 질문 추가·순서(편집에서 끌기)·필수 여부. 종류 `짧은 답`(≤200자)·`긴 답`(≤2000자)·`하나 고르기`·`여러 개 고르기`(선택지 2~10개)·`예/아니오`. **파일 질문 없음**. 질문은 최대 10개(조율 판단).
-  - 질문 편집 시트(㉙-i2): 질문 · 종류 · `필수` · **`조건으로 쓰기`**(예/아니오·고르기만) → `통과 답`(하나 이상) 지정. 통과 답이 아니면 참여할 수 없다(제출 전 앱이 막고 서버도 403). 이것이 커스텀 추가 조건이며 **자기 신고이고 인증이 아니다**(시트 한 줄). 조건으로 쓴 질문은 상세의 `참여 조건` 목록에도 `<질문> · <통과 답>`으로 보인다.
-  - **질문 종류 확장**(2026-11-05 사용자 "그렇게 해주세요" + "앱 출시 경험은 Play Console OAuth2가 있다면 활용", ㉙-i4 메뉴 구분선 아래 셋):
-    - **`링크`(지금 구현)**: `https://`로 시작하는 주소만, 형식 검사(호스트 있음·2048자 이하·공백 없음, 아니면 422 `INVALID_LINK`). 개설자에게 그대로 전달(제출 확인 시트의 `폼 답변`에 포함, 기존 규칙). 대화방 주소 금지 규칙과는 별개(참여자 답이라 허용).
-    - **`프로젝트 링크`(시안·계약만, 구현 보류)**: GitHub을 연결했으면 **내 공개 저장소 목록에서 고르기**(㉙-j5, 검색; 행 = 저장소 이름 + `소유자`·`기여자` + 언어). 서버가 공개 API로 확인: 소유자 = 저장소 `owner.login`이 연결 login과 같음, 기여자 = `GET /repos/{owner}/{repo}/contributors`(공개, 익명 기여자 제외)에 연결 login이 있음 → 답에 `확인됨 · 소유자|기여자`. 목록은 `GET /users/{login}/repos?type=owner` + 최근 기여 저장소(공개 이벤트, 조율 판단)로 만들고 사용자 토큰은 쓰지 않는다(서버 앱 토큰으로 호출 한도만 올림). 연결 안 했으면 `링크 직접 입력`(`github.com/...` 형식만, `미확인`).
-    - **`앱`(시안·계약만, 구현 보류)**: 분할 전환 `Google Play | App Store`.
-      - **Google Play**(㉙-j6): Google 계정으로 Play 권한 추가 허락(점진 권한, 로그인용 Google과 같은 계정일 필요 없음) → 서버가 **Play Developer Reporting API** `GET https://playdeveloperreporting.googleapis.com/v1beta1/apps:search`(범위 `https://www.googleapis.com/auth/playdeveloperreporting`, `pageSize` 기본 50·최대 1000, `nextPageToken`)로 그 사용자가 접근할 수 있는 앱 목록 → 고르면 답에 `Play Console 접근 확인됨`(앱 이름·패키지 이름). **한계**: 응답은 "호출한 사용자가 접근할 수 있는 앱"이라 초대받은 사용자 앱도 포함되어 **본인 출시 증명이 아니다**(시트 한 줄 `Play Console에서 접근할 수 있는 앱이에요 · 초대받은 앱도 포함돼요`, 개설자 쪽 표시도 `접근 확인됨`). 민감 범위일 수 있어 Google OAuth 앱 검증이 필요할 수 있다(**확인 필요**). 토큰은 목록을 받은 뒤 버린다(저장하지 않음). 출처 https://developers.google.com/play/developer/reporting/reference/rest/v1beta1/apps/search (2026-11-05 확인).
-      - **App Store**(㉙-j7): 사용자 OAuth가 없다(App Store Connect API는 개발자가 발급하는 API 키 방식이라 **사용자에게 키를 요구하지 않는다**). 스토어 링크(`https://apps.apple.com/...`) + 증빙 파일(App Store Connect 앱 화면 등, 기존 인증자료 형식·크기) → 관리자 확인(단계 인증과 같은 어드민 확인 큐, 종류 `앱 출시`) → `확인됨`. 확인 전에는 `확인 대기`로 전달.
-    - 개설자 참여자 상세(㉙-k2)의 폼 답변에 확인 표시(`확인됨 · 소유자`, `Play Console 접근 확인됨`, `확인됨`(App Store), `미확인`).
-    - **다음 단계**: Figma(커뮤니티 프로필·파일 소유 확인) 질문 종류는 이번에 넣지 않는다.
-  - 결합: 폼 조건도 다른 조건과 모두 충족(AND).
-- **참여 방식**(개설 폼 `참여 방식`, 개설자 선택):
-  - `바로 참여`(기본): 조건 충족 + 폼 제출 → 즉시 참여(디스코드 서버 추가·역할).
-  - `개설자 승인`: 제출 → `승인 대기 중`(상세 하단 비활성 상태 버튼, `⋯` 메뉴 `신청 취소`, ㉙-j3) → 개설자가 답을 보고 `승인`(이때 디스코드 서버 추가·역할) 또는 `거절`(㉙-k3 시트: 사유 선택 `정원이 찼어요`·`조건과 맞지 않아요`·직접 입력·적지 않음). 참여자에게는 `참여하지 못했어요` + 고른 사유만(㉙-j4), 알림 목록 종류 `HOSTED_RESULT`. 승인 대기는 정원에 세지 않는다. 개설자에게는 새 신청 알림 `HOSTED_APPLICATION`.
-- **개인정보 장치**:
-  - 제출 확인 시트(㉙-j2, CTA 시트): `이 답변은 개설자에게 전달돼요` + 전달되는 것 행(기본 프로필·조건 근거·폼 답변 n개·디스코드 이름) + 한 줄 `연락처·증빙 파일·다른 이력은 전달되지 않아요 · 모임이 끝나고 30일 뒤 답변이 지워져요` + `제출하고 참여 신청`(바로 참여면 `제출하고 참여`).
-  - **금지 질문**: 주민등록번호·외국인등록번호·여권번호·계좌번호·카드번호·비밀번호, 건강·병력·장애, 종교, 정치 성향, 성생활·성적 지향, 노동조합 가입(개인정보 보호법의 민감정보·고유식별정보 범주를 참고한 조율 목록, 법률 검토 필요). 질문을 저장할 때 서버가 문구를 키워드로 검사해 걸리면 422 `SENSITIVE_QUESTION`(앱은 시트에 빨강 연한 경고 줄 `민감한 개인정보는 물을 수 없어요` + 예시, `완료` 비활성, ㉙-i3). 검사를 피한 질문은 신고(개설 글 신고 사유 `부적절한 질문`)로 운영자가 처리(질문 삭제·모임 내리기).
-  - **보관**: 답변은 모임 종료일(마지막 `ACTIVITY` 일정의 끝, 개설자가 먼저 닫으면 그때) + 30일 뒤 지운다(batch 매일 04:00, 명함 회수와 함께, 지운 수 로그). 거절된 신청의 답변은 거절 + 30일 뒤. 모임이 지워지면 즉시.
-  - 참여자는 언제든 **자기 답 삭제**(상세 `⋯` › `내 답변 지우기`; 지우면 그 모임에서도 나간다, 폼 조건이 있으니 다시 참여하려면 다시 제출) + `나가기`.
-  - 개인정보처리방침에 "직접 개설 모임 개설자에게 제공(제공받는 자: 그 모임의 개설자, 항목: 기본 프로필·조건 근거·폼 답변·디스코드 이름, 목적: 참여 자격 확인·모임 운영, 보유: 모임 종료 30일 뒤까지)" 항목을 더한다. **문구는 자리표시, 법률 문구 확인 필요**.
-
-### 디스코드 연결(2번안)
-
-- **GitHub 연결**(㉙-g, 2026-11-05): `연결된 로그인`에 `GitHub` 행(로그인 수단 아님). 연결 흐름은 기존 "연락처 인증"의 GitHub OAuth(start → 콜백 → complete) 그대로이고 **범위 없음**(GitHub 문서: "(no scope) Grants read-only access to public information", 쓰기 권한 없음, 토큰 저장 없음, login만 저장). 연결하면 프로필 연락처 GitHub이 `확인됨`(같은 login으로 판정, 이미 인증한 사람은 연결된 것으로 본다). 이 행과 연락처 인증은 같은 상태를 보인다.
-- **계정 연결**(㉙-g): 설정 › 계정 설정 › `연결된 로그인`에 `디스코드` 행(`연결하기` / `<사용자명> · 연결됨`). **로그인 수단으로는 쓰지 않는다**(로그인 화면에 디스코드 없음, 마지막 로그인 수단 판정에 세지 않음). OAuth2 인가 코드 흐름, 범위 **`identify`**(사용자 id·사용자명) + **`guilds.join`**(참여 때 서버에 추가). 서버는 액세스·리프레시 토큰을 암호화해 저장한다. `연결 해제` 때 토큰을 지우고, 참여 중인 모임의 디스코드 역할은 그대로 두지 않고 회수한다(조율 판단, 확인 필요).
-- **서버 연결**(㉙-h, 개설자): 개설 폼 `디스코드 서버 연결` → Dearby 봇 초대 주소(`https://discord.com/oauth2/authorize?client_id=…&scope=bot&permissions=268435457`, 권한 = `CREATE_INSTANT_INVITE`(1<<0) + `MANAGE_ROLES`(1<<28)) → 디스코드 화면에서 서버 고르기 → 돌아오면 서버 이름 + **참여자에게 줄 역할 고르기**(봇의 가장 높은 역할보다 낮은 역할만 고를 수 있음, 디스코드 규칙) 또는 `새 역할 만들기`(봇이 만듦) → `연결`(CTA 아래 한 줄 허용). 돌아온 `guild_id`는 참고값이라 서버가 봇이 그 서버에 실제로 있는지 확인한다(디스코드 문서: redirect의 `guild_id`는 hint).
-- **참여·역할 회수(자동 초대식)**: 참여하면 서버가 `PUT /guilds/{guild.id}/members/{user.id}`(봇 토큰, 사용자 액세스 토큰 `guilds.join`, `roles: [roleId]`)로 서버에 넣는다(초대 링크를 쓰지 않음). 이미 서버에 있으면 `PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}`로 역할만. **나가기·내보내기·조건 상실**(단계 인증 반려·맞교환이 깨짐·차단) 때 `DELETE /guilds/{guild.id}/members/{user.id}/roles/{role.id}`로 **역할만 회수**(서버에서 내보내지는 않음, 역할 회수에 필요한 권한만 받기 위해). 조건 상실은 그 모임에서도 자동으로 나간 것으로 처리한다(조율 판단, 확인 필요). 디스코드 호출 실패는 참여를 막지 않고 재시도 큐에 넣는다.
-- **봇 상태**: 봇이 서버에서 빠졌거나(`GUILD_DELETE`·멤버 제거 이벤트, 또는 호출 403·404) 권한·역할 순서가 맞지 않으면 모임의 디스코드 상태를 `BROKEN`으로 두고 개설자에게 알림(알림 목록 종류 `HOSTED_DISCORD_BROKEN`, 그 모임의 묶음) + 상세에 **개설자만 보는 상태 행**(㉙-d4: `디스코드 봇이 서버에 없어요` / `새 참여자를 서버에 넣지 못하고 있어요` + `다시 연결`, 빨강 연한 면). 그동안 참여는 받되 서버 추가는 재시도 큐에 남기고, 다시 연결되면 처리한다.
-- 확인한 문서(2026-11-05): Discord Developer Docs "Guild" 리소스(Add Guild Member: `guilds.join` 범위 + 같은 앱의 봇 토큰, 봇은 `CREATE_INSTANT_INVITE` 권한으로 그 서버에 있어야 함, `roles` 지정에는 `MANAGE_ROLES`; Add/Remove Guild Member Role: `MANAGE_ROLES`), "Permissions"(봇은 자기 가장 높은 역할보다 낮은 역할만 다룸), "OAuth2"(`identify`·`guilds.join`·`bot` 범위, `permissions`·`guild_id`·`disable_guild_select` 매개변수).
-- **보류(사용자 외부 계정 작업)**: GitHub OAuth 앱(기존 연락처 인증 앱 재사용 가능, 콜백 주소 추가 필요 여부 확인), Google Cloud OAuth 동의 화면에 `playdeveloperreporting` 범위 추가와 민감 범위 검증, 디스코드 개발자 포털 앱 등록, 봇 토큰·클라이언트 시크릿 발급, 리디렉트 주소 등록(`https://api.dearby.wid.io.kr/v1/me/identities/discord/callback`, 봇 초대 `…/v1/hosted/discord/callback`), 운영 env `DISCORD_CLIENT_ID`·`DISCORD_CLIENT_SECRET`·`DISCORD_BOT_TOKEN`. 값이 없으면 디스코드 행·서버 연결 행을 숨기고 관련 API는 503.
-
-### 반복 일정 확장 — 2026-11-05
-
-직접 개설의 반복 입력을 위해 "반복 일정과 겹침 결과 묶음 — 2026-10-22"의 저장 규칙을 넓힌다(공식 활동 일정·어드민 편집기에도 같은 범위가 적용된다; 어드민 편집기 UI를 넓히는 것은 어드민 담당 다음 단계). **대체 기록**: 10-22의 허용 부분집합(`FREQ=DAILY|WEEKLY`, `BYDAY` 요일 목록만, `INTERVAL` 1~4)은 아래로 대체한다. 10-22의 "ICS 구독 피드는 없다"는 이미 "캘린더 피드 — 한 피드 방식"(2026-11-04)으로 대체됐다.
-
-- **저장**: `schedules.recurrence`(RFC 5545 RRULE 본문, 접두사 없이, 기존 컬럼) + 새 `schedules.exdates date[] null`(건너뛸 날, 회차의 시작 날짜, 일정 시간대 기준).
-- **지원 범위**: `FREQ=DAILY|WEEKLY|MONTHLY|YEARLY`, `INTERVAL`(1~99), `BYDAY`(요일 목록, MONTHLY·YEARLY에서는 서수 하나 붙은 요일 `3SA`·`-1FR`), `BYMONTHDAY`(1~31 하나), `BYMONTH`(1~12 목록), `UNTIL` 또는 `COUNT`(1~400) 중 하나 또는 둘 다 없음(종료 없음). **미지원**: `BYSETPOS`, `HOURLY`·`MINUTELY`·`SECONDLY`, `BYHOUR`·`BYMINUTE`·`BYWEEKNO`·`BYYEARDAY`, `WKST` 변경. 그 밖은 400 `RECURRENCE_UNSUPPORTED`. 31일처럼 없는 날은 RFC 5545대로 그 달을 건너뛴다(시트의 날짜 고르기에서 29~31일을 고르면 경고 줄 없이 그대로 저장, 조율 판단).
-- **서버가 회차를 펼친다**: 활동·일정 조회 응답에서 반복 일정은 원래 `Schedule`(`recurrence`·`exdates`·`recurrenceSummary` 포함, 카드 한 점 표시용) 하나와 함께, 조회 창(오늘 − 1일 ~ + 400일, 최대 400회) 안 회차를 `Schedule.occurrences: [{startAt, endAt} | {startDate, endDateExclusive}]`로 내려 준다. `recurrenceSummary`는 서버가 만든 표시 문자열(`매주 월·목`, `매월 셋째 주 토요일`). 겹침 확인·홈 다음 일정·위젯·알림·선발 결과 묻기·LIVE 판정은 **펼친 회차**를 읽는다(**대체 기록**: 10-22 "앱이 규칙을 풀어 회차 창을 만든다"는 서버 회차 읽기로 대체, 옛 응답에 `occurrences`가 없으면 앱 풀이를 대체 경로로 남긴다).
-- **기기 캘린더로 갈 때는 규칙 그대로**: 캘린더 피드 ICS(`/v1/me/calendar/{token}.ics`)의 `VEVENT`에 `RRULE`·`EXDATE`를 그대로 싣는다(회차를 펼쳐 여러 VEVENT로 만들지 않음; `DTSTART`는 첫 회차, 시각 일정은 `TZID`, 하루 종일은 `VALUE=DATE`). 일정 하나만 넣는 `캘린더에 추가`는 iOS `EKRecurrenceRule`(빈도·간격·요일·`daysOfTheMonth`·`monthsOfTheYear`·`setPositions` 없이 서수 요일은 `EKRecurrenceDayOfWeek(dayOfTheWeek:weekNumber:)`·종료 `EKRecurrenceEnd`), **건너뛸 날이 있는 반복 일정은 iOS에서 하나씩 추가하지 않고 캘린더 구독으로 안내한다**(2026-11-05 사용자 결정; **대체 기록**: 같은 날 앞선 "저장 뒤 해당 회차를 지워 반영"은 대체. EventKit에 EXDATE 직접 지정이 없고 쓰기 전용 일정 추가 화면으로는 회차를 지울 수 없어서). 그 일정의 `캘린더에 추가`를 누르면 시트(㉙-q, CTA 시트 한 줄 `건너뛸 날까지 맞추려면 캘린더 구독으로 넣어요`): `캘린더 구독하기`(CTA, 내 활동 `캘린더 연동`과 같은 흐름 → 피드 ICS에 EXDATE 포함) / `건너뛸 날 없이 추가`(보조 글자 버튼, `EKRecurrenceRule`만). 건너뛸 날이 없는 반복 일정은 지금처럼 바로 시스템 일정 추가 화면. Android `ACTION_INSERT`에 `CalendarContract.Events.RRULE`·`EXDATE`.
-
-### API(API 담당, 이름은 제안)
-
-| 경로 | 인증 | 요청 | 응답 |
-| --- | --- | --- | --- |
-| POST /v1/hosted | Bearer | `{type: PROGRAM|EVENT, name, kind, description?, schedules: HostedSchedule[], capacity?, conditions: Condition[], visibility: LINK_ONLY|PUBLIC}` | 201 Hosted. 단계 조건 미인증 422 `HOST_NOT_VERIFIED`, 금지 프로그램 422 `STAGE_CONDITION_DISABLED` |
-| PUT /v1/hosted/:id | Bearer(개설자) | 같은 본문 | 200 Hosted(`PUBLIC`이면 다시 승인 대기) |
-| DELETE /v1/hosted/:id | Bearer(개설자) | — | 204(참여자의 디스코드 역할 회수) |
-| PUT /v1/hosted/:id/cover | Bearer(개설자) | multipart `file` | 200 `{coverUrl}` |
-| GET /v1/hosted/:id | Bearer 선택 | — | 200 Hosted(`discord.guildId`는 참여자·개설자에게만, `discord.status`는 개설자에게만, `viewer: {joined, conditionsMet: [{type, met}]}`). 차단 사이 404 |
-| POST /v1/hosted/:id/join | Bearer | `{answers: Answer[]}` | 201 `{status: JOINED|PENDING}`(참여 방식에 따라). 조건·폼 조건 미충족 403 `CONDITIONS_NOT_MET`(`missing[]`), 필수 답 누락 422, 정원 409 `FULL`, 디스코드가 연결된 모임인데 내 디스코드가 없으면 409 `DISCORD_REQUIRED`(앱은 연결 흐름 뒤 다시 호출) |
-| DELETE /v1/hosted/:id/members/me | Bearer | — | 204(나가기·신청 취소, 답변도 지움) |
-| DELETE /v1/hosted/:id/members/me/answers | Bearer | — | 204(내 답 삭제 = 나가기) |
-| POST /v1/hosted/:id/members/:userId/approve | Bearer(개설자) | — | 200(디스코드 추가·역할). 대기 중이 아니면 409 |
-| POST /v1/hosted/:id/members/:userId/reject | Bearer(개설자) | `{reason?: FULL|MISMATCH, reasonText?: string(≤100)}` | 200 |
-| DELETE /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 204(내보내기) |
-| GET /v1/hosted/:id/members | Bearer(개설자·참여자) | `?status=PENDING|JOINED` | 개설자: 200 `{items: HostMemberView[]}`, 참여자: 200 `{items: [{userId, name, handle, job, bio, photoUrl}]}`(PENDING은 개설자만) |
-| GET /v1/hosted/:id/members/:userId | Bearer(개설자) | — | 200 HostMemberView |
-| POST /v1/hosted/:id/reports | Bearer | `{reason, detail?}` | 201(명함 신고와 같은 사유·24시간 중복 규칙) |
-| GET/POST /v1/me/stage-verifications | Bearer | POST multipart `{activityId, scheduleId, files[]}` | 201 StageVerification. GET은 내 목록 |
-| DELETE /v1/me/stage-verifications/:id | Bearer | — | 204 |
-| GET /v1/me/identities/discord/start · /callback | Bearer | — | 디스코드 OAuth(GitHub 연락처 연결과 같은 start → 콜백 → 1회용 code → complete 구조, CSRF 규칙 같음) |
-| DELETE /v1/me/identities/discord | Bearer | — | 204 |
-| POST /v1/hosted/:id/discord | Bearer(개설자) | `{code}`(봇 초대 콜백) → 서버 확인 | 200 `{guildId, guildName, roles: [{id, name, assignable}]}` |
-| PUT /v1/hosted/:id/discord/role | Bearer(개설자) | `{roleId}` 또는 `{createName}` | 200 |
-
-- Hosted: `{id, type, name, kind, description, coverUrl, host: {userId, name, handle, photoUrl}, schedule, place, capacity, memberCount, discord: {guildId?, guildName, roleName, status?: OK|BROKEN}|null, conditions: Condition[], visibility, approval: PENDING|APPROVED|REJECTED|null, createdAt}`.
-- HostMemberView(개설자에게 가는 최소 정보): `{userId, name, handle, job, bio, photoUrl, status: PENDING|JOINED, evidence: [{type: STAGE_PASSED|EXCHANGED_WITH_HOST|FORM, label, verified: boolean}], verifiedHistoryNames: string[], answers: [{questionId, question, value}], discordName: string|null, appliedAt}`. 이 밖의 프로필 값(연락처·다른 이력·참여 활동·증빙 파일)은 싣지 않는다.
-- Form(Hosted의 `form`, 개설 요청 본문에도): `{questions: [{id, type: SHORT|LONG|SINGLE|MULTI|YES_NO|LINK|PROJECT_LINK|APP, title, required, options?: string[], condition?: {passing: string[]}}], joinMode: INSTANT|APPROVAL}`. Answer: `{questionId, value: string|string[]|boolean}`(`PROJECT_LINK`·`APP`은 `{url, verification: {status: VERIFIED|PENDING|UNVERIFIED, kind: GITHUB_OWNER|GITHUB_CONTRIBUTOR|PLAY_ACCESS|APPSTORE_REVIEWED|null}}`). 관련 API(구현 보류, 제안): `GET /v1/me/github/repos?q=` → `[{fullName, role: OWNER|CONTRIBUTOR, language}]`(GitHub 연결 필요, 아니면 409 `GITHUB_NOT_LINKED`), `POST /v1/me/google-play/start`·`/complete {code}` → `{apps: [{name, packageName}]}`(토큰 저장 없음), App Store 증빙은 `POST /v1/me/stage-verifications`와 같은 multipart에 `kind: APP_RELEASE`.
-- HostedSchedule(저장 모양은 기존 활동 일정 스키마 재사용 제안): 요청 `{id?, title, kind, phase: SELECTION|ACTIVITY, allDay, startAt?, endAt?, startDate?, endDateExclusive?, timeZone, address?: string|null, online: boolean, recurrence?: string|null, exdates?: string[]}`(`recurrence`·`exdates`는 아래 "반복 일정 확장 — 2026-11-05"), 응답은 공개 Activity의 `Schedule`과 같은 모양(`phase` 포함). 서버는 직접 개설마다 활동 하나를 만들어(`hosted.activity_id`) 기존 `schedules` 테이블에 행으로 넣는다. 그래서 상세 일정 카드·내 활동 진행 트랙·캘린더 연동·위젯이 공식 활동과 같은 코드로 동작한다. `ACTIVITY` 일정이 하나도 없으면 422 `ACTIVITY_SCHEDULE_REQUIRED`. 모집 슬롯(`application`)·활동 기간 슬롯(`activitySchedule`)은 직접 개설에서 따로 받지 않고, 서버가 `SELECTION`·`ACTIVITY` 일정의 처음·끝으로 채운다(조율 판단, 확인 필요).
-- Condition: `{type: EXCHANGED_WITH_HOST}` · `{type: STAGE_PASSED, programId, activityIds: number[], stageKind, stageTitle, applyToProgram: false}`(지금은 개설자가 고른 기수 하나, `applyToProgram`은 자리만) · `{type: QUALIFICATION, rule: Eligibility}`(기존 `eligibility` 그룹 JSON, 조건의 `fieldEn`은 자격 키, `BOOL`은 `values: [true]`) · `{type: GENDER, values: ["female"]}`. `ANYONE`은 없앰(빈 목록 = 누구나).
-- QualificationKey: `{key, label, valueType: RANGE|NUMBER|SINGLE|MULTI|BOOL, options?: [{value, label}], source: BUILTIN|SUGGESTED, status: APPROVED|PENDING|REJECTED, ownerHostedId?}`. `GET /v1/qualification-keys?q=` → 공용(APPROVED) + 내가 제안한 PENDING. `POST /v1/qualification-keys {label, valueType, options?}` → 201 PENDING.
-- 참여 요청 본문 확장: `POST /v1/hosted/:id/join {answers, cardId?, gender?, selfReported?: [{key, value}]}`(성별 제한·제출 명함·승인 전 제안 키 자기 신고). HostMemberView에 `qualificationMet: number`(충족 수, 값 없음)·`gender?`·`submittedCard?: Card`(켠 항목만).
-- 지원 자격 정보 확장: Profile 자격 정보에 `gender`와 승인된 제안 키 값(`extra: [{key, value}]`).
-- StageVerification: `{id, programId, activityId, scheduleId, stageTitle, status: PENDING|VERIFIED|REJECTED, rejectReason?, files: [{id, name, size}], createdAt, reviewedAt?}`.
-- 발견: 승인된 `PUBLIC` 직접 개설은 발견 프로그램·이벤트 목록에 행으로 섞이고 `ProgramSummary`에 `hosted: {host: {userId, name, handle, photoUrl}}`가 붙는다(없으면 공식). 필터의 종류·지역은 같다. 맞춤 대기열에는 넣지 않는다(조율 판단).
-- 저장(제안): `hosted(id, host_user_id, activity_id → activities, type, name, kind, description, cover bytea null, capacity, visibility, approval, approved_at, approved_by, created_at, updated_at, deleted_at)`, `hosted_conditions(hosted_id, type, program_id, activity_ids bigint[], stage_kind, stage_title, apply_to_program, rule jsonb)`, `qualification_keys(key pk, label, value_type, options jsonb, source, status, suggested_by, owner_hosted_id, created_at, reviewed_at, reviewed_by)`, `hosted_submitted_cards(hosted_id, user_id, card_id, submitted_at)`, `hosted_self_reports(hosted_id, user_id, key, value jsonb)`(답변과 같은 보관), `hosted_members(hosted_id, user_id, status PENDING|JOINED|REJECTED|LEFT, applied_at, joined_at, left_at, left_reason LEFT|REMOVED|CONDITION_LOST|ANSWERS_DELETED, reject_reason, reject_text)`, `hosted.form jsonb`(질문 정의·참여 방식), `hosted_answers(hosted_id, user_id, question_id, value jsonb, created_at, delete_after timestamptz)`(보관 배치가 `delete_after < now()`를 지움), `hosted_discord(hosted_id, guild_id, role_id, status, broken_at)`, `discord_jobs(id, hosted_id, user_id, action ADD|REVOKE, attempts, next_at)`, `stage_verifications(id, user_id, program_id, activity_id, schedule_id, status, reject_reason, created_at, reviewed_at, reviewed_by)` + `stage_verification_files(id, verification_id, name, content_type, size, data bytea)`, `user_identities`에 `provider = discord`(토큰 암호화), `hosted_reports`. 계정 삭제 시 내가 연 것은 지우고(참여자 역할 회수) 참여 기록·인증·파일도 지운다.
-- 통계(analytics-v1.md에 더한다, 제안): `hosted_create(type, visibility, conditionTypes)`, `hosted_join`, `hosted_leave`, `stage_verification_submit`, `discord_connect`.
