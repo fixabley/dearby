@@ -22,6 +22,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordAccounts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordGuildConnections
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordOauthStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
@@ -170,6 +173,21 @@ val COLLECTION_WATCHLIST: CollectionWatchlist = CollectionWatchlist.COLLECTION_W
  * The table <code>public.contacts</code>.
  */
 val CONTACTS: Contacts = Contacts.CONTACTS
+
+/**
+ * The table <code>public.discord_accounts</code>.
+ */
+val DISCORD_ACCOUNTS: DiscordAccounts = DiscordAccounts.DISCORD_ACCOUNTS
+
+/**
+ * The table <code>public.discord_guild_connections</code>.
+ */
+val DISCORD_GUILD_CONNECTIONS: DiscordGuildConnections = DiscordGuildConnections.DISCORD_GUILD_CONNECTIONS
+
+/**
+ * The table <code>public.discord_oauth_states</code>.
+ */
+val DISCORD_OAUTH_STATES: DiscordOauthStates = DiscordOauthStates.DISCORD_OAUTH_STATES
 
 /**
  * The table <code>public.discovery_filter_config</code>.

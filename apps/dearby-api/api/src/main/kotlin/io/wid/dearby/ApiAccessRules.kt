@@ -39,6 +39,9 @@ class ApiAccessRules : AccessRules {
         authorize("/v1/guest/**", permitAll)
         // GitHub 연락처 연결 콜백: GitHub이 사용자 브라우저를 돌려보내는 요청이라 Bearer가 없다. 결과는 1회용 code로 앱이 complete에서 가져간다(native-v1.md "연락처 인증")
         authorize(HttpMethod.GET, "/v1/me/contacts/github/callback", permitAll)
+        // 디스코드 계정·봇 서버 연결 콜백: 같은 이유로 Bearer가 없고 결과는 1회용 code로 complete에서 가져간다(native-v1.md "디스코드 연결 구현 기록 — 2026-11-05")
+        authorize(HttpMethod.GET, "/v1/me/connections/discord/callback", permitAll)
+        authorize(HttpMethod.GET, "/v1/me/discord/guilds/callback", permitAll)
         authorize(anyRequest, authenticated)
     }
 }
