@@ -2122,3 +2122,30 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **큰 화면(2단계, 폰 뒤)**: UI 담당이 두 칸 레이아웃·레일·위 탭 막대·커버 배너·Flip 위젯 시각, 플로우 담당이 `NavigationSplitView`/`ListDetailPaneScaffold` 선택 상태·접었다 펼칠 때의 연속성·내 활동 오른쪽 칸 규칙·폰 세로 잠금·플렉스 모드 분할. 1단계에서 지킬 것은 "너비 고정 금지"뿐.
 - **웹 담당**: 상세·발견 행·글꼴.
 - **어드민 담당**: [admin-v1.md](admin-v1.md) "일정 캘린더 편집기·ICS 가져오기 — 2026-11-03".
+
+## 디스코드 연결 구현 기록 — 2026-11-05
+
+직접 개설 계약("직접 개설(사용자가 여는 프로그램·이벤트)" › "디스코드 연결(2번안)", PR #520)의 서버 기반만 먼저 구현했다. 직접 개설 모임·참여·폼은 아직 없어 모임 단위 API(`POST /v1/hosted/:id/discord` 등)는 만들지 않았고, 서버 연결은 사용자 소유 행으로 둔다(모임이 생기면 그 행 id와 역할 id를 모임에 붙인다). **경로 대체 기록**: #520의 `/v1/me/identities/discord/*`·봇 콜백 `/v1/hosted/discord/callback`은 조율 확정(2026-11-05, GitHub 연락처 연결과 같은 모양)에 따라 아래 경로로 바뀐다. 디스코드는 로그인 수단이 아니라 `GET /v1/me/identities`·`signInMethods`·`LAST_SIGN_IN_METHOD` 판정에 들어가지 않는다.
+
+- **설정**(env): `DISCORD_CLIENT_ID`·`DISCORD_CLIENT_SECRET`·`DISCORD_BOT_TOKEN`·`DISCORD_TOKEN_KEY`(사용자 토큰 암호화 키, base64 32바이트)·`DISCORD_CALLBACK_URL`·`DISCORD_BOT_CALLBACK_URL`(+ 선택 `DISCORD_APP_REDIRECT_URI` 기본 `dearby://connections/discord`, `DISCORD_WEB_REDIRECT_URI` 기본 `https://dearby.wid.io.kr/settings`). 하나라도 비거나 키 형식이 틀리면 아래 API는 모두 503이고 `GET /v1/me`의 `connections.discord.available`이 false(앱·웹은 행을 숨긴다).
+- **디스코드 개발자 포털 Redirects**: `https://api.dearby.wid.io.kr/v1/me/connections/discord/callback`, `https://api.dearby.wid.io.kr/v1/me/discord/guilds/callback`(로컬 앱은 `http://localhost:8080/…` 같은 경로).
+- **저장**(V69): `discord_oauth_states`(1회용 중간 상태, 10분), `discord_accounts`(사용자당 하나, `discord_user_id` unique, 사용자명, 액세스·리프레시 토큰은 AES-256-GCM 암호문, AAD = 사용자 id), `discord_guild_connections`(사용자 소유, `(user_id, guild_id)` unique). 사용자 삭제 cascade.
+
+| 경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| GET /v1/me | Bearer | — | 기존 모양 + `connections: {discord: {available: bool, username: string\|null, linkedAt: string\|null}}` |
+| POST /v1/me/connections/discord/start | Bearer | `{platform: ios\|android\|web}` | 200 `{authorizeUrl}`(`https://discord.com/oauth2/authorize?response_type=code&client_id=…&state=…&scope=identify guilds.join&redirect_uri=…`) |
+| GET /v1/me/connections/discord/callback | 없음(디스코드가 브라우저를 돌려보냄) | `code`, `state` 또는 `error` | 303 → ios·android `dearby://connections/discord?flow=account&code=<1회용>` 또는 `&error=cancelled\|failed`, web `https://dearby.wid.io.kr/settings?flow=account&…`. state를 모르면 앱 주소로 `error=failed` |
+| POST /v1/me/connections/discord/complete | Bearer | `{code}` | 200 `{discordUserId, username, linkedAt}`. 만료·남의 code·교환 실패·범위 부족 400 `DISCORD_LINK_EXPIRED`, 다른 Dearby 계정에 연결된 디스코드 409 `DISCORD_ALREADY_LINKED`. 같은 계정이 다시 연결하면 토큰을 바꾼다 |
+| DELETE /v1/me/connections/discord | Bearer | — | 204(디스코드에 리프레시 토큰 폐기 요청, 실패해도 행 삭제). 연결 안 됨 404 |
+| POST /v1/me/discord/guilds/start | Bearer | `{platform}` | 200 `{authorizeUrl}`(`…?response_type=code&client_id=…&state=…&scope=bot&permissions=268435457&redirect_uri=…`) |
+| GET /v1/me/discord/guilds/callback | 없음 | `code`, `state`, `guild_id`(읽지 않음) 또는 `error` | 303 → 위와 같은 주소에 `flow=guild` |
+| POST /v1/me/discord/guilds/complete | Bearer | `{code}` | 201 `{id, guildId, guildName, roles: [{id, name, position, assignable}]}`. 만료 400 `DISCORD_LINK_EXPIRED`, 봇이 그 서버에 없음 409 `DISCORD_BOT_NOT_IN_GUILD` |
+| GET /v1/me/discord/guilds | Bearer | — | 200 `{items: [{id, guildId, guildName, createdAt}]}`(최근 순) |
+| GET /v1/me/discord/guilds/:id/roles | Bearer(연결한 사람) | — | 200 complete와 같은 모양(서버 이름이 바뀌었으면 저장 이름도 맞춤). 남의 것·없음 404, 봇 빠짐 409 `DISCORD_BOT_NOT_IN_GUILD` |
+| DELETE /v1/me/discord/guilds/:id | Bearer(연결한 사람) | — | 204(행만 지움, 봇을 서버에서 내보내지 않음) |
+
+- **CSRF·hint 처리**: 두 흐름 모두 GitHub 연락처 연결처럼 콜백은 1회용 code만 돌려주고 Bearer가 있는 complete에서 디스코드 code를 교환한다. 봇 흐름은 redirect의 `guild_id`를 믿지 않고 토큰 응답의 `guild.id`(실제로 봇을 승인한 서버)를 쓴 뒤 봇 토큰 `GET /guilds/{id}`로 봇이 있는지 다시 확인한다(code 교환 없이 `guild_id`만 믿으면 봇이 이미 있는 남의 서버를 가로챌 수 있다). 봇 흐름에서 받은 토큰은 저장·폐기하지 않고 버린다.
+- **줄 수 있는 역할**(`assignable`): 봇의 역할 권한 합(`@everyone` 포함)에 `MANAGE_ROLES` 또는 `ADMINISTRATOR`가 있고, 연동 앱 관리 역할(`managed`)이 아니고, `@everyone`이 아니고, `position`이 봇의 가장 높은 역할보다 낮을 때. 목록은 `position` 높은 순이고 `@everyone`은 뺀다. `새 역할 만들기`는 아직 없다.
+- **참여 때 쓸 서비스**(공개 API 없음): `DiscordMembershipService.grantMembership(userId, guildConnectionId, roleId)` → 액세스 토큰이 1분 안에 만료되면 리프레시(행 잠금, 새 쌍 저장) → `PUT /guilds/{g}/members/{u}`(봇 토큰, `{access_token, roles: [roleId]}`), 204(이미 멤버)면 `PUT /guilds/{g}/members/{u}/roles/{r}`. `revoke(discordUserId, guildConnectionId, roleId)` → `DELETE …/roles/{r}`(멤버가 없으면 성공으로 봄). 예외 대신 `Granted(addedToGuild)`·`Revoked`·`Failed(reason)`를 돌려주고 `reason`은 `NOT_CONFIGURED`·`ACCOUNT_NOT_LINKED`·`GUILD_CONNECTION_MISSING`·`USER_TOKEN_INVALID`·`BOT_NOT_IN_GUILD`(10004·50001·404)·`MISSING_PERMISSIONS`(50013·403)·`UNKNOWN_ROLE`(10011)·`UNKNOWN_MEMBER`(10007·10013)·`RATE_LIMITED`(429)·`UNAVAILABLE`. 직접 개설 참여가 이 값으로 `BROKEN`·재시도 큐를 정한다.
+- **아직 없는 것**: 연결 해제 때 참여 중 모임의 역할 회수(참여 기능이 생길 때), 계정 삭제 때 디스코드 토큰 폐기(행은 cascade로 지워짐), 봇 이벤트(`GUILD_DELETE`) 수신, 재시도 큐. 실제 디스코드 호출은 비밀 값이 없어 아직 실행해 보지 않았다.
