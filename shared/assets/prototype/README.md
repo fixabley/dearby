@@ -9,6 +9,7 @@
 | `camp.png` | 메이커 캠프 썸네일·상세 사진 | `selected/01-current-flow/discovery.png` 두 번째 카드 사진 참조, 내장 imagegen |
 | `meetup.png` | 밋업 썸네일·상세 사진 | 같은 탐색 시안 세 번째 카드 사진 참조, 내장 imagegen |
 | `qr-example.png` | QR 화면·확대 예시 | macOS CoreImage `CIQRCodeGenerator`, correction M, 흰색 4모듈 여백, 24배 크기. 내용은 `https://example.com`이며 CoreImage로 다시 읽어 확인 |
+| `asc-guide/1-menu.png`·`2-profile.png`·`3-teamkeys.png` | 직접 개설 프로젝트 "키 발급 경로 찾는 법" 온보딩 단계 이미지(App Store Connect 계정 메뉴 › 프로필 편집, 프로필 편집 › 개별 API 키, 사용자 및 액세스 › 통합 › App Store Connect API › 팀 키) | 2026-11-05 사용자가 자기 계정의 App Store Connect 한국어 웹 화면(폭 591 모바일 레이아웃)을 직접 캡처하고 이름·팀·키 ID·Issuer ID·개발자 ID를 가림. Apple 화면이 바뀌면 다시 캡처해 교체 |
 
 사진은 실제 행사의 공식 자료가 아닌 생성된 디자인 예시다. QR은 개인 정보·인증 토큰·실제 명함 식별자를 포함하지 않는다.
 휴대폰 테두리나 앱 화면 전체를 이미지로 사용하는 방식이 아니며, 앱 UI는 각 플랫폼의 컴포넌트로 구성한다.
