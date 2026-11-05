@@ -21,6 +21,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordAccounts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordGuildConnections
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordOauthStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
@@ -188,6 +191,21 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.contacts</code>.
      */
     val CONTACTS: Contacts get() = Contacts.CONTACTS
+
+    /**
+     * The table <code>public.discord_accounts</code>.
+     */
+    val DISCORD_ACCOUNTS: DiscordAccounts get() = DiscordAccounts.DISCORD_ACCOUNTS
+
+    /**
+     * The table <code>public.discord_guild_connections</code>.
+     */
+    val DISCORD_GUILD_CONNECTIONS: DiscordGuildConnections get() = DiscordGuildConnections.DISCORD_GUILD_CONNECTIONS
+
+    /**
+     * The table <code>public.discord_oauth_states</code>.
+     */
+    val DISCORD_OAUTH_STATES: DiscordOauthStates get() = DiscordOauthStates.DISCORD_OAUTH_STATES
 
     /**
      * The table <code>public.discovery_filter_config</code>.
@@ -514,6 +532,9 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         CollectionRuns.COLLECTION_RUNS,
         CollectionWatchlist.COLLECTION_WATCHLIST,
         Contacts.CONTACTS,
+        DiscordAccounts.DISCORD_ACCOUNTS,
+        DiscordGuildConnections.DISCORD_GUILD_CONNECTIONS,
+        DiscordOauthStates.DISCORD_OAUTH_STATES,
         DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG,
         DiscoveryQueue.DISCOVERY_QUEUE,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,

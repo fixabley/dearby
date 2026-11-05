@@ -6,6 +6,9 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.DISCORD_ACCOUNTS__DISCORD_ACCOUNTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.DISCORD_GUILD_CONNECTIONS__DISCORD_GUILD_CONNECTIONS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.DISCORD_OAUTH_STATES__DISCORD_OAUTH_STATES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.EMAIL_CONTACT_CHALLENGES__EMAIL_CONTACT_CHALLENGES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.GITHUB_CONTACT_LINKS__GITHUB_CONTACT_LINKS_USER_ID_FKEY
@@ -30,6 +33,9 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_I
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_SESSION_FAVORITES__USER_SESSION_FAVORITES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_TASTE__USER_TASTE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordAccounts.DiscordAccountsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordGuildConnections.DiscordGuildConnectionsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscordOauthStates.DiscordOauthStatesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges.EmailContactChallengesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.GithubContactLinks.GithubContactLinksPath
@@ -180,6 +186,54 @@ open class Users(
 
     val contacts: ContactsPath
         get(): ContactsPath = contacts()
+
+    private lateinit var _discordAccounts: DiscordAccountsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.discord_accounts</code> table
+     */
+    fun discordAccounts(): DiscordAccountsPath {
+        if (!this::_discordAccounts.isInitialized)
+            _discordAccounts = DiscordAccountsPath(this, null, DISCORD_ACCOUNTS__DISCORD_ACCOUNTS_USER_ID_FKEY.inverseKey)
+
+        return _discordAccounts;
+    }
+
+    val discordAccounts: DiscordAccountsPath
+        get(): DiscordAccountsPath = discordAccounts()
+
+    private lateinit var _discordGuildConnections: DiscordGuildConnectionsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.discord_guild_connections</code> table
+     */
+    fun discordGuildConnections(): DiscordGuildConnectionsPath {
+        if (!this::_discordGuildConnections.isInitialized)
+            _discordGuildConnections = DiscordGuildConnectionsPath(this, null, DISCORD_GUILD_CONNECTIONS__DISCORD_GUILD_CONNECTIONS_USER_ID_FKEY.inverseKey)
+
+        return _discordGuildConnections;
+    }
+
+    val discordGuildConnections: DiscordGuildConnectionsPath
+        get(): DiscordGuildConnectionsPath = discordGuildConnections()
+
+    private lateinit var _discordOauthStates: DiscordOauthStatesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.discord_oauth_states</code> table
+     */
+    fun discordOauthStates(): DiscordOauthStatesPath {
+        if (!this::_discordOauthStates.isInitialized)
+            _discordOauthStates = DiscordOauthStatesPath(this, null, DISCORD_OAUTH_STATES__DISCORD_OAUTH_STATES_USER_ID_FKEY.inverseKey)
+
+        return _discordOauthStates;
+    }
+
+    val discordOauthStates: DiscordOauthStatesPath
+        get(): DiscordOauthStatesPath = discordOauthStates()
 
     private lateinit var _discoveryQueue: DiscoveryQueuePath
 
