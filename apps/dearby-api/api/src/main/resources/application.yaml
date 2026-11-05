@@ -41,6 +41,16 @@ dearby:
     client-secret: ${GITHUB_CLIENT_SECRET:}
     callback-url: ${GITHUB_CALLBACK_URL:}
     web-redirect-uri: ${GITHUB_WEB_REDIRECT_URI:https://dearby.wid.io.kr/profile}
+  # 디스코드 연결(native-v1.md "디스코드 연결 구현 기록 — 2026-11-05"). 하나라도 비거나 토큰 키가 32바이트 base64가 아니면 디스코드 API는 503
+  discord:
+    client-id: ${DISCORD_CLIENT_ID:}
+    client-secret: ${DISCORD_CLIENT_SECRET:}
+    bot-token: ${DISCORD_BOT_TOKEN:}
+    token-key: ${DISCORD_TOKEN_KEY:}
+    callback-url: ${DISCORD_CALLBACK_URL:}
+    bot-callback-url: ${DISCORD_BOT_CALLBACK_URL:}
+    app-redirect-uri: ${DISCORD_APP_REDIRECT_URI:dearby://connections/discord}
+    web-redirect-uri: ${DISCORD_WEB_REDIRECT_URI:https://dearby.wid.io.kr/settings}
   # 이메일 인증번호(native-v1.md "연락처 인증", Spring Mail). MAIL_HOST나 MAIL_FROM이 비어 있으면 /v1/me/contacts/email/*는 503
   mail:
     host: ${MAIL_HOST:}
