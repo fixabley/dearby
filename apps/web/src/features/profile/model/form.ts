@@ -1,19 +1,19 @@
 // 프로필 수정 폼 (contract "프로필과 버전 이력", "연락처 아이콘·바로가기" › 사용자명 입력, "이력"): the editable copy of a Profile, the
 // username rules the input applies while typing, the client-side checks that mirror the API's 400s, and the PUT body.
 import type { Profile, ProfileJob, ProfileRequest } from "@/lib/account-models";
-import { type Card, type ContactKind, contactUsername } from "@/lib/models";
+import { type Card, type ContactKind, type RoleOwnerKind, contactUsername } from "@/lib/models";
 
 export type ContactForm = { id: string; kind: ContactKind; label: string; value: string; verified: boolean };
 export type JobForm = { id: string; jobId?: number; jobName: string; approval?: ProfileJob["approval"]; approvalReason?: string | null };
+/**
+ * 이력 = 역할 매칭 (contract "이력 (History) — 역할 매칭"): 어디에서(귀속 단위, 고르면 `ownerId`, 없으면 `ownerKind`와 이름 직접 입력) →
+ * 역할(그 단위의 역할이면 `roleId`, 없으면 이름 직접 입력) → 기간 → 설명.
+ */
 export type HistoryForm = {
   id: string;
-  kind: "organization" | "activity";
-  organizationId?: number;
-  organizationName: string;
-  programId?: number;
-  programName: string;
-  activityId?: number;
-  activityName: string;
+  ownerKind: RoleOwnerKind;
+  ownerId?: number;
+  ownerName: string;
   roleId?: number;
   roleName: string;
   startDate: string;
@@ -73,15 +73,11 @@ export function fromProfile(profile: Profile): ProfileForm {
     })),
     histories: profile.histories.map((history) => ({
       id: history.id,
-      kind: history.kind,
-      organizationId: history.organization?.id,
-      organizationName: history.organization?.name ?? history.organizationName ?? "",
-      programId: history.program?.id,
-      programName: history.program?.name ?? history.programName ?? "",
-      activityId: history.activity?.id,
-      activityName: history.activity?.name ?? history.activityName ?? "",
+      ownerKind: history.owner.kind,
+      ownerId: history.owner.id ?? undefined,
+      ownerName: history.owner.name,
       roleId: history.role?.id,
-      roleName: history.role?.name ?? history.roleName ?? "",
+      roleName: history.role?.name ?? history.roleName,
       startDate: history.startDate,
       endDate: history.endDate ?? "",
       description: history.description,
@@ -104,17 +100,17 @@ export function validate(form: ProfileForm): string | undefined {
     if (contact.kind === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "이메일 형식을 확인해 주세요.";
   }
   for (const history of form.histories) {
-    if (history.kind === "activity" && !history.activityId && !history.activityName.trim()) return "활동 이력의 활동을 고르거나 입력해 주세요.";
-    if ((history.kind === "organization" || !history.activityId) && !history.organizationId && !history.organizationName.trim())
-      return "이력의 조직을 고르거나 입력해 주세요.";
+    if (!history.ownerId && !history.ownerName.trim()) return "이력의 조직·프로그램·활동을 고르거나 입력해 주세요.";
     if (!history.roleId && !history.roleName.trim()) return "이력의 역할을 고르거나 입력해 주세요.";
     if (!history.startDate) return "이력의 시작일을 입력해 주세요.";
     if (history.endDate && history.endDate < history.startDate) return "종료일은 시작일보다 앞설 수 없어요.";
   }
 }
 
-const opt = (value: string) => (value.trim() ? value.trim() : undefined);
-/** `PUT /v1/profile` body: ids win over names; empty optionals are left out; the API normalizes usernames again. */
+/**
+ * `PUT /v1/profile` body: ids win over names; the API normalizes usernames again. A history is `{roleId}` (the role knows its unit)
+ * or the direct input `{ownerKind, ownerId | ownerName, roleName}` (contract "이력 (History) — 역할 매칭").
+ */
 export function toRequest(form: ProfileForm): ProfileRequest {
   return {
     name: form.name.trim(),
@@ -123,11 +119,9 @@ export function toRequest(form: ProfileForm): ProfileRequest {
     contacts: form.contacts.map(({ id, kind, label, value }) => ({ id, kind, label: label.trim(), value: value.trim() })),
     histories: form.histories.map((history) => ({
       id: history.id,
-      kind: history.kind,
-      ...(history.organizationId ? { organizationId: history.organizationId } : { organizationName: opt(history.organizationName) }),
-      ...(history.programId ? { programId: history.programId } : { programName: opt(history.programName) }),
-      ...(history.kind === "activity" && (history.activityId ? { activityId: history.activityId } : { activityName: opt(history.activityName) })),
-      ...(history.roleId ? { roleId: history.roleId } : { roleName: opt(history.roleName) }),
+      ...(history.roleId
+        ? { roleId: history.roleId }
+        : { ownerKind: history.ownerKind, ...(history.ownerId ? { ownerId: history.ownerId } : { ownerName: history.ownerName.trim() }), roleName: history.roleName.trim() }),
       startDate: history.startDate,
       endDate: history.endDate || null,
       description: history.description,

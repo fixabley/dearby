@@ -2,6 +2,7 @@ package io.wid.dearby.application.timetable
 
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.UserId
+import io.wid.dearby.domain.timetable.Room
 import io.wid.dearby.domain.timetable.Session
 import io.wid.dearby.domain.timetable.Timetable
 import io.wid.dearby.domain.timetable.TimetableInput
@@ -21,6 +22,7 @@ interface TimetableRepository {
     fun owners(sessionIds: Collection<Id>): Map<Id, SessionOwner> // 지운 세부 일정(curated_deleted)의 세션은 빠진다
     fun sessions(ids: Collection<Id>): List<Session>
     fun tracks(ids: Collection<Id>): Map<Id, Track>
+    fun rooms(ids: Collection<Id>): Map<Id, Room>
 
     fun saveFavorite(userId: UserId, sessionId: Id, at: OffsetDateTime) // 이미 있으면 그대로(시각도)
     fun deleteFavorite(userId: UserId, sessionId: Id)

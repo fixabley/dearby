@@ -92,11 +92,11 @@ struct ProfileVersionPage: View {
 }
 
 extension AccountHistory {
-    /// Timeline presentation: 조직 · 프로그램 · 활동 as the title, dates as `2026.03`.
+    /// Timeline presentation: `귀속 단위 · 역할` as the title, the units above it as the affiliation, dates as `2026.03`.
     var historyModel: HistoryModel {
         let month = { (text: String) in String(text.prefix(7)).replacingOccurrences(of: "-", with: ".") }
-        return HistoryModel(id: id, title: chain.joined(separator: " · "), role: roleTitle, startDate: month(startDate),
-                            endDate: endDate.map(month) ?? "진행 중", verified: isVerified, description: description)
+        return HistoryModel(id: id, title: title, affiliation: affiliation.joined(separator: " · "), activityID: activity.map { String($0.id) },
+                            startDate: month(startDate), endDate: endDate.map(month) ?? "진행 중", verified: isVerified, description: description)
     }
 }
 

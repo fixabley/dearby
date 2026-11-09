@@ -3,14 +3,16 @@ import { useEffect, useId, useState } from "react";
 import { Icon } from "@/shared/ui/icon";
 import { Input } from "@/shared/ui/input";
 
-export type Pick = { id: number; name: string; hint?: string };
+/** A search result: `kind` tells rows of mixed kinds apart (ids repeat across kinds) and shows as a leading tag. */
+export type Pick<K extends string = string> = { id: number; name: string; hint?: string; kind?: K };
 
 /**
  * 선택 창 검색 (contract "이력" › 등록된 활동 정보에서 검색해 고르고, 없으면 직접 입력): one text field whose typed value is the direct
- * input, with a debounced result list under it; choosing a result sets the id and the name. A chosen id is shown as a chip with
- * `지우기` so the person can type a name instead.
+ * input, with a debounced result list under it; choosing a result sets the id (and kind) and the name. A chosen id is shown as a
+ * chip with `지우기` so the person can type a name instead. With `listOnFocus` the empty field also lists results on focus (a unit's
+ * role list, contract "이력 (History) — 역할 매칭").
  */
-export function SearchPicker({
+export function SearchPicker<K extends string = string>({
   label,
   placeholder,
   value,
@@ -18,22 +20,28 @@ export function SearchPicker({
   search,
   onChange,
   required,
+  listOnFocus,
+  kindLabel,
 }: {
   label: string;
   placeholder?: string;
   value: string;
   pickedId?: number;
-  search: (q: string) => Promise<Pick[]>;
-  onChange: (next: { id?: number; name: string }) => void;
+  search: (q: string) => Promise<Pick<K>[]>;
+  onChange: (next: { id?: number; name: string; kind?: K }) => void;
   required?: boolean;
+  listOnFocus?: boolean;
+  /** How a row's `kind` reads (`활동`, `조직`…); without it the kind is not shown. */
+  kindLabel?: (kind: K) => string;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Pick[]>([]);
+  const [results, setResults] = useState<Pick<K>[]>([]);
   const [open, setOpen] = useState(false);
   const listId = useId();
+  const q = query.trim();
+  const active = pickedId === undefined && (q.length > 0 || (listOnFocus && open));
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 1 || pickedId !== undefined) return;
+    if (!active) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       search(q).then(
@@ -49,9 +57,9 @@ export function SearchPicker({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, pickedId, search]);
+  }, [q, active, search]);
   // Results belong to the current typed query only; a cleared field or a picked id shows none.
-  const visible = pickedId === undefined && query.trim().length > 0 ? results : [];
+  const visible = active ? results : [];
   if (pickedId !== undefined)
     return (
       <div className="flex flex-col gap-1">
@@ -89,18 +97,19 @@ export function SearchPicker({
       {open && visible.length > 0 && (
         <ul id={listId} role="listbox" className="absolute top-full left-0 z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-control bg-card py-1 shadow-[0_8px_32px_rgb(0_0_0/0.18)]">
           {visible.map((item) => (
-            <li key={item.id} role="option" aria-selected="false">
+            <li key={`${item.kind ?? ""}:${item.id}`} role="option" aria-selected="false">
               <button
                 type="button"
                 className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-subheadline active:bg-fill"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
-                  onChange({ id: item.id, name: item.name });
+                  onChange({ id: item.id, name: item.name, kind: item.kind });
                   setOpen(false);
                   setQuery("");
                 }}
               >
                 <Icon name="search" size="inline" tone="secondary" />
+                {kindLabel && item.kind && <span className="shrink-0 text-caption text-secondary-label">{kindLabel(item.kind)}</span>}
                 <span className="flex-1 truncate">{item.name}</span>
                 {item.hint && <span className="truncate text-footnote text-secondary-label">{item.hint}</span>}
               </button>

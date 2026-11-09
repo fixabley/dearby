@@ -40,7 +40,10 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         val user = UUID.randomUUID()
         jdbc.sql("insert into users (id) values (?)").param(user).update()
         val contact = Contact(UUID.randomUUID(), ContactKind.EMAIL, "메일", "$user@example.com")
-        val history = History(UUID.randomUUID(), HistoryKind.ORGANIZATION, null, "조직", null, null, null, null, null, "역할", LocalDate.of(2026, 1, 1), null, "", ApprovalStatus.APPROVED, null, VerificationStatus.UNVERIFIED, emptyList())
+        // 승인된 이력은 등록된 단위의 등록된 역할에 매칭돼 있다(V67 check)
+        val organization = jdbc.sql("select id from organizations order by id limit 1").query(Long::class.java).single()
+        val role = jdbc.sql("insert into roles (organization_id, name, source, position, created_at, updated_at) values (?, ?, 'CURATED', 0, now(), now()) returning id").params(organization, "역할 $user").query(Long::class.java).single()
+        val history = History(UUID.randomUUID(), ActivityInfoRef(role, "역할"), "역할", RoleOwner(RoleOwnerKind.ORGANIZATION, organization, "조직"), ActivityInfoRef(organization, "조직"), null, null, LocalDate.of(2026, 1, 1), null, "", ApprovalStatus.APPROVED, null, VerificationStatus.UNVERIFIED, emptyList())
         profiles.save(Profile(user, "주인", emptyList(), "소개", listOf(contact), listOf(history), 1, OffsetDateTime.now()))
         val card = read(mvc.post("/v1/cards") {
             with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
@@ -262,7 +265,7 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         ).params(listOf<Any?>(activity, slot, title, from, to)).query(Long::class.java).single()
         block("활동 기간", "ACTIVITY", "-3 hours", "+5 hours")
         val afternoon = block("오후 세션", null, "-1 hours", "+2 hours")
-        val track = jdbc.sql("insert into schedule_tracks (schedule_id, name, room, position) values (?, '트랙 A', '201호', 0) returning id").param(afternoon).query(Long::class.java).single()
+        val track = jdbc.sql("with r as (insert into schedule_rooms (schedule_id, name, position) values (?, '201호', 0) returning id) insert into schedule_tracks (schedule_id, name, room_id, position) select ?, '트랙 A', r.id, 0 from r returning id").params(afternoon, afternoon).query(Long::class.java).single()
         jdbc.sql("insert into schedule_sessions (schedule_id, track_id, kind, title, start_at, end_at, speakers) values (?, ?, 'TALK', '세션', now() - interval '30 minutes', now() + interval '30 minutes', '[]'::jsonb)").params(afternoon, track).update()
 
         val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId), activity) }.andExpect { status { isCreated() } })["guestToken"].asString()

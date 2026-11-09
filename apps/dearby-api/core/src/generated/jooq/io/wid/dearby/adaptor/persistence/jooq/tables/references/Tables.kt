@@ -10,7 +10,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
-import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
@@ -23,6 +22,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
@@ -60,6 +60,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
@@ -109,11 +110,6 @@ val ACTIVITY_EMBEDDINGS: ActivityEmbeddings = ActivityEmbeddings.ACTIVITY_EMBEDD
  * The table <code>public.activity_participations</code>.
  */
 val ACTIVITY_PARTICIPATIONS: ActivityParticipations = ActivityParticipations.ACTIVITY_PARTICIPATIONS
-
-/**
- * The table <code>public.activity_roles</code>.
- */
-val ACTIVITY_ROLES: ActivityRoles = ActivityRoles.ACTIVITY_ROLES
 
 /**
  * The table <code>public.activity_tags</code>.
@@ -174,6 +170,11 @@ val COLLECTION_WATCHLIST: CollectionWatchlist = CollectionWatchlist.COLLECTION_W
  * The table <code>public.contacts</code>.
  */
 val CONTACTS: Contacts = Contacts.CONTACTS
+
+/**
+ * The table <code>public.discovery_filter_config</code>.
+ */
+val DISCOVERY_FILTER_CONFIG: DiscoveryFilterConfig = DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG
 
 /**
  * The table <code>public.discovery_queue</code>.
@@ -359,6 +360,11 @@ val REFRESH_TOKENS: RefreshTokens = RefreshTokens.REFRESH_TOKENS
  * The table <code>public.roles</code>.
  */
 val ROLES: Roles = Roles.ROLES
+
+/**
+ * The table <code>public.schedule_rooms</code>.
+ */
+val SCHEDULE_ROOMS: ScheduleRooms = ScheduleRooms.SCHEDULE_ROOMS
 
 /**
  * The table <code>public.schedule_session_tags</code>.

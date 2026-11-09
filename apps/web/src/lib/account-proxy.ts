@@ -27,6 +27,7 @@ import {
   reciprocateBodySchema,
   reciprocateSchema,
   recommendationPreferencesSchema,
+  rolePageSchema,
   unreadCountSchema,
   walletSaveBodySchema,
   walletSchema,
@@ -115,7 +116,10 @@ function pickQuery(url: URL, allowed: Record<string, RegExp>): URLSearchParams |
   return query;
 }
 const CURSOR_SIZE = { cursor: DIGITS, size: /^(100|[1-9]\d?)$/ };
-const SEARCH = { ...CURSOR_SIZE, q: /^[^\u0000-\u001f]{1,100}$/, parentId: DIGITS, rootsOnly: /^(true|false)$/, organizationId: DIGITS };
+const QUERY = /^[^\u0000-\u001f]{1,100}$/;
+const SEARCH = { ...CURSOR_SIZE, q: QUERY, parentId: DIGITS, rootsOnly: /^(true|false)$/, organizationId: DIGITS };
+/** 역할은 귀속 단위 하나의 목록 (contract "이력 (History) — 역할 매칭"): 셋 중 하나를 주고, 없으면 API가 빈 페이지를 준다. */
+const ROLES = { ...CURSOR_SIZE, q: QUERY, organizationId: DIGITS, programId: DIGITS, activityId: DIGITS };
 const VERSION = { v: DIGITS };
 
 type Route = {
@@ -196,9 +200,10 @@ function route(method: string, segments: string[], url?: URL): Route | undefined
       if (method === "DELETE") return { parse: () => undefined, noContent: true };
     }
   }
-  // 이력·직무 입력의 선택 창 검색 (contract "이력"·"직무"); activities use the public search.
-  if (method === "GET" && ["organizations", "programs", "roles", "jobs"].includes(path))
+  // 이력·직무 입력의 선택 창 검색 (contract "이력"·"직무"); activities use the public search, 조직·프로그램 통합 검색은 public `discovery/search`.
+  if (method === "GET" && ["organizations", "programs", "jobs"].includes(path))
     return { parse: (json) => activityInfoPageSchema.parse(json), query: query(SEARCH) };
+  if (method === "GET" && path === "roles") return { parse: (json) => rolePageSchema.parse(json), query: query(ROLES) };
   // 내 명함 (contract "명함·지갑", "명함 고치기", "명함 QR 코드"); the public `GET cards/:id` stays on the public branch.
   if (method === "GET" && path === "cards") return { parse: (json) => myCardListSchema.parse(json) };
   if (method === "POST" && path === "cards") return { body: "cardPublish", parse: (json) => myCardSchema.parse(json) };

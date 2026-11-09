@@ -76,12 +76,7 @@ class ProfileController(private val profiles: ProfileService) {
         jobs = r.jobs.map { JobInput(it.id, it.jobId, it.jobName) },
         introLink = r.introLink,
         contacts = r.contacts.map { ContactInput(it.id, it.kind, it.label, it.value) },
-        histories = r.histories.map {
-            HistoryInput(
-                it.id, it.kind, it.organizationId, it.organizationName, it.programId, it.programName,
-                it.activityId, it.activityName, it.roleId, it.roleName, it.startDate, it.endDate, it.description,
-            )
-        },
+        histories = r.histories.map(HistoryRequest::toInput),
     )
 
     private fun response(userId: UUID, profile: io.wid.dearby.domain.profile.Profile) = ProfileResponse.from(profile, profiles.consent(userId), profiles.photoUpdatedAt(userId)?.let(ProfileResponse::photoUrl))

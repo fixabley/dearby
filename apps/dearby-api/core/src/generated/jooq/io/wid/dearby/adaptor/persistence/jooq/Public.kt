@@ -9,7 +9,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
-import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardPhotos
@@ -22,6 +21,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryFilterConfig
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.EmailContactChallenges
@@ -59,6 +59,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
@@ -129,11 +130,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val ACTIVITY_PARTICIPATIONS: ActivityParticipations get() = ActivityParticipations.ACTIVITY_PARTICIPATIONS
 
     /**
-     * The table <code>public.activity_roles</code>.
-     */
-    val ACTIVITY_ROLES: ActivityRoles get() = ActivityRoles.ACTIVITY_ROLES
-
-    /**
      * The table <code>public.activity_tags</code>.
      */
     val ACTIVITY_TAGS: ActivityTags get() = ActivityTags.ACTIVITY_TAGS
@@ -192,6 +188,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.contacts</code>.
      */
     val CONTACTS: Contacts get() = Contacts.CONTACTS
+
+    /**
+     * The table <code>public.discovery_filter_config</code>.
+     */
+    val DISCOVERY_FILTER_CONFIG: DiscoveryFilterConfig get() = DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG
 
     /**
      * The table <code>public.discovery_queue</code>.
@@ -379,6 +380,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val ROLES: Roles get() = Roles.ROLES
 
     /**
+     * The table <code>public.schedule_rooms</code>.
+     */
+    val SCHEDULE_ROOMS: ScheduleRooms get() = ScheduleRooms.SCHEDULE_ROOMS
+
+    /**
      * The table <code>public.schedule_session_tags</code>.
      */
     val SCHEDULE_SESSION_TAGS: ScheduleSessionTags get() = ScheduleSessionTags.SCHEDULE_SESSION_TAGS
@@ -496,7 +502,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS,
         ActivityEmbeddings.ACTIVITY_EMBEDDINGS,
         ActivityParticipations.ACTIVITY_PARTICIPATIONS,
-        ActivityRoles.ACTIVITY_ROLES,
         ActivityTags.ACTIVITY_TAGS,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCardPhotos.BUSINESS_CARD_PHOTOS,
@@ -509,6 +514,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         CollectionRuns.COLLECTION_RUNS,
         CollectionWatchlist.COLLECTION_WATCHLIST,
         Contacts.CONTACTS,
+        DiscoveryFilterConfig.DISCOVERY_FILTER_CONFIG,
         DiscoveryQueue.DISCOVERY_QUEUE,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
         EmailContactChallenges.EMAIL_CONTACT_CHALLENGES,
@@ -546,6 +552,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         RecommendationSignals.RECOMMENDATION_SIGNALS,
         RefreshTokens.REFRESH_TOKENS,
         Roles.ROLES,
+        ScheduleRooms.SCHEDULE_ROOMS,
         ScheduleSessionTags.SCHEDULE_SESSION_TAGS,
         ScheduleSessions.SCHEDULE_SESSIONS,
         ScheduleStatuses.SCHEDULE_STATUSES,

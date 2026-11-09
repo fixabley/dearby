@@ -9,10 +9,12 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_ACTIVITY_ID_SLOT_KE
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_ROOMS__SCHEDULE_ROOMS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_STATUSES__SCHEDULE_STATUSES_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_TRACKS__SCHEDULE_TRACKS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms.ScheduleRoomsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses.ScheduleStatusesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks.ScheduleTracksPath
@@ -276,6 +278,22 @@ open class Schedules(
      */
     fun activities(): ActivitiesPath = activities
     val activities: ActivitiesPath by lazy { ActivitiesPath(this, SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY, null) }
+
+    private lateinit var _scheduleRooms: ScheduleRoomsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_rooms</code> table
+     */
+    fun scheduleRooms(): ScheduleRoomsPath {
+        if (!this::_scheduleRooms.isInitialized)
+            _scheduleRooms = ScheduleRoomsPath(this, null, SCHEDULE_ROOMS__SCHEDULE_ROOMS_SCHEDULE_ID_FKEY.inverseKey)
+
+        return _scheduleRooms;
+    }
+
+    val scheduleRooms: ScheduleRoomsPath
+        get(): ScheduleRoomsPath = scheduleRooms()
 
     private lateinit var _scheduleSessions: ScheduleSessionsPath
 

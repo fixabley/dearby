@@ -32,6 +32,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks
@@ -86,6 +87,7 @@ val ORGANIZATION_MEMBERS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.n
 val ORGANIZATION_MEMBERS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("organization_members_user_id_idx"), OrganizationMembers.ORGANIZATION_MEMBERS, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.USER_ID), false)
 val ORGANIZATIONS_PARENT_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organizations_parent_organization_id_idx"), Organizations.ORGANIZATIONS, arrayOf(Organizations.ORGANIZATIONS.PARENT_ORGANIZATION_ID), false)
 val PROFILE_HISTORIES_REVIEW_IDX: Index = Internal.createIndex(DSL.name("profile_histories_review_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.APPROVAL_STATUS, ProfileHistories.PROFILE_HISTORIES.VERIFICATION_STATUS), false)
+val PROFILE_HISTORIES_ROLE_ID_IDX: Index = Internal.createIndex(DSL.name("profile_histories_role_id_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.ROLE_ID), false)
 val PROFILE_HISTORIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_histories_user_id_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.USER_ID), false)
 val PROFILE_JOBS_APPROVAL_IDX: Index = Internal.createIndex(DSL.name("profile_jobs_approval_idx"), ProfileJobs.PROFILE_JOBS, arrayOf(ProfileJobs.PROFILE_JOBS.APPROVAL_STATUS), false)
 val PROFILE_JOBS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_jobs_user_id_idx"), ProfileJobs.PROFILE_JOBS, arrayOf(ProfileJobs.PROFILE_JOBS.USER_ID), false)
@@ -96,8 +98,11 @@ val PROGRAMS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("program
 val PUSH_DEVICES_USER_IDX: Index = Internal.createIndex(DSL.name("push_devices_user_idx"), PushDevices.PUSH_DEVICES, arrayOf(PushDevices.PUSH_DEVICES.USER_ID), false)
 val RECEIPTS_RECALL_IDX: Index = Internal.createIndex(DSL.name("receipts_recall_idx"), Receipts.RECEIPTS, arrayOf(Receipts.RECEIPTS.RECEIVED_AT), false)
 val REFRESH_TOKENS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("refresh_tokens_user_id_idx"), RefreshTokens.REFRESH_TOKENS, arrayOf(RefreshTokens.REFRESH_TOKENS.USER_ID), false)
+val SCHEDULE_ROOMS_SCHEDULE_IDX: Index = Internal.createIndex(DSL.name("schedule_rooms_schedule_idx"), ScheduleRooms.SCHEDULE_ROOMS, arrayOf(ScheduleRooms.SCHEDULE_ROOMS.SCHEDULE_ID), false)
+val SCHEDULE_SESSIONS_ROOM_IDX: Index = Internal.createIndex(DSL.name("schedule_sessions_room_idx"), ScheduleSessions.SCHEDULE_SESSIONS, arrayOf(ScheduleSessions.SCHEDULE_SESSIONS.ROOM_ID), false)
 val SCHEDULE_SESSIONS_SCHEDULE_IDX: Index = Internal.createIndex(DSL.name("schedule_sessions_schedule_idx"), ScheduleSessions.SCHEDULE_SESSIONS, arrayOf(ScheduleSessions.SCHEDULE_SESSIONS.SCHEDULE_ID, ScheduleSessions.SCHEDULE_SESSIONS.START_AT), false)
 val SCHEDULE_STATUSES_SCHEDULE_ID_IDX: Index = Internal.createIndex(DSL.name("schedule_statuses_schedule_id_idx"), ScheduleStatuses.SCHEDULE_STATUSES, arrayOf(ScheduleStatuses.SCHEDULE_STATUSES.SCHEDULE_ID), false)
+val SCHEDULE_TRACKS_ROOM_IDX: Index = Internal.createIndex(DSL.name("schedule_tracks_room_idx"), ScheduleTracks.SCHEDULE_TRACKS, arrayOf(ScheduleTracks.SCHEDULE_TRACKS.ROOM_ID), false)
 val SCHEDULE_TRACKS_SCHEDULE_IDX: Index = Internal.createIndex(DSL.name("schedule_tracks_schedule_idx"), ScheduleTracks.SCHEDULE_TRACKS, arrayOf(ScheduleTracks.SCHEDULE_TRACKS.SCHEDULE_ID), false)
 val USER_ACTIVITY_SCHEDULE_STATUSES_STATUS_IDX: Index = Internal.createIndex(DSL.name("user_activity_schedule_statuses_status_idx"), UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES, arrayOf(UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES.SCHEDULE_STATUS_ID), false)
 val USER_CREDENTIALS_USER_ENTITY_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_credentials_user_entity_user_id_idx"), UserCredentials.USER_CREDENTIALS, arrayOf(UserCredentials.USER_CREDENTIALS.USER_ENTITY_USER_ID), false)

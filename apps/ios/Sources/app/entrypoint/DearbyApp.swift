@@ -129,6 +129,8 @@ import SwiftUI
             .environment(\.inboxEntry, InboxEntry(signedIn: accountReady, unread: inbox.unread, signIn: needAccount))
             // Profile and card photos need the session (contract "프로필 사진"), so every `DearbyPhotoAvatar` reads through the account.
             .environment(\.photoLoader, PhotoLoader { [account] in try await account.photo($0) })
+            // A history row's activity (contract "이력" › 표시: 활동 역할이면 활동 상세로) opens in 발견 like a universal link (사용 통계 source `link`).
+            .environment(\.activityOpener, ActivityOpener { [activityModel] id in Task { await activityModel.openLinked(id, source: "link") } })
             // A heart pressed signed out opens the sign-in sheet (contract "즐겨찾기(하트)": 로그인만).
             .onChange(of: favorites.signInRequested) { _, requested in
                 guard requested else { return }

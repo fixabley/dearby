@@ -6,6 +6,7 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.application.program.ProgramSummaryService
 import io.wid.dearby.domain.ActivityStatus
+import io.wid.dearby.domain.PlaceShort
 import io.wid.dearby.domain.TagKind
 import io.wid.dearby.domain.favorite.FavoriteIds
 import tools.jackson.databind.JsonNode
@@ -33,6 +34,7 @@ data class ActivityResponse(
     val traitTags: List<TagResponse>, // 성격 태그 전부, 사전 순
     val location: String?, // 장소 문구(native-v1.md "활동 장소"). 좌표 장소가 있으면 그 이름, 없으면 수집·운영자 문구
     val place: PlaceResponse?, // 좌표가 있는 활동 장소. 없으면 null
+    val placeShort: String?, // 장소 짧은 꼴(native-v1.md "행 컴포넌트" placeShort): `서울 관악구`·`온라인`·`서울 외 2곳`. 주소, 없으면 장소 문구에서 뽑고 못 뽑으면 null
     val cost: String?, // 비용 문구(수집·운영자). 대기열 장면 ②가 핵심 줄이 없을 때 쓴다. 없으면 null
     val hook: String?, // 맞춤 대기열 장면 ① 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null(앱은 활동 이름)
     val highlights: List<HighlightResponse>, // 장면 ② 핵심 줄 [{icon, text}] 최대 3개. 비면 앱이 기간·장소로 만든다
@@ -64,6 +66,7 @@ data class ActivityResponse(
                 traitTags = activity.tags.filter { it.kind == TagKind.TRAIT }.map(TagResponse::from),
                 location = place?.name ?: activity.location,
                 place = place,
+                placeShort = PlaceShort.of(place?.address, activity.location),
                 cost = activity.cost,
                 hook = activity.hook,
                 highlights = activity.highlights.map { HighlightResponse(it.icon.code, it.text) },

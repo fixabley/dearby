@@ -1,6 +1,7 @@
 package io.wid.dearby.adaptor.web.v1.me
 
 import io.wid.dearby.adaptor.web.v1.activities.ScheduleResponse
+import io.wid.dearby.adaptor.web.v1.activities.RoomResponse
 import io.wid.dearby.adaptor.web.v1.activities.SessionResponse
 import io.wid.dearby.adaptor.web.v1.activities.TrackResponse
 import io.wid.dearby.application.timetable.TimetableService
@@ -32,7 +33,8 @@ class SessionFavoriteController(private val timetables: TimetableService) {
                 scheduleId = it.schedule.id,
                 scheduleTitle = it.schedule.title,
                 schedule = ScheduleResponse.from(it.schedule),
-                track = it.track?.let { track -> TrackResponse(track.id, track.name, track.room, track.position) },
+                track = it.track?.let(TrackResponse::from),
+                room = it.room?.let(RoomResponse::from),
                 session = SessionResponse.from(it.session, SessionResponse.zoneOf(it.schedule.time), favorited = true),
                 favoritedAt = it.favoritedAt,
             )
@@ -54,6 +56,7 @@ data class SessionFavoriteResponse(
     val scheduleTitle: String,
     val schedule: ScheduleResponse, // 부모 블록 전체(시작·끝·시간대). 앱이 활동을 다시 조회하지 않아도 된다(2026-10-26)
     val track: TrackResponse?, // 세션의 트랙. 전폭 세션(trackId null)이면 null
+    val room: RoomResponse?, // 세션이 열리는 방(세션 값, 없으면 트랙 값). 모르면 null(2026-11-05, 같은 방 판정은 id로만)
     val session: SessionResponse,
     val favoritedAt: OffsetDateTime,
 )

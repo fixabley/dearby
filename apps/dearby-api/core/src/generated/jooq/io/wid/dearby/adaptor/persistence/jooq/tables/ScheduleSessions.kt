@@ -5,12 +5,15 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.SCHEDULE_SESSIONS_ROOM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.SCHEDULE_SESSIONS_SCHEDULE_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_ROOM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_TRACK_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSION_TAGS__SCHEDULE_SESSION_TAGS_SESSION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_SESSION_FAVORITES__USER_SESSION_FAVORITES_SESSION_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleRooms.ScheduleRoomsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags.ScheduleSessionTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks.ScheduleTracksPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
@@ -133,6 +136,11 @@ open class ScheduleSessions(
      */
     val SPEAKERS: TableField<ScheduleSessionsRecord, JSONB?> = createField(DSL.name("speakers"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'[]'::jsonb"), SQLDataType.JSONB)), this, "")
 
+    /**
+     * The column <code>public.schedule_sessions.room_id</code>.
+     */
+    val ROOM_ID: TableField<ScheduleSessionsRecord, Long?> = createField(DSL.name("room_id"), SQLDataType.BIGINT, this, "")
+
     private constructor(alias: Name, aliased: Table<ScheduleSessionsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ScheduleSessionsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ScheduleSessionsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -165,10 +173,17 @@ open class ScheduleSessions(
         override fun `as`(alias: Table<*>): ScheduleSessionsPath = ScheduleSessionsPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(SCHEDULE_SESSIONS_SCHEDULE_IDX)
+    override fun getIndexes(): List<Index> = listOf(SCHEDULE_SESSIONS_ROOM_IDX, SCHEDULE_SESSIONS_SCHEDULE_IDX)
     override fun getIdentity(): Identity<ScheduleSessionsRecord, Long?> = super.getIdentity() as Identity<ScheduleSessionsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ScheduleSessionsRecord> = SCHEDULE_SESSIONS_PKEY
-    override fun getReferences(): List<ForeignKey<ScheduleSessionsRecord, *>> = listOf(SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY, SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_TRACK_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<ScheduleSessionsRecord, *>> = listOf(SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_ROOM_ID_FKEY, SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_SCHEDULE_ID_FKEY, SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_TRACK_ID_FKEY)
+
+    /**
+     * Get the implicit join path to the <code>public.schedule_rooms</code>
+     * table.
+     */
+    fun scheduleRooms(): ScheduleRoomsPath = scheduleRooms
+    val scheduleRooms: ScheduleRoomsPath by lazy { ScheduleRoomsPath(this, SCHEDULE_SESSIONS__SCHEDULE_SESSIONS_ROOM_ID_FKEY, null) }
 
     /**
      * Get the implicit join path to the <code>public.schedules</code> table.

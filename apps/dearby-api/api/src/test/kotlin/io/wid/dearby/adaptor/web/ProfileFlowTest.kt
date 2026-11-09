@@ -57,8 +57,9 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         return organization to program
     }
 
-    private fun role(name: String): Long =
-        jdbc.sql("insert into roles (name, created_at, updated_at) values (?, now(), now()) returning id").param(name).query(Long::class.java).single()
+    // 역할은 조직·프로그램·활동 중 하나에 귀속된다(ownerColumn: organization | program | activity)
+    private fun role(ownerColumn: String, ownerId: Long, name: String): Long =
+        jdbc.sql("insert into roles (${ownerColumn}_id, name, source, position, created_at, updated_at) values (?, ?, 'CURATED', 0, now(), now()) returning id").params(ownerId, name).query(Long::class.java).single()
 
     @Test
     fun `빈 프로필은 version 0이고, 저장마다 버전이 오르며 같은 내용은 버전을 올리지 않는다`() {
@@ -117,42 +118,84 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
     }
 
     @Test
-    fun `활동 정보 항목만 쓴 이력은 바로 승인되고, 직접 입력은 승인 대기이며 고치면 다시 대기한다`() {
+    // native-v1.md "이력 (History) — 역할 매칭": 등록된 역할(roleId)이면 바로 승인, 직접 입력(ownerKind + ownerId|ownerName + roleName)은 승인 대기
+    fun `등록된 역할에 매칭한 이력은 바로 승인되고, 직접 입력은 승인 대기이며 고치면 다시 대기한다`() {
         val user = user()
         val (organization, program) = letswift()
-        val roleId = role("참가자 ${UUID.randomUUID()}")
         val activity = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+        val programRole = role("program", program, "참가자 ${UUID.randomUUID()}")
+        val activityRole = role("activity", activity, "iOS 개발자 ${UUID.randomUUID()}")
         val picked = UUID.randomUUID()
         val custom = UUID.randomUUID()
         val fromActivity = UUID.randomUUID()
-        fun body(customOrganization: String) = """{"name":"이력","contacts":${contacts()},"histories":[
-            {"id":"$picked","kind":"organization","organizationId":$organization,"programId":$program,"roleId":$roleId,"organizationName":"무시됨","startDate":"2026-01-01","endDate":null,"description":""},
-            {"id":"$custom","kind":"activity","organizationName":"$customOrganization","activityName":"직접 적은 활동","roleName":"운영진","startDate":"2025-03-01","endDate":"2025-06-30","description":"설명"},
-            {"id":"$fromActivity","kind":"activity","activityId":$activity,"roleId":$roleId,"startDate":"2026-02-01","endDate":null,"description":""}
+        val named = UUID.randomUUID()
+        fun body(customRole: String) = """{"name":"이력","contacts":${contacts()},"histories":[
+            {"id":"$picked","roleId":$programRole,"ownerKind":"organization","ownerId":999999,"roleName":"무시됨","startDate":"2026-01-01","endDate":null,"description":""},
+            {"id":"$custom","ownerKind":"organization","ownerId":$organization,"roleName":"$customRole","startDate":"2025-03-01","endDate":"2025-06-30","description":"설명"},
+            {"id":"$fromActivity","roleId":$activityRole,"startDate":"2026-02-01","endDate":null,"description":""},
+            {"id":"$named","ownerKind":"program","ownerName":"직접 적은 프로그램","roleName":"운영진","startDate":"2025-01-01","description":""}
         ]}"""
-        val saved = read(put(user, body("직접 적은 조직")).andExpect { status { isOk() } })
+        val saved = read(put(user, body("운영진")).andExpect { status { isOk() } })
         val byId = saved["histories"].values().associateBy { it["id"].asString() }
+        // roleId를 주면 직접 입력 값은 버리고 역할의 귀속 단위(프로그램)와 상위 조직을 서버가 채운다
         val first = byId.getValue(picked.toString())
-        assertEquals(listOf("approved", "unverified", organization), listOf(first["approval"].asString(), first["verification"].asString(), first["organization"]["id"].asLong()))
-        // id를 주면 직접 입력 이름은 버리고 활동 정보 이름을 쓴다
-        assertEquals(first["organization"]["name"].asString(), first["organizationName"].asString())
-        // 활동만 고르면 소속 프로그램·조직을 서버가 채운다(2026-10-18 퍼널 분리)
+        assertEquals(listOf("approved", "unverified", "program", program, organization, true), listOf(first["approval"].asString(), first["verification"].asString(), first["owner"]["kind"].asString(), first["owner"]["id"].asLong(), first["organization"]["id"].asLong(), first["activity"].isNull))
+        assertEquals(listOf(programRole, first["role"]["name"].asString()), listOf(first["role"]["id"].asLong(), first["roleName"].asString()))
+        // 활동 역할이면 활동·프로그램·조직 셋 다
         val third = byId.getValue(fromActivity.toString())
-        assertEquals(listOf("approved", organization, program, activity), listOf(third["approval"].asString(), third["organization"]["id"].asLong(), third["program"]["id"].asLong(), third["activity"]["id"].asLong()))
+        assertEquals(listOf("approved", "activity", organization, program, activity), listOf(third["approval"].asString(), third["owner"]["kind"].asString(), third["organization"]["id"].asLong(), third["program"]["id"].asLong(), third["activity"]["id"].asLong()))
+        // 등록된 단위에 역할 이름만 적으면 승인 대기
         val second = byId.getValue(custom.toString())
-        assertEquals(listOf("pending", true, "직접 적은 조직"), listOf(second["approval"].asString(), second["organization"].isNull, second["organizationName"].asString()))
+        assertEquals(listOf("pending", true, organization, "운영진"), listOf(second["approval"].asString(), second["role"].isNull, second["owner"]["id"].asLong(), second["roleName"].asString()))
+        // 단위 이름까지 직접 적으면 owner.id가 없고 승인 대기
+        val fourth = byId.getValue(named.toString())
+        assertEquals(listOf("pending", "program", true, "직접 적은 프로그램", true), listOf(fourth["approval"].asString(), fourth["owner"]["kind"].asString(), fourth["owner"]["id"].isNull, fourth["owner"]["name"].asString(), fourth["organization"].isNull))
+        // 호환 필드(배포된 앱·웹 모델용, 2026-11-03 밤 조율 결정): kind·organizationName·programName·activityName은 파생값
+        assertEquals(listOf("activity", third["organization"]["name"].asString(), third["program"]["name"].asString(), third["activity"]["name"].asString()), listOf(third["kind"].asString(), third["organizationName"].asString(), third["programName"].asString(), third["activityName"].asString()))
+        assertEquals(listOf("organization", true, true), listOf(first["kind"].asString(), first["activityName"].isNull, first["organizationName"].isString))
+        assertEquals(listOf("organization", true, "직접 적은 프로그램", true), listOf(fourth["kind"].asString(), fourth["organizationName"].isNull, fourth["programName"].asString(), fourth["activityName"].isNull))
 
-        // 관리자가 승인한 뒤 그대로 저장하면 유지, 직접 입력을 고치면 다시 대기
-        jdbc.sql("update profile_histories set approval_status = 'APPROVED' where id = ?").param(custom).update()
-        assertEquals("approved", read(put(user, body("직접 적은 조직").replace("\"설명\"", "\"설명을 고침\"")).andExpect { status { isOk() } })["histories"].values().single { it["id"].asString() == custom.toString() }["approval"].asString())
-        assertEquals("pending", read(put(user, body("다른 조직")).andExpect { status { isOk() } })["histories"].values().single { it["id"].asString() == custom.toString() }["approval"].asString())
+        // 관리자가 거절한 뒤 그대로 저장하면 유지, 직접 입력을 고치면 다시 대기
+        jdbc.sql("update profile_histories set approval_status = 'REJECTED', approval_reason = '확인 안 됨' where id = ?").param(custom).update()
+        assertEquals("rejected", read(put(user, body("운영진").replace("\"설명\"", "\"설명을 고침\"")).andExpect { status { isOk() } })["histories"].values().single { it["id"].asString() == custom.toString() }["approval"].asString())
+        assertEquals("pending", read(put(user, body("다른 역할")).andExpect { status { isOk() } })["histories"].values().single { it["id"].asString() == custom.toString() }["approval"].asString())
 
-        // 규칙: 조직·역할 필수, 활동 종류는 활동 필수, 종료일은 시작일 뒤, 없는 활동 정보 id는 400
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","roleName":"x","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","organizationName":"o","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","organizationName":"o","roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","organizationName":"o","roleName":"r","startDate":"2026-01-01","endDate":"2025-12-31"}]}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","organizationId":999999,"roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+        // 규칙: 역할 필수, 단위(id나 이름) 필수, ownerKind는 셋 중 하나, 종료일은 시작일 뒤, 없는 id는 400. 옛 organizationId·kind 필드는 받지 않는다
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"organization","ownerId":$organization,"startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"organization","roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"team","ownerId":$organization,"roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"organization","ownerId":$organization,"roleName":"r","startDate":"2026-01-01","endDate":"2025-12-31"}]}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"organization","ownerId":999999,"roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","roleId":999999,"startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+
+        // 옛 요청 모양(앱 갱신 전 호환): 이관과 같은 규칙(더 구체적인 직접 입력 이름 → 가장 구체적인 등록 단위 → 조직 이름). 더는 없는 roleId는 roleName이 있으면 직접 입력
+        val legacyPicked = UUID.randomUUID()
+        val legacyNamed = UUID.randomUUID()
+        val legacyMixed = UUID.randomUUID()
+        val legacy = read(put(user, """{"name":"옛 앱","contacts":${contacts()},"histories":[
+            {"id":"$legacyPicked","kind":"activity","organizationId":$organization,"programId":$program,"activityId":$activity,"roleId":$activityRole,"startDate":"2026-01-01","description":""},
+            {"id":"$legacyNamed","kind":"activity","organizationName":"직접 조직","activityName":"직접 활동","roleId":999999,"roleName":"운영진","startDate":"2026-01-01","description":""},
+            {"id":"$legacyMixed","kind":"organization","organizationId":$organization,"programName":"직접 프로그램","roleName":"기획","startDate":"2026-01-01","description":""}
+        ]}""").andExpect { status { isOk() } })["histories"].values().associateBy { it["id"].asString() }
+        assertEquals(listOf("program", true, "직접 프로그램", "직접 프로그램"), listOf(legacy.getValue(legacyMixed.toString())["owner"]["kind"].asString(), legacy.getValue(legacyMixed.toString())["owner"]["id"].isNull, legacy.getValue(legacyMixed.toString())["owner"]["name"].asString(), legacy.getValue(legacyMixed.toString())["programName"].asString()))
+        assertEquals(listOf("activity", activity, activityRole, "approved"), listOf(legacy.getValue(legacyPicked.toString())["owner"]["kind"].asString(), legacy.getValue(legacyPicked.toString())["owner"]["id"].asLong(), legacy.getValue(legacyPicked.toString())["role"]["id"].asLong(), legacy.getValue(legacyPicked.toString())["approval"].asString()))
+        assertEquals(listOf("activity", true, "직접 활동", "운영진", "pending", "직접 활동"), listOf(legacy.getValue(legacyNamed.toString())["owner"]["kind"].asString(), legacy.getValue(legacyNamed.toString())["owner"]["id"].isNull, legacy.getValue(legacyNamed.toString())["owner"]["name"].asString(), legacy.getValue(legacyNamed.toString())["roleName"].asString(), legacy.getValue(legacyNamed.toString())["approval"].asString(), legacy.getValue(legacyNamed.toString())["activityName"].asString()))
+
+        // 역할이 지워져도(FK set null) 이력에는 역할·단위 이름 복사본이 남는다
+        jdbc.sql("delete from roles where id = ?").param(activityRole).update()
+        val afterDelete = read(mvc.get("/v1/profile") { asUser(user) })["histories"].values().single { it["id"].asString() == legacyPicked.toString() }
+        assertEquals(listOf(true, "iOS 개발자 ", activity), listOf(afterDelete["role"].isNull, afterDelete["roleName"].asString().take(8), afterDelete["owner"]["id"].asLong()))
+
+        // 초안 활동의 역할은 새 이력으로 고를 수 없다(이미 그 활동으로 저장된 이력은 그대로 저장된다)
+        val draftRole = role("activity", activity, "초안 역할 ${UUID.randomUUID()}")
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
+        try {
+            put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","roleId":$draftRole,"startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
+            put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"$legacyPicked","roleId":$draftRole,"startDate":"2026-01-01"}]}""").andExpect { status { isOk() } }
+            assertEquals(0, read(mvc.get("/v1/roles?activityId=$activity") { asUser(user) })["items"].size())
+        } finally {
+            jdbc.sql("update activities set publication_status = 'PUBLISHED' where id = ?").param(activity).update()
+        }
     }
 
     // 활동 이력에서 단기 행사 제외(native-v1.md, 2026-10-20): 활동 기간이 7일 미만인 활동은 이력에 못 넣는다. 직접 입력 이름은 제한 없음
@@ -179,9 +222,12 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val conference = activity("이력 하루 컨퍼런스 ${UUID.randomUUID()}", 1, "CONFERENCE")
         val bootcamp = activity("이력 열흘 부트캠프 ${UUID.randomUUID()}", 10, "BOOTCAMP")
         val historyId = UUID.randomUUID()
-        fun body(activityId: Long, id: UUID = historyId, name: String = "이력") = """{"name":"$name","contacts":${contacts()},"histories":[{"id":"$id","kind":"activity","activityId":$activityId,"roleName":"참가자","startDate":"2025-03-01","endDate":null,"description":""}]}"""
+        fun body(activityId: Long, id: UUID = historyId, name: String = "이력") = """{"name":"$name","contacts":${contacts()},"histories":[{"id":"$id","ownerKind":"activity","ownerId":$activityId,"roleName":"참가자","startDate":"2025-03-01","endDate":null,"description":""}]}"""
         val denied = read(put(user, body(conference)).andExpect { status { isBadRequest() } })
         assertEquals(listOf("HISTORY_ACTIVITY_TOO_SHORT", "일주일 미만 행사는 활동 이력에 넣을 수 없어요"), listOf(denied["code"].asString(), denied["detail"].asString()))
+        // 짧은 행사의 역할에 매칭해도 같다
+        val conferenceRole = role("activity", conference, "참가자")
+        put(user, """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","roleId":$conferenceRole,"startDate":"2025-03-01"}]}""").andExpect { status { isBadRequest() } }
         assertEquals(bootcamp, read(put(user, body(bootcamp)).andExpect { status { isOk() } })["histories"].single()["activity"]["id"].asLong())
         // 이미 같은 활동으로 저장된 이력은 그 활동이 나중에 짧아져도 다시 검사하지 않는다(프로필 저장·되돌리기가 막히지 않음). 새 이력으로 넣는 것은 400
         jdbc.sql("update schedules set end_date_exclusive = start_date + 1 where activity_id = ? and slot = 'ACTIVITY'").param(bootcamp).update()
@@ -189,7 +235,7 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         mvc.post("/v1/profile/versions/1/restore") { asUser(user) }.andExpect { status { isOk() } }
         put(user, body(bootcamp, id = UUID.randomUUID())).andExpect { status { isBadRequest() } }
         // 직접 입력한 활동 이름은 제한하지 않는다
-        put(user, """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","organizationName":"o","activityName":"하루 컨퍼런스","roleName":"r","startDate":"2025-03-01"}]}""").andExpect { status { isOk() } }
+        put(user, """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","ownerKind":"activity","ownerName":"하루 컨퍼런스","roleName":"r","startDate":"2025-03-01"}]}""").andExpect { status { isOk() } }
         jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?)").params(conference, bootcamp).update()
     }
 
@@ -198,7 +244,7 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val user = user()
         val other = user()
         val history = UUID.randomUUID()
-        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"$history","kind":"organization","organizationName":"o","roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isOk() } }
+        put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"$history","ownerKind":"organization","ownerName":"o","roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isOk() } }
         fun upload(who: UUID, name: String, type: String, bytes: ByteArray) = mvc.multipart("/v1/profile/histories/$history/evidence") {
             file(MockMultipartFile("file", name, type, bytes)); asUser(who)
         }
@@ -282,9 +328,14 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val user = user()
         mvc.get("/v1/roles").andExpect { status { isUnauthorized() } }
         val suffix = UUID.randomUUID().toString().take(8)
-        role("검색 역할 $suffix")
-        val roles = read(mvc.get("/v1/roles?q=검색 역할 $suffix") { asUser(user) }.andExpect { status { isOk() } })
-        assertEquals(1, roles["items"].size())
+        val (organization, program) = letswift()
+        val id = role("program", program, "검색 역할 $suffix")
+        // 역할은 귀속 단위(조직·프로그램·활동) 하나에 속하고 전역 목록은 없다: 귀속이 없으면 빈 페이지(옛 앱 호환), 둘 이상이면 400
+        assertEquals(0, read(mvc.get("/v1/roles?q=검색 역할 $suffix") { asUser(user) }.andExpect { status { isOk() } })["items"].size())
+        mvc.get("/v1/roles?programId=$program&organizationId=$organization") { asUser(user) }.andExpect { status { isBadRequest() } }
+        val roles = read(mvc.get("/v1/roles?programId=$program&q=검색 역할 $suffix") { asUser(user) }.andExpect { status { isOk() } })
+        assertEquals(listOf(id, "program", program, "curated"), listOf(roles["items"].single()["id"].asLong(), roles["items"][0]["owner"]["kind"].asString(), roles["items"][0]["owner"]["id"].asLong(), roles["items"][0]["source"].asString()))
+        assertEquals(0, read(mvc.get("/v1/roles?organizationId=$organization&q=검색 역할 $suffix") { asUser(user) })["items"].size())
         val organizations = read(mvc.get("/v1/organizations?q=Let&rootsOnly=true") { asUser(user) }.andExpect { status { isOk() } })
         assertTrue(organizations["items"].size() >= 1)
         val programs = read(mvc.get("/v1/programs?q=Let&size=1") { asUser(user) }.andExpect { status { isOk() } })
@@ -327,14 +378,27 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
     @Test
     fun `V18 이전 버전 스냅샷의 직함 문자열은 승인된 직접 입력 직무로 읽히고 되돌릴 수 있다`() {
         val user = user()
+        val (organization, _) = letswift()
         put(user, """{"name":"지금","contacts":${contacts()}}""").andExpect { status { isOk() } }
-        val snapshot = """{"name":"옛날","job":"옛 직함","introduction":"","contacts":${json.writeValueAsString(contacts().replace("\"phone\"", "\"PHONE\"").replace("\"email\"", "\"EMAIL\""))},"histories":"[]"}""" // 스냅샷 형식은 ProfileJson(대문자 kind)
+        // V67 전 이력 스냅샷(kind·*Name, owner 없음): 등록 조직 + 지워진 전역 역할(999999), 조직 이름만 직접 적은 것
+        val picked = UUID.randomUUID()
+        val named = UUID.randomUUID()
+        val histories = """[{"id":"$picked","kind":"ORGANIZATION","organization":{"id":$organization,"name":"옛 조직"},"organizationName":null,"program":null,"programName":null,"activity":null,"activityName":null,"role":{"id":999999,"name":"옛 역할"},"roleName":null,"startDate":"2025-01-01","endDate":null,"description":"","approval":"APPROVED","approvalReason":null,"verification":"UNVERIFIED"},
+            {"id":"$named","kind":"ORGANIZATION","organization":null,"organizationName":"직접 적은 조직","program":null,"programName":null,"activity":null,"activityName":null,"role":null,"roleName":"운영진","startDate":"2025-01-01","endDate":null,"description":"","approval":"PENDING","approvalReason":null,"verification":"UNVERIFIED"}]"""
+        val snapshot = """{"name":"옛날","job":"옛 직함","introduction":"","contacts":${json.writeValueAsString(contacts().replace("\"phone\"", "\"PHONE\"").replace("\"email\"", "\"EMAIL\""))},"histories":${json.writeValueAsString(histories)}}""" // 스냅샷 형식은 ProfileJson(대문자 kind)
         jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 7, ?::jsonb, now())").params(user, snapshot).update()
         val old = read(mvc.get("/v1/profile/versions/7") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf("옛 직함", "approved"), listOf(old["profile"]["jobs"][0]["jobName"].asString(), old["profile"]["jobs"][0]["approval"].asString()))
+        // 옛 이력은 조직 참조에서 귀속을 만들고, 등록된 것이 없으면 이름만 남는다
+        val oldHistories = old["profile"]["histories"].values().associateBy { it["id"].asString() }
+        assertEquals(listOf("organization", organization, 999999L, "옛 역할"), listOf(oldHistories.getValue(picked.toString())["owner"]["kind"].asString(), oldHistories.getValue(picked.toString())["owner"]["id"].asLong(), oldHistories.getValue(picked.toString())["role"]["id"].asLong(), oldHistories.getValue(picked.toString())["roleName"].asString()))
+        assertEquals(listOf(true, "직접 적은 조직", "운영진"), listOf(oldHistories.getValue(named.toString())["owner"]["id"].isNull, oldHistories.getValue(named.toString())["owner"]["name"].asString(), oldHistories.getValue(named.toString())["roleName"].asString()))
         val restored = read(mvc.post("/v1/profile/versions/7/restore") { asUser(user) }.andExpect { status { isOk() } })
-        // 되돌린 직무는 지금 규칙대로 직접 입력이라 승인 대기가 된다
+        // 되돌린 직무는 지금 규칙대로 직접 입력이라 승인 대기가 된다. 지워진 역할은 이름만 남아 승인 대기
         assertEquals(listOf("옛날", "옛 직함", "pending"), listOf(restored["name"].asString(), restored["jobs"][0]["jobName"].asString(), restored["jobs"][0]["approval"].asString()))
+        val restoredHistories = restored["histories"].values().associateBy { it["id"].asString() }
+        assertEquals(listOf(true, "옛 역할", organization, "pending"), listOf(restoredHistories.getValue(picked.toString())["role"].isNull, restoredHistories.getValue(picked.toString())["roleName"].asString(), restoredHistories.getValue(picked.toString())["owner"]["id"].asLong(), restoredHistories.getValue(picked.toString())["approval"].asString()))
+        assertEquals(listOf(true, "pending"), listOf(restoredHistories.getValue(named.toString())["owner"]["id"].isNull, restoredHistories.getValue(named.toString())["approval"].asString()))
     }
 
     @Test

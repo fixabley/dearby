@@ -1,21 +1,21 @@
 package io.wid.dearby.adaptor.web.v1.profile
 
 import io.wid.dearby.domain.profile.History
+import io.wid.dearby.domain.profile.RoleOwner
+import io.wid.dearby.domain.profile.RoleOwnerKind
 import java.time.LocalDate
 import java.util.*
 
-// native-v1.md "이력". 상태 값은 소문자. 명함에 실린 이력은 evidence가 빈 목록이다
+// native-v1.md "이력 (History) — 역할 매칭". 상태 값은 소문자. organization·program·activity는 귀속에서 서버가 채우는 편의 값. 명함에 실린 이력은 evidence가 빈 목록이다.
+// kind·organizationName·programName·activityName은 호환 필드(2026-11-03 밤 조율 결정): 배포된 앱·웹 모델이 옛 모양을 필수로 읽으므로 파생값으로 싣고, 모델이 갱신·배포된 뒤 뺀다
 data class HistoryResponse(
     val id: UUID,
-    val kind: String,
-    val organization: ActivityInfoRefResponse?,
-    val organizationName: String?,
-    val program: ActivityInfoRefResponse?,
-    val programName: String?,
-    val activity: ActivityInfoRefResponse?,
-    val activityName: String?,
     val role: ActivityInfoRefResponse?,
-    val roleName: String?,
+    val roleName: String,
+    val owner: OwnerResponse,
+    val organization: ActivityInfoRefResponse?,
+    val program: ActivityInfoRefResponse?,
+    val activity: ActivityInfoRefResponse?,
     val startDate: LocalDate,
     val endDate: LocalDate?,
     val description: String,
@@ -23,19 +23,27 @@ data class HistoryResponse(
     val approvalReason: String?,
     val verification: String,
     val evidence: List<EvidenceResponse>,
+    val kind: String,
+    val organizationName: String?,
+    val programName: String?,
+    val activityName: String?,
 ) {
+    // id가 null이면 사용자가 이름만 직접 적은 단위(승인 대기)
+    data class OwnerResponse(val kind: String, val id: Long?, val name: String) {
+        companion object {
+            fun from(owner: RoleOwner) = OwnerResponse(owner.kind.name.lowercase(), owner.id, owner.name)
+        }
+    }
+
     companion object {
         fun from(h: History) = HistoryResponse(
             id = h.id,
-            kind = h.kind.name.lowercase(),
-            organization = h.organization?.let(ActivityInfoRefResponse::from),
-            organizationName = h.organizationName,
-            program = h.program?.let(ActivityInfoRefResponse::from),
-            programName = h.programName,
-            activity = h.activity?.let(ActivityInfoRefResponse::from),
-            activityName = h.activityName,
             role = h.role?.let(ActivityInfoRefResponse::from),
             roleName = h.roleName,
+            owner = OwnerResponse.from(h.owner),
+            organization = h.organization?.let(ActivityInfoRefResponse::from),
+            program = h.program?.let(ActivityInfoRefResponse::from),
+            activity = h.activity?.let(ActivityInfoRefResponse::from),
             startDate = h.startDate,
             endDate = h.endDate,
             description = h.description,
@@ -43,6 +51,13 @@ data class HistoryResponse(
             approvalReason = h.approvalReason,
             verification = h.verification.name.lowercase(),
             evidence = h.evidence.map(EvidenceResponse::from),
+            kind = if (h.owner.kind == RoleOwnerKind.ACTIVITY) "activity" else "organization",
+            organizationName = h.organization?.name ?: typedName(h.owner, RoleOwnerKind.ORGANIZATION),
+            programName = h.program?.name ?: typedName(h.owner, RoleOwnerKind.PROGRAM),
+            activityName = h.activity?.name ?: typedName(h.owner, RoleOwnerKind.ACTIVITY),
         )
+
+        // 이름만 직접 적은 단위의 이름(그 종류일 때만)
+        private fun typedName(owner: RoleOwner, kind: RoleOwnerKind): String? = owner.name.takeIf { owner.id == null && owner.kind == kind }
     }
 }

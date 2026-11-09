@@ -18,7 +18,6 @@ import io.wid.dearby.domain.timetable.SessionKind
 import io.wid.dearby.domain.timetable.Speaker
 import io.wid.dearby.domain.timetable.TimetableInput
 import io.wid.dearby.domain.timetable.TimetableRules
-import io.wid.dearby.domain.timetable.TrackInput
 import io.wid.dearby.domain.Activity
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
@@ -262,8 +261,8 @@ class CurationImportService(
             if (existing.sessions.isNotEmpty() && !node.path("overwrite").asBoolean(false)) return Line(target, TIMETABLE, SKIP, "이미 있음: 세션 ${existing.sessions.size}개")
         }
         val text = { n: JsonNode, field: String -> n.path(field).asString("").trim().ifEmpty { null } }
-        val input = TimetableInput(
-            tracks = buildList { node.path("tracks").forEach { add(TrackInput(null, it.path("name").asString(""), text(it, "room"))) } },
+        val input = TimetableInput.withRoomNames(
+            tracks = buildList { node.path("tracks").forEach { add(it.path("name").asString("") to text(it, "room")) } },
             sessions = buildList {
                 node.path("sessions").forEach { s ->
                     val names = buildList { s.path("tagNames").forEach { add(it.asString("")) } }

@@ -60,6 +60,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     pickPhoto: () -> Unit = {}, deletePhoto: () -> Unit = {},
     /** A contact row on the read-mode card opens or copies it (contract "연락처 아이콘·바로가기"). */
     contact: (ContactState) -> Unit = {},
+    /** A read-mode history row of an activity role opens that activity's detail (contract "표시(프로필 활동 이력·명함)"); null leaves the rows inert. */
+    openActivity: ((String) -> Unit)? = null,
     /** 연락처 인증 (contract "연락처 인증"): GitHub 연결 (the route opens the Custom Tab) and the 이메일 인증번호 steps; state in [ProfileViewState.verify]. */
     linkGithub: () -> Unit = {}, requestEmailCode: () -> Unit = {}, changeEmailCode: (String) -> Unit = {}, verifyEmail: () -> Unit = {},
 ) {
@@ -93,7 +95,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, leaveSetup, Modifier.weight(1f)); return@let }
-                if (!state.editing) { ReadOnlyProfile(form.cardState(state.profile?.photoUrl), form.histories.historyCards(), { edit(true) }, compose, contact, Modifier.weight(1f), recommendation); return@let }
+                if (!state.editing) { ReadOnlyProfile(form.cardState(state.profile?.photoUrl), form.histories.historyCards(), { edit(true) }, compose, contact, Modifier.weight(1f), recommendation, openActivity); return@let }
                 Column(Modifier.weight(1f).dismissKeyboardOnScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     PhotoRow(form.name, state.profile?.photoUrl, state.photoBusy, state.photoError, pickPhoto) { confirmPhotoDelete = true }
@@ -117,7 +119,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                         onRequestEmailCode = requestEmailCode, onEmailCodeChange = changeEmailCode, onVerifyEmail = verifyEmail,
                         githubLink = state.verify.githubAvailable, githubBusy = state.verify.githubBusy, onLinkGithub = linkGithub)
                     Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    if (form.histories.isEmpty()) Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    if (form.histories.isEmpty()) Text("아직 이력이 없어요. 어디에서 어떤 역할이었는지 단계별로 적어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                     rows.forEach { row -> HistoryRow(row, { openHistory(row.id) }) { removeHistory(row.id) } }
                     AddRow("이력 추가") { openHistory(null) }
                 }
@@ -169,12 +171,12 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
  * then the history rows as the card draws them ([CardHistoryRow], contract "내 프로필 활동 이력 = 명함 이력"), then `이 내용으로 명함 만들기` (primary) and `수정` (same as the top bar). No inputs, no bar.
  */
 @Composable private fun ReadOnlyProfile(card: CardState, histories: List<CardHistoryState>, edit: () -> Unit, compose: () -> Unit, contact: (ContactState) -> Unit,
-                                        modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
+                                        modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null, openActivity: ((String) -> Unit)? = null) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         CardContent(card, body = false, onContact = contact)
         Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
         if (histories.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        Column { histories.forEach { CardHistoryRow(it) } }
+        Column { histories.forEach { CardHistoryRow(it, openActivity) } }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DearbyButton(compose, Modifier.fillMaxWidth()) { Text("이 내용으로 명함 만들기") }
             DearbyOutlineButton(edit, Modifier.fillMaxWidth()) { Text("수정") }
@@ -183,7 +185,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     }
 }
 
-/** One history in edit mode: 조직 · 프로그램 · 활동, role, period and the approval / verification tags; the card opens the funnel and carries the remove button. */
+/** One history in edit mode: `귀속 단위 · 역할`, 소속 and period, and the approval / verification tags; the card opens the funnel and carries the remove button. */
 @Composable private fun HistoryRow(row: HistoryRowState, open: () -> Unit, remove: () -> Unit) {
     // The whole card opens the history (contract "터치 컴포넌트": `Card(onClick)`); the trailing remove button keeps its own tap.
     val border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)

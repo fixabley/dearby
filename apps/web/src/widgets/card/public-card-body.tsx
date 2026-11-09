@@ -1,4 +1,4 @@
-import { type Card, type History, contactHref, contactUsername, httpsUrl } from "@/lib/models";
+import { type Card, type History, contactHref, contactUsername, historyTitle, httpsUrl } from "@/lib/models";
 import { Badge } from "@/shared/ui/badge";
 import { Card as Surface } from "@/shared/ui/card";
 import { Icon } from "@/shared/ui/icon";
@@ -111,9 +111,8 @@ export function PublicCardBody({ card }: { card: Card }) {
             {card.histories.map((history) => (
               <li key={history.id} className="flex flex-col gap-1 py-2">
                 <p className="text-caption text-secondary-label">{period(history)}</p>
-                <h3 className="text-subheadline font-bold break-keep">{chain(history).join(" · ")}</h3>
+                <h3 className="text-subheadline font-bold break-keep">{historyTitle(history)}</h3>
                 <p className="flex flex-wrap items-center gap-2 text-subheadline text-secondary-label">
-                  {history.role?.name ?? history.roleName}
                   {history.verification === "verified" ? (
                     <Badge variant="tinted" title="관리자가 인증자료를 확인했어요">
                       ✓ 확인됨
@@ -182,16 +181,8 @@ function latestOrganization(histories: History[]): string | undefined {
       if (!a.endDate !== !b.endDate) return a.endDate ? 1 : -1;
       return b.startDate.localeCompare(a.startDate);
     })[0];
-  return latest ? (latest.organization?.name ?? latest.organizationName) ?? undefined : undefined;
-}
-
-/** 조직 → 프로그램 → 활동 순서로 이름을 모은다(카탈로그 이름 또는 직접 입력). */
-function chain(history: History): string[] {
-  return [
-    history.organization?.name ?? history.organizationName,
-    history.program?.name ?? history.programName,
-    history.activity?.name ?? history.activityName,
-  ].filter((name): name is string => !!name);
+  // 승인된 이력은 등록된 단위이므로 서버가 조직을 채운다; 단위가 지워진 뒤에는 귀속 단위 이름 복사본으로.
+  return latest ? latest.organization?.name ?? latest.owner.name : undefined;
 }
 
 /** `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`. */
